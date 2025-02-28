@@ -26,59 +26,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-# CHANGES:
-#
-# 2012-01-31, Lars Bilke
-# - Enable Code Coverage
-#
-# 2013-09-17, Joakim Söderberg
-# - Added support for Clang.
-# - Some additional usage instructions.
-#
-# 2016-02-03, Lars Bilke
-# - Refactored functions to use named parameters
-#
-# 2017-06-02, Lars Bilke
-# - Merged with modified version from github.com/ufz/ogs
-#
-# 2019-05-06, Anatolii Kurotych
-# - Remove unnecessary --coverage flag
-#
-# 2019-12-13, FeRD (Frank Dana)
-# - Deprecate COVERAGE_LCOVR_EXCLUDES and COVERAGE_GCOVR_EXCLUDES lists in favor
-#   of tool-agnostic COVERAGE_EXCLUDES variable, or EXCLUDE setup arguments.
-# - CMake 3.4+: All excludes can be specified relative to BASE_DIRECTORY
-# - All setup functions: accept BASE_DIRECTORY, EXCLUDE list
-# - Set lcov basedir with -b argument
-# - Add automatic --demangle-cpp in lcovr, if 'c++filt' is available (can be
-#   overridden with NO_DEMANGLE option in setup_target_for_coverage_lcovr().)
-# - Delete output dir, .info file on 'make clean'
-# - Remove Python detection, since version mismatches will break gcovr
-# - Minor cleanup (lowercase function names, update examples...)
-#
-# 2019-12-19, FeRD (Frank Dana)
-# - Rename Lcov outputs, make filtered file canonical, fix cleanup for targets
-#
-# 2020-01-19, Bob Apthorpe
-# - Added gfortran support
-#
-# 2020-02-17, FeRD (Frank Dana)
-# - Make all add_custom_target()s VERBATIM to auto-escape wildcard characters
-#   in EXCLUDEs, and remove manual escaping from gcovr targets
-#
-# 2021-01-19, Robin Mueller
-# - Add CODE_COVERAGE_VERBOSE option which will allow to print out commands which are run
-# - Added the option for users to set the GCOVR_ADDITIONAL_ARGS variable to supply additional
-#   flags to the gcovr command
-#
-# 2020-05-04, Mihchael Davis
-#     - Add -fprofile-abs-path to make gcno files contain absolute paths
-#     - Fix BASE_DIRECTORY not working when defined
-#     - Change BYPRODUCT from folder to index.html to stop ninja from complaining about double defines
-#
-# 2021-05-10, Martin Stump
-#     - Check if the generator is multi-config before warning about non-Debug builds
-#
 # USAGE:
 #
 # 1. Copy this file into your cmake modules path.

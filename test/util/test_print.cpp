@@ -2,7 +2,8 @@
 
 #include <iostream>
 
-int main() {
+int main()
+{
   Message msg("Hello, MIAM");
 
   std::cout << msg << std::endl;

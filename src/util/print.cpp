@@ -3,10 +3,9 @@
 
 #include <miam/util/print.hpp>
 
-std::ostream& Message::print(std::ostream &ostream)
-std::ostream &Message::print(std::ostream &os) 
+std::ostream& Message::print(std::ostream& os)
 {
-  os << "This is MIAM repository." << std::endl;
+  os << "This is MIAM repository" << std::endl;
   os << message_;
 
   return os;

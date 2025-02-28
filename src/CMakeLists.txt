@@ -10,21 +10,15 @@ add_library(musica::miam ALIAS miam)
 target_compile_features(miam PUBLIC cxx_std_20)
 
 # Check for Intel compiler
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Intel" OR CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
-  # Set compiler flags for Intel C++
-  if (WIN32)
-    # For Windows
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Intel" OR CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
+  # Tell the compiler to use precise floating-point calculations
+  if(WIN32)
     target_compile_options(miam PUBLIC "/fp:precise")
-  else ()
+  else()
     # For other operating systems (e.g., Linux, macOS)
     target_compile_options(miam PUBLIC "-ffp-model=precise")
-  endif ()
-endif ()
-
-target_sources(miam
-  PRIVATE
-    ${CMAKE_BINARY_DIR}/version.cpp
-)
+  endif()
+endif()
 
 target_include_directories(miam
   PUBLIC
