@@ -38,4 +38,4 @@ RUN cd miam \
     && cd build \
     && make docs
 
-WORKDIR /build
+WORKDIR miam/build

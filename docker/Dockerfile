@@ -24,4 +24,4 @@ RUN cd miam \
     && cd build \
     && make install -j 8 
 
-WORKDIR /build
+WORKDIR miam/build

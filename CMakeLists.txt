@@ -31,7 +31,7 @@ include(dependencies)
 ################################################################################
 add_subdirectory(src)
 
-if(PROJECT_IS_TOP_LEVEL AND MIAM_ENABLE_TESTS)
+if(MIAM_ENABLE_TESTS)
   enable_testing()
   add_subdirectory(test)
 
