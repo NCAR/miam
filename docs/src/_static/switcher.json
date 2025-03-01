@@ -1,0 +1,17 @@
+[
+  {
+    "name": "v0.0.0 (stable)",
+    "version": "0.0.0 (stable)",
+    "url": "https://ncar.github.io/miam"
+  },
+  {
+    "name": "v0.0.0",
+    "version": "0.0.0",
+    "url": "https://ncar.github.io/miam/versions/0.0.0"
+  },
+  {
+    "name": "dev",
+    "version": "dev",
+    "url": "https://ncar.github.io/miam/branch/main/"
+  }
+]

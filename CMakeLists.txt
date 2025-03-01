@@ -49,3 +49,9 @@ endif()
 if(MIAM_BUILD_DOCS)
   add_subdirectory(docs)
 endif()
+
+# Packaging
+
+if(PROJECT_IS_TOP_LEVEL)
+  add_subdirectory(packaging)
+endif()
