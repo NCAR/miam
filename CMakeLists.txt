@@ -32,9 +32,6 @@ include(dependencies)
 add_subdirectory(src)
 
 if(MIAM_ENABLE_TESTS)
-  enable_testing()
-  add_subdirectory(test)
-
   if(MIAM_ENABLE_COVERAGE)
     include(CodeCoverage)
     append_coverage_compiler_flags()
@@ -42,8 +39,12 @@ if(MIAM_ENABLE_TESTS)
         NAME coverage
         EXECUTABLE "ctest"
         EXCLUDE "${PROJECT_SOURCE_DIR}/test/*"
-        BASE_DIRECTORY "${PROJECT_SOURCE_DIR}/src")
+        BASE_DIRECTORY ${PROJECT_SOURCE_DIR}/src
+    )
   endif()
+
+  enable_testing()
+  add_subdirectory(test)
 endif()
 
 if(MIAM_BUILD_DOCS)

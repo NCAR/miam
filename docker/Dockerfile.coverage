@@ -1,7 +1,7 @@
 FROM fedora:latest
 
 ARG MIAM_GIT_TAG=main
-ARG BUILD_TYPE=Release
+ARG BUILD_TYPE=Debug
 
 RUN dnf -y update \
     && dnf -y install \
@@ -9,6 +9,7 @@ RUN dnf -y update \
         gcc-c++ \
         gdb \
         git \
+        lcov \
         make \
     && dnf clean all
 
