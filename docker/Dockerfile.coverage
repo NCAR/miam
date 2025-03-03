@@ -22,8 +22,8 @@ RUN cd miam \
              -B build \
              -D CMAKE_BUILD_TYPE=${BUILD_TYPE} \
              -D MIAM_GIT_TAG=${MIAM_GIT_TAG} \
-             -D MIAM_ENABLE_COVERAGE=ON \
-    && cd build \
-    && make install -j 8 
+             -D MIAM_ENABLE_COVERAGE=ON
+    # && cd build \
+    # && make install -j 8
 
 WORKDIR miam/build
