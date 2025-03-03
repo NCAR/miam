@@ -24,6 +24,7 @@ RUN cd miam \
              -D MIAM_GIT_TAG=${MIAM_GIT_TAG} \
              -D MIAM_ENABLE_COVERAGE=ON \
     && cd build \
-    $$ make coverage
+    && cmake --build . \
+    && make coverage
 
 WORKDIR miam/build
