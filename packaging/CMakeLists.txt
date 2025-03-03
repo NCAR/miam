@@ -7,16 +7,15 @@ install(
     miam_Exports
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-# # install the miam header files
-# install(
-#   DIRECTORY
-#     ${PROJECT_SOURCE_DIR}/include/
-#   DESTINATION
-#     ${MIAM_INSTALL_INCLUDE_DIR}
-# )
+# install the miam header files
+install(
+  DIRECTORY
+    ${PROJECT_SOURCE_DIR}/include/
+  DESTINATION
+    ${MIAM_INSTALL_INCLUDE_DIR}
+)
 
 # install the cmake config files
 set(cmake_config_install_location ${INSTALL_PREFIX}/cmake)
@@ -28,7 +27,7 @@ install(
     ${cmake_config_install_location}
   NAMESPACE musica::
 )
-message(STATUS "PROJECT_SOURCE_DIR ${PROJECT_SOURCE_DIR}")
+
 configure_package_config_file(
   ${PROJECT_SOURCE_DIR}/cmake/miamConfig.cmake.in
   ${PROJECT_BINARY_DIR}/miamConfig.cmake
@@ -73,9 +72,6 @@ if (MIAM_CREATE_ENVIRONMENT_MODULE)
   set(MODULE_NAME ${PROJECT_VERSION}.lua)
   set(MODULE_FILE_PATH ${CMAKE_BINARY_DIR}/modulefiles/${PROJECT_NAME}/${MODULE_NAME})
   set(MODULE_INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/${INSTALL_PREFIX})
-
-  message(STATUS "MODULE NAME ${MODULE_NAME}")
-  message(STATUS "MODULE PATH ${MODULE_FILE_PATH}")
 
   # Generate the module file using the template
   configure_file(${PROJECT_SOURCE_DIR}/modulefile.lua.in

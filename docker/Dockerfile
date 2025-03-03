@@ -10,6 +10,7 @@ RUN dnf -y update \
         gdb \
         git \
         make \
+        tree \
     && dnf clean all
 
 # Copy the MIAM code

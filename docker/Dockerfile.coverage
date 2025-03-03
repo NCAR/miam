@@ -11,6 +11,7 @@ RUN dnf -y update \
         git \
         lcov \
         make \
+        tree \
     && dnf clean all
 
 # Copy the MIAM code
