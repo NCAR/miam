@@ -45,7 +45,7 @@ jobs:
 
       - name: Copy coverage from container
         if: matrix.dockerfile == 'Dockerfile.coverage'
-        run: docker cp test-container:build/coverage.info .
+        run: docker cp test-container:coverage.info .
 
       - name: Upload coverage report
         if: matrix.dockerfile == 'Dockerfile.coverage'

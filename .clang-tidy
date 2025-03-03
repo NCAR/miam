@@ -1,12 +1,4 @@
 ---
-# Here is an explanation for why some of the checks are disabled:
-#
-# -readability-identifier-length:
-#  : We want to enable this but this requires large cleanup efforts.
-#
-# -readability-convert-member-functions-to-static:
-#  : This wants to put 'static' in the inlined function defined outside the class definition
-#   but 'static' must be specified inside the class definition.
 
 Checks: >
   -*,
