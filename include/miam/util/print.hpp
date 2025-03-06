@@ -6,18 +6,20 @@
 #include <ostream>
 #include <string>
 
-class Message {
-public:
+class Message
+{
+ public:
   Message(const std::string& message)
-  : message_(message) 
-  {}
+      : message_(message)
+  {
+  }
 
-  friend std::ostream &operator<<(std::ostream &ostream, Message& message)
+  friend std::ostream& operator<<(std::ostream& ostream, Message& message)
   {
     return message.print(ostream);
   }
 
-private:
+ private:
   std::string message_;
-  std::ostream& print(std::ostream &ostream);
+  std::ostream& print(std::ostream& ostream);
 };
