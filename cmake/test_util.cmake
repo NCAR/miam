@@ -3,7 +3,7 @@
 
 if(MIAM_ENABLE_MEMCHECK)
   find_program(MEMORYCHECK_COMMAND "valgrind")
-  set(MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=1 --trace-children=yes --leak-check=full --gen-suppressions=all ${MEMCHECK_SUPPRESS}")
+  set(MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=1" "--trace-children=yes" "--leak-check=full" "--gen-suppressions=all")
 endif()
 
 ################################################################################
