@@ -11,6 +11,7 @@ RUN dnf -y update \
         git \
         make \
         tree \
+        valgrind \
     && dnf clean all
 
 # Copy the MIAM code
