@@ -1,0 +1,35 @@
+// Copyright (C) 2025 National Center for Atmospheric Research
+// SPDX-License-Identifier: Apache-2.0
+// clang-format off
+#pragma once
+
+#ifdef __cplusplus
+namespace miam {
+extern "C" {
+#endif
+
+  inline const char* GetMiamVersion()
+  {
+    return "@miam_VERSION@";
+  }
+  inline unsigned GetMiamVersionMajor()
+  {
+    return @miam_VERSION_MAJOR@;
+  }
+  inline unsigned GetMiamVersionMinor()
+  {
+    return @miam_VERSION_MINOR@+0;
+  }
+  inline unsigned GetMiamVersionPatch()
+  {
+    return @miam_VERSION_PATCH@+0;
+  }
+  inline unsigned GetMiamVersionTweak()
+  {
+    return @miam_VERSION_TWEAK@+0;
+  }
+
+#ifdef __cplusplus
+}  // extern "C"
+}  // namespace miam
+#endif

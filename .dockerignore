@@ -1,0 +1,7 @@
+**/.DS_Store
+**/build/
+**/CMakeCache.txt
+**/CMakeFiles/
+.vscode
+xcode/
+.github

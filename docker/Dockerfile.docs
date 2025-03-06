@@ -1,0 +1,39 @@
+FROM fedora:latest
+
+ARG MIAM_GIT_TAG=main
+ARG BUILD_TYPE=Release
+
+RUN dnf -y update \
+    && dnf -y install \
+        cmake \
+        gcc-c++ \
+        gdb \
+        git \
+        make \
+        doxygen \
+        python3 \
+        python3-pip \
+        tree \
+    && dnf clean all
+
+# Copy the MIAM code
+COPY . miam
+
+RUN pip3 install -r /miam/docs/requirements.txt
+
+ARG SUFFIX=""
+ENV SWITCHER_SUFFIX=$SUFFIX
+
+RUN echo "The suffix is '$SWITCHER_SUFFIX'"
+
+# Build the library
+RUN cd miam \
+    && cmake -S . \
+             -B build \
+             -D CMAKE_BUILD_TYPE=${BUILD_TYPE} \
+             -D MIAM_GIT_TAG=${MIAM_GIT_TAG} \
+             -D MIAM_BUILD_DOCS=ON \
+    && cd build \
+    && make docs
+
+WORKDIR miam/build
