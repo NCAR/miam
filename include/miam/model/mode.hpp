@@ -5,7 +5,6 @@
 
 #include <miam/util/utils.hpp>
 #include <miam/model/aerosol_scheme.hpp>
-#include <miam/util/utils.hpp>
 
 #include <micm/system/phase.hpp>
 
