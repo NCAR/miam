@@ -61,7 +61,6 @@ public:
                         std::size_t cell = 0)
   {
     const std::string species_key = JoinStrings({ name_, phase.name_, species.name_ });
-    std::cout << "species_key: " << species_key << std::endl; 
     std::size_t index;
 
     if (has_initialized_state_idx_)
