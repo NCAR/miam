@@ -25,7 +25,7 @@ include(GNUInstallDirs)
 include(${PROJECT_SOURCE_DIR}/cmake/dependencies.cmake)
 
 ################################################################################
-# Projet wide setup options and variables
+# Project wide setup options and variables
 
 option(MIAM_ENABLE_TESTS "Build the test suite" ON)
 option(MIAM_ENABLE_MEMCHECK "Enable memory checking in tests" OFF)
