@@ -31,7 +31,6 @@ FetchContent_Declare(micm
 
 set(MICM_ENABLE_TESTS OFF)
 set(MICM_ENABLE_EXAMPLES OFF)
-set(MICM_DEFAULT_VECTOR_SIZE ${MICM_DEFAULT_VECTOR_SIZE})
 
 FetchContent_MakeAvailable(micm)
 
