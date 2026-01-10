@@ -5,7 +5,7 @@
 
 #include <miam/util/utils.hpp>
 #include <miam/model/aerosol_scheme.hpp>
-#include <miam/model/utils.hpp>
+#include <miam/util/utils.hpp>
 
 #include <micm/system/phase.hpp>
 
@@ -58,7 +58,7 @@ public:
   /// @param cell The index of the grid cell
   /// @return Effective radius [m]
   template<typename StateType>
-  double GetEffectiveRadius(const StateType& state, std::size_t cell) const 
+  double GetEffectiveRadius(const StateType& state, std::size_t cell)
   {
     double total_mass = 0.0;
     for (const auto& [species_key, id] : state_idx_.state_id_map) {

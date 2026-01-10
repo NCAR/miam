@@ -5,6 +5,8 @@
 
 #include <miam/util/utils.hpp>
 
+#include <micm/system/phase.hpp>
+
 #include <string>
 #include <unordered_map>
 

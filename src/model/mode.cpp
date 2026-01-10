@@ -1,4 +1,4 @@
-#pragma once
+#include <miam/model/mode.hpp>
 
 #include <cmath>
 #include <format>

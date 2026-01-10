@@ -1,6 +1,6 @@
 #pragma once
 
-#include "aerosol_model.hpp"
+#include <miam/model/aerosol_model.hpp>
 
 #include <micm/system/phase.hpp>
 #include <micm/system/system.hpp>

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <miam/model/aerosol_scheme.hpp>
-#include <miam/model/solver_utils.hpp>
+#include <miam/util/solver_utils.hpp>
 
 #include <string>
 

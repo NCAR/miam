@@ -2,7 +2,7 @@
 #include <miam/model/aerosol_scheme.hpp>
 #include <miam/model/mode.hpp>
 #include <miam/model/section.hpp>
-#include <miam/utils/solver_utils.hpp>
+#include <miam/util/solver_utils.hpp>
 
 #include <micm/process/transfer_coefficient/phase_transfer_coefficient.hpp>
 #include <micm/process/chemical_reaction_builder.hpp>
