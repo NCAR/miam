@@ -111,8 +111,8 @@ int main()
   // 21) (AEROSOL.) ACCUMULATION.AQUEOUS.CO32-
   // 22) (AEROSOL.) ACCUMULATION.ORGANIC.CO2
   // 23) (AEROSOL.) ACCUMULATION.ORGANIC.HEXANE
-  // 22) (AEROSOL.) DUST.ORGANIC.CO2
-  // 23) (AEROSOL.) DUST.ORGANIC.HEXANE
+  // 24) (AEROSOL.) DUST.ORGANIC.CO2
+  // 25) (AEROSOL.) DUST.ORGANIC.HEXANE
 
   Process co2_photo = ChemicalReactionBuilder()
                       .SetReactants({ co2 })
