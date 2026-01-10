@@ -16,7 +16,7 @@
 using namespace micm;
 using namespace miam;
 
-int main(const int argc, const char *argv[])
+int main()
 {
   auto co2    = Species{ "CO2" };
   auto h2o    = Species{ "H2O" };
