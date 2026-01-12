@@ -13,8 +13,6 @@
 namespace miam
 {
 
-micm::System ConfigureSystem(
-  const micm::Phase& gas_phase, 
-  const std::vector<AerosolModel>& aerosol_models);
+  micm::System ConfigureSystem(const micm::Phase& gas_phase, const std::vector<AerosolModel>& aerosol_models);
 
-} // namespace miam
+}  // namespace miam
