@@ -20,6 +20,21 @@ if(MIAM_ENABLE_TESTS)
 endif()
 
 ################################################################################
+# MICM
+
+FetchContent_Declare(micm
+    GIT_REPOSITORY https://github.com/NCAR/micm.git
+    GIT_TAG rework_system_params
+    GIT_PROGRESS NOT ${FETCHCONTENT_QUIET}
+    FIND_PACKAGE_ARGS NAMES micm
+)
+
+set(MICM_ENABLE_TESTS OFF)
+set(MICM_ENABLE_EXAMPLES OFF)
+
+FetchContent_MakeAvailable(micm)
+
+################################################################################
 # Docs
 
 if(MIAM_BUILD_DOCS)

@@ -1,4 +1,5 @@
 target_sources(miam
   PRIVATE
-    print.cpp
+    solver_utils.cpp
+    utils.cpp
 )
