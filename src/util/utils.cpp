@@ -9,19 +9,19 @@
 namespace miam
 {
 
-std::string JoinStrings(const std::vector<std::string>& names)
-{
-  std::string result;
-  for (size_t i = 0; i < names.size(); ++i)
+  std::string JoinStrings(const std::vector<std::string>& names)
   {
-    if (!names[i].empty())
+    std::string result;
+    for (size_t i = 0; i < names.size(); ++i)
     {
-      if (!result.empty())
-        result += ".";
-      result += names[i];
+      if (!names[i].empty())
+      {
+        if (!result.empty())
+          result += ".";
+        result += names[i];
+      }
     }
+    return result;
   }
-  return result;
-}
 
-} // namespace miam
+}  // namespace miam
