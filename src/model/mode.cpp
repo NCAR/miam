@@ -8,6 +8,13 @@
 namespace miam
 {
 
+  double Mode::GetEffectiveRadius() const
+  {
+    const double r_g = 0.5 * geometric_mean_diameter_;
+    const double ln_sig = std::log(geometric_standard_deviation_);
+    return r_g * std::exp(2.5 * ln_sig * ln_sig);
+  }
+
   double Mode::CalculateEffectiveRadius(double mass, double N, double density, double sig_g)
   {
     if (mass < 1e-18 || N < 1e-10)

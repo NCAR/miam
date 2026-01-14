@@ -42,6 +42,7 @@ namespace miam
     /// @brief Set the state indices for accessing section variables in the state vector
     /// @tparam StateType Type of the state object (e.g., micm::State)
     /// @param state The state object containing variable map
+    /// @throws std::runtime_error If keys are not found in state
     template<typename StateType>
     void SetStateIndices(const StateType& state)
     {
@@ -51,8 +52,13 @@ namespace miam
         for (const auto& phase_species : phase.phase_species_)
         {
           // NAME: SECTION.PHASE.SPECIES
-          std::string key = JoinStrings({ name_, phase.name_, phase_species.species_.name_ });
-          state_idx_.state_id_map[key] = state.variable_map_.at(key);
+          std::string species_key = JoinStrings({ name_, phase.name_, phase_species.species_.name_ });
+          auto species_it = state.variable_map_.find(species_key);
+          if (species_it == state.variable_map_.end())
+          {
+            throw std::runtime_error(std::format(("Species '{}' not found in state for '{}'", species_key, name_)));
+          }
+          state_idx_.state_id_map[species_key] = species_it->second;
         }
       }
 
@@ -61,7 +67,7 @@ namespace miam
       auto number_it = state.variable_map_.find(number_key);
       if (number_it == state.variable_map_.end())
       {
-        throw std::runtime_error("Variable " + number_key + " not found in state");
+        throw std::runtime_error(std::format(("Variable '{}' not found in state for '{}'", number_key, name_)));
       }
       state_idx_.number_id = number_it->second;
 
@@ -70,12 +76,13 @@ namespace miam
       auto density_it = state.variable_map_.find(density_key);
       if (density_it == state.variable_map_.end())
       {
-        throw std::runtime_error("Variable " + density_key + " not found in state");
+        throw std::runtime_error(std::format(("Variable '{}' not found in state for '{}'", density_key, name_)));
       }
       state_idx_.density_id = density_it->second;
 
       has_initialized_state_idx_ = true;
     }
+
   };
 
 }  // namespace miam

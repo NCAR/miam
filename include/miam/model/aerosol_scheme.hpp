@@ -49,13 +49,14 @@ namespace miam
       return name_;
     }
 
-    /// @brief Set concentration of a species in this mode
+    /// @brief Set concentration of a species
     /// @tparam StateType Type of the state object (e.g., micm::State)
     /// @param state The state object to modify
+    /// @param phase The phase where the species belongs
     /// @param species The species to set concentration for
     /// @param concentration The concentration value to set [mol m-3]
     /// @param cell The grid cell index (default 0)
-    /// @throws std::runtime_error If the species is not found in any phase of this mode
+    /// @throws std::runtime_error If the species is not found in state
     template<typename StateType>
     void SetConcentration(
         StateType& state,
@@ -69,21 +70,19 @@ namespace miam
 
       if (has_initialized_state_idx_)
       {
-        try
+        auto it = state_idx_.state_id_map.find(species_key);
+        if (it == state_idx_.state_id_map.end())
         {
-          index = state_idx_.state_id_map.at(species_key);
+          throw std::runtime_error(std::format(("Species '{}' not found in state_id_map for '{}'", species_key, name_)));
         }
-        catch (const std::out_of_range& e)
-        {
-          throw std::runtime_error("Species " + species_key + " not found in state_id_map for '" + name_ + "'");
-        }
+        index = it->second;
       }
       else
       {
         auto it = state.variable_map_.find(species_key);
         if (it == state.variable_map_.end())
         {
-          throw std::runtime_error("Species " + species_key + " not found in state");
+          throw std::runtime_error(std::format(("Species '{}' not found in state for '{}'", species_key, name_)));
         }
         index = it->second;
       }
@@ -92,7 +91,7 @@ namespace miam
     }
 
     /// @brief Set number concentration
-    /// @param state StateType type of the state object
+    /// @param state StateType Type of the state object
     /// @param concentration The number concentration value to set [# m-3]
     /// @param cell The grid cell index (default 0)
     /// @throws std::runtime_error If the number concentration variable is not found in state
@@ -109,7 +108,7 @@ namespace miam
         auto it = state.variable_map_.find(number_key);
         if (it == state.variable_map_.end())
         {
-          throw std::runtime_error("Variable " + number_key + " not found in state");
+          throw std::runtime_error(std::format(("Variable '{}' not found in state for '{};", number_key, name_)));
         }
         index = it->second;
       }
