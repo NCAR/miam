@@ -8,6 +8,7 @@
 
 #include <string>
 #include <vector>
+#include <format>
 
 namespace miam
 {
@@ -37,6 +38,8 @@ namespace miam
           min_diameter_(min_diameter),
           max_diameter_(max_diameter)
     {
+      if (distribution == DistributionType::SingleMoment)
+        is_radius_fixed_ = true;
     }
 
     /// @brief Set the state indices for accessing section variables in the state vector
@@ -56,7 +59,7 @@ namespace miam
           auto species_it = state.variable_map_.find(species_key);
           if (species_it == state.variable_map_.end())
           {
-            throw std::runtime_error(std::format(("Species '{}' not found in state for '{}'", species_key, name_)));
+            throw std::runtime_error(std::format("Species '{}' not found in state for '{}'", species_key, name_));
           }
           state_idx_.state_id_map[species_key] = species_it->second;
         }
@@ -67,7 +70,7 @@ namespace miam
       auto number_it = state.variable_map_.find(number_key);
       if (number_it == state.variable_map_.end())
       {
-        throw std::runtime_error(std::format(("Variable '{}' not found in state for '{}'", number_key, name_)));
+        throw std::runtime_error(std::format("Variable '{}' not found in state for '{}'", number_key, name_));
       }
       state_idx_.number_id = number_it->second;
 
@@ -76,7 +79,7 @@ namespace miam
       auto density_it = state.variable_map_.find(density_key);
       if (density_it == state.variable_map_.end())
       {
-        throw std::runtime_error(std::format(("Variable '{}' not found in state for '{}'", density_key, name_)));
+        throw std::runtime_error(std::format("Variable '{}' not found in state for '{}'", density_key, name_));
       }
       state_idx_.density_id = density_it->second;
 

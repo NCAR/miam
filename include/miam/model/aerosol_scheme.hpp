@@ -10,6 +10,7 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include <format>
 
 namespace miam
 {
@@ -30,9 +31,10 @@ namespace miam
       std::unordered_map<std::string, std::size_t> state_id_map;  // species - index pairs in state
       std::size_t number_id;                                      // Index for number concentration
       std::size_t density_id;                                     // Index for density
+      std::size_t radius_id;                                      // Index for radius
     };
 
-    inline static const std::vector<std::string> AEROSOL_MOMENTS_ = { "NUMBER_CONCENTRATION", "DENSITY" };
+    inline static const std::vector<std::string> AEROSOL_MOMENTS_ = { "NUMBER_CONCENTRATION", "DENSITY", "RADIUS" };
 
     /// @brief Name of the mode or bin (e.g., "aitken", "accumulation", "large_drop")
     std::string name_;
@@ -73,7 +75,7 @@ namespace miam
         auto it = state_idx_.state_id_map.find(species_key);
         if (it == state_idx_.state_id_map.end())
         {
-          throw std::runtime_error(std::format(("Species '{}' not found in state_id_map for '{}'", species_key, name_)));
+          throw std::runtime_error(std::format("Species '{}' not found in state_id_map for '{}'", species_key, name_));
         }
         index = it->second;
       }
@@ -82,7 +84,7 @@ namespace miam
         auto it = state.variable_map_.find(species_key);
         if (it == state.variable_map_.end())
         {
-          throw std::runtime_error(std::format(("Species '{}' not found in state for '{}'", species_key, name_)));
+          throw std::runtime_error(std::format("Species '{}' not found in state for '{}'", species_key, name_));
         }
         index = it->second;
       }
@@ -108,7 +110,7 @@ namespace miam
         auto it = state.variable_map_.find(number_key);
         if (it == state.variable_map_.end())
         {
-          throw std::runtime_error(std::format(("Variable '{}' not found in state for '{};", number_key, name_)));
+          throw std::runtime_error(std::format("Variable '{}' not found in state for '{};", number_key, name_));
         }
         index = it->second;
       }
@@ -117,10 +119,17 @@ namespace miam
     }
 
    protected:
-    /// @brief Indices for accessing mode data in the state vector
+    /// @brief Indices for accessing mode data in the state
     StateIndices state_idx_;
 
+    /// @brief Flag indicating whether state indices have been initialized
     bool has_initialized_state_idx_ = false;
+
+    /// @brief Flag indicating whether radius is fixed
+    bool is_radius_fixed_ = false;
+
+    /// @brief Fixed radius value
+    double fixed_radius_ = 0.0;
   };
 
 }  // namespace miam

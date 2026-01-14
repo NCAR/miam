@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <format>
 
 namespace miam
 {
@@ -40,7 +41,7 @@ namespace miam
         double concentration,
         std::size_t cell = 0)
     {
-      const std::string species_key = JoinStrings({ phase_.name_, species.name_ });
+      const std::string species_key = species.name_;
       std::size_t index;
 
       if (has_initialized_state_idx_)
@@ -80,7 +81,7 @@ namespace miam
         const micm::Species& species,
         std::size_t cell = 0) const
     {
-      const std::string species_key = JoinStrings({ phase_.name_, species.name_ });
+      const std::string species_key = species.name_;
       std::size_t index;
 
       if (has_initialized_state_idx_)
@@ -114,7 +115,7 @@ namespace miam
       // Find indices for all gas species
       for (const auto& phase_species : phase_.phase_species_)
       {
-        std::string species_key = JoinStrings({ phase_.name_, phase_species.species_.name_ });
+        std::string species_key = phase_species.species_.name_;
         auto it = state.variable_map_.find(species_key);
         if (it == state.variable_map_.end())
         {

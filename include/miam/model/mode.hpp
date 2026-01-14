@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <format>
 
 namespace miam
 {
@@ -41,6 +42,11 @@ namespace miam
           geometric_mean_diameter_(geometric_mean_diameter),
           geometric_standard_deviation_(geometric_standard_deviation)
     {
+      if (distribution == DistributionType::SingleMoment)
+      {
+        is_radius_fixed_ = true;
+        fixed_radius_ = GetEffectiveRadius();
+      }
     }
 
     /// @brief Get effective radius for the single-moment mode (uses fixed geometric mean diameter)
@@ -89,7 +95,7 @@ namespace miam
           auto species_it = state.variable_map_.find(species_key);
           if (species_it == state.variable_map_.end())
           {
-            throw std::runtime_error(std::format(("Species '{}' not found in state for '{}'", species_key, name_)));
+            throw std::runtime_error(std::format("Species '{}' not found in state for '{}'", species_key, name_));
           }
           state_idx_.state_id_map[species_key] = species_it->second;
         }
@@ -100,7 +106,7 @@ namespace miam
       auto number_it = state.variable_map_.find(number_key);
       if (number_it == state.variable_map_.end())
       {
-        throw std::runtime_error(std::format(("Variable '{}' not found in state for '{}'", number_key, name_)));
+        throw std::runtime_error(std::format("Variable '{}' not found in state for '{}'", number_key, name_));
       }
       state_idx_.number_id = number_it->second;
 
@@ -109,11 +115,49 @@ namespace miam
       auto density_it = state.variable_map_.find(density_key);
       if (density_it == state.variable_map_.end())
       {
-        throw std::runtime_error(std::format(("Variable '{}' not found in state for '{}'", density_key, name_)));
+        throw std::runtime_error(std::format("Variable '{}' not found in state for '{}'", density_key, name_));
       }
       state_idx_.density_id = density_it->second;
 
+      // Find radius index
+      std::string radius_key = JoinStrings({ name_, AerosolScheme::AEROSOL_MOMENTS_[2] });
+      auto radius_it = state.variable_map_.find(radius_key);
+      if (radius_it == state.variable_map_.end())
+      {
+        throw std::runtime_error(std::format("Variable '{}' not found in state for '{}'", radius_key, name_));
+      }
+      state_idx_.radius_id = radius_it->second;
+
       has_initialized_state_idx_ = true;
+    }
+
+    /// @brief Set the effective radius in the state for this mode
+    /// @tparam StateType Type of the state object (e.g., micm::State)
+    /// @param state The state object containing variable map
+    /// @param cell The index of the grid cell (default 0)
+    /// @throws std::runtime_error If radius key are is not found in state
+    template<typename StateType>
+    void SetRadius(StateType& state, std::size_t cell = 0)
+    {
+      std::size_t index;
+
+      if (has_initialized_state_idx_)
+        index = state_idx_.radius_id;
+      else
+      {
+        std::string radius_key = JoinStrings({ name_, AerosolScheme::AEROSOL_MOMENTS_[2] });
+        auto it = state.variable_map_.find(radius_key);
+        if (it == state.variable_map_.end())
+        {
+          throw std::runtime_error(std::format("Variable '{}' not found in state for '{};", radius_key, name_));
+        }
+        index = it->second;
+      }
+      
+      if (is_radius_fixed_)
+        state.variables_[cell][index] = fixed_radius_;
+      else
+        state.variables_[cell][index] = GetEffectiveRadius(state, cell);
     }
 
    private:
