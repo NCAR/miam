@@ -42,7 +42,7 @@ namespace miam
         std::size_t cell = 0)
     {
       if (state_idx_.empty())
-        throw std::runtime_error("State indices not initialized. Call SetStateIndices().");
+        throw std::runtime_error(std::format("State indices for '{}' not initialized. Call SetStateIndices().", phase_.name_));
 
       auto it = state_idx_.find(species.name_);
       if (it == state_idx_.end())
@@ -68,7 +68,7 @@ namespace miam
         std::size_t cell = 0) const
     {
       if (state_idx_.empty())
-        throw std::runtime_error("State indices not initialized. Call SetStateIndices().");
+        throw std::runtime_error(std::format("State indices for '{}' not initialized. Call SetStateIndices().", phase_.name_));
 
       auto it = state_idx_.find(species.name_);
       if (it == state_idx_.end())

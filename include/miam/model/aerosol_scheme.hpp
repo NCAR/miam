@@ -70,7 +70,7 @@ namespace miam
       const std::string species_key = JoinStrings({ name_, phase.name_, species.name_ });
 
       if (state_idx_.state_id_map.empty())
-        throw std::runtime_error("State indices not initialized. Call SetStateIndices().");
+        throw std::runtime_error(std::format("State indices for '{}' not initialized. Call SetStateIndices().", name_));
 
       auto it = state_idx_.state_id_map.find(species_key);
       if (it == state_idx_.state_id_map.end())
@@ -90,7 +90,7 @@ namespace miam
     void SetNumberConcentration(StateType& state, double concentration, std::size_t cell = 0)
     {
       if (state_idx_.state_id_map.empty())
-        throw std::runtime_error("State indices not initialized. Call SetStateIndices().");
+        throw std::runtime_error(std::format("State indices for '{}' not initialized. Call SetStateIndices().", name_));
 
       state.variables_[cell][state_idx_.number_id] = concentration;
     }

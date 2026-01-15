@@ -63,7 +63,7 @@ namespace miam
     double GetEffectiveRadius(const StateType& state, std::size_t cell = 0)
     {
       if (state_idx_.state_id_map.empty())
-        throw std::runtime_error("State indices not initialized. Call SetStateIndices().");
+        throw std::runtime_error(std::format("State indices for '{}' not initialized. Call SetStateIndices().", name_));
 
       double total_mass = 0.0;
       for (const auto& [species_key, id] : state_idx_.state_id_map)
@@ -136,7 +136,7 @@ namespace miam
     void SetRadius(StateType& state, std::size_t cell = 0)
     {
       if (state_idx_.state_id_map.empty())
-        throw std::runtime_error(std::format("State indices not initialized. Call SetStateIndices()."));
+        throw std::runtime_error(std::format("State indices for '{}' not initialized. Call SetStateIndices().", name_));
       
       if (is_radius_fixed_)
         state.variables_[cell][state_idx_.radius_id] = fixed_radius_;

@@ -159,11 +159,16 @@ int main()
   State state = solver.GetState();
   
   // Initialize state indices map
+  // gas.SetStateIndices(state);
+  // cloud.SetStateIndices(state);
+  // aerosol.SetStateIndices(state);
+
   gas.SetStateIndices(state);
   small_drop.SetStateIndices(state);
   large_drop.SetStateIndices(state);
   aitken.SetStateIndices(state);
   accumulation.SetStateIndices(state);
+  dust.SetStateIndices(state);
 
   // environmental conditions
   state.conditions_[0].temperature_ = 287.45;  // K
