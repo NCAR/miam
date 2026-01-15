@@ -119,16 +119,12 @@ namespace miam
     }
 
    protected:
-    /// @brief Indices for accessing mode data in the state
+    /// @brief Indices for accessing data in the state
     StateIndices state_idx_;
 
-    /// @brief Flag indicating whether state indices have been initialized
     bool has_initialized_state_idx_ = false;
-
-    /// @brief Flag indicating whether radius is fixed
     bool is_radius_fixed_ = false;
 
-    /// @brief Fixed radius value
     double fixed_radius_ = 0.0;
   };
 

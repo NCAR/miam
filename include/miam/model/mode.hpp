@@ -78,7 +78,7 @@ namespace miam
       return CalculateEffectiveRadius(total_mass, number_concentration, density, geometric_standard_deviation_);
     }
 
-    /// @brief Set the state indices for accessing section variables in the state vector
+    /// @brief Set the state indices for accessing mode variables in the state vector
     /// @tparam StateType Type of the state object (e.g., micm::State)
     /// @param state The state object containing variable map
     /// @throws std::runtime_error If keys are not found in state

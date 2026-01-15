@@ -40,7 +40,7 @@ int main()
     "SMALL_DROP",
     { aqueous_phase },
     DistributionType::SingleMoment, // tracks total mass in state; fixed radius; number calculated
-    5.0e-6,                          // Geometric mean diameter
+    5.0e-6,                         // Geometric mean diameter
     1.6,                            // Geometric standard deviation
   };
   
@@ -48,7 +48,7 @@ int main()
     "LARGE_DROP",
     { aqueous_phase },
     DistributionType::SingleMoment, // tracks total mass in state; fixed radius; number calculated
-    1.0e-5,                           // Geometric mean diameter
+    1.0e-5,                         // Geometric mean diameter
     1.8,                            // Geometric standard deviation
   };
 
@@ -63,7 +63,7 @@ int main()
     "AITKEN",
     { aqueous_phase },           // Multiple phases
     DistributionType::TwoMoment, // tracks total mass and number concentration in state; radius calculated
-    1.0e-7,                        // Geometric mean diameter
+    1.0e-7,                      // Geometric mean diameter
     1.6,                         // Geometric standard deviation
   };
   
@@ -71,7 +71,7 @@ int main()
     "ACCUMULATION",
     { aqueous_phase, organic_phase }, // Multiple phases
     DistributionType::TwoMoment,      // tracks total mass and number concentration in state; radius calculated
-    1.0e-6,                              // Geometric mean diameter
+    1.0e-6,                           // Geometric mean diameter
     1.6,                              // Geometric standard deviation
   };
 
@@ -79,7 +79,7 @@ int main()
     "DUST",
     { organic_phase }, 
     DistributionType::TwoMoment, // tracks total mass and number concentration in state; radius calculated
-    1.0e-6,                       // Minimum diameter
+    1.0e-6,                      // Minimum diameter
     0.003                        // Maximum diameter
   };
 

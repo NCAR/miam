@@ -23,6 +23,6 @@ RUN cd miam \
              -D CMAKE_BUILD_TYPE=${BUILD_TYPE} \
              -D MIAM_GIT_TAG=${MIAM_GIT_TAG} \
     && cd build \
-    && make install -j 8 
+    && make -j 5
 
 WORKDIR miam/build
