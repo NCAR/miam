@@ -38,9 +38,7 @@ set(MIAM_INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR})
 set(MIAM_LIB_DIR ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
 
 ################################################################################
-# Set options for the third party libraries that MIAM needs
-
-set(MICM_DEFAULT_VECTOR_SIZE "4" CACHE STRING "Set MICM vector-ordered matrix dimension")
+# Include third party libraries
 
 include(dependencies)  # finds cmake/dependencies.cmake
 

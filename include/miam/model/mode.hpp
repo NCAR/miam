@@ -62,7 +62,7 @@ namespace miam
     template<typename StateType>
     double GetEffectiveRadius(const StateType& state, std::size_t cell = 0)
     {
-      if (!has_initialized_state_idx_)
+      if (state_idx_.state_id_map.empty())
       {
         throw std::runtime_error("State indices not initialized. Call SetStateIndices() before GetEffectiveRadius().");
       }
@@ -127,8 +127,6 @@ namespace miam
         throw std::runtime_error(std::format("Variable '{}' not found in state for '{}'", radius_key, name_));
       }
       state_idx_.radius_id = radius_it->second;
-
-      has_initialized_state_idx_ = true;
     }
 
     /// @brief Set the effective radius in the state for this mode
@@ -141,7 +139,7 @@ namespace miam
     {
       std::size_t index;
 
-      if (has_initialized_state_idx_)
+      if (!state_idx_.state_id_map.empty())
         index = state_idx_.radius_id;
       else
       {

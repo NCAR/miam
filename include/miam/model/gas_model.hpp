@@ -41,26 +41,25 @@ namespace miam
         double concentration,
         std::size_t cell = 0)
     {
-      const std::string species_key = species.name_;
       std::size_t index;
 
-      if (has_initialized_state_idx_)
+      if (!state_idx_.empty())
       {
-        auto it = state_idx_.find(species_key);
+        auto it = state_idx_.find(species.name_);
         if (it == state_idx_.end())
         {
           throw std::runtime_error(std::format(
-            "Species '{}' not found in state_id_map for gas phase '{}'", species_key, phase_.name_));
+            "Species '{}' not found in state_id_map for gas phase '{}'", species.name_, phase_.name_));
         }
         index = it->second;
       }
       else
       {
-        auto it = state.variable_map_.find(species_key);
+        auto it = state.variable_map_.find(species.name_);
         if (it == state.variable_map_.end())
         {
           throw std::runtime_error(std::format(
-            "Species '{}' not found in state for gas phase '{}'", species_key, phase_.name_));
+            "Species '{}' not found in state for gas phase '{}'", species.name_, phase_.name_));
         }
         index = it->second;
       }
@@ -81,24 +80,23 @@ namespace miam
         const micm::Species& species,
         std::size_t cell = 0) const
     {
-      const std::string species_key = species.name_;
       std::size_t index;
 
-      if (has_initialized_state_idx_)
+      if (!state_idx_.empty())
       {
-        auto it = state_idx_.find(species_key);
+        auto it = state_idx_.find(species.name_);
         if (it == state_idx_.end())
         {
-          throw std::runtime_error(std::format("Species '{}' not found in state_id_map for gas phase '{}'", species_key, phase_.name_));
+          throw std::runtime_error(std::format("Species '{}' not found in state_id_map for gas phase '{}'", species.name_, phase_.name_));
         }
         index = it->second;
       }
       else
       {
-        auto it = state.variable_map_.find(species_key);
+        auto it = state.variable_map_.find(species.name_);
         if (it == state.variable_map_.end())
         {
-          throw std::runtime_error(std::format("Species '{}' not found in state for gas phase '{}'", species_key, phase_.name_));
+          throw std::runtime_error(std::format("Species '{}' not found in state for gas phase '{}'", species.name_, phase_.name_));
         }
         index = it->second;
       }
@@ -115,7 +113,7 @@ namespace miam
       // Find indices for all gas species
       for (const auto& phase_species : phase_.phase_species_)
       {
-        std::string species_key = phase_species.species_.name_;
+        const std::string& species_key = phase_species.species_.name_;
         auto it = state.variable_map_.find(species_key);
         if (it == state.variable_map_.end())
         {
@@ -125,15 +123,11 @@ namespace miam
         state_idx_[species_key] = it->second;
       }
 
-      has_initialized_state_idx_ = true;
     }
 
    private:
     /// @brief Map of species keys to their indices in the state
     std::unordered_map<std::string, std::size_t> state_idx_;
-
-    /// @brief Flag indicating whether state indices have been initialized
-    bool has_initialized_state_idx_ = false;
   };
 
 }  // namespace miam

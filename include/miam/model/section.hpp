@@ -82,8 +82,6 @@ namespace miam
         throw std::runtime_error(std::format("Variable '{}' not found in state for '{}'", density_key, name_));
       }
       state_idx_.density_id = density_it->second;
-
-      has_initialized_state_idx_ = true;
     }
 
   };

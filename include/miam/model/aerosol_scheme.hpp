@@ -70,7 +70,7 @@ namespace miam
       const std::string species_key = JoinStrings({ name_, phase.name_, species.name_ });
       std::size_t index;
 
-      if (has_initialized_state_idx_)
+      if (!state_idx_.state_id_map.empty())
       {
         auto it = state_idx_.state_id_map.find(species_key);
         if (it == state_idx_.state_id_map.end())
@@ -102,7 +102,7 @@ namespace miam
     {
       std::size_t index;
 
-      if (has_initialized_state_idx_)
+      if (!state_idx_.state_id_map.empty())
         index = state_idx_.number_id;
       else
       {
@@ -122,7 +122,6 @@ namespace miam
     /// @brief Indices for accessing data in the state
     StateIndices state_idx_;
 
-    bool has_initialized_state_idx_ = false;
     bool is_radius_fixed_ = false;
 
     double fixed_radius_ = 0.0;
