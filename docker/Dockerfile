@@ -21,6 +21,6 @@ RUN cd miam \
              -B build \
              -D CMAKE_BUILD_TYPE=${BUILD_TYPE} \
     && cd build \
-    && make install -j 5
+    && make -j 5
 
 WORKDIR miam/build
