@@ -192,7 +192,6 @@ int main()
   large_drop.SetRadius(state);   // m
   aitken.SetRadius(state);       // m
   accumulation.SetRadius(state); // m
-  accumulation.SetRadius(state); // m
 
   state.PrintHeader();
   for (int i = 0; i < 10; ++i)

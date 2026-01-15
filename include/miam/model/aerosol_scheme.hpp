@@ -110,7 +110,7 @@ namespace miam
         auto it = state.variable_map_.find(number_key);
         if (it == state.variable_map_.end())
         {
-          throw std::runtime_error(std::format("Variable '{}' not found in state for '{};", number_key, name_));
+          throw std::runtime_error(std::format("Variable '{}' not found in state for '{}", number_key, name_));
         }
         index = it->second;
       }

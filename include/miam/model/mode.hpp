@@ -135,7 +135,7 @@ namespace miam
     /// @tparam StateType Type of the state object (e.g., micm::State)
     /// @param state The state object containing variable map
     /// @param cell The index of the grid cell (default 0)
-    /// @throws std::runtime_error If radius key are is not found in state
+    /// @throws std::runtime_error If radius key is not found in state
     template<typename StateType>
     void SetRadius(StateType& state, std::size_t cell = 0)
     {
@@ -149,7 +149,7 @@ namespace miam
         auto it = state.variable_map_.find(radius_key);
         if (it == state.variable_map_.end())
         {
-          throw std::runtime_error(std::format("Variable '{}' not found in state for '{};", radius_key, name_));
+          throw std::runtime_error(std::format("Variable '{}' not found in state for '{}", radius_key, name_));
         }
         index = it->second;
       }
