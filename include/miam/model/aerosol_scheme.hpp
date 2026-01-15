@@ -58,7 +58,7 @@ namespace miam
     /// @param species The species to set concentration for
     /// @param concentration The concentration value to set [mol m-3]
     /// @param cell The grid cell index (default 0)
-    /// @throws std::runtime_error If the species is not found in state
+    /// @throws std::runtime_error If the state map is not initialized or species is not found in state
     template<typename StateType>
     void SetConcentration(
         StateType& state,
@@ -68,28 +68,17 @@ namespace miam
         std::size_t cell = 0)
     {
       const std::string species_key = JoinStrings({ name_, phase.name_, species.name_ });
-      std::size_t index;
 
-      if (!state_idx_.state_id_map.empty())
+      if (state_idx_.state_id_map.empty())
+        throw std::runtime_error("State indices not initialized. Call SetStateIndices().");
+
+      auto it = state_idx_.state_id_map.find(species_key);
+      if (it == state_idx_.state_id_map.end())
       {
-        auto it = state_idx_.state_id_map.find(species_key);
-        if (it == state_idx_.state_id_map.end())
-        {
-          throw std::runtime_error(std::format("Species '{}' not found in state_id_map for '{}'", species_key, name_));
-        }
-        index = it->second;
-      }
-      else
-      {
-        auto it = state.variable_map_.find(species_key);
-        if (it == state.variable_map_.end())
-        {
-          throw std::runtime_error(std::format("Species '{}' not found in state for '{}'", species_key, name_));
-        }
-        index = it->second;
+        throw std::runtime_error(std::format("Species '{}' not found in state index map for '{}'.", species_key, name_));
       }
 
-      state.variables_[cell][index] = concentration;
+      state.variables_[cell][it->second] = concentration;
     }
 
     /// @brief Set number concentration
@@ -100,22 +89,10 @@ namespace miam
     template<typename StateType>
     void SetNumberConcentration(StateType& state, double concentration, std::size_t cell = 0)
     {
-      std::size_t index;
+      if (state_idx_.state_id_map.empty())
+        throw std::runtime_error("State indices not initialized. Call SetStateIndices().");
 
-      if (!state_idx_.state_id_map.empty())
-        index = state_idx_.number_id;
-      else
-      {
-        std::string number_key = JoinStrings({ name_, AerosolScheme::AEROSOL_MOMENTS_[0] });
-        auto it = state.variable_map_.find(number_key);
-        if (it == state.variable_map_.end())
-        {
-          throw std::runtime_error(std::format("Variable '{}' not found in state for '{}", number_key, name_));
-        }
-        index = it->second;
-      }
-
-      state.variables_[cell][index] = concentration;
+      state.variables_[cell][state_idx_.number_id] = concentration;
     }
 
    protected:

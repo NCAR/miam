@@ -63,9 +63,7 @@ namespace miam
     double GetEffectiveRadius(const StateType& state, std::size_t cell = 0)
     {
       if (state_idx_.state_id_map.empty())
-      {
-        throw std::runtime_error("State indices not initialized. Call SetStateIndices() before GetEffectiveRadius().");
-      }
+        throw std::runtime_error("State indices not initialized. Call SetStateIndices().");
 
       double total_mass = 0.0;
       for (const auto& [species_key, id] : state_idx_.state_id_map)
@@ -137,25 +135,13 @@ namespace miam
     template<typename StateType>
     void SetRadius(StateType& state, std::size_t cell = 0)
     {
-      std::size_t index;
-
-      if (!state_idx_.state_id_map.empty())
-        index = state_idx_.radius_id;
-      else
-      {
-        std::string radius_key = JoinStrings({ name_, AerosolScheme::AEROSOL_MOMENTS_[2] });
-        auto it = state.variable_map_.find(radius_key);
-        if (it == state.variable_map_.end())
-        {
-          throw std::runtime_error(std::format("Variable '{}' not found in state for '{}", radius_key, name_));
-        }
-        index = it->second;
-      }
+      if (state_idx_.state_id_map.empty())
+        throw std::runtime_error(std::format("State indices not initialized. Call SetStateIndices()."));
       
       if (is_radius_fixed_)
-        state.variables_[cell][index] = fixed_radius_;
+        state.variables_[cell][state_idx_.radius_id] = fixed_radius_;
       else
-        state.variables_[cell][index] = GetEffectiveRadius(state, cell);
+        state.variables_[cell][state_idx_.radius_id] = GetEffectiveRadius(state, cell);
     }
 
    private:

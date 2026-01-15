@@ -41,30 +41,17 @@ namespace miam
         double concentration,
         std::size_t cell = 0)
     {
-      std::size_t index;
+      if (state_idx_.empty())
+        throw std::runtime_error("State indices not initialized. Call SetStateIndices().");
 
-      if (!state_idx_.empty())
+      auto it = state_idx_.find(species.name_);
+      if (it == state_idx_.end())
       {
-        auto it = state_idx_.find(species.name_);
-        if (it == state_idx_.end())
-        {
-          throw std::runtime_error(std::format(
-            "Species '{}' not found in state_id_map for gas phase '{}'", species.name_, phase_.name_));
-        }
-        index = it->second;
-      }
-      else
-      {
-        auto it = state.variable_map_.find(species.name_);
-        if (it == state.variable_map_.end())
-        {
-          throw std::runtime_error(std::format(
-            "Species '{}' not found in state for gas phase '{}'", species.name_, phase_.name_));
-        }
-        index = it->second;
+        throw std::runtime_error(std::format(
+          "Species '{}' not found in state index map for gas phase '{}'.", species.name_, phase_.name_));
       }
 
-      state.variables_[cell][index] = concentration;
+      state.variables_[cell][it->second] = concentration;
     }
 
     /// @brief Get concentration of a gas species
@@ -80,28 +67,17 @@ namespace miam
         const micm::Species& species,
         std::size_t cell = 0) const
     {
-      std::size_t index;
+      if (state_idx_.empty())
+        throw std::runtime_error("State indices not initialized. Call SetStateIndices().");
 
-      if (!state_idx_.empty())
+      auto it = state_idx_.find(species.name_);
+      if (it == state_idx_.end())
       {
-        auto it = state_idx_.find(species.name_);
-        if (it == state_idx_.end())
-        {
-          throw std::runtime_error(std::format("Species '{}' not found in state_id_map for gas phase '{}'", species.name_, phase_.name_));
-        }
-        index = it->second;
-      }
-      else
-      {
-        auto it = state.variable_map_.find(species.name_);
-        if (it == state.variable_map_.end())
-        {
-          throw std::runtime_error(std::format("Species '{}' not found in state for gas phase '{}'", species.name_, phase_.name_));
-        }
-        index = it->second;
+        throw std::runtime_error(std::format(
+          "Species '{}' not found in state index map for gas phase '{}'.", species.name_, phase_.name_));
       }
 
-      return state.variables_[cell][index];
+      return state.variables_[cell][it->second];
     }
 
     /// @brief Set the state indices for accessing gas species in the state vector
@@ -118,11 +94,10 @@ namespace miam
         if (it == state.variable_map_.end())
         {
           throw std::runtime_error(std::format(
-            "Species '{}' not found in state for gas phase '{}'", species_key, phase_.name_));
+            "Species '{}' not found in state for gas phase '{}'.", species_key, phase_.name_));
         }
         state_idx_[species_key] = it->second;
       }
-
     }
 
    private:
