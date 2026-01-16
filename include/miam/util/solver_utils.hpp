@@ -4,8 +4,8 @@
 #pragma once
 
 #include <miam/model/aerosol_model.hpp>
+#include <miam/model/gas_model.hpp>
 
-#include <micm/system/phase.hpp>
 #include <micm/system/system.hpp>
 
 #include <vector>
@@ -13,6 +13,6 @@
 namespace miam
 {
 
-  micm::System ConfigureSystem(const micm::Phase& gas_phase, const std::vector<AerosolModel>& aerosol_models);
+  micm::System ConfigureSystem(const GasModel& gas_model, const std::vector<AerosolModel>& aerosol_models);
 
 }  // namespace miam

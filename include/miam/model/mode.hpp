@@ -9,8 +9,10 @@
 #include <micm/system/phase.hpp>
 
 #include <cmath>
+#include <stdexcept>
 #include <string>
 #include <vector>
+#include <format>
 
 namespace miam
 {
@@ -40,32 +42,36 @@ namespace miam
           geometric_mean_diameter_(geometric_mean_diameter),
           geometric_standard_deviation_(geometric_standard_deviation)
     {
+      if (distribution == DistributionType::SingleMoment)
+      {
+        is_radius_fixed_ = true;
+        fixed_radius_ = GetEffectiveRadius();
+      }
     }
 
     /// @brief Get effective radius for the single-moment mode (uses fixed geometric mean diameter)
     /// @return Effective radius [m]
-    inline double GetEffectiveRadius() const
-    {
-      const double r_g = 0.5 * geometric_mean_diameter_;
-      const double ln_sig = std::log(geometric_standard_deviation_);
-      return r_g * std::exp(2.5 * ln_sig * ln_sig);
-    }
+    double GetEffectiveRadius() const;
 
-    // TODO - GetEffectiveRadius() assumes SetStateIndices() has already been called
     /// @brief Get effective radius for the two-moment mode (calculates from mass and number concentration)
     /// @tparam StateType Type of the state object (e.g., micm::State)
     /// @param state The state object containing variable data
-    /// @param cell The index of the grid cell
+    /// @param cell The index of the grid cell (default 0)
     /// @return Effective radius [m]
+    /// @throws std::runtime_error if SetStateIndices() has not been called
     template<typename StateType>
-    double GetEffectiveRadius(const StateType& state, std::size_t cell)
+    double GetEffectiveRadius(const StateType& state, std::size_t cell = 0)
     {
+      if (state_idx_.state_id_map.empty())
+      {
+        throw std::runtime_error("State indices not initialized. Call SetStateIndices() before GetEffectiveRadius().");
+      }
+
       double total_mass = 0.0;
       for (const auto& [species_key, id] : state_idx_.state_id_map)
       {
         total_mass += state.variables_[cell][id];
       }
-
       double number_concentration = state.variables_[cell][state_idx_.number_id];
       double density = state.variables_[cell][state_idx_.density_id];
 
@@ -75,6 +81,7 @@ namespace miam
     /// @brief Set the state indices for accessing mode variables in the state vector
     /// @tparam StateType Type of the state object (e.g., micm::State)
     /// @param state The state object containing variable map
+    /// @throws std::runtime_error If keys are not found in state
     template<typename StateType>
     void SetStateIndices(const StateType& state)
     {
@@ -83,26 +90,79 @@ namespace miam
       {
         for (const auto& phase_species : phase.phase_species_)
         {
-          // NAME: MODE.PHASE.SPECIES
-          std::string key = JoinStrings({ name_, phase.name_, phase_species.species_.name_ });
-          state_idx_.state_id_map[key] = state.variable_map_.at(key);
+          // NAME: SECTION.PHASE.SPECIES
+          std::string species_key = JoinStrings({ name_, phase.name_, phase_species.species_.name_ });
+          auto species_it = state.variable_map_.find(species_key);
+          if (species_it == state.variable_map_.end())
+          {
+            throw std::runtime_error(std::format("Species '{}' not found in state for '{}'", species_key, name_));
+          }
+          state_idx_.state_id_map[species_key] = species_it->second;
         }
       }
 
       // Find number concentration index
-      state_idx_.number_id = state.variable_map_.at(JoinStrings({ name_, AerosolScheme::AEROSOL_MOMENTS_[0] }));
+      std::string number_key = JoinStrings({ name_, AerosolScheme::AEROSOL_MOMENTS_[0] });
+      auto number_it = state.variable_map_.find(number_key);
+      if (number_it == state.variable_map_.end())
+      {
+        throw std::runtime_error(std::format("Variable '{}' not found in state for '{}'", number_key, name_));
+      }
+      state_idx_.number_id = number_it->second;
 
       // Find density index
-      state_idx_.density_id = state.variable_map_.at(JoinStrings({ name_, AerosolScheme::AEROSOL_MOMENTS_[1] }));
+      std::string density_key = JoinStrings({ name_, AerosolScheme::AEROSOL_MOMENTS_[1] });
+      auto density_it = state.variable_map_.find(density_key);
+      if (density_it == state.variable_map_.end())
+      {
+        throw std::runtime_error(std::format("Variable '{}' not found in state for '{}'", density_key, name_));
+      }
+      state_idx_.density_id = density_it->second;
 
-      has_initialized_state_idx_ = true;
+      // Find radius index
+      std::string radius_key = JoinStrings({ name_, AerosolScheme::AEROSOL_MOMENTS_[2] });
+      auto radius_it = state.variable_map_.find(radius_key);
+      if (radius_it == state.variable_map_.end())
+      {
+        throw std::runtime_error(std::format("Variable '{}' not found in state for '{}'", radius_key, name_));
+      }
+      state_idx_.radius_id = radius_it->second;
+    }
+
+    /// @brief Set the effective radius in the state for this mode
+    /// @tparam StateType Type of the state object (e.g., micm::State)
+    /// @param state The state object containing variable map
+    /// @param cell The index of the grid cell (default 0)
+    /// @throws std::runtime_error If radius key is not found in state
+    template<typename StateType>
+    void SetRadius(StateType& state, std::size_t cell = 0)
+    {
+      std::size_t index;
+
+      if (!state_idx_.state_id_map.empty())
+        index = state_idx_.radius_id;
+      else
+      {
+        std::string radius_key = JoinStrings({ name_, AerosolScheme::AEROSOL_MOMENTS_[2] });
+        auto it = state.variable_map_.find(radius_key);
+        if (it == state.variable_map_.end())
+        {
+          throw std::runtime_error(std::format("Variable '{}' not found in state for '{}", radius_key, name_));
+        }
+        index = it->second;
+      }
+      
+      if (is_radius_fixed_)
+        state.variables_[cell][index] = fixed_radius_;
+      else
+        state.variables_[cell][index] = GetEffectiveRadius(state, cell);
     }
 
    private:
     /// @brief Calculate the effective radius for a log-normal aerosol mode
-    /// @param mass Total mass concentration of particles in the mode [kg/m³]
-    /// @param N Total number concentration of particles in the mode [#/m³]
-    /// @param density Particle density [kg/m³]
+    /// @param mass Total mass concentration of particles in the mode [kg m-3]
+    /// @param N Total number concentration of particles in the mode [# m-3]
+    /// @param density Particle density [kg m-3]
     /// @param sig_g Geometric standard deviation (unitless)
     /// @return Effective radius [m]
     double CalculateEffectiveRadius(double mass, double N, double density, double sig_g);

@@ -1,6 +1,5 @@
 FROM fedora:latest
 
-ARG MIAM_GIT_TAG=main
 ARG BUILD_TYPE=Debug
 
 RUN dnf -y update \
@@ -22,7 +21,6 @@ RUN cd miam \
     && cmake -S . \
              -B build \
              -D CMAKE_BUILD_TYPE=${BUILD_TYPE} \
-             -D MIAM_GIT_TAG=${MIAM_GIT_TAG} \
              -D MIAM_ENABLE_COVERAGE=ON \
     && cd build \
     && cmake --build . \

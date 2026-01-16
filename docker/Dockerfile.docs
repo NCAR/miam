@@ -1,7 +1,6 @@
 FROM fedora:latest
 
 ARG MIAM_GIT_TAG=main
-ARG BUILD_TYPE=Release
 
 RUN dnf -y update \
     && dnf -y install \
@@ -31,7 +30,6 @@ RUN cd miam \
     && cmake -S . \
              -B build \
              -D CMAKE_BUILD_TYPE=${BUILD_TYPE} \
-             -D MIAM_GIT_TAG=${MIAM_GIT_TAG} \
              -D MIAM_BUILD_DOCS=ON \
     && cd build \
     && make docs

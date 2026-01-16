@@ -2,6 +2,7 @@
 #include <miam/model/aerosol_scheme.hpp>
 #include <miam/model/mode.hpp>
 #include <miam/model/section.hpp>
+#include <miam/model/gas_model.hpp>
 #include <miam/util/solver_utils.hpp>
 
 #include <micm/process/transfer_coefficient/phase_transfer_coefficient.hpp>
@@ -31,12 +32,15 @@ int main()
   Phase aqueous_phase{ "AQUEOUS", { { co2 } , { h2o } , { ohm } , { hp } , { hco3m } , { co32m } } };
   Phase organic_phase{ "ORGANIC", { { co2, 16.2 }, { hexane } } };
 
+  // Gas 
+  auto gas = GasModel{ gas_phase };
+
   // Cloud
   auto small_drop = Mode{
     "SMALL_DROP",
     { aqueous_phase },
     DistributionType::SingleMoment, // tracks total mass in state; fixed radius; number calculated
-    0.001,                          // Geometric mean diameter
+    5.0e-6,                         // Geometric mean diameter
     1.6,                            // Geometric standard deviation
   };
   
@@ -44,7 +48,7 @@ int main()
     "LARGE_DROP",
     { aqueous_phase },
     DistributionType::SingleMoment, // tracks total mass in state; fixed radius; number calculated
-    0.03,                           // Geometric mean diameter
+    1.0e-5,                         // Geometric mean diameter
     1.8,                            // Geometric standard deviation
   };
 
@@ -59,7 +63,7 @@ int main()
     "AITKEN",
     { aqueous_phase },           // Multiple phases
     DistributionType::TwoMoment, // tracks total mass and number concentration in state; radius calculated
-    0.03,                        // Geometric mean diameter
+    1.0e-7,                      // Geometric mean diameter
     1.6,                         // Geometric standard deviation
   };
   
@@ -67,7 +71,7 @@ int main()
     "ACCUMULATION",
     { aqueous_phase, organic_phase }, // Multiple phases
     DistributionType::TwoMoment,      // tracks total mass and number concentration in state; radius calculated
-    0.2,                              // Geometric mean diameter
+    1.0e-6,                           // Geometric mean diameter
     1.6,                              // Geometric standard deviation
   };
 
@@ -75,7 +79,7 @@ int main()
     "DUST",
     { organic_phase }, 
     DistributionType::TwoMoment, // tracks total mass and number concentration in state; radius calculated
-    0.001,                       // Minimum diameter
+    1.0e-6,                      // Minimum diameter
     0.003                        // Maximum diameter
   };
 
@@ -155,6 +159,7 @@ int main()
   State state = solver.GetState();
   
   // Initialize state indices map
+  gas.SetStateIndices(state);
   small_drop.SetStateIndices(state);
   large_drop.SetStateIndices(state);
   aitken.SetStateIndices(state);
@@ -165,29 +170,28 @@ int main()
   state.conditions_[0].pressure_ = 101319.9;   // Pa
   state.conditions_[0].CalculateIdealAirDensity();
 
-  // // gas
-  // gas_phase.SetConcentration(state, co2, 20.0);              // mol m-3
+  // gas
+  gas.SetConcentration(state, co2, 20.0);  // mol m-3
   
   // cloud
   small_drop.SetConcentration(state, aqueous_phase, h2o, 0.3); // mol m-3
   large_drop.SetConcentration(state, aqueous_phase, h2o, 0.3); // mol m-3
   
   // aerosol modes
-  aitken.SetConcentration(state, aqueous_phase, hco3m, 0.1);       // mol m-3
+  aitken.SetConcentration(state, aqueous_phase, hco3m, 0.1);        // mol m-3
   accumulation.SetConcentration(state, aqueous_phase, h2o, 0.3);    // mol m-3
   accumulation.SetConcentration(state, organic_phase, hexane, 0.1); // mol m-3
 
   // aerosol section 
   dust.SetConcentration(state, organic_phase, co2, 0.1); // mol m-3
 
-  // aerosol state
-  // small_drop.SetRadius(state, 5.0e-6);                  // m
-  // large_drop.SetRadius(state, 1.0e-5);                  // m
-  // aitken.SetRadius(state, aitken, 1.0e-7);                    // m
-  // accumulation_aqueous.SetRadius(state, accumulation, 1.0e-6);              // m
-  // accumulation_organic.SetRadius(state, accumulation, 1.0e-6);              // m
-  aitken.SetNumberConcentration(state, 1.0e4);        // m-3
-  accumulation.SetNumberConcentration(state, 1.0e3);  // m-3
+  aitken.SetNumberConcentration(state, 1.0e4);       // m-3
+  accumulation.SetNumberConcentration(state, 1.0e3); // m-3
+
+  small_drop.SetRadius(state);   // m
+  large_drop.SetRadius(state);   // m
+  aitken.SetRadius(state);       // m
+  accumulation.SetRadius(state); // m
 
   state.PrintHeader();
   for (int i = 0; i < 10; ++i)

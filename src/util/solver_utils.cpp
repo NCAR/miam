@@ -9,9 +9,9 @@
 namespace miam
 {
 
-  micm::System ConfigureSystem(const micm::Phase& gas_phase, const std::vector<AerosolModel>& aerosol_models)
+  micm::System ConfigureSystem(const GasModel& gas_model, const std::vector<AerosolModel>& aerosol_models)
   {
-    micm::SystemParameters params{ .gas_phase_ = gas_phase };
+    micm::SystemParameters params{ .gas_phase_ = gas_model.phase_};
 
     for (const auto& model : aerosol_models)
     {

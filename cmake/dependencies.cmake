@@ -24,7 +24,7 @@ endif()
 
 FetchContent_Declare(micm
     GIT_REPOSITORY https://github.com/NCAR/micm.git
-    GIT_TAG rework_system_params
+    GIT_TAG 1d4fa141ae2c9000ad8888401d614382adc2e486
     GIT_PROGRESS NOT ${FETCHCONTENT_QUIET}
     FIND_PACKAGE_ARGS NAMES micm
 )
