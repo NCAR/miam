@@ -7,10 +7,10 @@
 
 #include <micm/system/phase.hpp>
 
+#include <format>
 #include <iostream>
 #include <string>
 #include <unordered_map>
-#include <format>
 
 namespace miam
 {

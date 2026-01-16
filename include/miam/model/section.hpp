@@ -6,9 +6,9 @@
 #include <miam/model/aerosol_scheme.hpp>
 #include <miam/util/utils.hpp>
 
+#include <format>
 #include <string>
 #include <vector>
-#include <format>
 
 namespace miam
 {
@@ -83,7 +83,6 @@ namespace miam
       }
       state_idx_.density_id = density_it->second;
     }
-
   };
 
 }  // namespace miam

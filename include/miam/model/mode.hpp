@@ -9,10 +9,10 @@
 #include <micm/system/phase.hpp>
 
 #include <cmath>
+#include <format>
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <format>
 
 namespace miam
 {
@@ -151,7 +151,7 @@ namespace miam
         }
         index = it->second;
       }
-      
+
       if (is_radius_fixed_)
         state.variables_[cell][index] = fixed_radius_;
       else
