@@ -15,6 +15,13 @@
 namespace miam
 {
 
+  namespace AerosolMoment
+  {
+    inline const std::string NUMBER_CONCENTRATION = "NUMBER_CONCENTRATION";
+    inline const std::string RADIUS = "RADIUS";
+    inline const std::string DENSITY = "DENSITY";
+  }
+
   enum class DistributionType
   {
     SingleMoment,  // tracks mass, fixed radius, number calculated
@@ -25,16 +32,6 @@ namespace miam
   class AerosolScheme
   {
    public:
-    // Indices from the state
-    struct StateIndices
-    {
-      std::unordered_map<std::string, std::size_t> map_state_id;  // species - index pairs in state
-      std::size_t number_id;                                      // Index for number concentration
-      std::size_t density_id;                                     // Index for density
-      std::size_t radius_id;                                      // Index for radius
-    };
-
-    // inline static const std::vector<std::string> AEROSOL_MOMENTS_ = { "NUMBER_CONCENTRATION", "DENSITY", "RADIUS" };
 
     /// @brief Name of the mode or bin (e.g., "aitken", "accumulation", "large_drop")
     std::string name_;
@@ -46,71 +43,11 @@ namespace miam
 
     virtual ~AerosolScheme() = default;
 
-    inline std::string GetScope() const
-    {
-      return name_;
-    }
-
-    // /// @brief Set concentration of a species
-    // /// @tparam StateType Type of the state object (e.g., micm::State)
-    // /// @param state The state object to modify
-    // /// @param phase The phase where the species belongs
-    // /// @param species The species to set concentration for
-    // /// @param concentration The concentration value to set [mol m-3]
-    // /// @param cell The grid cell index (default 0)
-    // /// @throws std::runtime_error If the state map is not initialized or species is not found in state
-    // template<typename StateType>
-    // void SetConcentration(
-    //     StateType& state,
-    //     const micm::Phase& phase,
-    //     const micm::Species& species,
-    //     double concentration,
-    //     std::size_t cell = 0)
-    // {
-
-    //         if (state_idx_.map_state_id.empty())
-    //         std::cout << "true" << std::endl;
-    // for (auto& [key, value] : state_idx_.map_state_id)
-    // {
-    //   std::cout << " jjjj key: " << key << " value: " << value << std::endl;
-    // }
-
-
-    //   const std::string species_key = JoinStrings({ name_, phase.name_, species.name_ });
-
-    //   if (state_idx_.map_state_id.empty())
-    //     throw std::runtime_error(std::format("State indices for '{}' not initialized. Call SetStateIndices().", name_));
-
-    //   auto it = state_idx_.map_state_id.find(species_key);
-    //   if (it == state_idx_.map_state_id.end())
-    //   {
-    //     throw std::runtime_error(std::format("Species '{}' not found in state index map for '{}'.", species_key, name_));
-    //   }
-
-    //   state.variables_[cell][it->second] = concentration;
-    // }
-
-    // /// @brief Set number concentration
-    // /// @param state StateType Type of the state object
-    // /// @param concentration The number concentration value to set [# m-3]
-    // /// @param cell The grid cell index (default 0)
-    // /// @throws std::runtime_error If the number concentration variable is not found in state
-    // template<typename StateType>
-  //   void SetNumberConcentration(StateType& state, double concentration, std::size_t cell = 0)
-  //   {
-  //     if (state_idx_.map_state_id.empty())
-  //       throw std::runtime_error(std::format("State indices for '{}' not initialized. Call SetStateIndices().", name_));
-
-  //     state.variables_[cell][state_idx_.number_id] = concentration;
-  //   }
-
-  //  protected:
-  //   /// @brief Indices for accessing data in the state
-  //   StateIndices state_idx_;
-
-  //   bool is_radius_fixed_ = false;
-
-  //   double fixed_radius_ = 0.0;
+    std::string GetScope() const;
+    std::string Species(const micm::Phase& phase, const micm::Species& species) const;
+    std::string NumberConcentration() const;
+    std::string Radius() const;
+    std::string Density() const;
   };
 
 }  // namespace miam

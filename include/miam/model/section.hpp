@@ -65,7 +65,7 @@ namespace miam
       //   for (const auto& phase_species : phase.phase_species_)
       //   {
       //     // NAME: SECTION.PHASE.SPECIES
-      //     std::string species_key = JoinStrings({ name_, phase.name_, phase_species.species_.name_ });
+      //     std::string species_key = Join({ name_, phase.name_, phase_species.species_.name_ });
       //     auto species_it = state.variable_map_.find(species_key);
       //     if (species_it == state.variable_map_.end())
       //     {
@@ -76,7 +76,7 @@ namespace miam
       // }
 
       // // Find number concentration index
-      // std::string number_key = JoinStrings({ name_, AerosolModel::AEROSOL_MOMENTS_[0] });
+      // std::string number_key = Join({ name_, AerosolModel::AEROSOL_MOMENTS_[0] });
       // auto number_it = state.variable_map_.find(number_key);
       // if (number_it == state.variable_map_.end())
       // {
@@ -85,7 +85,7 @@ namespace miam
       // state_idx_.number_id = number_it->second;
 
       // // Find density index
-      // std::string density_key = JoinStrings({ name_, AerosolModel::AEROSOL_MOMENTS_[1] });
+      // std::string density_key = Join({ name_, AerosolModel::AEROSOL_MOMENTS_[1] });
       // auto density_it = state.variable_map_.find(density_key);
       // if (density_it == state.variable_map_.end())
   //     {

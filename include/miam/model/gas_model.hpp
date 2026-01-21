@@ -99,10 +99,6 @@ namespace miam
         state_idx_[species_key] = it->second;
       }
 
-      for (auto& [key, num] : state_idx_)
-      {
-        std::cout << "GAS: " << key << "," << num << std::endl;
-      }
     }
 
    private:

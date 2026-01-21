@@ -1,46 +1,42 @@
 // Copyright (C) 2026 National Center for Atmospheric Research
 // SPDX-License-Identifier: Apache-2.0
 
-#include <miam/model/aerosol_scheme.hpp>
 #include <miam/util/solver_utils.hpp>
 
 #include <string>
 
 namespace miam
 {
-
-  micm::System ConfigureSystem(const GasModel& gas_model, const std::vector<AerosolModel>& aerosol_models)
+  micm::System ConfigureSystem(
+    const micm::Phase& gas, 
+    const std::vector<Mode>& modes,
+    const std::vector<Section>& sections)
   {
-    micm::SystemParameters params{ .gas_phase_ = gas_model.phase_};
+    micm::SystemParameters params{ .gas_phase_ = gas};
 
-    for (const auto& model : aerosol_models)
+    for (const auto& mode : modes)
     {
-      for (const auto& mode : model.modes_)
+      for (const auto& phase : mode.phases_)
       {
-        for (const auto& phase : mode.phases_)
-        {
-          std::string key = JoinStrings({ model.name_, mode.name_, phase.name_ });
-          params.phases_[key] = phase;
-        }
-
-        for (const auto& moment : AerosolModel::AEROSOL_MOMENTS_)
-        {
-          params.others_.push_back(JoinStrings({ model.name_, mode.name_, moment }));
-        }
+        std::string key = Join({ mode.name_, phase.name_ });
+        params.phases_[key] = phase;
       }
-      for (const auto& section : model.sections_)
+      params.others_.push_back(Join({ mode.name_, AerosolMoment::NUMBER_CONCENTRATION }));
+      params.others_.push_back(Join({ mode.name_, AerosolMoment::DENSITY }));
+      params.others_.push_back(Join({ mode.name_, AerosolMoment::RADIUS }));
+    }
+
+    // Process sections
+    for (const auto& section : sections)
+    {
+      for (const auto& phase : section.phases_)
       {
-        for (const auto& phase : section.phases_)
-        {
-          std::string key = JoinStrings({ model.name_, section.name_, phase.name_ });
-          params.phases_[key] = phase;
-        }
-
-        for (const auto& moment : AerosolModel::AEROSOL_MOMENTS_)
-        {
-          params.others_.push_back(JoinStrings({ model.name_, section.name_, moment }));
-        }
+        std::string key = Join({ section.name_, phase.name_ });
+        params.phases_[key] = phase;
       }
+      params.others_.push_back(Join({ section.name_, AerosolMoment::NUMBER_CONCENTRATION }));
+      params.others_.push_back(Join({ section.name_, AerosolMoment::DENSITY }));
+      params.others_.push_back(Join({ section.name_, AerosolMoment::RADIUS }));
     }
 
     return micm::System(std::move(params));

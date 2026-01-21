@@ -9,7 +9,7 @@
 namespace miam
 {
 
-  std::string JoinStrings(const std::vector<std::string>& names)
+  std::string Join(const std::vector<std::string>& names)
   {
     std::string result;
     for (size_t i = 0; i < names.size(); ++i)

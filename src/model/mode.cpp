@@ -1,3 +1,6 @@
+// Copyright (C) 2026 National Center for Atmospheric Research
+// SPDX-License-Identifier: Apache-2.0
+
 #include <miam/model/mode.hpp>
 
 #include <cmath>
