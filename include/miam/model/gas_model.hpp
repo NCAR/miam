@@ -84,7 +84,7 @@ namespace miam
     /// @tparam StateType Type of the state object (e.g., micm::State)
     /// @param state The state object containing variable map
     template<typename StateType>
-    void SetStateIndices(const StateType& state)
+    void InitializeStateIndices(const StateType& state)
     {
       // Find indices for all gas species
       for (const auto& phase_species : phase_.phase_species_)
@@ -97,6 +97,11 @@ namespace miam
             "Species '{}' not found in state for gas phase '{}'.", species_key, phase_.name_));
         }
         state_idx_[species_key] = it->second;
+      }
+
+      for (auto& [key, num] : state_idx_)
+      {
+        std::cout << "GAS: " << key << "," << num << std::endl;
       }
     }
 

@@ -86,7 +86,8 @@ int main()
   AerosolModel aerosol{
     "AEROSOL",
     { aitken, accumulation } ,
-    { dust }
+    // { dust }
+    {}
   };
 
   System chemical_system = ConfigureSystem(gas_phase, { cloud, aerosol });
@@ -135,7 +136,7 @@ int main()
                                .SetGasSpecies(gas_phase, co2 )
                                .SetCondensedSpecies(aqueous_phase, { Yield(hp, 2.0), Yield(co32m) })
                                .SetSolvent(aqueous_phase, h2o )
-                               .SetTransferCoefficient( HenrysLawCoefficient(hlc_co2_parms) )
+                               .SetTransferCoefficient(HenrysLawCoefficient(hlc_co2_parms))
                                .Build();
 
   // // Condensed phase reversible reaction
@@ -143,7 +144,7 @@ int main()
   // // k_r = reverse rate constant
   // // (k_f = K_eq * k_r = forward rate constant)
   Process h2o_dissociation = ChemicalReactionBuilder()
-                             .SetAerosolScope(accumulation.GetScope(), aqueous_phase)
+                             .SetAerosolScope(aerosol.GetScope(accumulation), aqueous_phase)
                              .SetReactants({ h2o })
                              .SetProducts({ ohm, hp })
                              .SetRateConstant(ReversibleRateConstant({ .A_ = 1.14e-2, .C_ = 2300.0, .k_r_ = 0.32 }))
@@ -159,16 +160,9 @@ int main()
   State state = solver.GetState();
   
   // Initialize state indices map
-  // gas.SetStateIndices(state);
-  // cloud.SetStateIndices(state);
-  // aerosol.SetStateIndices(state);
-
-  gas.SetStateIndices(state);
-  small_drop.SetStateIndices(state);
-  large_drop.SetStateIndices(state);
-  aitken.SetStateIndices(state);
-  accumulation.SetStateIndices(state);
-  dust.SetStateIndices(state);
+  gas.InitializeStateIndices(state);
+  cloud.InitializeStateIndices(state);
+  aerosol.InitializeStateIndices(state);
 
   // environmental conditions
   state.conditions_[0].temperature_ = 287.45;  // K
@@ -177,32 +171,48 @@ int main()
 
   // gas
   gas.SetConcentration(state, co2, 20.0);  // mol m-3
-  
-  // cloud
-  small_drop.SetConcentration(state, aqueous_phase, h2o, 0.3); // mol m-3
-  large_drop.SetConcentration(state, aqueous_phase, h2o, 0.3); // mol m-3
-  
-  // aerosol modes
-  aitken.SetConcentration(state, aqueous_phase, hco3m, 0.1);        // mol m-3
-  accumulation.SetConcentration(state, aqueous_phase, h2o, 0.3);    // mol m-3
-  accumulation.SetConcentration(state, organic_phase, hexane, 0.1); // mol m-3
 
-  // aerosol section 
-  dust.SetConcentration(state, organic_phase, co2, 0.1); // mol m-3
 
-  aitken.SetNumberConcentration(state, 1.0e4);       // m-3
-  accumulation.SetNumberConcentration(state, 1.0e3); // m-3
-
-  small_drop.SetRadius(state);   // m
-  large_drop.SetRadius(state);   // m
-  aitken.SetRadius(state);       // m
-  accumulation.SetRadius(state); // m
-
-  state.PrintHeader();
-  for (int i = 0; i < 10; ++i)
-  {
-    solver.CalculateRateConstants(state);
-    auto result = solver.Solve(500.0, state);
-    state.PrintState(i * 500);
+  state.SetConcentration({cloud, small_drop, aqueous_phase, h2o}, 0.3);
+  StateElementType{
+    AersolModel m;
+    DropSize s;
+    Phase p;
+    Species c;
   }
+
+  State[StateElement]
+
+  StateElementType myType(cloud, small_drop, aqueous_phase, h2o);
+
+  state.SetConcentration(myType, 0.5);
+
+
+  // species concentrations
+  h2o.SetConcentration
+  cloud.SetConcentration(state, small_drop, aqueous_phase, h2o, 0.3);        // mol m-3
+  cloud.SetConcentration(state, large_drop, aqueous_phase, h2o, 0.3);        // mol m-3
+  aerosol.SetConcentration(state, aitken, aqueous_phase, hco3m, 0.1);        // mol m-3
+  aerosol.SetConcentration(state, accumulation, aqueous_phase, h2o, 0.3);    // mol m-3
+  aerosol.SetConcentration(state, accumulation, organic_phase, hexane, 0.1); // mol m-3
+  // aerosol.SetConcentration(state, dust, organic_phase, co2, 0.1);            // mol m-3
+
+  state.SetConcentration(aerosol, aitken, number_concentration, 1.4);
+
+  aerosol.SetNumberConcentration(state, aitken, 1.0e4);        // m-3
+  aerosol.SetNumberConcentration(state, accumulation, 1.0e3);  // m-3
+
+  // aerosol state
+  // cloud.SetRadius(state, small_drop);     // m
+  // cloud.SetRadius(state, large_drop);     // m
+  aerosol.SetRadius(state, aitken);       // m
+  // aerosol.SetRadius(state, accumulation); // m
+
+//   state.PrintHeader();
+//   for (int i = 0; i < 10; ++i)
+//   {
+//     solver.CalculateRateConstants(state);
+//     auto result = solver.Solve(500.0, state);
+//     state.PrintState(i * 500);
+//   }
 }

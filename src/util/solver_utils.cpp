@@ -19,26 +19,26 @@ namespace miam
       {
         for (const auto& phase : mode.phases_)
         {
-          std::string key = JoinStrings({ mode.name_, phase.name_ });
+          std::string key = JoinStrings({ model.name_, mode.name_, phase.name_ });
           params.phases_[key] = phase;
         }
 
-        for (const auto& moment : AerosolScheme::AEROSOL_MOMENTS_)
+        for (const auto& moment : AerosolModel::AEROSOL_MOMENTS_)
         {
-          params.others_.push_back(JoinStrings({ mode.name_, moment }));
+          params.others_.push_back(JoinStrings({ model.name_, mode.name_, moment }));
         }
       }
       for (const auto& section : model.sections_)
       {
         for (const auto& phase : section.phases_)
         {
-          std::string key = JoinStrings({ section.name_, phase.name_ });
+          std::string key = JoinStrings({ model.name_, section.name_, phase.name_ });
           params.phases_[key] = phase;
         }
 
-        for (const auto& moment : AerosolScheme::AEROSOL_MOMENTS_)
+        for (const auto& moment : AerosolModel::AEROSOL_MOMENTS_)
         {
-          params.others_.push_back(JoinStrings({ section.name_, moment }));
+          params.others_.push_back(JoinStrings({ model.name_, section.name_, moment }));
         }
       }
     }
