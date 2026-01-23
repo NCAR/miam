@@ -1,8 +1,6 @@
-#include <miam/model/aerosol_model.hpp>
 #include <miam/model/aerosol_scheme.hpp>
 #include <miam/model/mode.hpp>
 #include <miam/model/section.hpp>
-#include <miam/model/gas_model.hpp>
 #include <miam/util/solver_utils.hpp>
 
 #include <micm/process/transfer_coefficient/phase_transfer_coefficient.hpp>
@@ -13,6 +11,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <cstdlib>
 
 using namespace micm;
 using namespace miam;
@@ -27,13 +26,9 @@ int main()
   auto co32m  = Species{ "CO32-" };
   auto hexane = Species{ "C6H14" };
 
-  // MICM
   Phase gas_phase{ "GAS", { { co2, 31.2 } } };
   Phase aqueous_phase{ "AQUEOUS", { { co2 } , { h2o } , { ohm } , { hp } , { hco3m } , { co32m } } };
   Phase organic_phase{ "ORGANIC", { { co2, 16.2 }, { hexane } } };
-
-  // Gas 
-  auto gas = GasModel{ gas_phase };
 
   // Cloud
   auto small_drop = Mode{
@@ -52,13 +47,7 @@ int main()
     1.8,                            // Geometric standard deviation
   };
 
-  AerosolModel cloud{
-    "CLOUD",
-    { small_drop, large_drop },
-    {} // no sectional model
-  };
-
-  // Aerosol model with 2 modes and 1 section
+  // Model aerosol with 2 modes and 1 section
   auto aitken = Mode{
     "AITKEN",
     { aqueous_phase },           // Multiple phases
@@ -83,13 +72,7 @@ int main()
     0.003                        // Maximum diameter
   };
 
-  AerosolModel aerosol{
-    "AEROSOL",
-    { aitken, accumulation } ,
-    { dust }
-  };
-
-  System chemical_system = ConfigureSystem(gas_phase, { cloud, aerosol });
+  System chemical_system = ConfigureSystem(gas_phase, { small_drop, large_drop, aitken, accumulation }, { dust });
 
   // State array should contain
   //  1) (GAS.) CO2
@@ -135,7 +118,7 @@ int main()
                                .SetGasSpecies(gas_phase, co2 )
                                .SetCondensedSpecies(aqueous_phase, { Yield(hp, 2.0), Yield(co32m) })
                                .SetSolvent(aqueous_phase, h2o )
-                               .SetTransferCoefficient( HenrysLawCoefficient(hlc_co2_parms) )
+                               .SetTransferCoefficient(HenrysLawCoefficient(hlc_co2_parms))
                                .Build();
 
   // // Condensed phase reversible reaction
@@ -158,12 +141,11 @@ int main()
   
   State state = solver.GetState();
   
-  // Initialize state indices map
-  gas.SetStateIndices(state);
-  small_drop.SetStateIndices(state);
-  large_drop.SetStateIndices(state);
-  aitken.SetStateIndices(state);
-  accumulation.SetStateIndices(state);
+  // Start the state in some arbitrary initial condition
+  auto& state_vec = state.variables_.AsVector();
+  std::generate(state_vec.begin(), state_vec.end(), [&]() { 
+    return 1.0e-6 + static_cast<double>(std::rand()) / RAND_MAX * 1.0e-6; 
+  });
 
   // environmental conditions
   state.conditions_[0].temperature_ = 287.45;  // K
@@ -171,33 +153,60 @@ int main()
   state.conditions_[0].CalculateIdealAirDensity();
 
   // gas
-  gas.SetConcentration(state, co2, 20.0);  // mol m-3
+  state.SetConcentration(co2, 0.2);
   
   // cloud
-  small_drop.SetConcentration(state, aqueous_phase, h2o, 0.3); // mol m-3
-  large_drop.SetConcentration(state, aqueous_phase, h2o, 0.3); // mol m-3
+  state.SetConcentration(small_drop.Species(aqueous_phase, h2o), 0.3);      // mol m-3
+  state.SetConcentration(large_drop.Species(aqueous_phase, h2o), 0.3);      // mol m-3
   
-  // aerosol modes
-  aitken.SetConcentration(state, aqueous_phase, hco3m, 0.1);        // mol m-3
-  accumulation.SetConcentration(state, aqueous_phase, h2o, 0.3);    // mol m-3
-  accumulation.SetConcentration(state, organic_phase, hexane, 0.1); // mol m-3
+  // aerosol mode
+  state.SetConcentration(aitken.Species(aqueous_phase, hco3m), 0.1);        // mol m-3
+  state.SetConcentration(accumulation.Species(aqueous_phase, h2o), 0.3);    // mol m-3
+  state.SetConcentration(accumulation.Species(organic_phase, hexane), 0.1); // mol m-3
+  
+  // aerosol section
+  state.SetConcentration(dust.Species(organic_phase, co2), 0.1);            // mol m-3
 
-  // aerosol section 
-  dust.SetConcentration(state, organic_phase, co2, 0.1); // mol m-3
+  // number concentration
+  state.SetConcentration(aitken.NumberConcentration(), 1.0e4);        // m-3
+  state.SetConcentration(accumulation.NumberConcentration(), 1.0e3);  // m-3
 
-  aitken.SetNumberConcentration(state, 1.0e4);       // m-3
-  accumulation.SetNumberConcentration(state, 1.0e3); // m-3
+  // density
+  state.SetConcentration(aitken.Density(), 2.0e2);        // m-3
+  state.SetConcentration(accumulation.Density(), 3.0e2);  // m-3
 
-  small_drop.SetRadius(state);   // m
-  large_drop.SetRadius(state);   // m
-  aitken.SetRadius(state);       // m
-  accumulation.SetRadius(state); // m
+  // radius
+  double radius_small_drop = small_drop.GetRadius(state);      // m
+  double radius_large_drop = large_drop.GetRadius(state);      // m
+  double radius_aitken = aitken.GetRadius(state);              // m
+  double radius_accumulation = accumulation.GetRadius(state);  // m
 
-  state.PrintHeader();
+  state.SetConcentration(small_drop.Radius(), radius_small_drop);      // m
+  state.SetConcentration(large_drop.Radius(), radius_large_drop);      // m
+  state.SetConcentration(aitken.Radius(), radius_aitken);              // m
+  state.SetConcentration(accumulation.Radius(), radius_accumulation);  // m
+
+  // state.PrintHeader();
   for (int i = 0; i < 10; ++i)
   {
     solver.CalculateRateConstants(state);
     auto result = solver.Solve(500.0, state);
-    state.PrintState(i * 500);
+    // state.PrintState(i * 500);
+  }
+
+  // Print with species names if variable_names_ is available
+  std::cout << "\nState Variables by Species:" << std::endl;
+  for (std::size_t cell = 0; cell < state.variables_.NumRows(); ++cell) 
+  {
+    std::cout << "Cell " << cell << ":" << std::endl;
+    for (std::size_t var = 0; var < state.variables_.NumColumns(); ++var) 
+    {
+      std::string species_name = (var < state.variable_names_.size()) 
+                              ? state.variable_names_[var] 
+                              : "Var" + std::to_string(var);
+      std::cout << "  " << std::setw(12) << species_name << " = " 
+                << std::scientific << state.variables_[cell][var] << std::endl;
+    }
+    std::cout << std::endl;
   }
 }

@@ -25,6 +25,13 @@ namespace miam
     /// @brief Maximum diameter [m]
     double max_diameter_;
 
+   private:
+    std::unordered_map<std::string, std::size_t> map_state_id_;  // species - index pairs in state
+    std::size_t number_id_;                                      // Index for number concentration
+    std::size_t density_id_;                                     // Index for density
+    std::size_t radius_id_;                                      // Index for radius
+
+   public:
     /// @brief Construct a Section with specified physical properties
     Section(
         std::string name,
@@ -38,50 +45,6 @@ namespace miam
           min_diameter_(min_diameter),
           max_diameter_(max_diameter)
     {
-      if (distribution == DistributionType::SingleMoment)
-        is_radius_fixed_ = true;
-    }
-
-    /// @brief Set the state indices for accessing section variables in the state vector
-    /// @tparam StateType Type of the state object (e.g., micm::State)
-    /// @param state The state object containing variable map
-    /// @throws std::runtime_error If keys are not found in state
-    template<typename StateType>
-    void SetStateIndices(const StateType& state)
-    {
-      // Find mass indices for all species in all phases
-      for (const auto& phase : phases_)
-      {
-        for (const auto& phase_species : phase.phase_species_)
-        {
-          // NAME: SECTION.PHASE.SPECIES
-          std::string species_key = JoinStrings({ name_, phase.name_, phase_species.species_.name_ });
-          auto species_it = state.variable_map_.find(species_key);
-          if (species_it == state.variable_map_.end())
-          {
-            throw std::runtime_error(std::format("Species '{}' not found in state for '{}'", species_key, name_));
-          }
-          state_idx_.state_id_map[species_key] = species_it->second;
-        }
-      }
-
-      // Find number concentration index
-      std::string number_key = JoinStrings({ name_, AerosolScheme::AEROSOL_MOMENTS_[0] });
-      auto number_it = state.variable_map_.find(number_key);
-      if (number_it == state.variable_map_.end())
-      {
-        throw std::runtime_error(std::format("Variable '{}' not found in state for '{}'", number_key, name_));
-      }
-      state_idx_.number_id = number_it->second;
-
-      // Find density index
-      std::string density_key = JoinStrings({ name_, AerosolScheme::AEROSOL_MOMENTS_[1] });
-      auto density_it = state.variable_map_.find(density_key);
-      if (density_it == state.variable_map_.end())
-      {
-        throw std::runtime_error(std::format("Variable '{}' not found in state for '{}'", density_key, name_));
-      }
-      state_idx_.density_id = density_it->second;
     }
 
   };
