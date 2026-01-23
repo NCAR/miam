@@ -23,7 +23,10 @@ namespace miam
     if (mass < 1e-18 || N < 1e-10)
     {
       throw std::runtime_error(std::format(
-          "Cannot calculate effective radius: mass ({}) or number ({}) is below the numerical stability limit for '{}'.", mass, N, name_));
+          "Cannot calculate effective radius: mass ({}) or number ({}) is below the numerical stability limit for '{}'.",
+          mass,
+          N,
+          name_));
     }
 
     double V = mass / density;

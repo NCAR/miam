@@ -7,10 +7,10 @@
 
 #include <micm/system/phase.hpp>
 
+#include <format>
 #include <iostream>
 #include <string>
 #include <unordered_map>
-#include <format>
 
 namespace miam
 {
@@ -20,7 +20,7 @@ namespace miam
     inline const std::string NUMBER_CONCENTRATION = "NUMBER_CONCENTRATION";
     inline const std::string RADIUS = "RADIUS";
     inline const std::string DENSITY = "DENSITY";
-  }
+  }  // namespace AerosolMoment
 
   enum class DistributionType
   {
@@ -32,7 +32,6 @@ namespace miam
   class AerosolScheme
   {
    public:
-
     /// @brief Name of the mode or bin (e.g., "aitken", "accumulation", "large_drop")
     std::string name_;
 

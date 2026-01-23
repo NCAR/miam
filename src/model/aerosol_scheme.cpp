@@ -11,28 +11,28 @@
 
 namespace miam
 {
-    std::string AerosolScheme::GetScope() const
-    {
-      return name_;
-    }
+  std::string AerosolScheme::GetScope() const
+  {
+    return name_;
+  }
 
-    std::string AerosolScheme::Species(const micm::Phase& phase, const micm::Species& species) const
-    {
-      return Join({ name_, phase.name_, species.name_ }); 
-    }
+  std::string AerosolScheme::Species(const micm::Phase& phase, const micm::Species& species) const
+  {
+    return Join({ name_, phase.name_, species.name_ });
+  }
 
-    std::string AerosolScheme::NumberConcentration() const
-    {
-      return Join({ name_, AerosolMoment::NUMBER_CONCENTRATION }); 
-    }
+  std::string AerosolScheme::NumberConcentration() const
+  {
+    return Join({ name_, AerosolMoment::NUMBER_CONCENTRATION });
+  }
 
-    std::string AerosolScheme::Radius() const
-    {
-      return Join({ name_, AerosolMoment::RADIUS }); 
-    }
+  std::string AerosolScheme::Radius() const
+  {
+    return Join({ name_, AerosolMoment::RADIUS });
+  }
 
-    std::string AerosolScheme::Density() const
-    {
-      return Join({ name_, AerosolMoment::DENSITY }); 
-    }
+  std::string AerosolScheme::Density() const
+  {
+    return Join({ name_, AerosolMoment::DENSITY });
+  }
 }  // namespace miam
