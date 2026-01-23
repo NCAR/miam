@@ -7,12 +7,9 @@
 
 namespace miam
 {
-  micm::System ConfigureSystem(
-    const micm::Phase& gas, 
-    const std::vector<Mode>& modes,
-    const std::vector<Section>& sections)
+  micm::System ConfigureSystem(const micm::Phase& gas, const std::vector<Mode>& modes, const std::vector<Section>& sections)
   {
-    micm::SystemParameters params{ .gas_phase_ = gas};
+    micm::SystemParameters params{ .gas_phase_ = gas };
 
     for (const auto& mode : modes)
     {

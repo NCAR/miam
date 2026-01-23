@@ -13,9 +13,7 @@
 
 namespace miam
 {
-  micm::System ConfigureSystem(
-    const micm::Phase& gas, 
-    const std::vector<Mode>& modes = {}, 
-    const std::vector<Section>& sections = {});
+  micm::System
+  ConfigureSystem(const micm::Phase& gas, const std::vector<Mode>& modes = {}, const std::vector<Section>& sections = {});
 
 }  // namespace miam

@@ -6,9 +6,9 @@
 #include <miam/model/aerosol_scheme.hpp>
 #include <miam/util/utils.hpp>
 
+#include <format>
 #include <string>
 #include <vector>
-#include <format>
 
 namespace miam
 {
@@ -46,7 +46,6 @@ namespace miam
           max_diameter_(max_diameter)
     {
     }
-
   };
 
 }  // namespace miam

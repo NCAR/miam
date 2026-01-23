@@ -9,11 +9,11 @@
 #include <micm/system/phase.hpp>
 
 #include <cmath>
+#include <format>
 #include <stdexcept>
 #include <string>
-#include <vector>
-#include <format>
 #include <unordered_map>
+#include <vector>
 
 namespace miam
 {
@@ -32,7 +32,7 @@ namespace miam
 
    private:
     double fixed_radius_;
-    bool state_indices_initialized_ = false;                     // Flag to track initialization
+    bool state_indices_initialized_ = false;  // Flag to track initialization
 
     std::unordered_map<std::string, std::size_t> map_state_id_;  // species - index pairs in state
     std::size_t number_id_;                                      // Index for number concentration
@@ -52,12 +52,12 @@ namespace miam
           distribution_(distribution),
           geometric_mean_diameter_(geometric_mean_diameter),
           geometric_standard_deviation_(geometric_standard_deviation)
-    { 
+    {
       fixed_radius_ = GetEffectiveRadius();
 
       // Intialize the scoped species name in the map
       for (auto& p : phases_)
-        for (auto& p_s :  p.phase_species_)
+        for (auto& p_s : p.phase_species_)
           map_state_id_[Join({ name_, p.name_, p_s.species_.name_ })] = 0;
     }
 
@@ -120,9 +120,9 @@ namespace miam
     template<typename StateType>
     double GetEffectiveRadius(StateType& state, std::size_t cell = 0)
     {
-      if (!state_indices_initialized_) 
+      if (!state_indices_initialized_)
         InitializeStateMap(state);
-      
+
       double total_mass = 0.0;
       for (const auto& [species_key, id] : map_state_id_)
         total_mass += state.variables_[cell][id];
