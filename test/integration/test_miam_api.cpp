@@ -124,19 +124,24 @@ int main()
                                     .temperature_ref_ = 298.15 }})
                                .Build();
 
+  // First reversible acid-dissociation reaction `H2CO3(aq) <-> HCO3-(aq) + H+(aq)`
+  // auto h2co3_hco3m_hp = DissolvedReversibleProcessBuilder()
+  Process h2co3_hco3m_hp = ChemicalReactionBuilder()
+                            .SetPhase(aqueous_phase)
+                            .SetReactants({ h2co3 })
+                            .SetProducts({ { hco3m, 1.0 }, { hp, 1.0 } })
+                            .SetRateConstant(ArrheniusRateConstant({ .A_ = 1.0e-3 }))
+                            .Build();
 
-  // // Condensed phase reversible reaction
-  // // K_eq = A * exp(C / T) = Equilibrium constant
-  // // k_r = reverse rate constant
-  // // (k_f = K_eq * k_r = forward rate constant)
-  Process h2o_dissociation = ChemicalReactionBuilder()
-                             .SetAerosolScope(accumulation.GetScope(), aqueous_phase)
-                             .SetReactants({ h2o })
-                             .SetProducts({ { ohm }, { hp } })
-                             .SetRateConstant(ReversibleRateConstant({ .A_ = 1.14e-2, .C_ = 2300.0, .k_r_ = 0.32 }))
-                             .Build();
+  // Second reversible acid-dissociation reaction `HCO3-(aq) <-> CO3--(aq) + H+(aq)`
+  Process hco3m_co32m_hp = ChemicalReactionBuilder()
+                            .SetPhase(aqueous_phase)
+                            .SetReactants({ hco3m })
+                            .SetProducts({ { co32m, 1.0 }, {  hp, 1.0 } })
+                            .SetRateConstant(ArrheniusRateConstant({ .A_ = 1.0e-3 }))
+                            .Build();
 
-  std::vector<Process> reactions{ co2_photo, co2_phase_transfer, h2o_dissociation };
+  std::vector<Process> reactions{ co2_photo, co2_phase_transfer, h2co3_hco3m_hp, hco3m_co32m_hp };
 
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(chemical_system)
