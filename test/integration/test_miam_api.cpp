@@ -92,7 +92,11 @@ int main()
   // (CLOUD.) LARGE_DROP.AQUEOUS.CO32-
   // (CLOUD.) LARGE_DROP.AQUEOUS.H2CO3
   // (AEROSOL.) AITKEN.AQUEOUS.CO2           ( Mode )
-  // (AEROSOL.) AITKEN.AQUEOUS.HEXANE        ( Mode )
+  // (AEROSOL.) AITKEN.AQUEOUS.H2O           ( Mode )
+  // (AEROSOL.) AITKEN.AQUEOUS.OH-           ( Mode )
+  // (AEROSOL.) AITKEN.AQUEOUS.H+            ( Mode )
+  // (AEROSOL.) AITKEN.AQUEOUS.HCO3-         ( Mode )
+  // (AEROSOL.) AITKEN.AQUEOUS.CO32-         ( Mode )
   // (AEROSOL.) AITKEN.AQUEOUS.H2CO3         ( Mode )
   // (AEROSOL.) ACCUMULATION.AQUEOUS.CO2     ( Mode )
   // (AEROSOL.) ACCUMULATION.AQUEOUS.H2O     ( Mode )
