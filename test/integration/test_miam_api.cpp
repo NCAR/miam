@@ -3,7 +3,7 @@
 #include <miam/model/section.hpp>
 #include <miam/util/solver_utils.hpp>
 
-#include <micm/process/transfer_coefficient/phase_transfer_coefficient.hpp>
+#include <micm/process/transfer_coefficient/henrys_law_constant.hpp>
 #include <micm/process/chemical_reaction_builder.hpp>
 #include <micm/Process.hpp>
 #include <micm/solver/rosenbrock.hpp>
@@ -25,9 +25,10 @@ int main()
   auto hco3m  = Species{ "HCO3-" };
   auto co32m  = Species{ "CO32-" };
   auto hexane = Species{ "C6H14" };
+  auto h2co3 = Species{ "H2CO3" };
 
   Phase gas_phase{ "GAS", { { co2, 31.2 } } };
-  Phase aqueous_phase{ "AQUEOUS", { { co2 } , { h2o } , { ohm } , { hp } , { hco3m } , { co32m } } };
+  Phase aqueous_phase{ "AQUEOUS", { { co2 } , { h2o } , { ohm } , { hp } , { hco3m } , { co32m }, { h2co3 }} };
   Phase organic_phase{ "ORGANIC", { { co2, 16.2 }, { hexane } } };
 
   // Cloud
@@ -75,31 +76,39 @@ int main()
   System chemical_system = ConfigureSystem(gas_phase, { small_drop, large_drop, aitken, accumulation }, { dust });
 
   // State array should contain
-  //  1) (GAS.) CO2
-  //  2) (CLOUD.) SMALL_DROP.AQUEOUS.CO2
-  //  3) (CLOUD.) SMALL_DROP.AQUEOUS.H2O
-  //  4) (CLOUD.) SMALL_DROP.AQUEOUS.OH-
-  //  5) (CLOUD.) SMALL_DROP.AQUEOUS.H+
-  //  6) (CLOUD.) SMALL_DROP.AQUEOUS.HCO3-
-  //  7) (CLOUD.) SMALL_DROP.AQUEOUS.CO32-
-  //  8) (CLOUD.) LARGE_DROP.AQUEOUS.CO2
-  //  9) (CLOUD.) LARGE_DROP.AQUEOUS.H2O
-  // 10) (CLOUD.) LARGE_DROP.AQUEOUS.OH-
-  // 11) (CLOUD.) LARGE_DROP.AQUEOUS.H+
-  // 12) (CLOUD.) LARGE_DROP.AQUEOUS.HCO3-
-  // 13) (CLOUD.) LARGE_DROP.AQUEOUS.CO32-
-  // 14) (AEROSOL.) AITKEN.AQUEOUS.CO2
-  // 15) (AEROSOL.) AITKEN.AQUEOUS.HEXANE
-  // 16) (AEROSOL.) ACCUMULATION.AQUEOUS.CO2
-  // 17) (AEROSOL.) ACCUMULATION.AQUEOUS.H2O
-  // 18) (AEROSOL.) ACCUMULATION.AQUEOUS.OH-
-  // 19) (AEROSOL.) ACCUMULATION.AQUEOUS.H+
-  // 20) (AEROSOL.) ACCUMULATION.AQUEOUS.HCO3-
-  // 21) (AEROSOL.) ACCUMULATION.AQUEOUS.CO32-
-  // 22) (AEROSOL.) ACCUMULATION.ORGANIC.CO2
-  // 23) (AEROSOL.) ACCUMULATION.ORGANIC.HEXANE
-  // 24) (AEROSOL.) DUST.ORGANIC.CO2
-  // 25) (AEROSOL.) DUST.ORGANIC.HEXANE
+  // (GAS.) CO2
+  // (CLOUD.) SMALL_DROP.AQUEOUS.CO2
+  // (CLOUD.) SMALL_DROP.AQUEOUS.H2O
+  // (CLOUD.) SMALL_DROP.AQUEOUS.OH-
+  // (CLOUD.) SMALL_DROP.AQUEOUS.H+
+  // (CLOUD.) SMALL_DROP.AQUEOUS.HCO3-
+  // (CLOUD.) SMALL_DROP.AQUEOUS.CO32-
+  // (CLOUD.) SMALL_DROP.AQUEOUS.H2CO3
+  // (CLOUD.) LARGE_DROP.AQUEOUS.CO2
+  // (CLOUD.) LARGE_DROP.AQUEOUS.H2O
+  // (CLOUD.) LARGE_DROP.AQUEOUS.OH-
+  // (CLOUD.) LARGE_DROP.AQUEOUS.H+
+  // (CLOUD.) LARGE_DROP.AQUEOUS.HCO3-
+  // (CLOUD.) LARGE_DROP.AQUEOUS.CO32-
+  // (CLOUD.) LARGE_DROP.AQUEOUS.H2CO3
+  // (AEROSOL.) AITKEN.AQUEOUS.CO2           ( Mode )
+  // (AEROSOL.) AITKEN.AQUEOUS.H2O           ( Mode )
+  // (AEROSOL.) AITKEN.AQUEOUS.OH-           ( Mode )
+  // (AEROSOL.) AITKEN.AQUEOUS.H+            ( Mode )
+  // (AEROSOL.) AITKEN.AQUEOUS.HCO3-         ( Mode )
+  // (AEROSOL.) AITKEN.AQUEOUS.CO32-         ( Mode )
+  // (AEROSOL.) AITKEN.AQUEOUS.H2CO3         ( Mode )
+  // (AEROSOL.) ACCUMULATION.AQUEOUS.CO2     ( Mode )
+  // (AEROSOL.) ACCUMULATION.AQUEOUS.H2O     ( Mode )
+  // (AEROSOL.) ACCUMULATION.AQUEOUS.OH-     ( Mode )
+  // (AEROSOL.) ACCUMULATION.AQUEOUS.H+      ( Mode )
+  // (AEROSOL.) ACCUMULATION.AQUEOUS.HCO3-   ( Mode )
+  // (AEROSOL.) ACCUMULATION.AQUEOUS.CO32-   ( Mode )
+  // (AEROSOL.) ACCUMULATION.AQUEOUS.H2CO3   ( Mode )
+  // (AEROSOL.) ACCUMULATION.ORGANIC.CO2     ( Mode )
+  // (AEROSOL.) ACCUMULATION.ORGANIC.HEXANE  ( Mode )
+  // (AEROSOL.) DUST.ORGANIC.CO2             ( Section )
+  // (AEROSOL.) DUST.ORGANIC.HEXANE          ( Section )
 
   Process co2_photo = ChemicalReactionBuilder()
                       .SetReactants({ co2 })
@@ -112,27 +121,35 @@ int main()
   // K_a1 = first acid dissociation constant
   // K_a2 = second acid dissociation constant
   // K_H = A * exp(C / T) = Henry's Law constant
-  auto hlc_co2_parms = HenrysLawCoefficientParameters{ .A_ = 32.4, .C_ = -3.2e-3, .K_a1_ = 1.0e-5, .K_a2_ = 2.0e-5 };
-
   Process co2_phase_transfer = PhaseTransferProcessBuilder()
                                .SetGasSpecies(gas_phase, co2 )
-                               .SetCondensedSpecies(aqueous_phase, { Yield(hp, 2.0), Yield(co32m) })
+                               .SetCondensedSpecies(aqueous_phase, h2co3)
                                .SetSolvent(aqueous_phase, h2o )
-                               .SetTransferCoefficient(HenrysLawCoefficient(hlc_co2_parms))
+                               .SetTransferCoefficient(
+                                  HenrysLawConstant{{
+                                    .H_ref_ = 1.5e-3,
+                                    .enthalpy_ = -10000.0,
+                                    .temperature_ref_ = 298.15 }})
                                .Build();
 
-  // // Condensed phase reversible reaction
-  // // K_eq = A * exp(C / T) = Equilibrium constant
-  // // k_r = reverse rate constant
-  // // (k_f = K_eq * k_r = forward rate constant)
-  Process h2o_dissociation = ChemicalReactionBuilder()
-                             .SetAerosolScope(accumulation.GetScope(), aqueous_phase)
-                             .SetReactants({ h2o })
-                             .SetProducts({ ohm, hp })
-                             .SetRateConstant(ReversibleRateConstant({ .A_ = 1.14e-2, .C_ = 2300.0, .k_r_ = 0.32 }))
-                             .Build();
+  // First reversible acid-dissociation reaction `H2CO3(aq) <-> HCO3-(aq) + H+(aq)`
+  // auto h2co3_hco3m_hp = DissolvedReversibleProcessBuilder()
+  Process h2co3_hco3m_hp = ChemicalReactionBuilder()
+                            .SetAerosolScope(accumulation.GetScope(), aqueous_phase)
+                            .SetReactants({ h2co3 })
+                            .SetProducts({ { hco3m, 1.0 }, { hp, 1.0 } })
+                            .SetRateConstant(ArrheniusRateConstant({ .A_ = 1.0e-3 }))
+                            .Build();
 
-  std::vector<Process> reactions{ co2_photo, co2_phase_transfer, h2o_dissociation };
+  // Second reversible acid-dissociation reaction `HCO3-(aq) <-> CO3--(aq) + H+(aq)`
+  Process hco3m_co32m_hp = ChemicalReactionBuilder()
+                            .SetAerosolScope(accumulation.GetScope(), aqueous_phase)
+                            .SetReactants({ hco3m })
+                            .SetProducts({ { co32m, 1.0 }, {  hp, 1.0 } })
+                            .SetRateConstant(ArrheniusRateConstant({ .A_ = 1.0e-3 }))
+                            .Build();
+
+  std::vector<Process> reactions{ co2_photo, co2_phase_transfer, h2co3_hco3m_hp, hco3m_co32m_hp };
 
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(chemical_system)
