@@ -3,7 +3,7 @@
 #include <miam/model/section.hpp>
 #include <miam/util/solver_utils.hpp>
 
-#include <micm/process/transfer_coefficient/phase_transfer_coefficient.hpp>
+#include <micm/process/transfer_coefficient/henrys_law_constant.hpp>
 #include <micm/process/chemical_reaction_builder.hpp>
 #include <micm/Process.hpp>
 #include <micm/solver/rosenbrock.hpp>
@@ -25,9 +25,10 @@ int main()
   auto hco3m  = Species{ "HCO3-" };
   auto co32m  = Species{ "CO32-" };
   auto hexane = Species{ "C6H14" };
+  auto h2co3 = Species{ "H2CO3" };
 
   Phase gas_phase{ "GAS", { { co2, 31.2 } } };
-  Phase aqueous_phase{ "AQUEOUS", { { co2 } , { h2o } , { ohm } , { hp } , { hco3m } , { co32m } } };
+  Phase aqueous_phase{ "AQUEOUS", { { co2 } , { h2o } , { ohm } , { hp } , { hco3m } , { co32m }, { h2co3 }} };
   Phase organic_phase{ "ORGANIC", { { co2, 16.2 }, { hexane } } };
 
   // Cloud
@@ -88,18 +89,18 @@ int main()
   // 11) (CLOUD.) LARGE_DROP.AQUEOUS.H+
   // 12) (CLOUD.) LARGE_DROP.AQUEOUS.HCO3-
   // 13) (CLOUD.) LARGE_DROP.AQUEOUS.CO32-
-  // 14) (AEROSOL.) AITKEN.AQUEOUS.CO2
-  // 15) (AEROSOL.) AITKEN.AQUEOUS.HEXANE
-  // 16) (AEROSOL.) ACCUMULATION.AQUEOUS.CO2
-  // 17) (AEROSOL.) ACCUMULATION.AQUEOUS.H2O
-  // 18) (AEROSOL.) ACCUMULATION.AQUEOUS.OH-
-  // 19) (AEROSOL.) ACCUMULATION.AQUEOUS.H+
-  // 20) (AEROSOL.) ACCUMULATION.AQUEOUS.HCO3-
-  // 21) (AEROSOL.) ACCUMULATION.AQUEOUS.CO32-
-  // 22) (AEROSOL.) ACCUMULATION.ORGANIC.CO2
-  // 23) (AEROSOL.) ACCUMULATION.ORGANIC.HEXANE
-  // 24) (AEROSOL.) DUST.ORGANIC.CO2
-  // 25) (AEROSOL.) DUST.ORGANIC.HEXANE
+  // 14) (AEROSOL.) AITKEN.AQUEOUS.CO2           ( Mode )
+  // 15) (AEROSOL.) AITKEN.AQUEOUS.HEXANE        ( Mode )
+  // 16) (AEROSOL.) ACCUMULATION.AQUEOUS.CO2     ( Mode )
+  // 17) (AEROSOL.) ACCUMULATION.AQUEOUS.H2O     ( Mode )
+  // 18) (AEROSOL.) ACCUMULATION.AQUEOUS.OH-     ( Mode )
+  // 19) (AEROSOL.) ACCUMULATION.AQUEOUS.H+      ( Mode )
+  // 20) (AEROSOL.) ACCUMULATION.AQUEOUS.HCO3-   ( Mode )
+  // 21) (AEROSOL.) ACCUMULATION.AQUEOUS.CO32-   ( Mode )
+  // 22) (AEROSOL.) ACCUMULATION.ORGANIC.CO2     ( Mode )
+  // 23) (AEROSOL.) ACCUMULATION.ORGANIC.HEXANE  ( Mode )
+  // 24) (AEROSOL.) DUST.ORGANIC.CO2             ( Section )
+  // 25) (AEROSOL.) DUST.ORGANIC.HEXANE          ( Section )
 
   Process co2_photo = ChemicalReactionBuilder()
                       .SetReactants({ co2 })
@@ -112,14 +113,17 @@ int main()
   // K_a1 = first acid dissociation constant
   // K_a2 = second acid dissociation constant
   // K_H = A * exp(C / T) = Henry's Law constant
-  auto hlc_co2_parms = HenrysLawCoefficientParameters{ .A_ = 32.4, .C_ = -3.2e-3, .K_a1_ = 1.0e-5, .K_a2_ = 2.0e-5 };
-
   Process co2_phase_transfer = PhaseTransferProcessBuilder()
                                .SetGasSpecies(gas_phase, co2 )
-                               .SetCondensedSpecies(aqueous_phase, { Yield(hp, 2.0), Yield(co32m) })
+                               .SetCondensedSpecies(aqueous_phase, h2co3)
                                .SetSolvent(aqueous_phase, h2o )
-                               .SetTransferCoefficient(HenrysLawCoefficient(hlc_co2_parms))
+                               .SetTransferCoefficient(
+                                  HenrysLawConstant{{
+                                    .H_ref_ = 1.5e-3,
+                                    .enthalpy_ = -10000.0,
+                                    .temperature_ref_ = 298.15 }})
                                .Build();
+
 
   // // Condensed phase reversible reaction
   // // K_eq = A * exp(C / T) = Equilibrium constant
@@ -128,7 +132,7 @@ int main()
   Process h2o_dissociation = ChemicalReactionBuilder()
                              .SetAerosolScope(accumulation.GetScope(), aqueous_phase)
                              .SetReactants({ h2o })
-                             .SetProducts({ ohm, hp })
+                             .SetProducts({ { ohm }, { hp } })
                              .SetRateConstant(ReversibleRateConstant({ .A_ = 1.14e-2, .C_ = 2300.0, .k_r_ = 0.32 }))
                              .Build();
 
