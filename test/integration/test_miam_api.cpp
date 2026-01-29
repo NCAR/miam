@@ -76,31 +76,35 @@ int main()
   System chemical_system = ConfigureSystem(gas_phase, { small_drop, large_drop, aitken, accumulation }, { dust });
 
   // State array should contain
-  //  1) (GAS.) CO2
-  //  2) (CLOUD.) SMALL_DROP.AQUEOUS.CO2
-  //  3) (CLOUD.) SMALL_DROP.AQUEOUS.H2O
-  //  4) (CLOUD.) SMALL_DROP.AQUEOUS.OH-
-  //  5) (CLOUD.) SMALL_DROP.AQUEOUS.H+
-  //  6) (CLOUD.) SMALL_DROP.AQUEOUS.HCO3-
-  //  7) (CLOUD.) SMALL_DROP.AQUEOUS.CO32-
-  //  8) (CLOUD.) LARGE_DROP.AQUEOUS.CO2
-  //  9) (CLOUD.) LARGE_DROP.AQUEOUS.H2O
-  // 10) (CLOUD.) LARGE_DROP.AQUEOUS.OH-
-  // 11) (CLOUD.) LARGE_DROP.AQUEOUS.H+
-  // 12) (CLOUD.) LARGE_DROP.AQUEOUS.HCO3-
-  // 13) (CLOUD.) LARGE_DROP.AQUEOUS.CO32-
-  // 14) (AEROSOL.) AITKEN.AQUEOUS.CO2           ( Mode )
-  // 15) (AEROSOL.) AITKEN.AQUEOUS.HEXANE        ( Mode )
-  // 16) (AEROSOL.) ACCUMULATION.AQUEOUS.CO2     ( Mode )
-  // 17) (AEROSOL.) ACCUMULATION.AQUEOUS.H2O     ( Mode )
-  // 18) (AEROSOL.) ACCUMULATION.AQUEOUS.OH-     ( Mode )
-  // 19) (AEROSOL.) ACCUMULATION.AQUEOUS.H+      ( Mode )
-  // 20) (AEROSOL.) ACCUMULATION.AQUEOUS.HCO3-   ( Mode )
-  // 21) (AEROSOL.) ACCUMULATION.AQUEOUS.CO32-   ( Mode )
-  // 22) (AEROSOL.) ACCUMULATION.ORGANIC.CO2     ( Mode )
-  // 23) (AEROSOL.) ACCUMULATION.ORGANIC.HEXANE  ( Mode )
-  // 24) (AEROSOL.) DUST.ORGANIC.CO2             ( Section )
-  // 25) (AEROSOL.) DUST.ORGANIC.HEXANE          ( Section )
+  // (GAS.) CO2
+  // (CLOUD.) SMALL_DROP.AQUEOUS.CO2
+  // (CLOUD.) SMALL_DROP.AQUEOUS.H2O
+  // (CLOUD.) SMALL_DROP.AQUEOUS.OH-
+  // (CLOUD.) SMALL_DROP.AQUEOUS.H+
+  // (CLOUD.) SMALL_DROP.AQUEOUS.HCO3-
+  // (CLOUD.) SMALL_DROP.AQUEOUS.CO32-
+  // (CLOUD.) SMALL_DROP.AQUEOUS.H2CO3
+  // (CLOUD.) LARGE_DROP.AQUEOUS.CO2
+  // (CLOUD.) LARGE_DROP.AQUEOUS.H2O
+  // (CLOUD.) LARGE_DROP.AQUEOUS.OH-
+  // (CLOUD.) LARGE_DROP.AQUEOUS.H+
+  // (CLOUD.) LARGE_DROP.AQUEOUS.HCO3-
+  // (CLOUD.) LARGE_DROP.AQUEOUS.CO32-
+  // (CLOUD.) LARGE_DROP.AQUEOUS.H2CO3
+  // (AEROSOL.) AITKEN.AQUEOUS.CO2           ( Mode )
+  // (AEROSOL.) AITKEN.AQUEOUS.HEXANE        ( Mode )
+  // (AEROSOL.) AITKEN.AQUEOUS.H2CO3         ( Mode )
+  // (AEROSOL.) ACCUMULATION.AQUEOUS.CO2     ( Mode )
+  // (AEROSOL.) ACCUMULATION.AQUEOUS.H2O     ( Mode )
+  // (AEROSOL.) ACCUMULATION.AQUEOUS.OH-     ( Mode )
+  // (AEROSOL.) ACCUMULATION.AQUEOUS.H+      ( Mode )
+  // (AEROSOL.) ACCUMULATION.AQUEOUS.HCO3-   ( Mode )
+  // (AEROSOL.) ACCUMULATION.AQUEOUS.CO32-   ( Mode )
+  // (AEROSOL.) ACCUMULATION.AQUEOUS.H2CO3   ( Mode )
+  // (AEROSOL.) ACCUMULATION.ORGANIC.CO2     ( Mode )
+  // (AEROSOL.) ACCUMULATION.ORGANIC.HEXANE  ( Mode )
+  // (AEROSOL.) DUST.ORGANIC.CO2             ( Section )
+  // (AEROSOL.) DUST.ORGANIC.HEXANE          ( Section )
 
   Process co2_photo = ChemicalReactionBuilder()
                       .SetReactants({ co2 })
@@ -127,7 +131,7 @@ int main()
   // First reversible acid-dissociation reaction `H2CO3(aq) <-> HCO3-(aq) + H+(aq)`
   // auto h2co3_hco3m_hp = DissolvedReversibleProcessBuilder()
   Process h2co3_hco3m_hp = ChemicalReactionBuilder()
-                            .SetPhase(aqueous_phase)
+                            .SetAerosolScope(accumulation.GetScope(), aqueous_phase)
                             .SetReactants({ h2co3 })
                             .SetProducts({ { hco3m, 1.0 }, { hp, 1.0 } })
                             .SetRateConstant(ArrheniusRateConstant({ .A_ = 1.0e-3 }))
@@ -135,7 +139,7 @@ int main()
 
   // Second reversible acid-dissociation reaction `HCO3-(aq) <-> CO3--(aq) + H+(aq)`
   Process hco3m_co32m_hp = ChemicalReactionBuilder()
-                            .SetPhase(aqueous_phase)
+                            .SetAerosolScope(accumulation.GetScope(), aqueous_phase)
                             .SetReactants({ hco3m })
                             .SetProducts({ { co32m, 1.0 }, {  hp, 1.0 } })
                             .SetRateConstant(ArrheniusRateConstant({ .A_ = 1.0e-3 }))
