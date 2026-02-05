@@ -6,5 +6,5 @@
 
 namespace
 {
-    constexpr int placeholder = 0;
+    [[maybe_unused]] constexpr int placeholder = 0;
 }
