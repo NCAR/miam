@@ -41,4 +41,3 @@ std::vector<std::string> testUniqueNames()
     EXPECT_EQ(unique_names.size(), names.size());
     return names;
 }
-   
