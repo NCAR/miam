@@ -22,6 +22,10 @@ namespace miam
     template<typename ShapeType, typename MomentType>
     class Distribution
     {
+        // ShapeType is reserved for future use to represent the distribution's shape
+        static_assert(
+            sizeof(ShapeType) >= 0,
+            "ShapeType template parameter is reserved for future use to represent the distribution shape.");
         /// @brief Name for this distribution
         std::string name_;
         /// @brief Phases associated with this distribution (e.g., aqueous, organic)
