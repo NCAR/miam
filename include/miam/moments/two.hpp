@@ -21,7 +21,7 @@ namespace miam
             Two() = default;
             ~Two() = default;
 
-            /// @brief Returns the number of state variables needed to desrcribe the distribution
+            /// @brief Returns the number of state variables needed to describe the distribution
             /// @param phases Phases associated with the distribution
             /// @return Number of state variables
             static constexpr std::size_t StateSize(const std::vector<micm::Phase>& phases)
