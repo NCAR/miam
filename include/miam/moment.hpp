@@ -3,5 +3,5 @@
 
 #pragma once
 
-#include "./moments/single.hpp"
-#include "./moments/two.hpp"
+#include <miam/moments/single.hpp>
+#include <miam/moments/two.hpp>

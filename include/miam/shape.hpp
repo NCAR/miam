@@ -3,5 +3,5 @@
 
 #pragma once
 
-#include "./shapes/delta_function.hpp"
-#include "./shapes/log_normal.hpp"
+#include <miam/shapes/delta_function.hpp>
+#include <miam/shapes/log_normal.hpp>

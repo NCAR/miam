@@ -17,7 +17,6 @@ namespace miam
         {
         public:
             Single() = default;
-            ~Single() = default;
 
             /// @brief Returns the number of state variables needed to describe the distribution
             /// @param phases Phases associated with the distribution
@@ -39,6 +38,7 @@ namespace miam
             static std::vector<std::string> StateVariableNames(const std::string& prefix, const std::vector<micm::Phase>& phases)
             {
                 std::vector<std::string> names;
+                names.reserve(StateSize(phases));
                 for (const auto& phase : phases)
                 {
                     for (const auto& species : phase.UniqueNames())
