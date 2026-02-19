@@ -5,17 +5,17 @@
 
 namespace miam
 {
-    namespace shape
-    {
+  namespace shape
+  {
 
-        /// @brief Log-normal size distribution shape
-        /// @details Represents a log-normal distribution shape for aerosol or cloud particle size distributions.
-        ///          Characterized by a geometric mean diameter and geometric standard deviation.
-        class LogNormal
-        {
-        public:
-            LogNormal() = default;
-            ~LogNormal() = default;
-        };
-    }
-}
+    /// @brief Log-normal size distribution shape
+    /// @details Represents a log-normal distribution shape for aerosol or cloud particle size distributions.
+    ///          Characterized by a geometric mean diameter and geometric standard deviation.
+    class LogNormal
+    {
+     public:
+      LogNormal() = default;
+      ~LogNormal() = default;
+    };
+  }  // namespace shape
+}  // namespace miam
