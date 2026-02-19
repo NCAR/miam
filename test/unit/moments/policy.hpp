@@ -18,23 +18,39 @@ std::vector<micm::Phase> getTestPhases()
     return { phase1, phase2 };
 }
 
-template<typename MomentPolicy>
-std::size_t testStateSize()
+std::vector<std::string> getTestMoments()
 {
-    const auto phases = getTestPhases();
-    EXPECT_GE(MomentPolicy::StateSize(phases), minStateSize);
-    return MomentPolicy::StateSize(phases);
+    return { "VOLUME", "NUMBER_CONCENTRATION", "GEOMETRIC_MEAN_RADIUS", "GEOMETRIC_STANDARD_DEVIATION" };
 }
 
 template<typename MomentPolicy>
-std::vector<std::string> testUniqueNames()
+std::tuple<std::size_t, std::size_t> testStateSize()
 {
     const auto phases = getTestPhases();
-    const auto names = MomentPolicy::StateVariableNames("TEST_DISTRIBUTION", phases);
-    EXPECT_EQ(names.size(), MomentPolicy::StateSize(phases));
+    const auto moments = getTestMoments();
+    EXPECT_GE(std::get<0>(MomentPolicy::StateSize(phases, moments)), minStateSize);
+    EXPECT_GE(std::get<1>(MomentPolicy::StateSize(phases, moments)), 0);
+    return MomentPolicy::StateSize(phases, moments);
+}
+
+template<typename MomentPolicy>
+std::set<std::string> testStateVariableNames()
+{
+    const auto phases = getTestPhases();
+    const auto moments = getTestMoments();
+    const auto names = MomentPolicy::StateVariableNames("TEST_DISTRIBUTION", phases, moments);
+    EXPECT_EQ(names.size(), std::get<0>(MomentPolicy::StateSize(phases, moments)));
     
-    // Check that names are unique
-    std::set<std::string> unique_names(names.begin(), names.end());
-    EXPECT_EQ(unique_names.size(), names.size());
+    return names;
+}
+
+template<typename MomentPolicy>
+std::set<std::string> testStateParameterNames()
+{
+    const auto phases = getTestPhases();
+    const auto moments = getTestMoments();
+    const auto names = MomentPolicy::StateParameterNames("TEST_DISTRIBUTION", phases, moments);
+    EXPECT_EQ(names.size(), std::get<1>(MomentPolicy::StateSize(phases, moments)));
+
     return names;
 }

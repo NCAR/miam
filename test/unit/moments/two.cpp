@@ -7,15 +7,23 @@
 TEST(MomentsTwo, StateSize)
 {
     auto size = testStateSize<miam::moment::Two>();
-    EXPECT_EQ(size, 4);
+    EXPECT_EQ(std::get<0>(size), 4);
+    EXPECT_EQ(std::get<1>(size), 1);
 }
 
-TEST(MomentsTwo, UniqueNames)
+TEST(MomentsTwo, StateVariableNames)
 {
-    auto names = testUniqueNames<miam::moment::Two>();
+    auto names = testStateVariableNames<miam::moment::Two>();
     EXPECT_EQ(names.size(), 4);
-    EXPECT_EQ(names[0], "TEST_DISTRIBUTION.PHASE1.SPECIES_A");
-    EXPECT_EQ(names[1], "TEST_DISTRIBUTION.PHASE1.SPECIES_B");
-    EXPECT_EQ(names[2], "TEST_DISTRIBUTION.PHASE2.SPECIES_C");
-    EXPECT_EQ(names[3], "TEST_DISTRIBUTION.number_concentration");
+    EXPECT_TRUE(names.contains("TEST_DISTRIBUTION.PHASE1.SPECIES_A"));
+    EXPECT_TRUE(names.contains("TEST_DISTRIBUTION.PHASE1.SPECIES_B"));
+    EXPECT_TRUE(names.contains("TEST_DISTRIBUTION.PHASE2.SPECIES_C"));
+    EXPECT_TRUE(names.contains("TEST_DISTRIBUTION.NUMBER_CONCENTRATION"));
+}
+
+TEST(MomentsTwo, StateParameterNames)
+{
+    auto names = testStateParameterNames<miam::moment::Two>();
+    EXPECT_EQ(names.size(), 1);
+    EXPECT_TRUE(names.contains("TEST_DISTRIBUTION.GEOMETRIC_STANDARD_DEVIATION"));
 }
