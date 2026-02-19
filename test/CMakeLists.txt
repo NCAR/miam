@@ -8,3 +8,4 @@ include(test_util)
 set(CMAKE_CXX_CLANG_TIDY "")
 
 add_subdirectory(integration)
+add_subdirectory(unit)

@@ -1,13 +1,5 @@
-#include <miam/model/aerosol_scheme.hpp>
-#include <miam/model/mode.hpp>
-#include <miam/model/section.hpp>
-#include <miam/util/solver_utils.hpp>
-
-#include <micm/process/transfer_coefficient/phase_transfer_coefficient.hpp>
-#include <micm/process/chemical_reaction_builder.hpp>
-#include <micm/Process.hpp>
-#include <micm/solver/rosenbrock.hpp>
-#include <micm/solver/solver_builder.hpp>
+#include <miam/miam.hpp>
+#include <micm/CPU.hpp>
 
 #include <iomanip>
 #include <iostream>
@@ -30,49 +22,50 @@ int main()
   Phase aqueous_phase{ "AQUEOUS", { { co2 } , { h2o } , { ohm } , { hp } , { hco3m } , { co32m } } };
   Phase organic_phase{ "ORGANIC", { { co2, 16.2 }, { hexane } } };
 
-  // Cloud
-  auto small_drop = Mode{
+  // Cloud droplets modeled with 1-moment log-normal distributions
+  auto small_drop = Distribution<shape::LogNormal, moment::Single>{
     "SMALL_DROP",
-    { aqueous_phase },
-    DistributionType::SingleMoment, // tracks total mass in state; fixed radius; number calculated
-    5.0e-6,                         // Geometric mean diameter
-    1.6,                            // Geometric standard deviation
+    { aqueous_phase }
+    // 5.0e-6,                         // Geometric mean diameter
+    // 1.6,                            // Geometric standard deviation
   };
   
-  auto large_drop = Mode{
+  // Larger cloud droplets modeled with 1-moment log-normal distributions
+  auto large_drop = Distribution<shape::LogNormal, moment::Single>{
     "LARGE_DROP",
-    { aqueous_phase },
-    DistributionType::SingleMoment, // tracks total mass in state; fixed radius; number calculated
-    1.0e-5,                         // Geometric mean diameter
-    1.8,                            // Geometric standard deviation
+    { aqueous_phase }
+    // 1.0e-5,                         // Geometric mean diameter
+    // 1.8,                            // Geometric standard deviation
   };
 
-  // Model aerosol with 2 modes and 1 section
-  auto aitken = Mode{
+  // Aerosol model with 2-moment distribution
+  auto aitken = Distribution<shape::LogNormal, moment::Two>{
     "AITKEN",
-    { aqueous_phase },           // Multiple phases
-    DistributionType::TwoMoment, // tracks total mass and number concentration in state; radius calculated
-    1.0e-7,                      // Geometric mean diameter
-    1.6,                         // Geometric standard deviation
+    { aqueous_phase }
+    // 1.0e-7,                      // Geometric mean diameter
+    // 1.6,                         // Geometric standard deviation
   };
   
-  auto accumulation = Mode{
+  // Another aerosol mode with 2-moment distribution
+  auto accumulation = Distribution<shape::LogNormal, moment::Two>{
     "ACCUMULATION",
-    { aqueous_phase, organic_phase }, // Multiple phases
-    DistributionType::TwoMoment,      // tracks total mass and number concentration in state; radius calculated
-    1.0e-6,                           // Geometric mean diameter
-    1.6,                              // Geometric standard deviation
+    { aqueous_phase, organic_phase }  // Multiple phases
+    // 1.0e-6,                           // Geometric mean diameter
+    // 1.6,                              // Geometric standard deviation
   };
 
-  auto dust = Section{
+  // Dust particle section with 2-moment delta-function distribution
+  auto dust = Distribution<shape::DeltaFunction, moment::Two>{
     "DUST",
-    { organic_phase }, 
-    DistributionType::TwoMoment, // tracks total mass and number concentration in state; radius calculated
-    1.0e-6,                      // Minimum diameter
-    0.003                        // Maximum diameter
+    { organic_phase }
+    // 1.0e-6,                      // Minimum diameter
+    // 0.003                        // Maximum diameter
   };
 
-  System chemical_system = ConfigureSystem(gas_phase, { small_drop, large_drop, aitken, accumulation }, { dust });
+  auto system = System({
+    .gas_phase_ = gas_phase,
+    .external_models_ = { small_drop, large_drop, aitken, accumulation, dust }
+  });
 
   // State array should contain
   //  1) (GAS.) CO2
@@ -89,18 +82,26 @@ int main()
   // 12) (CLOUD.) LARGE_DROP.AQUEOUS.HCO3-
   // 13) (CLOUD.) LARGE_DROP.AQUEOUS.CO32-
   // 14) (AEROSOL.) AITKEN.AQUEOUS.CO2
-  // 15) (AEROSOL.) AITKEN.AQUEOUS.HEXANE
-  // 16) (AEROSOL.) ACCUMULATION.AQUEOUS.CO2
-  // 17) (AEROSOL.) ACCUMULATION.AQUEOUS.H2O
-  // 18) (AEROSOL.) ACCUMULATION.AQUEOUS.OH-
-  // 19) (AEROSOL.) ACCUMULATION.AQUEOUS.H+
-  // 20) (AEROSOL.) ACCUMULATION.AQUEOUS.HCO3-
-  // 21) (AEROSOL.) ACCUMULATION.AQUEOUS.CO32-
-  // 22) (AEROSOL.) ACCUMULATION.ORGANIC.CO2
-  // 23) (AEROSOL.) ACCUMULATION.ORGANIC.HEXANE
-  // 24) (AEROSOL.) DUST.ORGANIC.CO2
-  // 25) (AEROSOL.) DUST.ORGANIC.HEXANE
+  // 15) (AEROSOL.) AITKEN.AQUEOUS.H2O
+  // 16) (AEROSOL.) AITKEN.AQUEOUS.OH-
+  // 17) (AEROSOL.) AITKEN.AQUEOUS.H+
+  // 18) (AEROSOL.) AITKEN.AQUEOUS.HCO3-
+  // 19) (AEROSOL.) AITKEN.AQUEOUS.CO32-
+  // 20) (AEROSOL.) AITKEN.number_concentration
+  // 21) (AEROSOL.) ACCUMULATION.AQUEOUS.CO2
+  // 22) (AEROSOL.) ACCUMULATION.AQUEOUS.H2O
+  // 23) (AEROSOL.) ACCUMULATION.AQUEOUS.OH-
+  // 24) (AEROSOL.) ACCUMULATION.AQUEOUS.H+
+  // 25) (AEROSOL.) ACCUMULATION.AQUEOUS.HCO3-
+  // 26) (AEROSOL.) ACCUMULATION.AQUEOUS.CO32-
+  // 27) (AEROSOL.) ACCUMULATION.ORGANIC.CO2
+  // 28) (AEROSOL.) ACCUMULATION.ORGANIC.CH6H14
+  // 29) (AEROSOL.) ACCUMULATION.number_concentration
+  // 30) (AEROSOL.) DUST.ORGANIC.CO2
+  // 31) (AEROSOL.) DUST.ORGANIC.CH6H14
+  // 32) (AEROSOL.) DUST.number_concentration
 
+#if 0
   Process co2_photo = ChemicalReactionBuilder()
                       .SetReactants({ co2 })
                       .SetRateConstant(ArrheniusRateConstant({ .A_ = 1.0e-3 }))
@@ -134,9 +135,14 @@ int main()
 
   std::vector<Process> reactions{ co2_photo, co2_phase_transfer, h2o_dissociation };
 
+#else
+  std::vector<Process> reactions{};
+#endif
+
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                  .SetSystem(chemical_system)
+                  .SetSystem(system)
                   .SetReactions(reactions)
+                  .SetIgnoreUnusedSpecies(true)
                   .Build();
   
   State state = solver.GetState();
@@ -154,7 +160,8 @@ int main()
 
   // gas
   state.SetConcentration(co2, 0.2);
-  
+
+#if 0
   // cloud
   state.SetConcentration(small_drop.Species(aqueous_phase, h2o), 0.3);      // mol m-3
   state.SetConcentration(large_drop.Species(aqueous_phase, h2o), 0.3);      // mol m-3
@@ -193,6 +200,8 @@ int main()
     auto result = solver.Solve(500.0, state);
     // state.PrintState(i * 500);
   }
+
+#endif
 
   // Print with species names if variable_names_ is available
   std::cout << "\nState Variables by Species:" << std::endl;
