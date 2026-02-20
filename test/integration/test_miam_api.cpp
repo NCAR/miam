@@ -1,6 +1,5 @@
 #include <miam/miam.hpp>
 #include <micm/CPU.hpp>
-#include <micm/process/rate_constant/arrhenius_rate_constant.hpp>
 
 #include <iomanip>
 #include <iostream>
@@ -139,7 +138,7 @@ int main()
                              .SetReactants({ h2o })
                              .SetProducts({ ohm, hp })
                              .SetSolvent(h2o)
-                             .SetEquilibriumConstant(process::EquilibriumConstant(process::EquilibriumConstantParameters{ .A_ = 1.14e-2, .C_ = 2300.0, .T0_ = 298.15 }))
+                             .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 1.14e-2, .C_ = 2300.0, .T0_ = 298.15 }))
                              .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 }))
                              .Build();
 
@@ -152,7 +151,7 @@ int main()
                           .SetReactants({ co2, h2o })
                           .SetProducts({ h2co3 })
                           .SetSolvent(h2o)
-                          .SetEquilibriumConstant(process::EquilibriumConstant(process::EquilibriumConstantParameters{ .A_ = 1.70e3, .C_ = 2400.0, .T0_ = 298.15 }))
+                          .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 1.70e3, .C_ = 2400.0, .T0_ = 298.15 }))
                           .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 }))
                           .Build();
 
@@ -165,7 +164,7 @@ int main()
                                .SetReactants({ h2co3 })
                                .SetProducts({ hco3m, hp })
                                .SetSolvent(h2o)
-                               .SetEquilibriumConstant(process::EquilibriumConstant(process::EquilibriumConstantParameters{ .A_ = 4.27e2, .C_ = 2300.0, .T0_ = 298.15 }))
+                               .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 4.27e2, .C_ = 2300.0, .T0_ = 298.15 }))
                                .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 2.5e10, .C_ = 4.0e4 }))
                                .Build();
 
@@ -178,7 +177,7 @@ int main()
                                .SetReactants({ hco3m })
                                .SetProducts({ co32m, hp })
                                .SetSolvent(h2o)
-                               .SetEquilibriumConstant(process::EquilibriumConstant(process::EquilibriumConstantParameters{ .A_ = 1.70e1, .C_ = 2300.0, .T0_ = 298.15 }))
+                               .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 1.70e1, .C_ = 2300.0, .T0_ = 298.15 }))
                                .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 6.4e9, .C_ = 3.1e4 }))
                                .Build();
   

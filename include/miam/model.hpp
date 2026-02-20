@@ -4,8 +4,7 @@
 #pragma once
 
 #include <miam/representation.hpp>
-#include <miam/processes/dissolved_reversible_reaction.hpp>
-#include <micm/process/process.hpp>
+#include <miam/process.hpp>
 #include <micm/system/conditions.hpp>
 
 #include <functional>
@@ -34,7 +33,6 @@ namespace miam
 
         std::string name_;
         std::vector<RepresentationVariant> representations_;
-        std::vector<micm::Process> processes_{};
         std::vector<process::DissolvedReversibleReaction> dissolved_reactions_{};
 
         /// @brief Returns the total state size (number of variables, number of parameters)
@@ -87,12 +85,6 @@ namespace miam
             // For now, return all state variable names
             // In a full implementation, this would be determined by the processes
             return StateVariableNames();
-        }
-
-        /// @brief Add processes to the model
-        void AddProcesses(const std::vector<micm::Process>& new_processes)
-        {
-            processes_.insert(processes_.end(), new_processes.begin(), new_processes.end());
         }
 
         /// @brief Add dissolved reversible reactions to the model
