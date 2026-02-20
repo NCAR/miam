@@ -23,33 +23,41 @@ int main()
   Phase organic_phase{ "ORGANIC", { { co2, 16.2 }, { hexane } } };
 
   // Cloud droplets modeled with 1-moment log-normal distributions
-  auto small_drop = Distribution<shape::LogNormal, moment::Single>{
+  auto small_drop = representation::SingleMomentMode{
     "SMALL_DROP",
-    { aqueous_phase }
+    { aqueous_phase },
+    1.0e-7, // geometric mean radius (m)
+    1.1     // geometric standard deviation
   };
   
   // Larger cloud droplets modeled with 1-moment log-normal distributions
-  auto large_drop = Distribution<shape::LogNormal, moment::Single>{
+  auto large_drop = representation::SingleMomentMode{
     "LARGE_DROP",
-    { aqueous_phase }
+    { aqueous_phase },
+    1.0e-6, // geometric mean radius (m)
+    1.4     // geometric standard deviation
   };
 
   // Aerosol model with 2-moment distribution
-  auto aitken = Distribution<shape::LogNormal, moment::Two>{
+  auto aitken = representation::TwoMomentMode{
     "AITKEN",
-    { aqueous_phase }
+    { aqueous_phase },
+    1.2     // geometric standard deviation
   };
   
   // Another aerosol mode with 2-moment distribution
-  auto accumulation = Distribution<shape::LogNormal, moment::Two>{
+  auto accumulation = representation::TwoMomentMode{
     "ACCUMULATION",
-    { aqueous_phase, organic_phase }  // Multiple phases
+    { aqueous_phase, organic_phase },  // Multiple phases
+    1.4     // geometric standard deviation
   };
 
-  // Dust particle section with 2-moment delta-function distribution
-  auto dust = Distribution<shape::DeltaFunction, moment::Two>{
+  // Dust particle section
+  auto dust = representation::UniformSection{
     "DUST",
-    { organic_phase }
+    { organic_phase },
+    1.0e-7, // min radius (m)
+    1.0e-6  // max radius (m)
   };
 
   auto system = System({
@@ -209,21 +217,17 @@ int main()
   // aerosol section
   state[dust.Species(organic_phase, co2)] = 0.1;            // mol m-3
 
-  // shape parameters: single moment log-normal distributions
-  small_drop.SetParameter(state, small_drop.Shape().GeometricMeanRadius(), 5.0e-6); // m
-  large_drop.SetParameter(state, large_drop.Shape().GeometricMeanRadius(), 1.0e-5); // m
-  small_drop.SetParameter(state, small_drop.Shape().GeometricStandardDeviation(), 1.6); // unitless
-  large_drop.SetParameter(state, large_drop.Shape().GeometricStandardDeviation(), 1.8); // unitless
+  // set aerosol state parameters
+  state[aitken.NumberConcentration()] = 1.0e8; // m-3
+  state[accumulation.NumberConcentration()] = 1.0e7; // m-3
 
-  // shape parameters: two moment log-normal distributions
-  state[aitken.Shape().NumberConcentration()] = 1.0e8; // m-3
-  state[accumulation.Shape().NumberConcentration()] = 1.0e7; // m-3
-  aitken.SetParameter(state, aitken.Shape().GeometricStandardDeviation(), 1.6); // unitless
-  accumulation.SetParameter(state, accumulation.Shape().GeometricStandardDeviation(), 1.8); // unitless
+  // Set aerosol parameters
+  small_drop.SetDefaultParameters(state);
+  large_drop.SetDefaultParameters(state);
+  aitken.SetDefaultParameters(state);
+  accumulation.SetDefaultParameters(state);
+  dust.SetDefaultParameters(state);
 
-  // shape parameters: two moment delta-function distribution
-  state[dust.Shape().NumberConcentration()] = 1.0e6; // m-3
-  
   // state.PrintHeader();
   for (int i = 0; i < 10; ++i)
   {

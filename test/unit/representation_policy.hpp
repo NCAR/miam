@@ -50,3 +50,22 @@ std::set<std::string> testStateParameterNames()
 
     return names;
 }
+
+template<typename ModelPolicy>
+std::map<std::string, double> testDefaultParameters()
+{
+    const auto phases = getTestPhases();
+    auto model = ModelPolicy{ test_model_name, phases };
+    auto params = model.DefaultParameters();
+    auto param_names = model.StateParameterNames();
+    
+    // Make sure the number of default parameters matches the number of state parameters
+    EXPECT_EQ(params.size(), param_names.size());
+    
+    // Make sure all state parameter names have default values
+    for (const auto& name : param_names)
+    {
+        EXPECT_TRUE(params.find(name) != params.end()); // name should exist in params
+    }
+    return params;
+}
