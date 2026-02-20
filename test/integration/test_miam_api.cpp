@@ -1,5 +1,6 @@
 #include <miam/miam.hpp>
 #include <micm/CPU.hpp>
+#include <micm/process/rate_constant/arrhenius_rate_constant.hpp>
 
 #include <iomanip>
 #include <iostream>
@@ -16,6 +17,7 @@ int main()
   auto hp     = Species{ "H+" };
   auto hco3m  = Species{ "HCO3-" };
   auto co32m  = Species{ "CO32-" };
+  auto h2co3  = Species{ "H2CO3" };
   auto hexane = Species{ "C6H14" };
 
   Phase gas_phase{ "GAS", { { co2, 31.2 } } };
@@ -60,10 +62,17 @@ int main()
     1.0e-6  // max radius (m)
   };
 
-  auto system = System({
-    .gas_phase_ = gas_phase,
-    .external_models_ = { small_drop, large_drop, aitken, accumulation, dust }
-  });
+  auto aerosol_model = Model{
+    .name_ = "AEROSOL",
+    .representations_ = { aitken, accumulation, dust }
+  };
+
+  auto cloud_model = Model{
+    .name_ = "CLOUD",
+    .representations_ = { small_drop, large_drop }
+  };
+
+  auto system = System(gas_phase, aerosol_model, cloud_model);
 
   // State array should contain
   //  1) (GAS.) CO2
@@ -119,73 +128,76 @@ int main()
                                .SetSolvent(aqueous_phase, h2o )
                                .SetTransferCoefficient(HenrysLawCoefficient(hlc_co2_parms))
                                .Build();
+#endif
 
   // // Condensed phase reversible reaction
   // // K_eq = A * exp( C ( 1 / T0 - 1 / T ) ) = Equilibrium constant
   // // k_r = reverse rate constant
   // // (k_f = K_eq * k_r = forward rate constant)
-  Process h2o_dissociation = DissolvedReversibleReactionBuilder()
+  auto h2o_dissociation = process::DissolvedReversibleReactionBuilder()
                              .SetPhase(aqueous_phase)
                              .SetReactants({ h2o })
                              .SetProducts({ ohm, hp })
                              .SetSolvent(h2o)
-                             .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.14e-2, .C_ = 2300.0, .T0_ = 298.15 }))
-                             .SetReverseRateConstant(ArrheniusRateConstant({ .A_ = 1.4e11, .E_a_ = 5.1e4 }))
+                             .SetEquilibriumConstant(process::EquilibriumConstant(process::EquilibriumConstantParameters{ .A_ = 1.14e-2, .C_ = 2300.0, .T0_ = 298.15 }))
+                             .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 }))
                              .Build();
 
   // Condensed phase reversible reaction: CO2 hydration
   // K_eq = A * exp( C ( 1 / T0 - 1 / T ) ) = Equilibrium constant
   // k_r = reverse rate constant
   // (k_f = K_eq * k_r = forward rate constant)
-  Process co2_hydration = DissolvedReversibleReactionBuilder()
+  auto co2_hydration = process::DissolvedReversibleReactionBuilder()
                           .SetPhase(aqueous_phase)
                           .SetReactants({ co2, h2o })
                           .SetProducts({ h2co3 })
                           .SetSolvent(h2o)
-                          .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.70e3, .C_ = 2400.0, .T0_ = 298.15 }))
-                          .SetReverseRateConstant(ArrheniusRateConstant({ .A_ = 1.4e11, .E_a_ = 5.1e4 }))
+                          .SetEquilibriumConstant(process::EquilibriumConstant(process::EquilibriumConstantParameters{ .A_ = 1.70e3, .C_ = 2400.0, .T0_ = 298.15 }))
+                          .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 }))
                           .Build();
 
   // Condensed phase reversible reaction: H2CO3 dissociation
   // K_eq = A * exp( C ( 1 / T0 - 1 / T ) ) = Equilibrium constant
   // k_r = reverse rate constant
   // (k_f = K_eq * k_r = forward rate constant)
-  Process h2co3_dissociation = DissolvedReversibleReactionBuilder()
+  auto h2co3_dissociation = process::DissolvedReversibleReactionBuilder()
                                .SetPhase(aqueous_phase)
                                .SetReactants({ h2co3 })
                                .SetProducts({ hco3m, hp })
                                .SetSolvent(h2o)
-                               .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 4.27e2, .C_ = 2300.0, .T0_ = 298.15 }))
-                               .SetReverseRateConstant(ArrheniusRateConstant({ .A_ = 2.5e10, .E_a_ = 4.0e4 }))
+                               .SetEquilibriumConstant(process::EquilibriumConstant(process::EquilibriumConstantParameters{ .A_ = 4.27e2, .C_ = 2300.0, .T0_ = 298.15 }))
+                               .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 2.5e10, .C_ = 4.0e4 }))
                                .Build();
 
   // Condensed phase reversible reaction: HCO3- dissociation
   // K_eq = A * exp( C ( 1 / T0 - 1 / T ) ) = Equilibrium constant
   // k_r = reverse rate constant
   // (k_f = K_eq * k_r = forward rate constant)
-  Process hco3m_dissociation = DissolvedReversibleReactionBuilder()
+  auto hco3m_dissociation = process::DissolvedReversibleReactionBuilder()
                                .SetPhase(aqueous_phase)
                                .SetReactants({ hco3m })
                                .SetProducts({ co32m, hp })
                                .SetSolvent(h2o)
-                               .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.70e1, .C_ = 2300.0, .T0_ = 298.15 }))
-                               .SetReverseRateConstant(ArrheniusRateConstant({ .A_ = 6.4e9, .E_a_ = 3.1e4 }))
+                               .SetEquilibriumConstant(process::EquilibriumConstant(process::EquilibriumConstantParameters{ .A_ = 1.70e1, .C_ = 2300.0, .T0_ = 298.15 }))
+                               .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 6.4e9, .C_ = 3.1e4 }))
                                .Build();
-#endif
   
-  std::vector<Process> reactions{
+  std::vector<process::DissolvedReversibleReaction> reactions{
 //    co2_photo,
 //    co2_phase_transfer,
-//    h2o_dissociation,
-//    co2_hydration,
-//    h2co3_dissociation,
-//    hco3m_dissociation
+    h2o_dissociation,
+    co2_hydration,
+    h2co3_dissociation,
+    hco3m_dissociation
   };
 
+  aerosol_model.AddProcesses(reactions);
+  cloud_model.AddProcesses(reactions);
 
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
-                  .SetReactions(reactions)
+                  .AddExternalModelProcesses(aerosol_model)
+                  .AddExternalModelProcesses(cloud_model)
                   .SetIgnoreUnusedSpecies(true)
                   .Build();
   
