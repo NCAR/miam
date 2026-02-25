@@ -20,7 +20,7 @@ int main()
   auto hexane = Species{ "C6H14" };
 
   Phase gas_phase{ "GAS", { { co2, 31.2 } } };
-  Phase aqueous_phase{ "AQUEOUS", { { co2 } , { h2o } , { ohm } , { hp } , { hco3m } , { co32m } } };
+  Phase aqueous_phase{ "AQUEOUS", { { co2 } , { h2o } , { ohm } , { hp } , { hco3m } , { co32m }, { h2co3 } } };
   Phase organic_phase{ "ORGANIC", { { co2, 16.2 }, { hexane } } };
 
   // Cloud droplets modeled with 1-moment log-normal distributions

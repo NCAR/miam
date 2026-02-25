@@ -103,9 +103,13 @@ namespace miam
         std::set<std::pair<std::size_t, std::size_t>> NonZeroJacobianElements(
             const std::unordered_map<std::string, std::size_t>& state_indices) const
         {
+            // Collect needed Jacobian element indices from all processes
             std::set<std::pair<std::size_t, std::size_t>> elements;
-            // Process-specific Jacobian elements would be added here
-            // For now, return empty set
+            auto phase_prefixes = CollectPhaseStatePrefixes();
+            for (const auto& reaction : dissolved_reactions_)            {
+                auto process_elements = reaction.NonZeroJacobianElements(phase_prefixes, state_indices);
+                elements.insert(process_elements.begin(), process_elements.end());
+            }
             return elements;
         }
 

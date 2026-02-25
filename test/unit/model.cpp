@@ -315,6 +315,240 @@ TEST(Model, SpeciesUsedWithDifferentPhasesInReactions)
     EXPECT_TRUE(species_used.find("PARTICLE.ORGANIC.C6H14") == species_used.end());
 }
 
+TEST(Model, NonZeroJacobianElementsWithNoProcesses)
+{
+    auto h2o = micm::Species{ "H2O" };
+    auto co2 = micm::Species{ "CO2" };
+    
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { co2 } } };
+    
+    auto mode = representation::SingleMomentMode{ "MODE1", { aqueous_phase } };
+    
+    Model model;
+    model.name_ = "TEST_MODEL";
+    model.representations_.push_back(mode);
+    
+    std::unordered_map<std::string, std::size_t> state_indices;
+    state_indices["MODE1.AQUEOUS.H2O"] = 0;
+    state_indices["MODE1.AQUEOUS.CO2"] = 1;
+    
+    auto jacobian_elements = model.NonZeroJacobianElements(state_indices);
+    
+    // Should be empty since no processes
+    EXPECT_EQ(jacobian_elements.size(), 0);
+}
+
+TEST(Model, NonZeroJacobianElementsWithSingleProcess)
+{
+    auto h2o = micm::Species{ "H2O" };
+    auto hp = micm::Species{ "H+" };
+    auto ohm = micm::Species{ "OH-" };
+    
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
+    
+    auto mode = representation::SingleMomentMode{ "SMALL_DROP", { aqueous_phase } };
+    
+    auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
+    auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
+    
+    // H2O <-> H+ + OH-
+    process::DissolvedReversibleReaction reaction{
+        forward_rate,
+        reverse_rate,
+        { h2o },
+        { hp, ohm },
+        h2o,
+        aqueous_phase
+    };
+    
+    Model model;
+    model.name_ = "TEST_MODEL";
+    model.representations_.push_back(mode);
+    model.dissolved_reactions_.push_back(reaction);
+    
+    std::unordered_map<std::string, std::size_t> state_indices;
+    state_indices["SMALL_DROP.AQUEOUS.H2O"] = 0;
+    state_indices["SMALL_DROP.AQUEOUS.H+"] = 1;
+    state_indices["SMALL_DROP.AQUEOUS.OH-"] = 2;
+    
+    auto jacobian_elements = model.NonZeroJacobianElements(state_indices);
+    
+    // 9 elements for H2O <-> H+ + OH- reaction
+    EXPECT_EQ(jacobian_elements.size(), 9);
+    
+    // Verify all elements are present
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+        for (std::size_t j = 0; j < 3; ++j)
+        {
+            EXPECT_TRUE(jacobian_elements.find({i, j}) != jacobian_elements.end());
+        }
+    }
+}
+
+TEST(Model, NonZeroJacobianElementsWithMultipleProcesses)
+{
+    auto h2o = micm::Species{ "H2O" };
+    auto hp = micm::Species{ "H+" };
+    auto ohm = micm::Species{ "OH-" };
+    auto co2 = micm::Species{ "CO2" };
+    auto h2co3 = micm::Species{ "H2CO3" };
+    
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm }, { co2 }, { h2co3 } } };
+    
+    auto mode = representation::TwoMomentMode{ "AITKEN", { aqueous_phase } };
+    
+    auto h2o_forward = [](const micm::Conditions& conditions) { return 1.0e-14; };
+    auto h2o_reverse = [](const micm::Conditions& conditions) { return 1.0e11; };
+    
+    process::DissolvedReversibleReaction h2o_dissociation{
+        h2o_forward,
+        h2o_reverse,
+        { h2o },
+        { hp, ohm },
+        h2o,
+        aqueous_phase
+    };
+    
+    auto co2_forward = [](const micm::Conditions& conditions) { return 1.0e-3; };
+    auto co2_reverse = [](const micm::Conditions& conditions) { return 1.0e2; };
+    
+    process::DissolvedReversibleReaction co2_hydration{
+        co2_forward,
+        co2_reverse,
+        { co2, h2o },
+        { h2co3 },
+        h2o,
+        aqueous_phase
+    };
+    
+    Model model;
+    model.name_ = "TEST_MODEL";
+    model.representations_.push_back(mode);
+    model.dissolved_reactions_.push_back(h2o_dissociation);
+    model.dissolved_reactions_.push_back(co2_hydration);
+    
+    std::unordered_map<std::string, std::size_t> state_indices;
+    state_indices["AITKEN.AQUEOUS.H2O"] = 0;
+    state_indices["AITKEN.AQUEOUS.H+"] = 1;
+    state_indices["AITKEN.AQUEOUS.OH-"] = 2;
+    state_indices["AITKEN.AQUEOUS.CO2"] = 3;
+    state_indices["AITKEN.AQUEOUS.H2CO3"] = 4;
+    
+    auto jacobian_elements = model.NonZeroJacobianElements(state_indices);
+    
+    // Should have contributions from both reactions
+    // H2O dissociation affects H2O, H+, OH- (9 elements)
+    // CO2 hydration affects CO2, H2O, H2CO3 (9 elements)
+    // But there's overlap in H2O row/column, so total < 18
+    EXPECT_GT(jacobian_elements.size(), 9);  // More than just one reaction
+    EXPECT_LE(jacobian_elements.size(), 18); // Less than or equal to sum of both
+    
+    // Check some specific elements
+    EXPECT_TRUE(jacobian_elements.find({0, 0}) != jacobian_elements.end()); // d[H2O]/d[H2O]
+    EXPECT_TRUE(jacobian_elements.find({1, 0}) != jacobian_elements.end()); // d[H+]/d[H2O]
+    EXPECT_TRUE(jacobian_elements.find({3, 0}) != jacobian_elements.end()); // d[CO2]/d[H2O]
+    EXPECT_TRUE(jacobian_elements.find({4, 3}) != jacobian_elements.end()); // d[H2CO3]/d[CO2]
+}
+
+TEST(Model, NonZeroJacobianElementsWithMultipleRepresentations)
+{
+    auto h2o = micm::Species{ "H2O" };
+    auto hp = micm::Species{ "H+" };
+    auto ohm = micm::Species{ "OH-" };
+    
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
+    
+    auto small_drop = representation::SingleMomentMode{ "SMALL_DROP", { aqueous_phase } };
+    auto large_drop = representation::SingleMomentMode{ "LARGE_DROP", { aqueous_phase } };
+    
+    auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
+    auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
+    
+    process::DissolvedReversibleReaction reaction{
+        forward_rate,
+        reverse_rate,
+        { h2o },
+        { hp, ohm },
+        h2o,
+        aqueous_phase
+    };
+    
+    Model model;
+    model.name_ = "TEST_MODEL";
+    model.representations_.push_back(small_drop);
+    model.representations_.push_back(large_drop);
+    model.dissolved_reactions_.push_back(reaction);
+    
+    std::unordered_map<std::string, std::size_t> state_indices;
+    state_indices["SMALL_DROP.AQUEOUS.H2O"] = 0;
+    state_indices["SMALL_DROP.AQUEOUS.H+"] = 1;
+    state_indices["SMALL_DROP.AQUEOUS.OH-"] = 2;
+    state_indices["LARGE_DROP.AQUEOUS.H2O"] = 3;
+    state_indices["LARGE_DROP.AQUEOUS.H+"] = 4;
+    state_indices["LARGE_DROP.AQUEOUS.OH-"] = 5;
+    
+    auto jacobian_elements = model.NonZeroJacobianElements(state_indices);
+    
+    // 9 elements per representation × 2 representations = 18 elements
+    EXPECT_EQ(jacobian_elements.size(), 18);
+    
+    // Check elements from both representations
+    EXPECT_TRUE(jacobian_elements.find({0, 0}) != jacobian_elements.end()); // SMALL_DROP
+    EXPECT_TRUE(jacobian_elements.find({1, 2}) != jacobian_elements.end()); // SMALL_DROP
+    EXPECT_TRUE(jacobian_elements.find({3, 3}) != jacobian_elements.end()); // LARGE_DROP
+    EXPECT_TRUE(jacobian_elements.find({4, 5}) != jacobian_elements.end()); // LARGE_DROP
+}
+
+TEST(Model, NonZeroJacobianElementsMixedTypes)
+{
+    auto h2o = micm::Species{ "H2O" };
+    auto co2 = micm::Species{ "CO2" };
+    auto h2co3 = micm::Species{ "H2CO3" };
+    
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { co2 }, { h2co3 } } };
+    
+    auto mode1 = representation::SingleMomentMode{ "MODE1", { aqueous_phase } };
+    auto mode2 = representation::TwoMomentMode{ "MODE2", { aqueous_phase } };
+    
+    auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-3; };
+    auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e2; };
+    
+    process::DissolvedReversibleReaction reaction{
+        forward_rate,
+        reverse_rate,
+        { co2, h2o },
+        { h2co3 },
+        h2o,
+        aqueous_phase
+    };
+    
+    Model model;
+    model.name_ = "TEST_MODEL";
+    model.representations_.push_back(mode1);
+    model.representations_.push_back(mode2);
+    model.dissolved_reactions_.push_back(reaction);
+    
+    std::unordered_map<std::string, std::size_t> state_indices;
+    state_indices["MODE1.AQUEOUS.H2O"] = 0;
+    state_indices["MODE1.AQUEOUS.CO2"] = 1;
+    state_indices["MODE1.AQUEOUS.H2CO3"] = 2;
+    state_indices["MODE2.AQUEOUS.H2O"] = 3;
+    state_indices["MODE2.AQUEOUS.CO2"] = 4;
+    state_indices["MODE2.AQUEOUS.H2CO3"] = 5;
+    
+    auto jacobian_elements = model.NonZeroJacobianElements(state_indices);
+    
+    // 9 elements per representation × 2 representations = 18 elements
+    EXPECT_EQ(jacobian_elements.size(), 18);
+    
+    // Verify elements exist for both representations
+    EXPECT_TRUE(jacobian_elements.find({0, 1}) != jacobian_elements.end()); // MODE1
+    EXPECT_TRUE(jacobian_elements.find({2, 0}) != jacobian_elements.end()); // MODE1
+    EXPECT_TRUE(jacobian_elements.find({3, 4}) != jacobian_elements.end()); // MODE2
+    EXPECT_TRUE(jacobian_elements.find({5, 3}) != jacobian_elements.end()); // MODE2
+}
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
