@@ -146,6 +146,63 @@ TEST(SingleMomentMode, PrefixConsistency)
     }
 }
 
+TEST(SingleMomentMode, NumPhaseInstances)
+{
+    const auto phases = getTestPhases();
+    auto model = SingleMomentMode{ test_model_name, phases };
+    
+    auto num_instances = model.NumPhaseInstances();
+    
+    // Should have one instance per phase (2 phases in test setup)
+    EXPECT_EQ(num_instances.size(), 2);
+    EXPECT_EQ(num_instances["PHASE1"], 1);
+    EXPECT_EQ(num_instances["PHASE2"], 1);
+}
+
+TEST(SingleMomentMode, PhaseStatePrefixes)
+{
+    const auto phases = getTestPhases();
+    const std::string prefix = "MODE1";
+    auto model = SingleMomentMode{ prefix, phases };
+    
+    auto phase_prefixes = model.PhaseStatePrefixes();
+    
+    // Should have one prefix per phase
+    EXPECT_EQ(phase_prefixes.size(), 2);
+    
+    // Each phase should have exactly one prefix (the model's prefix)
+    EXPECT_EQ(phase_prefixes["PHASE1"].size(), 1);
+    EXPECT_EQ(phase_prefixes["PHASE2"].size(), 1);
+    
+    // The prefix should match what we provided
+    EXPECT_TRUE(phase_prefixes["PHASE1"].find(prefix) != phase_prefixes["PHASE1"].end());
+    EXPECT_TRUE(phase_prefixes["PHASE2"].find(prefix) != phase_prefixes["PHASE2"].end());
+}
+
+TEST(SingleMomentMode, PhaseStatePrefixesWithMultiplePhases)
+{
+    micm::Phase aqueous{ "AQUEOUS", { { micm::Species{ "H2O" } } } };
+    micm::Phase organic{ "ORGANIC", { { micm::Species{ "C6H14" } } } };
+    micm::Phase gas{ "GAS", { { micm::Species{ "CO2" } } } };
+    std::vector<micm::Phase> phases = { aqueous, organic, gas };
+    
+    const std::string prefix = "SMALL_DROP";
+    auto model = SingleMomentMode{ prefix, phases };
+    
+    auto phase_prefixes = model.PhaseStatePrefixes();
+    
+    // Should have entries for all three phases
+    EXPECT_EQ(phase_prefixes.size(), 3);
+    EXPECT_EQ(phase_prefixes["AQUEOUS"].size(), 1);
+    EXPECT_EQ(phase_prefixes["ORGANIC"].size(), 1);
+    EXPECT_EQ(phase_prefixes["GAS"].size(), 1);
+    
+    // All should contain the same prefix
+    EXPECT_TRUE(phase_prefixes["AQUEOUS"].find(prefix) != phase_prefixes["AQUEOUS"].end());
+    EXPECT_TRUE(phase_prefixes["ORGANIC"].find(prefix) != phase_prefixes["ORGANIC"].end());
+    EXPECT_TRUE(phase_prefixes["GAS"].find(prefix) != phase_prefixes["GAS"].end());
+}
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);

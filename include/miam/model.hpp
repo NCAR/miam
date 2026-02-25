@@ -82,9 +82,15 @@ namespace miam
         /// @brief Returns names of all species used in the model's processes
         std::set<std::string> SpeciesUsed() const
         {
-            // For now, return all state variable names
-            // In a full implementation, this would be determined by the processes
-            return StateVariableNames();
+            auto phase_prefixes = CollectPhaseStatePrefixes();
+            // Collect participating species' unique state names for all processes
+            std::set<std::string> species_names;
+            for (const auto& reaction : dissolved_reactions_)
+            {
+                auto process_species = reaction.SpeciesUsed(phase_prefixes);
+                species_names.insert(process_species.begin(), process_species.end());
+            }
+            return species_names;
         }
 
         /// @brief Add dissolved reversible reactions to the model
@@ -141,6 +147,52 @@ namespace miam
                      SparseMatrixPolicy& jacobian) {
                 // Process-specific Jacobian contributions would be calculated here
             };
+        }
+    private:
+
+        std::map<std::string, std::size_t> CountPhaseInstances() const
+        {
+            std::map<std::string, std::size_t> phase_instance_counts;
+            for (const auto& repr : representations_)
+            {
+                std::visit([&](const auto& r) {
+                    auto counts = r.NumPhaseInstances();
+                    for (const auto& [phase_name, count] : counts)
+                    {
+                        phase_instance_counts[phase_name] += count; // Sum instances across representations
+                    }
+                }, repr);
+            }
+            return phase_instance_counts;
+        }
+
+        std::map<std::string, std::set<std::string>> CollectPhaseStatePrefixes() const
+        {
+            std::map<std::string, std::set<std::string>> phase_prefixes;
+            for (const auto& repr : representations_)
+            {
+                std::visit([&](const auto& r) {
+                    auto prefixes = r.PhaseStatePrefixes();
+                    for (const auto& [phase_name, prefix_set] : prefixes)
+                    {
+                        phase_prefixes[phase_name].insert(prefix_set.begin(), prefix_set.end());
+                    }
+                }, repr);
+            }
+            /// Validate against expected count of phase instances to ensure uniqueness
+            auto expected_counts = CountPhaseInstances();
+            for (const auto& [phase_name, prefixes] : phase_prefixes)
+            {
+                auto expected_count_it = expected_counts.find(phase_name);
+                if (expected_count_it != expected_counts.end())
+                {
+                    if (prefixes.size() != expected_count_it->second)
+                    {
+                        throw std::runtime_error("Internal Error: PhaseStatePrefixes: Non-unique state variable prefixes detected for phase " + phase_name);
+                    }
+                }
+            }
+            return phase_prefixes;
         }
     };
 }

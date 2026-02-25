@@ -101,6 +101,29 @@ namespace miam
                 }
             }
 
+            std::map<std::string, std::size_t> NumPhaseInstances() const
+            {
+                std::map<std::string, std::size_t> num_instances;
+                for (const auto& phase : phases_)
+                {
+                    num_instances[phase.name_] = 1; // Single moment representation has one instance per phase
+                }
+                return num_instances;
+            }
+
+            /// @brief Returns a map of phase names to sets of state variable prefixes associated with that phase
+            ///        The prefix does not include the phase or species names, and each prefix must be unique across all representations.
+            /// @return Map of phase names to sets of state variable prefixes
+            std::map<std::string, std::set<std::string>> PhaseStatePrefixes() const
+            {
+                std::map<std::string, std::set<std::string>> phase_prefixes;
+                for (const auto& phase : phases_)
+                {
+                    phase_prefixes[phase.name_].insert(prefix_);
+                }
+                return phase_prefixes;
+            }
+
         private:
             std::string prefix_; // State name prefix to apply to mode properties
             std::vector<micm::Phase> phases_; // Phases associated with the mode

@@ -4,8 +4,14 @@
 #pragma once
 
 #include <micm/system/conditions.hpp>
+#include <micm/system/phase.hpp>
+#include <micm/system/species.hpp>
 
 #include <functional>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
 
 namespace miam
 {
@@ -49,6 +55,32 @@ namespace miam
                   solvent_(solvent),
                   phase_(phase)
             {}
+
+            /// @brief Returns participating species' unique state names
+            /// @param phase_prefixes Map of phase names to sets of state variable prefixes (prefix does not include phase or species names)
+            /// @return Set of unique state variable names for all species involved in the reaction
+            std::set<std::string> SpeciesUsed(const std::map<std::string, std::set<std::string>>& phase_prefixes) const
+            {
+                std::set<std::string> species_names;
+                auto phase_it = phase_prefixes.find(phase_.name_);
+                if (phase_it != phase_prefixes.end())
+                {
+                    const auto& prefixes = phase_it->second;
+                    for (const auto& prefix : prefixes)
+                    {
+                        for (const auto& reactant : reactants_)
+                        {
+                            species_names.insert(prefix + "." + phase_.name_ + "." + reactant.name_);
+                        }
+                        for (const auto& product : products_)
+                        {
+                            species_names.insert(prefix + "." + phase_.name_ + "." + product.name_);
+                        }
+                        species_names.insert(prefix + "." + phase_.name_ + "." + solvent_.name_);
+                    }
+                }
+                return species_names;
+            }
 
         };
     }
