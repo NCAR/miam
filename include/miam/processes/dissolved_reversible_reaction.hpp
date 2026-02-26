@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <miam/util/uuid.hpp>
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
@@ -37,6 +38,7 @@ namespace miam
             std::vector<micm::Species> products_;   ///< Product species
             micm::Species solvent_;                 ///< Solvent species
             micm::Phase phase_;                     ///< Phase in which the reaction occurs
+            std::string uuid_;                      ///< Unique identifier for the reaction
 
             DissolvedReversibleReaction() = delete;
 
@@ -53,8 +55,35 @@ namespace miam
                   reactants_(reactants),
                   products_(products),
                   solvent_(solvent),
-                  phase_(phase)
+                  phase_(phase),
+                  uuid_(generate_uuid_v4())
             {}
+
+            /// @brief Create a copy of this reaction with a new UUID
+            /// @return A new DissolvedReversibleReaction with the same properties but a unique UUID
+            DissolvedReversibleReaction CopyWithNewUuid() const
+            {
+                return DissolvedReversibleReaction(
+                    forward_rate_constant_,
+                    reverse_rate_constant_,
+                    reactants_,
+                    products_,
+                    solvent_,
+                    phase_
+                );
+            }
+
+            /// @brief Returns a set of unique parameter names for this process
+            /// @param phase_prefixes Map of phase names to sets of state variable prefixes (prefix does not include phase or species names)
+            /// @return Set of unique parameter names for this process
+            std::set<std::string> ProcessParameterNames(const std::map<std::string, std::set<std::string>>& phase_prefixes) const
+            {
+                // The conditions are shared by the whole system, so we just need one value each for the forward and reverse rate constants. We can use the phase name and uuid to create unique parameter names.
+                std::set<std::string> parameter_names;
+                parameter_names.insert(phase_.name_ + "." + uuid_ + ".k_forward");
+                parameter_names.insert(phase_.name_ + "." + uuid_ + ".k_reverse");
+                return parameter_names;
+            }
 
             /// @brief Returns participating species' unique state names
             /// @param phase_prefixes Map of phase names to sets of state variable prefixes (prefix does not include phase or species names)
@@ -137,8 +166,51 @@ namespace miam
                     }
                 }
                 return jacobian_indices;
-            }                        
+            }
 
+            /// @brief Returns a function that updates state parameters for this process
+            /// @param phase_prefixes Map of phase names to sets of state variable prefixes (prefix does not include phase or species names)
+            /// @param state_parameter_indices Map of state parameter names to their corresponding indices in the state parameter vector
+            /// @return Function that updates state parameters for this process
+            template<typename DenseMatrixPolicy>
+            std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)> UpdateStateParametersFunction(
+                const std::map<std::string, std::set<std::string>>& phase_prefixes,
+                const auto& state_parameter_indices // acts like std::unordered_map<std::string, std::size_t>
+            ) const
+            {
+                // throw an error if the expected parameters don't exist
+                std::string forward_param = phase_.name_ + "." + uuid_ + ".k_forward";
+                std::string reverse_param = phase_.name_ + "." + uuid_ + ".k_reverse";
+                if (state_parameter_indices.find(forward_param) == state_parameter_indices.end())                {
+                    throw std::runtime_error("Internal Error: UpdateStateParametersFunction: Forward rate constant parameter " + forward_param + " not found in state_parameter_indices");
+                }
+                if (state_parameter_indices.find(reverse_param) == state_parameter_indices.end())                {
+                    throw std::runtime_error("Internal Error: UpdateStateParametersFunction: Reverse rate constant parameter " + reverse_param + " not found in state_parameter_indices");
+                }
+                std::size_t forward_index = state_parameter_indices.at(forward_param);
+                std::size_t reverse_index = state_parameter_indices.at(reverse_param);
+
+                // Set up dummy arguments to build the function
+                DenseMatrixPolicy state_parameters{1, state_parameter_indices.size(), 0.0}; 
+                std::vector<micm::Conditions> conditions_vector;
+
+                // return a function that updates the forward and reverse rate constant parameters based on the current conditions
+                return DenseMatrixPolicy::Function(
+                    [this, forward_index, reverse_index](auto&& conditions, auto&& params)
+                    {
+                        params.ForEachRow([&](const micm::Conditions& condition, double& parameter)
+                        {
+                            parameter = forward_rate_constant_(condition);
+                        }, conditions, params.GetColumnView(forward_index));
+                        params.ForEachRow([&](const micm::Conditions& condition, double& parameter)
+                        {
+                            parameter = reverse_rate_constant_(condition);
+                        }, conditions, params.GetColumnView(reverse_index));
+                    },
+                    conditions_vector,
+                    state_parameters
+                );
+            }
         };
     }
 }

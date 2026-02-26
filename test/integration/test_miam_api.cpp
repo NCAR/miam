@@ -71,8 +71,6 @@ int main()
     .representations_ = { small_drop, large_drop }
   };
 
-  auto system = System(gas_phase, aerosol_model, cloud_model);
-
   // State array should contain
   //  1) (GAS.) CO2
   //  2) (CLOUD.) SMALL_DROP.AQUEOUS.CO2
@@ -192,6 +190,8 @@ int main()
 
   aerosol_model.AddProcesses(reactions);
   cloud_model.AddProcesses(reactions);
+
+  auto system = System(gas_phase, aerosol_model, cloud_model);
 
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)

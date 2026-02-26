@@ -48,6 +48,13 @@ namespace miam
                     num_parameters += params;
                 }, repr);
             }
+            // Add parameters for each process
+            auto phase_prefixes = CollectPhaseStatePrefixes();
+            for (const auto& reaction : dissolved_reactions_)
+            {
+                auto process_params = reaction.ProcessParameterNames(phase_prefixes);
+                num_parameters += process_params.size();
+            }
             return { num_variables, num_parameters };
         }
 
@@ -69,12 +76,19 @@ namespace miam
         std::set<std::string> StateParameterNames() const
         {
             std::set<std::string> names;
+            // Collect parameter names from all representations
             for (const auto& repr : representations_)
             {
                 std::visit([&](const auto& r) {
                     auto repr_names = r.StateParameterNames();
                     names.insert(repr_names.begin(), repr_names.end());
                 }, repr);
+            }
+            // Add parameters for each process
+            auto phase_prefixes = CollectPhaseStatePrefixes();
+            for (const auto& reaction : dissolved_reactions_)            {
+                auto process_params = reaction.ProcessParameterNames(phase_prefixes);
+                names.insert(process_params.begin(), process_params.end());
             }
             return names;
         }
@@ -96,7 +110,11 @@ namespace miam
         /// @brief Add dissolved reversible reactions to the model
         void AddProcesses(const std::vector<process::DissolvedReversibleReaction>& new_reactions)
         {
-            dissolved_reactions_.insert(dissolved_reactions_.end(), new_reactions.begin(), new_reactions.end());
+            // Create copies with new UUIDs for each reaction to ensure uniqueness across models
+            for (const auto& reaction : new_reactions)
+            {
+                dissolved_reactions_.push_back(reaction.CopyWithNewUuid());
+            }
         }
 
         /// @brief Returns non-zero Jacobian element positions
@@ -119,8 +137,18 @@ namespace miam
         UpdateStateParametersFunction(
             const std::unordered_map<std::string, std::size_t>& state_parameter_indices) const
         {
-            return [](const std::vector<micm::Conditions>& conditions, DenseMatrixPolicy& state_parameters) {
-                // No temperature-dependent parameters in this basic implementation
+            // Collect parameter update functions from all processes and return a combined function
+            auto phase_prefixes = CollectPhaseStatePrefixes();
+            std::vector<std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)>> update_functions;
+            for (const auto& reaction : dissolved_reactions_)            {
+                auto update_fn = reaction.template UpdateStateParametersFunction<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices);
+                update_functions.push_back(update_fn);
+            }
+            return [update_functions](const std::vector<micm::Conditions>& conditions, DenseMatrixPolicy& state_parameters) {
+                for (const auto& fn : update_functions)
+                {
+                    fn(conditions, state_parameters);
+                }
             };
         }
 

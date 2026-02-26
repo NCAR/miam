@@ -94,19 +94,25 @@ namespace miam
                 {
                     if (!forward_rate_constant_)
                     {
-                        forward_rate_constant_ = [this](const micm::Conditions& conditions)
+                        // Capture the necessary functions by value to avoid dangling references
+                        auto eq_const = equilibrium_constant_;
+                        auto rev_const = reverse_rate_constant_;
+                        forward_rate_constant_ = [eq_const, rev_const](const micm::Conditions& conditions)
                         {
-                            double K_eq = equilibrium_constant_(conditions);
-                            double k_r = reverse_rate_constant_(conditions);
+                            double K_eq = eq_const(conditions);
+                            double k_r = rev_const(conditions);
                             return K_eq * k_r;
                         };
                     }
                     else if (!reverse_rate_constant_)
                     {
-                        reverse_rate_constant_ = [this](const micm::Conditions& conditions)
+                        // Capture the necessary functions by value to avoid dangling references
+                        auto eq_const = equilibrium_constant_;
+                        auto fwd_const = forward_rate_constant_;
+                        reverse_rate_constant_ = [eq_const, fwd_const](const micm::Conditions& conditions)
                         {
-                            double K_eq = equilibrium_constant_(conditions);
-                            double k_f = forward_rate_constant_(conditions);
+                            double K_eq = eq_const(conditions);
+                            double k_f = fwd_const(conditions);
                             return k_f / K_eq;
                         };
                     }

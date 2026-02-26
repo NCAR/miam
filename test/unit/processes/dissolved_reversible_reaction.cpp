@@ -5,6 +5,7 @@
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
+#include <micm/util/vector_matrix.hpp>
 
 #include <gtest/gtest.h>
 
@@ -371,6 +372,232 @@ TEST(DissolvedReversibleReaction, NonZeroJacobianElementsComplexReaction)
     EXPECT_TRUE(jacobian_elements.find({0, 3}) != jacobian_elements.end()); // d[HCO3-]/d[H2O]
     EXPECT_TRUE(jacobian_elements.find({1, 0}) != jacobian_elements.end()); // d[H+]/d[HCO3-]
     EXPECT_TRUE(jacobian_elements.find({2, 0}) != jacobian_elements.end()); // d[CO32-]/d[HCO3-]
+}
+
+TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionBasic)
+{
+    using MatrixPolicy = micm::VectorMatrix<double>;
+    
+    auto h2o = micm::Species{ "H2O" };
+    auto hp = micm::Species{ "H+" };
+    auto ohm = micm::Species{ "OH-" };
+    
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
+    
+    // Create constant rate constants
+    double k_forward = 1.0e-14;
+    double k_reverse = 1.0e11;
+    
+    auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
+    auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+    
+    DissolvedReversibleReaction reaction{
+        forward_rate,
+        reverse_rate,
+        { h2o },
+        { hp, ohm },
+        h2o,
+        aqueous_phase
+    };
+    
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQUEOUS"].insert("MODE1");
+    
+    std::string forward_param = aqueous_phase.name_ + "." + reaction.uuid_ + ".k_forward";
+    std::string reverse_param = aqueous_phase.name_ + "." + reaction.uuid_ + ".k_reverse";
+    
+    std::unordered_map<std::string, std::size_t> state_parameter_indices;
+    state_parameter_indices[forward_param] = 0;
+    state_parameter_indices[reverse_param] = 1;
+    
+    auto update_func = reaction.UpdateStateParametersFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices);
+    
+    // Create state parameters matrix (3 grid cells, 2 parameters)
+    MatrixPolicy state_parameters(3, 2, 0.0);
+    
+    // Create conditions for 3 grid cells
+    std::vector<micm::Conditions> conditions(3);
+    conditions[0].temperature_ = 298.15;
+    conditions[1].temperature_ = 310.0;
+    conditions[2].temperature_ = 285.0;
+    
+    // Apply the update function
+    update_func(conditions, state_parameters);
+    
+    // Verify the rate constants were set correctly
+    for (std::size_t i_cell = 0; i_cell < 3; ++i_cell)
+    {
+        EXPECT_EQ(state_parameters[i_cell][0], k_forward);
+        EXPECT_EQ(state_parameters[i_cell][1], k_reverse);
+    }
+}
+
+TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionTemperatureDependent)
+{
+    using MatrixPolicy = micm::VectorMatrix<double>;
+    
+    auto h2o = micm::Species{ "H2O" };
+    auto hp = micm::Species{ "H+" };
+    auto ohm = micm::Species{ "OH-" };
+    
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
+    
+    // Create temperature-dependent rate constants (Arrhenius-like)
+    auto forward_rate = [](const micm::Conditions& conditions) { 
+        return 1.0e-14 * std::exp(-3000.0 / conditions.temperature_); 
+    };
+    auto reverse_rate = [](const micm::Conditions& conditions) { 
+        return 1.0e11 * std::exp(-2000.0 / conditions.temperature_); 
+    };
+    
+    DissolvedReversibleReaction reaction{
+        forward_rate,
+        reverse_rate,
+        { h2o },
+        { hp, ohm },
+        h2o,
+        aqueous_phase
+    };
+    
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQUEOUS"].insert("DROPLET");
+    
+    std::string forward_param = aqueous_phase.name_ + "." + reaction.uuid_ + ".k_forward";
+    std::string reverse_param = aqueous_phase.name_ + "." + reaction.uuid_ + ".k_reverse";
+    
+    std::unordered_map<std::string, std::size_t> state_parameter_indices;
+    state_parameter_indices[forward_param] = 0;
+    state_parameter_indices[reverse_param] = 1;
+    
+    auto update_func = reaction.UpdateStateParametersFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices);
+    
+    // Create state parameters matrix (3 grid cells, 2 parameters)
+    MatrixPolicy state_parameters(3, 2, 0.0);
+    
+    // Create conditions with different temperatures
+    std::vector<micm::Conditions> conditions(3);
+    conditions[0].temperature_ = 298.15;
+    conditions[1].temperature_ = 310.0;
+    conditions[2].temperature_ = 273.15;
+    
+    // Apply the update function
+    update_func(conditions, state_parameters);
+    
+    // Verify the rate constants vary with temperature
+    double k_f_298 = 1.0e-14 * std::exp(-3000.0 / 298.15);
+    double k_f_310 = 1.0e-14 * std::exp(-3000.0 / 310.0);
+    double k_f_273 = 1.0e-14 * std::exp(-3000.0 / 273.15);
+    
+    double k_r_298 = 1.0e11 * std::exp(-2000.0 / 298.15);
+    double k_r_310 = 1.0e11 * std::exp(-2000.0 / 310.0);
+    double k_r_273 = 1.0e11 * std::exp(-2000.0 / 273.15);
+    
+    EXPECT_NEAR(state_parameters[0][0], k_f_298, 1e-20);
+    EXPECT_NEAR(state_parameters[1][0], k_f_310, 1e-20);
+    EXPECT_NEAR(state_parameters[2][0], k_f_273, 1e-20);
+    
+    EXPECT_NEAR(state_parameters[0][1], k_r_298, 1e5);
+    EXPECT_NEAR(state_parameters[1][1], k_r_310, 1e5);
+    EXPECT_NEAR(state_parameters[2][1], k_r_273, 1e5);
+}
+
+TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionMissingParameter)
+{
+    using MatrixPolicy = micm::VectorMatrix<double>;
+    
+    auto h2o = micm::Species{ "H2O" };
+    auto hp = micm::Species{ "H+" };
+    auto ohm = micm::Species{ "OH-" };
+    
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
+    
+    auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
+    auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
+    
+    DissolvedReversibleReaction reaction{
+        forward_rate,
+        reverse_rate,
+        { h2o },
+        { hp, ohm },
+        h2o,
+        aqueous_phase
+    };
+    
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQUEOUS"].insert("MODE1");
+    
+    // Only include forward parameter, not reverse
+    std::string forward_param = aqueous_phase.name_ + "." + reaction.uuid_ + ".k_forward";
+    
+    std::unordered_map<std::string, std::size_t> state_parameter_indices;
+    state_parameter_indices[forward_param] = 0;
+    
+    // Should throw because reverse parameter is missing
+    EXPECT_THROW(
+        reaction.UpdateStateParametersFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices),
+        std::runtime_error
+    );
+}
+
+TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionMultipleCells)
+{
+    using MatrixPolicy = micm::VectorMatrix<double>;
+    
+    auto co2 = micm::Species{ "CO2" };
+    auto h2o = micm::Species{ "H2O" };
+    auto h2co3 = micm::Species{ "H2CO3" };
+    
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { co2 }, { h2o }, { h2co3 } } };
+    
+    auto forward_rate = [](const micm::Conditions& conditions) { 
+        return 1.0e-3 * conditions.pressure_ / 101325.0; // Pressure-dependent
+    };
+    auto reverse_rate = [](const micm::Conditions& conditions) { 
+        return 1.0e2;
+    };
+    
+    DissolvedReversibleReaction reaction{
+        forward_rate,
+        reverse_rate,
+        { co2, h2o },
+        { h2co3 },
+        h2o,
+        aqueous_phase
+    };
+    
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQUEOUS"].insert("CLOUD");
+    
+    std::string forward_param = aqueous_phase.name_ + "." + reaction.uuid_ + ".k_forward";
+    std::string reverse_param = aqueous_phase.name_ + "." + reaction.uuid_ + ".k_reverse";
+    
+    std::unordered_map<std::string, std::size_t> state_parameter_indices;
+    state_parameter_indices[forward_param] = 0;
+    state_parameter_indices[reverse_param] = 1;
+    
+    auto update_func = reaction.UpdateStateParametersFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices);
+    
+    // Create state parameters matrix (5 grid cells, 2 parameters)
+    MatrixPolicy state_parameters(5, 2, 0.0);
+    
+    // Create conditions with different pressures
+    std::vector<micm::Conditions> conditions(5);
+    for (std::size_t i = 0; i < 5; ++i)
+    {
+        conditions[i].temperature_ = 298.15;
+        conditions[i].pressure_ = 101325.0 * (1.0 + 0.1 * i); // Varying pressure
+    }
+    
+    // Apply the update function
+    update_func(conditions, state_parameters);
+    
+    // Verify the rate constants
+    for (std::size_t i_cell = 0; i_cell < 5; ++i_cell)
+    {
+        double expected_k_f = 1.0e-3 * (1.0 + 0.1 * i_cell);
+        EXPECT_NEAR(state_parameters[i_cell][0], expected_k_f, 1e-7);
+        EXPECT_EQ(state_parameters[i_cell][1], 1.0e2);
+    }
 }
 
 int main(int argc, char** argv)
