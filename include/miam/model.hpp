@@ -159,10 +159,20 @@ namespace miam
             const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
             const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
         {
-            return [](const DenseMatrixPolicy& state_parameters, 
+            // Collect forcing functions from all processes and return a combined function
+            auto phase_prefixes = CollectPhaseStatePrefixes();
+            std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>> forcing_functions;
+            for (const auto& reaction : dissolved_reactions_)            {
+                auto forcing_fn = reaction.template ForcingFunction<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+                forcing_functions.push_back(forcing_fn);
+            }
+            return [forcing_functions](const DenseMatrixPolicy& state_parameters, 
                      const DenseMatrixPolicy& state_variables, 
                      DenseMatrixPolicy& forcing_terms) {
-                // Process-specific forcing would be calculated here
+                for (const auto& fn : forcing_functions)
+                {
+                    fn(state_parameters, state_variables, forcing_terms);
+                }
             };
         }
 
@@ -174,10 +184,20 @@ namespace miam
             const std::unordered_map<std::string, std::size_t>& state_variable_indices,
             const SparseMatrixPolicy& jacobian) const
         {
-            return [](const DenseMatrixPolicy& state_parameters, 
+            // Collect Jacobian functions from all processes and return a combined function
+            auto phase_prefixes = CollectPhaseStatePrefixes();
+            std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>> jacobian_functions;
+            for (const auto& reaction : dissolved_reactions_)            {
+                auto jacobian_fn = reaction.template JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+                jacobian_functions.push_back(jacobian_fn);
+            }
+            return [jacobian_functions](const DenseMatrixPolicy& state_parameters, 
                      const DenseMatrixPolicy& state_variables, 
                      SparseMatrixPolicy& jacobian) {
-                // Process-specific Jacobian contributions would be calculated here
+                for (const auto& fn : jacobian_functions)
+                {
+                    fn(state_parameters, state_variables, jacobian);
+                }
             };
         }
     private:
