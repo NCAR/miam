@@ -42,8 +42,8 @@ jobs:
       - name: Run coverage tests in container
         if: matrix.dockerfile == 'Dockerfile.coverage'
         run: |
-          docker run --name test-container -t miam bash -c 'make coverage ARGS="--rerun-failed --output-on-failure -j8"'
-          docker cp $(docker ps -aqf name=test-container):miam/build/coverage.info .
+          docker run --name test-container -t miam bash -c 'cd /miam/build && make coverage ARGS="--rerun-failed --output-on-failure -j8"'
+          docker cp $(docker ps -aqf name=test-container):/miam/build/coverage.info .
 
       - name: Upload coverage report
         if: matrix.dockerfile == 'Dockerfile.coverage'
