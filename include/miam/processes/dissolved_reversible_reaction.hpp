@@ -108,6 +108,8 @@ namespace miam
                         }
                         species_names.insert(prefix + "." + phase_.name_ + "." + solvent_.name_);
                     }
+                } else {
+                    throw std::runtime_error("Internal Error: Phase " + phase_.name_ + " not found in phase_prefixes map for process " + uuid_);
                 }
                 return species_names;
             }

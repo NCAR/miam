@@ -110,10 +110,10 @@ TEST(DissolvedReversibleReaction, SpeciesUsedWithNoMatchingPhase)
     std::map<std::string, std::set<std::string>> phase_prefixes;
     phase_prefixes["ORGANIC"].insert("AEROSOL_MODE");
     
-    auto species_used = reaction.SpeciesUsed(phase_prefixes);
-    
-    // Should be empty since no matching phase
-    EXPECT_EQ(species_used.size(), 0);
+    EXPECT_THROW(
+        reaction.SpeciesUsed(phase_prefixes),
+        std::runtime_error
+    );
 }
 
 TEST(DissolvedReversibleReaction, SpeciesUsedDuplicateHandling)

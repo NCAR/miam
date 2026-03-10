@@ -5,7 +5,9 @@
 
 #include <micm/system/phase.hpp>
 
+#include <map>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <vector>

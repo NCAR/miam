@@ -5,10 +5,12 @@
 #include <iostream>
 #include <cstdlib>
 
+#include <gtest/gtest.h>
+
 using namespace micm;
 using namespace miam;
 
-int main()
+TEST(MIAM, ApiExample)
 {
   auto co2    = Species{ "CO2" };
   auto h2o    = Species{ "H2O" };

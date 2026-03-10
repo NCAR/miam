@@ -23,6 +23,7 @@ namespace miam
             DissolvedReversibleReactionBuilder& SetPhase(const micm::Phase& phase)
             {
                 phase_ = phase;
+                phase_is_set_ = true;
                 return *this;
             }
 
@@ -44,6 +45,7 @@ namespace miam
             DissolvedReversibleReactionBuilder& SetSolvent(const micm::Species& solvent)
             {
                 solvent_ = solvent;
+                solvent_is_set_ = true;
                 return *this;
             }
 
@@ -89,6 +91,22 @@ namespace miam
                 {
                     throw std::runtime_error("DissolvedReversibleReactionBuilder requires exactly two of forward rate constant, reverse rate constant, or equilibrium constant to be set.");
                 }
+                if (reactants_.empty())
+                {
+                    throw std::runtime_error("DissolvedReversibleReactionBuilder requires at least one reactant species.");
+                }
+                if (products_.empty())
+                {
+                    throw std::runtime_error("DissolvedReversibleReactionBuilder requires at least one product species.");
+                }
+                if (!phase_is_set_)
+                {
+                    throw std::runtime_error("DissolvedReversibleReactionBuilder requires the phase to be set.");
+                }
+                if (!solvent_is_set_)
+                {
+                    throw std::runtime_error("DissolvedReversibleReactionBuilder requires the solvent to be set.");
+                }
                 // If equilibrium constant is set, compute the missing rate constant
                 if (equilibrium_constant_)
                 {
@@ -128,9 +146,11 @@ namespace miam
 
         private:
             micm::Phase phase_;                     ///< Phase in which the reaction occurs
+            bool phase_is_set_ = false;             ///< Flag to track if the phase has been set
             std::vector<micm::Species> reactants_;  ///< Reactant species
             std::vector<micm::Species> products_;   ///< Product species
             micm::Species solvent_;                 ///< Solvent species
+            bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
             mutable std::function<double(const micm::Conditions& conditions)> forward_rate_constant_; ///< Forward rate constant function
             mutable std::function<double(const micm::Conditions& conditions)> reverse_rate_constant_; ///< Reverse rate constant function
             mutable std::function<double(const micm::Conditions& conditions)> equilibrium_constant_;  ///< Equilibrium constant function
