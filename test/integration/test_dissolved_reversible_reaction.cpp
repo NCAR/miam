@@ -100,7 +100,10 @@ TEST(DissolvedReversibleReactionIntegration, SimpleAtoB)
   std::size_t i_A = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.A") - state.variable_names_.begin();
   std::size_t i_B = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.B") - state.variable_names_.begin();
   std::size_t i_C = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.C") - state.variable_names_.begin();
-  
+  ASSERT_LT(i_A, state.variable_names_.size()) << "Species A not found in state variables";
+  ASSERT_LT(i_B, state.variable_names_.size()) << "Species B not found in state variables";
+  ASSERT_LT(i_C, state.variable_names_.size()) << "Species C not found in state variables";
+
   // Set initial conditions
   state.variables_[0][i_A] = A0;     // [A] = 1.0 mol/m^3
   state.variables_[0][i_B] = 0.0;    // [B] = 0.0 mol/m^3

@@ -9,9 +9,11 @@
 #include <micm/system/species.hpp>
 #include <micm/util/matrix.hpp>
 
+#include <cmath>
 #include <functional>
 #include <map>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <vector>
 

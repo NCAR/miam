@@ -1656,9 +1656,3 @@ TEST(DissolvedReversibleReaction, JacobianFunctionTwoReactantsWithSolventDepende
     EXPECT_NEAR(jacobian[0][1][3], d_qux_d_baz, 1e-10);  // d[qux]/d[baz]
     EXPECT_NEAR(jacobian[0][2][3], d_bar_d_baz, 1e-10);  // d[bar]/d[baz]
 }
-
-int main(int argc, char** argv)
-{
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}

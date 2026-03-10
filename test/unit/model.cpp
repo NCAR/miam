@@ -548,9 +548,3 @@ TEST(Model, NonZeroJacobianElementsMixedTypes)
     EXPECT_TRUE(jacobian_elements.find({3, 4}) != jacobian_elements.end()); // MODE2
     EXPECT_TRUE(jacobian_elements.find({5, 3}) != jacobian_elements.end()); // MODE2
 }
-
-int main(int argc, char** argv)
-{
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}
