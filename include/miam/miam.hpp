@@ -3,6 +3,6 @@
 
 #pragma once
 
-#include <miam/representation.hpp>
 #include <miam/model.hpp>
 #include <miam/process.hpp>
+#include <miam/representation.hpp>

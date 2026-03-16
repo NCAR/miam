@@ -3,6 +3,6 @@
 
 #pragma once
 
+#include <miam/processes/constants/equilibrium_constant.hpp>
 #include <miam/processes/dissolved_reversible_reaction.hpp>
 #include <miam/processes/dissolved_reversible_reaction_builder.hpp>
-#include <miam/processes/constants/equilibrium_constant.hpp>
