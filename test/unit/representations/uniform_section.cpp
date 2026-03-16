@@ -92,11 +92,11 @@ TEST(UniformSection, MaxRadiusParameterName)
 
 TEST(UniformSection, SpeciesNaming)
 {
-    const auto phases = getTestPhases();
-    auto model = UniformSection{ test_model_name, phases };
-    
-    micm::Phase test_phase{ "AQUEOUS", { { micm::Species{ "H2O" } } } };
     micm::Species test_species{ "CO2" };
+    micm::Phase test_phase{ "AQUEOUS", { { test_species } } };
+    std::vector<micm::Phase> phases = { test_phase };
+    
+    auto model = UniformSection{ test_model_name, phases };
     
     std::string species_name = model.Species(test_phase, test_species);
     EXPECT_EQ(species_name, test_model_name + ".AQUEOUS.CO2");
