@@ -5,10 +5,12 @@
 #include <iostream>
 #include <cstdlib>
 
+#include <gtest/gtest.h>
+
 using namespace micm;
 using namespace miam;
 
-int main()
+TEST(MIAM, ApiExample)
 {
   auto co2    = Species{ "CO2" };
   auto h2o    = Species{ "H2O" };
@@ -16,56 +18,60 @@ int main()
   auto hp     = Species{ "H+" };
   auto hco3m  = Species{ "HCO3-" };
   auto co32m  = Species{ "CO32-" };
+  auto h2co3  = Species{ "H2CO3" };
   auto hexane = Species{ "C6H14" };
 
   Phase gas_phase{ "GAS", { { co2, 31.2 } } };
-  Phase aqueous_phase{ "AQUEOUS", { { co2 } , { h2o } , { ohm } , { hp } , { hco3m } , { co32m } } };
+  Phase aqueous_phase{ "AQUEOUS", { { co2 } , { h2o } , { ohm } , { hp } , { hco3m } , { co32m }, { h2co3 } } };
   Phase organic_phase{ "ORGANIC", { { co2, 16.2 }, { hexane } } };
 
   // Cloud droplets modeled with 1-moment log-normal distributions
-  auto small_drop = Distribution<shape::LogNormal, moment::Single>{
+  auto small_drop = representation::SingleMomentMode{
     "SMALL_DROP",
-    { aqueous_phase }
-    // 5.0e-6,                         // Geometric mean diameter
-    // 1.6,                            // Geometric standard deviation
+    { aqueous_phase },
+    1.0e-7, // geometric mean radius (m)
+    1.1     // geometric standard deviation
   };
   
   // Larger cloud droplets modeled with 1-moment log-normal distributions
-  auto large_drop = Distribution<shape::LogNormal, moment::Single>{
+  auto large_drop = representation::SingleMomentMode{
     "LARGE_DROP",
-    { aqueous_phase }
-    // 1.0e-5,                         // Geometric mean diameter
-    // 1.8,                            // Geometric standard deviation
+    { aqueous_phase },
+    1.0e-6, // geometric mean radius (m)
+    1.4     // geometric standard deviation
   };
 
   // Aerosol model with 2-moment distribution
-  auto aitken = Distribution<shape::LogNormal, moment::Two>{
+  auto aitken = representation::TwoMomentMode{
     "AITKEN",
-    { aqueous_phase }
-    // 1.0e-7,                      // Geometric mean diameter
-    // 1.6,                         // Geometric standard deviation
+    { aqueous_phase },
+    1.2     // geometric standard deviation
   };
   
   // Another aerosol mode with 2-moment distribution
-  auto accumulation = Distribution<shape::LogNormal, moment::Two>{
+  auto accumulation = representation::TwoMomentMode{
     "ACCUMULATION",
-    { aqueous_phase, organic_phase }  // Multiple phases
-    // 1.0e-6,                           // Geometric mean diameter
-    // 1.6,                              // Geometric standard deviation
+    { aqueous_phase, organic_phase },  // Multiple phases
+    1.4     // geometric standard deviation
   };
 
-  // Dust particle section with 2-moment delta-function distribution
-  auto dust = Distribution<shape::DeltaFunction, moment::Two>{
+  // Dust particle section
+  auto dust = representation::UniformSection{
     "DUST",
-    { organic_phase }
-    // 1.0e-6,                      // Minimum diameter
-    // 0.003                        // Maximum diameter
+    { organic_phase },
+    1.0e-7, // min radius (m)
+    1.0e-6  // max radius (m)
   };
 
-  auto system = System({
-    .gas_phase_ = gas_phase,
-    .external_models_ = { small_drop, large_drop, aitken, accumulation, dust }
-  });
+  auto aerosol_model = Model{
+    .name_ = "AEROSOL",
+    .representations_ = { aitken, accumulation, dust }
+  };
+
+  auto cloud_model = Model{
+    .name_ = "CLOUD",
+    .representations_ = { small_drop, large_drop }
+  };
 
   // State array should contain
   //  1) (GAS.) CO2
@@ -121,27 +127,78 @@ int main()
                                .SetSolvent(aqueous_phase, h2o )
                                .SetTransferCoefficient(HenrysLawCoefficient(hlc_co2_parms))
                                .Build();
+#endif
 
   // // Condensed phase reversible reaction
-  // // K_eq = A * exp(C / T) = Equilibrium constant
+  // // K_eq = A * exp( C ( 1 / T0 - 1 / T ) ) = Equilibrium constant
   // // k_r = reverse rate constant
   // // (k_f = K_eq * k_r = forward rate constant)
-  Process h2o_dissociation = ChemicalReactionBuilder()
-                             .SetAerosolScope(accumulation.GetScope(), aqueous_phase)
+  auto h2o_dissociation = process::DissolvedReversibleReactionBuilder()
+                             .SetPhase(aqueous_phase)
                              .SetReactants({ h2o })
                              .SetProducts({ ohm, hp })
-                             .SetRateConstant(ReversibleRateConstant({ .A_ = 1.14e-2, .C_ = 2300.0, .k_r_ = 0.32 }))
+                             .SetSolvent(h2o)
+                             .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 1.14e-2, .C_ = 2300.0, .T0_ = 298.15 }))
+                             .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 }))
                              .Build();
 
-  std::vector<Process> reactions{ co2_photo, co2_phase_transfer, h2o_dissociation };
+  // Condensed phase reversible reaction: CO2 hydration
+  // K_eq = A * exp( C ( 1 / T0 - 1 / T ) ) = Equilibrium constant
+  // k_r = reverse rate constant
+  // (k_f = K_eq * k_r = forward rate constant)
+  auto co2_hydration = process::DissolvedReversibleReactionBuilder()
+                          .SetPhase(aqueous_phase)
+                          .SetReactants({ co2, h2o })
+                          .SetProducts({ h2co3 })
+                          .SetSolvent(h2o)
+                          .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 1.70e3, .C_ = 2400.0, .T0_ = 298.15 }))
+                          .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 }))
+                          .Build();
 
-#else
-  std::vector<Process> reactions{};
-#endif
+  // Condensed phase reversible reaction: H2CO3 dissociation
+  // K_eq = A * exp( C ( 1 / T0 - 1 / T ) ) = Equilibrium constant
+  // k_r = reverse rate constant
+  // (k_f = K_eq * k_r = forward rate constant)
+  auto h2co3_dissociation = process::DissolvedReversibleReactionBuilder()
+                               .SetPhase(aqueous_phase)
+                               .SetReactants({ h2co3 })
+                               .SetProducts({ hco3m, hp })
+                               .SetSolvent(h2o)
+                               .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 4.27e2, .C_ = 2300.0, .T0_ = 298.15 }))
+                               .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 2.5e10, .C_ = 4.0e4 }))
+                               .Build();
+
+  // Condensed phase reversible reaction: HCO3- dissociation
+  // K_eq = A * exp( C ( 1 / T0 - 1 / T ) ) = Equilibrium constant
+  // k_r = reverse rate constant
+  // (k_f = K_eq * k_r = forward rate constant)
+  auto hco3m_dissociation = process::DissolvedReversibleReactionBuilder()
+                               .SetPhase(aqueous_phase)
+                               .SetReactants({ hco3m })
+                               .SetProducts({ co32m, hp })
+                               .SetSolvent(h2o)
+                               .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 1.70e1, .C_ = 2300.0, .T0_ = 298.15 }))
+                               .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 6.4e9, .C_ = 3.1e4 }))
+                               .Build();
+  
+  std::vector<process::DissolvedReversibleReaction> reactions{
+//    co2_photo,
+//    co2_phase_transfer,
+    h2o_dissociation,
+    co2_hydration,
+    h2co3_dissociation,
+    hco3m_dissociation
+  };
+
+  aerosol_model.AddProcesses(reactions);
+  cloud_model.AddProcesses(reactions);
+
+  auto system = System(gas_phase, aerosol_model, cloud_model);
 
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
-                  .SetReactions(reactions)
+                  .AddExternalModelProcesses(aerosol_model)
+                  .AddExternalModelProcesses(cloud_model)
                   .SetIgnoreUnusedSpecies(true)
                   .Build();
   
@@ -159,39 +216,30 @@ int main()
   state.conditions_[0].CalculateIdealAirDensity();
 
   // gas
-  state.SetConcentration(co2, 0.2);
+  state[co2] = 0.2;
 
-#if 0
   // cloud
-  state.SetConcentration(small_drop.Species(aqueous_phase, h2o), 0.3);      // mol m-3
-  state.SetConcentration(large_drop.Species(aqueous_phase, h2o), 0.3);      // mol m-3
+  state[small_drop.Species(aqueous_phase, h2o)] = 0.3;      // mol m-3
+  state[large_drop.Species(aqueous_phase, h2o)] = 0.3;      // mol m-3
   
   // aerosol mode
-  state.SetConcentration(aitken.Species(aqueous_phase, hco3m), 0.1);        // mol m-3
-  state.SetConcentration(accumulation.Species(aqueous_phase, h2o), 0.3);    // mol m-3
-  state.SetConcentration(accumulation.Species(organic_phase, hexane), 0.1); // mol m-3
+  state[aitken.Species(aqueous_phase, hco3m)] = 0.1;        // mol m-3
+  state[accumulation.Species(aqueous_phase, h2o)] = 0.3;    // mol m-3
+  state[accumulation.Species(organic_phase, hexane)] = 0.1; // mol m-3
   
   // aerosol section
-  state.SetConcentration(dust.Species(organic_phase, co2), 0.1);            // mol m-3
+  state[dust.Species(organic_phase, co2)] = 0.1;            // mol m-3
 
-  // number concentration
-  state.SetConcentration(aitken.NumberConcentration(), 1.0e4);        // m-3
-  state.SetConcentration(accumulation.NumberConcentration(), 1.0e3);  // m-3
+  // set aerosol state parameters
+  state[aitken.NumberConcentration()] = 1.0e8; // m-3
+  state[accumulation.NumberConcentration()] = 1.0e7; // m-3
 
-  // density
-  state.SetConcentration(aitken.Density(), 2.0e2);        // m-3
-  state.SetConcentration(accumulation.Density(), 3.0e2);  // m-3
-
-  // radius
-  double radius_small_drop = small_drop.GetRadius(state);      // m
-  double radius_large_drop = large_drop.GetRadius(state);      // m
-  double radius_aitken = aitken.GetRadius(state);              // m
-  double radius_accumulation = accumulation.GetRadius(state);  // m
-
-  state.SetConcentration(small_drop.Radius(), radius_small_drop);      // m
-  state.SetConcentration(large_drop.Radius(), radius_large_drop);      // m
-  state.SetConcentration(aitken.Radius(), radius_aitken);              // m
-  state.SetConcentration(accumulation.Radius(), radius_accumulation);  // m
+  // Set aerosol parameters
+  small_drop.SetDefaultParameters(state);
+  large_drop.SetDefaultParameters(state);
+  aitken.SetDefaultParameters(state);
+  accumulation.SetDefaultParameters(state);
+  dust.SetDefaultParameters(state);
 
   // state.PrintHeader();
   for (int i = 0; i < 10; ++i)
@@ -200,8 +248,6 @@ int main()
     auto result = solver.Solve(500.0, state);
     // state.PrintState(i * 500);
   }
-
-#endif
 
   // Print with species names if variable_names_ is available
   std::cout << "\nState Variables by Species:" << std::endl;

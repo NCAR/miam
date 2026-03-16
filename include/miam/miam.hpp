@@ -3,6 +3,6 @@
 
 #pragma once
 
-#include <miam/distribution.hpp>
-#include <miam/moment.hpp>
-#include <miam/shape.hpp>
+#include <miam/representation.hpp>
+#include <miam/model.hpp>
+#include <miam/process.hpp>

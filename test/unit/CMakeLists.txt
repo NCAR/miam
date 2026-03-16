@@ -1,3 +1,6 @@
-create_standard_test(NAME distribution SOURCES distribution.cpp)
+create_standard_test(NAME model SOURCES model.cpp)
 
-add_subdirectory(moments)
+add_subdirectory(processes)
+add_subdirectory(representations)
+
+

@@ -76,8 +76,8 @@ if(MIAM_ENABLE_TESTS)
 
   if(MIAM_ENABLE_COVERAGE)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(miam PRIVATE --coverage)
-    target_link_options(miam PRIVATE --coverage)
+    target_compile_options(miam PUBLIC --coverage)
+    target_link_options(miam PUBLIC --coverage)
 
     include(CodeCoverage)
     setup_target_for_coverage_lcov(
@@ -85,6 +85,7 @@ if(MIAM_ENABLE_TESTS)
         EXECUTABLE ctest
         EXCLUDE "${PROJECT_SOURCE_DIR}/test/*"
         BASE_DIRECTORY ${PROJECT_SOURCE_DIR}/src
+        LCOV_ARGS --ignore-errors mismatch --ignore-errors unused
     )
     else()
       message(FATAL_ERROR "Coverage is only supported with GCC or Clang")

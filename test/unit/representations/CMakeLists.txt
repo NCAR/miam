@@ -1,0 +1,3 @@
+create_standard_test(NAME single_moment_mode SOURCES single_moment_mode.cpp)
+create_standard_test(NAME two_moment_mode SOURCES two_moment_mode.cpp)
+create_standard_test(NAME uniform_section SOURCES uniform_section.cpp)
