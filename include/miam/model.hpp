@@ -9,6 +9,7 @@
 
 #include <micm/system/conditions.hpp>
 
+#include <algorithm>
 #include <any>
 #include <functional>
 #include <memory>
@@ -244,15 +245,68 @@ namespace miam
     }
 
     /// @brief Build aerosol property providers for all processes
-    /// @details Placeholder returning an empty map — real implementation
-    ///          will query RequiredAerosolProperties() on each process and
-    ///          build providers from representations in Step 1.
+    /// @details Queries RequiredAerosolProperties() on each process, finds the representation
+    ///          that owns each phase prefix, and calls GetPropertyProvider() to create providers.
     template<typename DenseMatrixPolicy>
     std::map<std::string, std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>> BuildProviders(
-        const std::map<std::string, std::set<std::string>>& /* phase_prefixes */,
-        const std::unordered_map<std::string, std::size_t>& /* state_variable_indices */) const
+        const std::map<std::string, std::set<std::string>>& phase_prefixes,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
     {
-      return {};
+      // Collect all required properties across all processes
+      std::map<std::string, std::vector<AerosolProperty>> required;
+      ForEachProcess(
+          [&](const auto& process)
+          {
+            auto process_required = process.RequiredAerosolProperties();
+            for (const auto& [phase_name, properties] : process_required)
+              for (const auto& prop : properties)
+              {
+                auto& existing = required[phase_name];
+                if (std::find(existing.begin(), existing.end(), prop) == existing.end())
+                  existing.push_back(prop);
+              }
+          });
+
+      std::map<std::string, std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>> result;
+      if (required.empty())
+        return result;
+
+      // Collect state parameter indices (needed for GetPropertyProvider)
+      auto param_names = StateParameterNames();
+      std::unordered_map<std::string, std::size_t> param_indices;
+      std::size_t idx = 0;
+      for (const auto& name : param_names)
+        param_indices[name] = idx++;
+
+      for (const auto& [phase_name, properties] : required)
+      {
+        auto pp_it = phase_prefixes.find(phase_name);
+        if (pp_it == phase_prefixes.end())
+          throw std::runtime_error("BuildProviders: phase not found: " + phase_name);
+
+        for (const auto& prefix : pp_it->second)
+        {
+          for (const auto& repr : representations_)
+          {
+            std::visit(
+                [&](const auto& r)
+                {
+                  auto repr_prefixes = r.PhaseStatePrefixes();
+                  auto phase_it = repr_prefixes.find(phase_name);
+                  if (phase_it != repr_prefixes.end() && phase_it->second.count(prefix))
+                  {
+                    for (const auto& prop : properties)
+                    {
+                      result[prefix].push_back(r.template GetPropertyProvider<DenseMatrixPolicy>(
+                          prop, param_indices, state_variable_indices, phase_name));
+                    }
+                  }
+                },
+                repr);
+          }
+        }
+      }
+      return result;
     }
 
     std::map<std::string, std::size_t> CountPhaseInstances() const
