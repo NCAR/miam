@@ -6,5 +6,6 @@
 #include <miam/aerosol_property.hpp>
 #include <miam/process_set.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
 #include <miam/processes/dissolved_reversible_reaction.hpp>
 #include <miam/processes/dissolved_reversible_reaction_builder.hpp>
