@@ -32,11 +32,12 @@ namespace miam
    public:
     using RepresentationVariant =
         std::variant<representation::SingleMomentMode, representation::TwoMomentMode, representation::UniformSection>;
+    using ProcessVariant =
+        std::variant<process::DissolvedReversibleReaction, process::HenryLawPhaseTransfer>;
 
     std::string name_;
     std::vector<RepresentationVariant> representations_;
-    std::vector<process::DissolvedReversibleReaction> dissolved_reactions_{};
-    std::vector<process::HenryLawPhaseTransfer> henry_law_transfers_{};
+    std::vector<ProcessVariant> processes_{};
 
     /// @brief Returns the total state size (number of variables, number of parameters)
     std::tuple<std::size_t, std::size_t> StateSize() const
@@ -123,22 +124,25 @@ namespace miam
       return species_names;
     }
 
-    /// @brief Add dissolved reversible reactions to the model
-    void AddProcesses(const std::vector<process::DissolvedReversibleReaction>& new_reactions)
+    /// @brief Add processes to the model
+    /// @details Accepts a vector of any process type stored in ProcessVariant.
+    ///          Each process is copied with a new UUID to ensure uniqueness across models.
+    template<typename ProcessType>
+    void AddProcesses(const std::vector<ProcessType>& new_processes)
     {
-      // Create copies with new UUIDs for each reaction to ensure uniqueness across models
-      for (const auto& reaction : new_reactions)
+      for (const auto& process : new_processes)
       {
-        dissolved_reactions_.push_back(reaction.CopyWithNewUuid());
+        processes_.push_back(ProcessVariant{ process.CopyWithNewUuid() });
       }
     }
 
-    /// @brief Add Henry's Law phase transfer processes to the model
-    void AddProcesses(const std::vector<process::HenryLawPhaseTransfer>& new_transfers)
+    /// @brief Add processes to the model from an initializer list
+    template<typename ProcessType>
+    void AddProcesses(std::initializer_list<ProcessType> new_processes)
     {
-      for (const auto& transfer : new_transfers)
+      for (const auto& process : new_processes)
       {
-        henry_law_transfers_.push_back(transfer.CopyWithNewUuid());
+        processes_.push_back(ProcessVariant{ process.CopyWithNewUuid() });
       }
     }
 
@@ -248,13 +252,9 @@ namespace miam
     template<typename Func>
     void ForEachProcess(Func&& fn) const
     {
-      for (const auto& process : dissolved_reactions_)
+      for (const auto& process : processes_)
       {
-        fn(process);
-      }
-      for (const auto& process : henry_law_transfers_)
-      {
-        fn(process);
+        std::visit([&](const auto& p) { fn(p); }, process);
       }
     }
 
