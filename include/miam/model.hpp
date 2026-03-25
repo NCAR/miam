@@ -3,11 +3,13 @@
 
 #pragma once
 
+#include <miam/aerosol_property.hpp>
 #include <miam/process.hpp>
 #include <miam/representation.hpp>
 
 #include <micm/system/conditions.hpp>
 
+#include <any>
 #include <functional>
 #include <memory>
 #include <set>
@@ -52,11 +54,12 @@ namespace miam
       }
       // Add parameters for each process
       auto phase_prefixes = CollectPhaseStatePrefixes();
-      for (const auto& reaction : dissolved_reactions_)
-      {
-        auto process_params = reaction.ProcessParameterNames(phase_prefixes);
-        num_parameters += process_params.size();
-      }
+      ForEachProcess(
+          [&](const auto& process)
+          {
+            auto process_params = process.ProcessParameterNames(phase_prefixes);
+            num_parameters += process_params.size();
+          });
       return { num_variables, num_parameters };
     }
 
@@ -94,11 +97,12 @@ namespace miam
       }
       // Add parameters for each process
       auto phase_prefixes = CollectPhaseStatePrefixes();
-      for (const auto& reaction : dissolved_reactions_)
-      {
-        auto process_params = reaction.ProcessParameterNames(phase_prefixes);
-        names.insert(process_params.begin(), process_params.end());
-      }
+      ForEachProcess(
+          [&](const auto& process)
+          {
+            auto process_params = process.ProcessParameterNames(phase_prefixes);
+            names.insert(process_params.begin(), process_params.end());
+          });
       return names;
     }
 
@@ -108,11 +112,12 @@ namespace miam
       auto phase_prefixes = CollectPhaseStatePrefixes();
       // Collect participating species' unique state names for all processes
       std::set<std::string> species_names;
-      for (const auto& reaction : dissolved_reactions_)
-      {
-        auto process_species = reaction.SpeciesUsed(phase_prefixes);
-        species_names.insert(process_species.begin(), process_species.end());
-      }
+      ForEachProcess(
+          [&](const auto& process)
+          {
+            auto process_species = process.SpeciesUsed(phase_prefixes);
+            species_names.insert(process_species.begin(), process_species.end());
+          });
       return species_names;
     }
 
@@ -133,11 +138,12 @@ namespace miam
       // Collect needed Jacobian element indices from all processes
       std::set<std::pair<std::size_t, std::size_t>> elements;
       auto phase_prefixes = CollectPhaseStatePrefixes();
-      for (const auto& reaction : dissolved_reactions_)
-      {
-        auto process_elements = reaction.NonZeroJacobianElements(phase_prefixes, state_indices);
-        elements.insert(process_elements.begin(), process_elements.end());
-      }
+      ForEachProcess(
+          [&](const auto& process)
+          {
+            auto process_elements = process.NonZeroJacobianElements(phase_prefixes, state_indices);
+            elements.insert(process_elements.begin(), process_elements.end());
+          });
       return elements;
     }
 
@@ -149,12 +155,13 @@ namespace miam
       // Collect parameter update functions from all processes and return a combined function
       auto phase_prefixes = CollectPhaseStatePrefixes();
       std::vector<std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)>> update_functions;
-      for (const auto& reaction : dissolved_reactions_)
-      {
-        auto update_fn =
-            reaction.template UpdateStateParametersFunction<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices);
-        update_functions.push_back(update_fn);
-      }
+      ForEachProcess(
+          [&](const auto& process)
+          {
+            auto update_fn =
+                process.template UpdateStateParametersFunction<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices);
+            update_functions.push_back(update_fn);
+          });
       return [update_functions](const std::vector<micm::Conditions>& conditions, DenseMatrixPolicy& state_parameters)
       {
         for (const auto& fn : update_functions)
@@ -172,14 +179,16 @@ namespace miam
     {
       // Collect forcing functions from all processes and return a combined function
       auto phase_prefixes = CollectPhaseStatePrefixes();
+      auto providers = BuildProviders<DenseMatrixPolicy>(phase_prefixes, state_variable_indices);
       std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>>
           forcing_functions;
-      for (const auto& reaction : dissolved_reactions_)
-      {
-        auto forcing_fn = reaction.template ForcingFunction<DenseMatrixPolicy>(
-            phase_prefixes, state_parameter_indices, state_variable_indices);
-        forcing_functions.push_back(forcing_fn);
-      }
+      ForEachProcess(
+          [&](const auto& process)
+          {
+            auto forcing_fn = process.template ForcingFunction<DenseMatrixPolicy>(
+                phase_prefixes, state_parameter_indices, state_variable_indices, providers);
+            forcing_functions.push_back(forcing_fn);
+          });
       return [forcing_functions](
                  const DenseMatrixPolicy& state_parameters,
                  const DenseMatrixPolicy& state_variables,
@@ -201,14 +210,16 @@ namespace miam
     {
       // Collect Jacobian functions from all processes and return a combined function
       auto phase_prefixes = CollectPhaseStatePrefixes();
+      auto providers = BuildProviders<DenseMatrixPolicy>(phase_prefixes, state_variable_indices);
       std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>>
           jacobian_functions;
-      for (const auto& reaction : dissolved_reactions_)
-      {
-        auto jacobian_fn = reaction.template JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
-            phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
-        jacobian_functions.push_back(jacobian_fn);
-      }
+      ForEachProcess(
+          [&](const auto& process)
+          {
+            auto jacobian_fn = process.template JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
+                phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
+            jacobian_functions.push_back(jacobian_fn);
+          });
       return [jacobian_functions](
                  const DenseMatrixPolicy& state_parameters,
                  const DenseMatrixPolicy& state_variables,
@@ -222,6 +233,28 @@ namespace miam
     }
 
    private:
+    /// @brief Iterate over all registered processes with a generic callable
+    template<typename Func>
+    void ForEachProcess(Func&& fn) const
+    {
+      for (const auto& process : dissolved_reactions_)
+      {
+        fn(process);
+      }
+    }
+
+    /// @brief Build aerosol property providers for all processes
+    /// @details Placeholder returning an empty map — real implementation
+    ///          will query RequiredAerosolProperties() on each process and
+    ///          build providers from representations in Step 1.
+    template<typename DenseMatrixPolicy>
+    std::map<std::string, std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>> BuildProviders(
+        const std::map<std::string, std::set<std::string>>& /* phase_prefixes */,
+        const std::unordered_map<std::string, std::size_t>& /* state_variable_indices */) const
+    {
+      return {};
+    }
+
     std::map<std::string, std::size_t> CountPhaseInstances() const
     {
       std::map<std::string, std::size_t> phase_instance_counts;
