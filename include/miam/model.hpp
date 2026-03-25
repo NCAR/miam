@@ -36,6 +36,7 @@ namespace miam
     std::string name_;
     std::vector<RepresentationVariant> representations_;
     std::vector<process::DissolvedReversibleReaction> dissolved_reactions_{};
+    std::vector<process::HenryLawPhaseTransfer> henry_law_transfers_{};
 
     /// @brief Returns the total state size (number of variables, number of parameters)
     std::tuple<std::size_t, std::size_t> StateSize() const
@@ -129,6 +130,15 @@ namespace miam
       for (const auto& reaction : new_reactions)
       {
         dissolved_reactions_.push_back(reaction.CopyWithNewUuid());
+      }
+    }
+
+    /// @brief Add Henry's Law phase transfer processes to the model
+    void AddProcesses(const std::vector<process::HenryLawPhaseTransfer>& new_transfers)
+    {
+      for (const auto& transfer : new_transfers)
+      {
+        henry_law_transfers_.push_back(transfer.CopyWithNewUuid());
       }
     }
 
@@ -239,6 +249,10 @@ namespace miam
     void ForEachProcess(Func&& fn) const
     {
       for (const auto& process : dissolved_reactions_)
+      {
+        fn(process);
+      }
+      for (const auto& process : henry_law_transfers_)
       {
         fn(process);
       }

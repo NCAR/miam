@@ -9,3 +9,5 @@
 #include <miam/processes/constants/henrys_law_constant.hpp>
 #include <miam/processes/dissolved_reversible_reaction.hpp>
 #include <miam/processes/dissolved_reversible_reaction_builder.hpp>
+#include <miam/processes/henry_law_phase_transfer.hpp>
+#include <miam/processes/henry_law_phase_transfer_builder.hpp>
