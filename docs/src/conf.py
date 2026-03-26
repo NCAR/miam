@@ -1,8 +1,14 @@
 # Configuration file for the Sphinx documentation builder.
 
+import os
+
 project = 'MIAM'
 copyright = '2026, University Corporation for Atmospheric Research'
 author = 'NCAR'
+
+suffix = os.environ.get('SWITCHER_SUFFIX', '')
+version = '0.0.0'
+release = f'v0.0.0{suffix}'
 
 extensions = [
     'breathe',

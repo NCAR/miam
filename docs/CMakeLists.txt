@@ -7,7 +7,7 @@
 
 # Find all the public headers
 get_target_property(PUBLIC_HEADER_DIR miam INTERFACE_INCLUDE_DIRECTORIES)
-file(GLOB_RECURSE PUBLIC_HEADERS ${PUBLIC_HEADER_DIR}/*.h)
+file(GLOB_RECURSE PUBLIC_HEADERS ${PUBLIC_HEADER_DIR}/*.hpp)
 
 #This will be the main output of our command
 set(DOXYGEN_INPUT_DIR "${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src")
