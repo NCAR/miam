@@ -109,6 +109,391 @@ The `1/f_v` factor converts from the air-volume basis back to the dissolved
 basis as needed by Henry's Law equilibrium. For a mode with a single phase,
 φ_p = 1 and the expressions reduce to the un-scaled form.
 
+## Mathematical Reference
+
+This section collects every equation used in the Henry's Law phase transfer
+rate calculation, its partial derivatives with respect to state variables,
+and the Jacobian sign convention used by the MICM solver.
+
+### Constants and notation
+
+| Symbol | Description | Units |
+|--------|-------------|-------|
+| R      | Universal gas constant (8.314462618) | J mol⁻¹ K⁻¹ |
+| T      | Temperature | K |
+| D_g    | Gas-phase diffusion coefficient | m² s⁻¹ |
+| α      | Mass accommodation coefficient | dimensionless (0–1) |
+| Mw_gas | Molecular weight of gas species | kg mol⁻¹ |
+| Mw_solvent | Molecular weight of solvent | kg mol⁻¹ |
+| ρ_solvent | Density of solvent | kg m⁻³ |
+| [A]_gas | Gas-phase concentration | mol m⁻³ air |
+| [A]_aq | Aqueous-phase concentration | mol m⁻³ air |
+| [solvent] | Solvent concentration | mol m⁻³ air |
+
+### 1. Henry's Law Constant (temperature-dependent)
+
+```
+HLC(T) = HLC_ref · exp( C · (1/T − 1/T₀) )
+```
+
+| Variable | Description | Units |
+|----------|-------------|-------|
+| HLC_ref  | Reference Henry's Law constant at T₀ | mol m⁻³ Pa⁻¹ |
+| C        | Temperature dependence parameter | K |
+| T₀       | Reference temperature (default 298.15) | K |
+| HLC(T)   | Henry's Law constant at temperature T | mol m⁻³ Pa⁻¹ |
+
+HLC is evaluated once per time step in `UpdateStateParametersFunction` and
+stored as a state parameter — it is not differentiated with respect to state
+variables.
+
+### 2. Mean molecular speed
+
+```
+c̄ = √(8 R T / (π Mw_gas))
+```
+
+Units: m s⁻¹. Used to derive the mean free path.
+
+### 3. Mean free path
+
+```
+λ = 3 D_g / c̄
+```
+
+Units: m.
+
+### 4. Knudsen number
+
+```
+Kn = λ / r_eff
+```
+
+Dimensionless. Characterizes the gas-particle interaction regime
+(Kn ≪ 1 → continuum, Kn ≫ 1 → free-molecular).
+
+### 5. Fuchs-Sutugin transition-regime correction
+
+```
+f(Kn) = (1 + Kn) / (1 + 2 Kn (1 + Kn) / α)
+```
+
+Dimensionless. Interpolates between the continuum (f → 1) and
+free-molecular (f → α / (2 Kn)) limits.
+
+**Partial derivative with respect to Kn** (needed for the chain rule
+through r_eff):
+
+```
+Let denom = 1 + 2 Kn (1 + Kn) / α
+
+df/dKn = [α − 2 Kn² − 2 Kn] / [α · denom²]
+```
+
+### 6. Condensation rate
+
+```
+k_c = 4π · r_eff · N · D_g · f(Kn)
+```
+
+Units: s⁻¹. The first-order rate constant for gas-to-condensed transfer.
+
+**Partial derivative with respect to r_eff** (chain rule through Kn):
+
+```
+dKn/dr_eff = −Kn / r_eff
+
+dk_c/dr_eff = 4π N D_g · [ f(Kn) + r_eff · df/dKn · dKn/dr_eff ]
+            = 4π N D_g · [ f(Kn) − Kn · df/dKn ]
+```
+
+Units: s⁻¹ m⁻¹.
+
+**Partial derivative with respect to N** (linear dependence):
+
+```
+dk_c/dN = k_c / N
+```
+
+Units: s⁻¹ # ⁻¹ m³. Because k_c is linear in N, the derivative is
+simply the per-particle condensation rate.
+
+### 7. Evaporation rate
+
+```
+k_e = k_c / (HLC · R · T)
+```
+
+Units: s⁻¹. Derived from Henry's Law equilibrium — at equilibrium the
+condensation and evaporation fluxes balance.
+
+**Partial derivatives** — obtained by dividing the k_c partial by the
+same constant factor:
+
+```
+dk_e/dr_eff = dk_c/dr_eff / (HLC · R · T)
+dk_e/dN     = dk_c/dN     / (HLC · R · T) = k_e / N
+```
+
+### 8. Solvent volume fraction
+
+```
+f_v = [solvent] · Mw_solvent / ρ_solvent
+```
+
+Dimensionless. Converts the dissolved-phase concentration basis
+(`mol m⁻³ solvent`) back to the air-volume basis (`mol m⁻³ air`).
+
+### 9. Net transfer rate (forcing function)
+
+For a single condensed-phase instance with phase volume fraction φ_p:
+
+```
+R_net = φ_p · k_c · [A]_gas − φ_p · k_e · [A]_aq / f_v
+```
+
+Units: mol m⁻³ s⁻¹. The ODE right-hand sides are:
+
+```
+d[A]_gas / dt = −R_net      (gas is consumed)
+d[A]_aq  / dt = +R_net      (condensed species is produced)
+d[solvent] / dt = 0          (solvent unchanged by this process)
+```
+
+When multiple condensed-phase instances exist (e.g., different aerosol
+modes containing the same phase), each contributes its own R_net with its
+own r_eff, N, and φ_p; the contributions are summed into the same gas
+species forcing term.
+
+### 10. Jacobian entries
+
+The MICM Rosenbrock solver stores **−J** (negative Jacobian). All entries
+produced by the Jacobian function are therefore negated relative to the
+mathematical derivatives. The table below shows the mathematical derivative
+and the value actually stored.
+
+#### 10a. Direct entries (w.r.t. state variables [A]_gas, [A]_aq, [solvent])
+
+| Entry | Mathematical J | Stored −J |
+|-------|---------------|-----------|
+| J[gas, gas]     | −φ_p · k_c               | +φ_p · k_c               |
+| J[gas, aq]      | +φ_p · k_e / f_v         | −φ_p · k_e / f_v         |
+| J[gas, solvent] | −φ_p · k_e · [A]_aq / (f_v · [solvent]) | +φ_p · k_e · [A]_aq / (f_v · [solvent]) |
+| J[aq, gas]      | +φ_p · k_c               | −φ_p · k_c               |
+| J[aq, aq]       | −φ_p · k_e / f_v         | +φ_p · k_e / f_v         |
+| J[aq, solvent]  | +φ_p · k_e · [A]_aq / (f_v · [solvent]) | −φ_p · k_e · [A]_aq / (f_v · [solvent]) |
+
+**Derivations (mathematical J, before negation):**
+
+```
+J[gas,gas] = ∂(−R_net)/∂[A]_gas = −φ_p · k_c
+
+J[gas,aq]  = ∂(−R_net)/∂[A]_aq  = +φ_p · k_e / f_v
+
+J[gas,solvent] = ∂(−R_net)/∂[solvent]
+    R_net contains the term  −φ_p · k_e · [A]_aq / f_v
+    where f_v = [solvent] · Mw_s/ρ_s, so:
+    ∂/∂[solvent](−(−φ_p k_e [A]_aq / f_v))
+      = −φ_p · k_e · [A]_aq / (f_v · [solvent])
+
+J[aq,x] = −J[gas,x]   for all x  (mass conservation)
+```
+
+Note that J[gas,x] = −J[aq,x] for every column x — this antisymmetry is
+a direct consequence of mass conservation (the gas loss equals the
+condensed-phase gain) and holds regardless of the sign convention.
+
+#### 10b. Indirect entries through aerosol properties
+
+When an aerosol property (r_eff, N, or φ_p) depends on a state variable
+y_j, the Jacobian gains additional entries via the chain rule.
+
+**Through r_eff** (applies when r_eff depends on species concentrations,
+e.g., TwoMomentMode):
+
+```
+R_net = φ_p · (k_c · [A]_gas − k_e · [A]_aq / f_v)
+
+∂R_net/∂y_j via r_eff
+    = φ_p · (dk_c/dr_eff · [A]_gas − dk_e/dr_eff · [A]_aq / f_v) · ∂r_eff/∂y_j
+
+Stored −J[gas, y_j] += +φ_p · (dk_c/dr · [A]_gas − dk_e/dr · [A]_aq / f_v) · ∂r/∂y_j
+Stored −J[aq,  y_j] += −φ_p · (dk_c/dr · [A]_gas − dk_e/dr · [A]_aq / f_v) · ∂r/∂y_j
+```
+
+**Through N** (applies when N depends on species concentrations, e.g.,
+SingleMomentMode and UniformSection, or on the number concentration
+state variable in TwoMomentMode):
+
+```
+∂R_net/∂y_j via N
+    = φ_p · (dk_c/dN · [A]_gas − dk_e/dN · [A]_aq / f_v) · ∂N/∂y_j
+
+Stored −J[gas, y_j] += +φ_p · (dk_c/dN · [A]_gas − dk_e/dN · [A]_aq / f_v) · ∂N/∂y_j
+Stored −J[aq,  y_j] += −φ_p · (dk_c/dN · [A]_gas − dk_e/dN · [A]_aq / f_v) · ∂N/∂y_j
+```
+
+**Through φ_p** (applies when the mode contains multiple phases and φ_p
+depends on species concentrations):
+
+```
+Let R = k_c · [A]_gas − k_e · [A]_aq / f_v   (un-scaled net rate)
+Then R_net = φ_p · R
+
+∂R_net/∂y_j via φ_p = R · ∂φ_p/∂y_j
+
+Stored −J[gas, y_j] += +R · ∂φ_p/∂y_j
+Stored −J[aq,  y_j] += −R · ∂φ_p/∂y_j
+```
+
+The unscaled rate R is computed once and reused for all φ_p-dependent
+variables. The ∂φ_p/∂y_j values come from the phase volume fraction
+provider (see § Aerosol property partial derivatives below).
+
+#### 10c. Jacobian sparsity
+
+The set of nonzero Jacobian elements is determined at setup time from the
+union of:
+
+- **Direct**: (gas, gas), (gas, aq), (gas, solvent), (aq, gas), (aq, aq),
+  (aq, solvent) — 6 entries per instance.
+- **Via r_eff**: (gas, y_j), (aq, y_j) for each y_j in
+  `r_eff_provider.dependent_variable_indices` — 2 entries per dependency.
+- **Via N**: (gas, y_j), (aq, y_j) for each y_j in
+  `N_provider.dependent_variable_indices` — 2 entries per dependency.
+- **Via φ_p**: (gas, y_j), (aq, y_j) for each y_j in
+  `phi_provider.dependent_variable_indices` — 2 entries per dependency.
+
+The total number of nonzero entries depends on the representation type.
+For SingleMomentMode with a single phase the provider dependencies are:
+
+| Property | Dependencies | Entries |
+|----------|-------------|---------|
+| r_eff | none (parameterized) | 0 |
+| N | all species in mode | 2 × n_species |
+| φ_p | none (single phase → φ = 1) | 0 |
+
+For TwoMomentMode with two phases, each containing m_p and m_q species
+respectively, plus a number concentration variable:
+
+| Property | Dependencies | Entries |
+|----------|-------------|---------|
+| r_eff | all species + N_var | 2 × (m_p + m_q + 1) |
+| N | N_var | 2 × 1 |
+| φ_p | all species | 2 × (m_p + m_q) |
+
+### 11. Aerosol property partial derivatives
+
+These derivatives are computed by representation-specific providers and
+consumed by the process's Jacobian function via the chain rule
+(§ 10b above).
+
+#### Effective radius (r_eff)
+
+**SingleMomentMode** — parameterized, no state variable dependencies:
+
+```
+r_eff = GMD · exp(2.5 · ln²(GSD))
+
+∂r_eff/∂y_j = 0   for all state variables y_j
+```
+
+**TwoMomentMode** — depends on total volume and number concentration:
+
+```
+V_total = Σ_p Σ_i [species_{p,i}] · Mw_{p,i} / ρ_{p,i}
+r_mean  = (3 V_total / (4π N))^(1/3)
+r_eff   = r_mean · exp(2.5 · ln²(GSD))
+
+∂r_eff/∂[species_{p,i}] = r_eff · (Mw_{p,i} / ρ_{p,i}) / (3 V_total)
+∂r_eff/∂N               = −r_eff / (3 N)
+```
+
+**UniformSection** — parameterized, no state variable dependencies:
+
+```
+r_eff = (r_min + r_max) / 2
+
+∂r_eff/∂y_j = 0   for all state variables y_j
+```
+
+#### Number concentration (N)
+
+**SingleMomentMode** — derived from total volume and fixed single-particle
+volume:
+
+```
+V_single = (4/3)π · GMD³ · exp(4.5 · ln²(GSD))
+V_total  = Σ_p Σ_i [species_{p,i}] · Mw_{p,i} / ρ_{p,i}
+N        = V_total / V_single
+
+∂N/∂[species_{p,i}] = (Mw_{p,i} / ρ_{p,i}) / V_single
+```
+
+**TwoMomentMode** — prognostic state variable:
+
+```
+N = [N_var]      (a directly tracked state variable)
+
+∂N/∂[N_var] = 1
+```
+
+**UniformSection** — derived from total volume and fixed single-particle
+volume:
+
+```
+V_single = (4/3)π · r_eff³
+V_total  = Σ_p Σ_i [species_{p,i}] · Mw_{p,i} / ρ_{p,i}
+N        = V_total / V_single
+
+∂N/∂[species_{p,i}] = (Mw_{p,i} / ρ_{p,i}) / V_single
+```
+
+#### Phase volume fraction (φ_p)
+
+All representation types use the same formula. When a mode or section
+contains only a single phase, φ_p = 1 and all partials are zero.
+
+For multi-phase modes/sections:
+
+```
+V_phase = Σ_i [species_{p,i}] · Mw_{p,i} / ρ_{p,i}    (target phase only)
+V_total = Σ_q Σ_i [species_{q,i}] · Mw_{q,i} / ρ_{q,i}  (all phases)
+φ_p     = V_phase / V_total
+
+Same-phase species:
+  ∂φ_p/∂[species_{p,i}] = (Mw_{p,i} / ρ_{p,i}) · (1 − φ_p) / V_total
+
+Other-phase species:
+  ∂φ_p/∂[species_{q,i}] = −(Mw_{q,i} / ρ_{q,i}) · φ_p / V_total
+```
+
+### 12. Summary of the complete derivative chain
+
+For a single condensed-phase instance i, the full Jacobian contribution to
+the gas species equation is (mathematical J, before MICM negation):
+
+```
+∂(d[A]_gas/dt) / ∂y_j =
+
+  DIRECT (y_j ∈ {[A]_gas, [A]_aq, [solvent]}):
+    see § 10a table
+
+  + VIA r_eff:
+    −φ_p · (dk_c/dr · [A]_gas − dk_e/dr · [A]_aq / f_v) · ∂r/∂y_j
+
+  + VIA N:
+    −φ_p · (dk_c/dN · [A]_gas − dk_e/dN · [A]_aq / f_v) · ∂N/∂y_j
+
+  + VIA φ_p:
+    −R · ∂φ_p/∂y_j     where R = k_c · [A]_gas − k_e · [A]_aq / f_v
+```
+
+The aqueous species row is always the negative of the gas row
+(J[aq, y_j] = −J[gas, y_j]), so only one set of chain-rule products needs
+to be computed. All stored values are then negated for the MICM −J
+convention.
+
 ## Key Differences from DissolvedReversibleReaction
 
 | Aspect | Dissolved Reversible Reaction | Henry's Law Phase Transfer |
