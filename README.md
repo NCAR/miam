@@ -87,18 +87,16 @@ using namespace miam;
 int main()
 {
   // Define species with physical properties required for mass transfer
-  auto co2_g  = Species{ "CO2_g",
-      { { "molecular weight [kg mol-1]", 0.044 } } };
-  auto co2_aq = Species{ "CO2_aq",
+  auto co2 = Species{ "CO2",
       { { "molecular weight [kg mol-1]", 0.044 },
         { "density [kg m-3]", 1800.0 } } };
-  auto h2o    = Species{ "H2O",
+  auto h2o = Species{ "H2O",
       { { "molecular weight [kg mol-1]", 0.018 },
         { "density [kg m-3]", 1000.0 } } };
 
   // Define phases
-  Phase gas_phase{ "GAS", { { co2_g } } };
-  Phase aqueous_phase{ "AQUEOUS", { { co2_aq }, { h2o } } };
+  Phase gas_phase{ "GAS", { { co2 } } };
+  Phase aqueous_phase{ "AQUEOUS", { { co2 }, { h2o } } };
 
   // Cloud droplets with a single-moment log-normal distribution
   auto cloud = representation::SingleMomentMode{
@@ -111,9 +109,9 @@ int main()
   // Henry's Law phase transfer: CO2(g) <-> CO2(aq)
   auto co2_transfer = process::HenryLawPhaseTransferBuilder()
     .SetCondensedPhase(aqueous_phase)
-    .SetGasSpecies(co2_g)
-    .SetGasSpeciesName("CO2_g")
-    .SetCondensedSpecies(co2_aq)
+    .SetGasSpecies(co2)
+    .SetGasSpeciesName("CO2")
+    .SetCondensedSpecies(co2)
     .SetSolvent(h2o)
     .SetHenrysLawConstant(process::constant::HenrysLawConstant(
         { .HLC_ref_ = 3.4e-2 }))       // mol m-3 Pa-1 at 298 K
@@ -144,7 +142,7 @@ int main()
   state.conditions_[0].pressure_ = 101325.0;    // Pa
   state.conditions_[0].CalculateIdealAirDensity();
 
-  state[co2_g] = 1.0e-3;                               // mol m-3 air
+  state[co2] = 1.0e-3;                                  // mol m-3 air
   state[cloud.Species(aqueous_phase, h2o)] = 300.0;      // mol m-3 (liquid water content)
   cloud.SetDefaultParameters(state);
 
@@ -171,18 +169,18 @@ Expected output — gas-phase CO₂ dissolves into the cloud droplets, approachi
 Henry's Law equilibrium:
 
 ```
-  time,                 CO2_g,  CLOUD.AQUEOUS.CO2_aq,     CLOUD.AQUEOUS.H2O
-     0,              1.00e-03,              0.00e+00,              3.00e+02
-   100,              9.12e-04,              8.85e-05,              3.00e+02
-   200,              8.48e-04,              1.52e-04,              3.00e+02
-   300,              8.03e-04,              1.97e-04,              3.00e+02
-   400,              7.70e-04,              2.30e-04,              3.00e+02
-   500,              7.47e-04,              2.53e-04,              3.00e+02
-   600,              7.30e-04,              2.70e-04,              3.00e+02
-   700,              7.18e-04,              2.82e-04,              3.00e+02
-   800,              7.09e-04,              2.91e-04,              3.00e+02
-   900,              7.03e-04,              2.97e-04,              3.00e+02
-  1000,              6.98e-04,              3.02e-04,              3.00e+02
+  time,                CO2,  CLOUD.AQUEOUS.CO2,  CLOUD.AQUEOUS.H2O
+     0,           1.00e-03,           0.00e+00,           3.00e+02
+   100,           9.12e-04,           8.85e-05,           3.00e+02
+   200,           8.48e-04,           1.52e-04,           3.00e+02
+   300,           8.03e-04,           1.97e-04,           3.00e+02
+   400,           7.47e-04,           2.53e-04,           3.00e+02
+   500,           7.30e-04,           2.70e-04,           3.00e+02
+   600,           7.18e-04,           2.82e-04,           3.00e+02
+   700,           7.09e-04,           2.91e-04,           3.00e+02
+   800,           7.03e-04,           2.97e-04,           3.00e+02
+   900,           6.98e-04,           3.02e-04,           3.00e+02
+  1000,           6.98e-04,           3.02e-04,           3.00e+02
 ```
 
 See the [MIAM documentation](https://ncar.github.io/miam/) for the full API

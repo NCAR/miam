@@ -18,18 +18,16 @@ using namespace miam;
 TEST(ReadmeExample, HenryLawPhaseTransfer)
 {
   // Define species with physical properties required for mass transfer
-  auto co2_g  = Species{ "CO2_g",
-      { { "molecular weight [kg mol-1]", 0.044 } } };
-  auto co2_aq = Species{ "CO2_aq",
+  auto co2 = Species{ "CO2",
       { { "molecular weight [kg mol-1]", 0.044 },
         { "density [kg m-3]", 1800.0 } } };
-  auto h2o    = Species{ "H2O",
+  auto h2o = Species{ "H2O",
       { { "molecular weight [kg mol-1]", 0.018 },
         { "density [kg m-3]", 1000.0 } } };
 
   // Define phases
-  Phase gas_phase{ "GAS", { { co2_g } } };
-  Phase aqueous_phase{ "AQUEOUS", { { co2_aq }, { h2o } } };
+  Phase gas_phase{ "GAS", { { co2 } } };
+  Phase aqueous_phase{ "AQUEOUS", { { co2 }, { h2o } } };
 
   // Cloud droplets with a single-moment log-normal distribution
   auto cloud = representation::SingleMomentMode{
@@ -42,9 +40,9 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   // Henry's Law phase transfer: CO2(g) <-> CO2(aq)
   auto co2_transfer = process::HenryLawPhaseTransferBuilder()
     .SetCondensedPhase(aqueous_phase)
-    .SetGasSpecies(co2_g)
-    .SetGasSpeciesName("CO2_g")
-    .SetCondensedSpecies(co2_aq)
+    .SetGasSpecies(co2)
+    .SetGasSpeciesName("CO2")
+    .SetCondensedSpecies(co2)
     .SetSolvent(h2o)
     .SetHenrysLawConstant(process::constant::HenrysLawConstant(
         { .HLC_ref_ = 3.4e-2 }))       // mol m-3 Pa-1 at 298 K
@@ -75,7 +73,7 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   state.conditions_[0].pressure_ = 101325.0;    // Pa
   state.conditions_[0].CalculateIdealAirDensity();
 
-  state[co2_g] = 1.0e-3;                               // mol m-3 air
+  state[co2] = 1.0e-3;                                  // mol m-3 air
   state[cloud.Species(aqueous_phase, h2o)] = 300.0;      // mol m-3 (liquid water content)
   cloud.SetDefaultParameters(state);
 
@@ -102,7 +100,7 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   // Verify the output is not empty and contains expected header columns
   EXPECT_FALSE(output.empty());
   EXPECT_NE(output.find("time"), std::string::npos);
-  EXPECT_NE(output.find("CO2_g"), std::string::npos);
+  EXPECT_NE(output.find("CO2"), std::string::npos);
 
   // Verify physical constraints after integration:
   // 1. All concentrations should be non-negative
@@ -113,11 +111,11 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   }
 
   // 2. Gas CO2 should decrease (dissolving into aqueous phase)
-  double co2_g_final = state.variables_[0][state.variable_map_["CO2_g"]];
+  double co2_g_final = state.variables_[0][state.variable_map_["CO2"]];
   EXPECT_LT(co2_g_final, 1.0e-3) << "Gas CO2 should decrease from initial value";
 
   // 3. Aqueous CO2 should increase from zero
-  double co2_aq_final = state.variables_[0][state.variable_map_["CLOUD.AQUEOUS.CO2_aq"]];
+  double co2_aq_final = state.variables_[0][state.variable_map_["CLOUD.AQUEOUS.CO2"]];
   EXPECT_GT(co2_aq_final, 0.0) << "Aqueous CO2 should increase from zero";
 
   // 4. Mass conservation: gas + aqueous should equal initial total

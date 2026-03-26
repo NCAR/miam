@@ -26,9 +26,7 @@ Save the following as ``henry_law_example.cpp``:
    int main()
    {
      // 1. Define species with physical properties
-     auto A_gas = Species{ "A_g",
-         { { "molecular weight [kg mol-1]", 0.044 } } };
-     auto A_aq = Species{ "A_aq",
+     auto A = Species{ "A",
          { { "molecular weight [kg mol-1]", 0.044 },
            { "density [kg m-3]", 1800.0 } } };
      auto H2O = Species{ "H2O",
@@ -36,8 +34,8 @@ Save the following as ``henry_law_example.cpp``:
            { "density [kg m-3]", 1000.0 } } };
 
      // 2. Define phases
-     Phase gas_phase{ "GAS", { { A_gas } } };
-     Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
+     Phase gas_phase{ "GAS", { { A } } };
+     Phase aqueous_phase{ "AQUEOUS", { { A }, { H2O } } };
 
      // 3. Create a particle representation (cloud droplets)
      auto droplets = representation::SingleMomentMode{
@@ -50,9 +48,9 @@ Save the following as ``henry_law_example.cpp``:
      // 4. Define the Henry's Law phase transfer process
      auto transfer = process::HenryLawPhaseTransferBuilder()
        .SetCondensedPhase(aqueous_phase)
-       .SetGasSpecies(A_gas)
-       .SetGasSpeciesName("A_g")
-       .SetCondensedSpecies(A_aq)
+       .SetGasSpecies(A)
+       .SetGasSpeciesName("A")
+       .SetCondensedSpecies(A)
        .SetSolvent(H2O)
        .SetHenrysLawConstant(process::constant::HenrysLawConstant(
            { .HLC_ref_ = 3.4e-2 }))  // mol m-3 Pa-1
@@ -82,7 +80,7 @@ Save the following as ``henry_law_example.cpp``:
      state.conditions_[0].pressure_ = 101325.0;
      state.conditions_[0].CalculateIdealAirDensity();
 
-     state[A_gas] = 1.0e-3;   // mol m-3 air
+     state[A] = 1.0e-3;   // mol m-3 air
      state[droplets.Species(aqueous_phase, H2O)] = 300.0;  // liquid water content
      droplets.SetDefaultParameters(state);
 
