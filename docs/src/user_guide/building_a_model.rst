@@ -90,7 +90,7 @@ After building the solver, initialize the state:
    state[co2] = 0.2;  // mol m-3
 
    // Condensed-phase species (fully qualified name)
-   state[droplets.Species(aqueous_phase, h2o)] = 55.5;  // mol m-3
+   state[droplets.Species(aqueous_phase, h2o)] = 300.0;  // mol m-3 (liquid water content)
 
    // Number concentration (TwoMomentMode only)
    state[aitken.NumberConcentration()] = 1.0e8;  // m-3

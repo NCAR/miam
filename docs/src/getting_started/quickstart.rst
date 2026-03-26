@@ -57,7 +57,7 @@ Save the following as ``henry_law_example.cpp``:
        .SetHenrysLawConstant(process::constant::HenrysLawConstant(
            { .HLC_ref_ = 3.4e-2 }))  // mol m-3 Pa-1
        .SetDiffusionCoefficient(1.5e-5)   // m2 s-1
-       .SetAccommodationCoefficient(0.05)
+       .SetAccommodationCoefficient(5.0e-6)
        .Build();
 
      // 5. Assemble model
@@ -83,7 +83,7 @@ Save the following as ``henry_law_example.cpp``:
      state.conditions_[0].CalculateIdealAirDensity();
 
      state[A_gas] = 1.0e-3;   // mol m-3 air
-     state[droplets.Species(aqueous_phase, H2O)] = 55.5;
+     state[droplets.Species(aqueous_phase, H2O)] = 300.0;  // liquid water content
      droplets.SetDefaultParameters(state);
 
      // 8. Integrate
