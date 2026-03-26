@@ -87,7 +87,7 @@ Interpolates between the continuum (:math:`f \to 1`) and free-molecular
 
 .. math::
 
-   \frac{df}{d\text{Kn}} = \frac{\alpha - 2\text{Kn}^2 - 2\text{Kn}}{\alpha \cdot D^2}
+   \frac{df}{d\text{Kn}} = \frac{\alpha - 2 - 4\text{Kn} - 2\text{Kn}^2}{\alpha \cdot D^2}
 
 where :math:`D = 1 + 2\text{Kn}(1 + \text{Kn})/\alpha`.
 

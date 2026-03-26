@@ -99,7 +99,7 @@ namespace
   }
 
   /// Create providers with specified values for r_eff, N, phi
-  std::map<std::string, std::vector<miam::AerosolPropertyProvider<MatrixPolicy>>> MakeTestProviders(
+  std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>> MakeTestProviders(
       const std::string& prefix,
       double r_eff,
       double N,
@@ -108,12 +108,10 @@ namespace
       const std::vector<std::size_t>& N_deps = {},
       const std::vector<std::size_t>& phi_deps = {})
   {
-    std::map<std::string, std::vector<miam::AerosolPropertyProvider<MatrixPolicy>>> providers;
-    providers[prefix] = {
-        MakeConstantProvider<MatrixPolicy>(r_eff, r_eff_deps),
-        MakeConstantProvider<MatrixPolicy>(N, N_deps),
-        MakeConstantProvider<MatrixPolicy>(phi, phi_deps)
-    };
+    std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>> providers;
+    providers[prefix][miam::AerosolProperty::EffectiveRadius] = MakeConstantProvider<MatrixPolicy>(r_eff, r_eff_deps);
+    providers[prefix][miam::AerosolProperty::NumberConcentration] = MakeConstantProvider<MatrixPolicy>(N, N_deps);
+    providers[prefix][miam::AerosolProperty::PhaseVolumeFraction] = MakeConstantProvider<MatrixPolicy>(phi, phi_deps);
     return providers;
   }
 }  // namespace

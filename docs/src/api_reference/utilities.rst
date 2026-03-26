@@ -28,11 +28,11 @@ Rate Constants
 Condensation Rate
 =================
 
-.. doxygenclass:: miam::process::utility::CondensationRateProvider
+.. doxygenstruct:: miam::util::CondensationRateProvider
    :members:
    :undoc-members:
 
 UUID Generation
 ===============
 
-.. doxygenfunction:: miam::generate_uuid_v4
+.. doxygenfunction:: miam::util::generate_uuid_v4

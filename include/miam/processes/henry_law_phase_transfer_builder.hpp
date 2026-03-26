@@ -66,6 +66,8 @@ namespace miam
       /// @brief Sets the gas-phase diffusion coefficient [m² s⁻¹]
       HenryLawPhaseTransferBuilder& SetDiffusionCoefficient(double D_g)
       {
+        if (D_g <= 0)
+          throw std::invalid_argument("Diffusion coefficient must be positive.");
         D_g_ = D_g;
         D_g_is_set_ = true;
         return *this;
@@ -74,6 +76,8 @@ namespace miam
       /// @brief Sets the mass accommodation coefficient [dimensionless, 0-1]
       HenryLawPhaseTransferBuilder& SetAccommodationCoefficient(double alpha)
       {
+        if (alpha <= 0)
+          throw std::invalid_argument("Accommodation coefficient must be positive.");
         alpha_ = alpha;
         alpha_is_set_ = true;
         return *this;

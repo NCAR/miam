@@ -61,7 +61,7 @@ namespace miam
             products_(products),
             solvent_(solvent),
             phase_(phase),
-            uuid_(generate_uuid_v4())
+            uuid_(miam::util::generate_uuid_v4())
       {
       }
 
@@ -200,7 +200,7 @@ namespace miam
       std::set<std::pair<std::size_t, std::size_t>> NonZeroJacobianElements(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
           const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-          const std::map<std::string, std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>>& /* providers */) const
+          const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>>& /* providers */) const
       {
         return NonZeroJacobianElements(phase_prefixes, state_variable_indices);
       }
@@ -271,7 +271,7 @@ namespace miam
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
           const auto& state_parameter_indices,  // acts like std::unordered_map<std::string, std::size_t>
           const auto& state_variable_indices,   // acts like std::unordered_map<std::string, std::size_t>
-          std::map<std::string, std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>> /* providers */
+          std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> /* providers */
       ) const
       {
         return ForcingFunction<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
@@ -370,7 +370,7 @@ namespace miam
           const auto& state_parameter_indices,  // acts like std::unordered_map<std::string, std::size_t>
           const auto& state_variable_indices,   // acts like std::unordered_map<std::string, std::size_t>
           const SparseMatrixPolicy& jacobian,
-          std::map<std::string, std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>> /* providers */) const
+          std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> /* providers */) const
       {
         return JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
             phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);

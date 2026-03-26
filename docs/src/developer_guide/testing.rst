@@ -11,23 +11,28 @@ Test Structure
 .. code-block:: text
 
    test/
-   ├── CMakeLists.txt           # top-level test configuration
+   ├── CMakeLists.txt                # top-level test configuration
    ├── unit/
    │   ├── CMakeLists.txt
-   │   ├── model.cpp            # Model tests
-   │   ├── representation_policy.hpp   # shared test helpers
-   │   ├── representations/     # representation unit tests
-   │   │   ├── test_single_moment_mode.cpp
-   │   │   ├── test_two_moment_mode.cpp
-   │   │   └── test_uniform_section.cpp
-   │   └── processes/           # process unit tests
-   │       ├── test_dissolved_reversible_reaction.cpp
-   │       ├── test_henry_law_phase_transfer.cpp
-   │       └── test_aerosol_property_providers.cpp
+   │   ├── aerosol_property.cpp       # AerosolPropertyProvider tests
+   │   ├── condensation_rate.cpp      # CondensationRateProvider tests
+   │   ├── model.cpp                  # Model tests
+   │   ├── process_set.cpp            # ProcessSet tests
+   │   ├── representation_policy.hpp  # shared test helpers
+   │   ├── representations/           # representation unit tests
+   │   │   ├── single_moment_mode.cpp
+   │   │   ├── two_moment_mode.cpp
+   │   │   └── uniform_section.cpp
+   │   └── processes/                 # process unit tests
+   │       ├── dissolved_reversible_reaction.cpp
+   │       ├── henry_law_phase_transfer.cpp
+   │       └── henrys_law_constant.cpp
    └── integration/
        ├── CMakeLists.txt
        ├── test_dissolved_reversible_reaction.cpp
-       └── test_miam_api.cpp
+       ├── test_henry_law_phase_transfer.cpp
+       ├── test_miam_api.cpp
+       └── test_readme_example.cpp
 
 Running Tests
 =============
@@ -64,8 +69,8 @@ Unit tests verify individual components in isolation. Key patterns:
 - Provider derivatives (ComputeValueAndDerivatives)
 
 **Provider tests** verify the chain rule through aerosol properties. See
-[test/unit/processes/test_aerosol_property_providers.cpp](test/unit/processes/test_aerosol_property_providers.cpp)
-for examples covering all three representation types.
+``test/unit/aerosol_property.cpp`` for examples covering all three
+representation types.
 
 Integration Tests
 =================
@@ -75,8 +80,12 @@ physical behavior:
 
 - **test_dissolved_reversible_reaction.cpp** — verifies that a reversible
   reaction approaches equilibrium.
+- **test_henry_law_phase_transfer.cpp** — verifies Henry's Law phase
+  transfer approaches equilibrium with mass conservation.
 - **test_miam_api.cpp** — full multi-mode, multi-process tests covering
   all three representation types with Henry's Law phase transfer.
+- **test_readme_example.cpp** — validates the README quick-start example
+  compiles and produces expected output.
 
 These tests use MICM's Rosenbrock solver and verify that:
 
@@ -104,7 +113,7 @@ Adding a New Test
    .. code-block:: cmake
 
       create_standard_test(
-          NAME test_my_new_process
-          SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_my_new_process.cpp)
+          NAME my_new_process
+          SOURCES my_new_process.cpp)
 
 3. Run ``ctest`` to verify the new test passes.

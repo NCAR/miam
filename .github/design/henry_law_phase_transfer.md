@@ -187,7 +187,7 @@ through r_eff):
 ```
 Let denom = 1 + 2 Kn (1 + Kn) / α
 
-df/dKn = [α − 2 Kn² − 2 Kn] / [α · denom²]
+df/dKn = [α − 2 − 4 Kn − 2 Kn²] / [α · denom²]
 ```
 
 ### 6. Condensation rate
@@ -2206,7 +2206,7 @@ and the provider can short-circuit.
    k_cond = 4π · r_eff · N · D_g · f
 
    Derivatives (shared intermediates — computed once):
-     df/dKn  = [α - 2·Kn² - 2·Kn] / [α·(1 + 2·Kn·(1+Kn)/α)²]
+     df/dKn  = [α - 2 - 4·Kn - 2·Kn²] / [α·(1 + 2·Kn·(1+Kn)/α)²]
      dKn/dr  = -Kn / r_eff
 
      dk_cond/dr_eff = 4π·N·D_g · (f + r_eff · df/dKn · dKn/dr)

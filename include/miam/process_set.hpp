@@ -29,7 +29,7 @@ namespace miam
   {
     using PhaseMap = std::map<std::string, std::set<std::string>>;
     using IndexMap = std::unordered_map<std::string, std::size_t>;
-    using ProviderMap = std::map<std::string, std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>>;
+    using ProviderMap = std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>>;
 
     std::function<std::set<std::string>(const PhaseMap&)> process_parameter_names_;
     std::function<std::set<std::string>(const PhaseMap&)> species_used_;

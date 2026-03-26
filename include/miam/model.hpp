@@ -194,7 +194,7 @@ namespace miam
     {
       // Collect forcing functions from all processes and return a combined function
       auto phase_prefixes = CollectPhaseStatePrefixes();
-      auto providers = BuildProviders<DenseMatrixPolicy>(phase_prefixes, state_variable_indices);
+      auto providers = BuildProviders<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
       std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>>
           forcing_functions;
       ForEachProcess(
@@ -225,7 +225,7 @@ namespace miam
     {
       // Collect Jacobian functions from all processes and return a combined function
       auto phase_prefixes = CollectPhaseStatePrefixes();
-      auto providers = BuildProviders<DenseMatrixPolicy>(phase_prefixes, state_variable_indices);
+      auto providers = BuildProviders<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
       std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>>
           jacobian_functions;
       ForEachProcess(
@@ -262,8 +262,9 @@ namespace miam
     /// @details Queries RequiredAerosolProperties() on each process, finds the representation
     ///          that owns each phase prefix, and calls GetPropertyProvider() to create providers.
     template<typename DenseMatrixPolicy>
-    std::map<std::string, std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>> BuildProviders(
+    std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> BuildProviders(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
     {
       // Collect all required properties across all processes
@@ -281,16 +282,9 @@ namespace miam
               }
           });
 
-      std::map<std::string, std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>> result;
+      std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> result;
       if (required.empty())
         return result;
-
-      // Collect state parameter indices (needed for GetPropertyProvider)
-      auto param_names = StateParameterNames();
-      std::unordered_map<std::string, std::size_t> param_indices;
-      std::size_t idx = 0;
-      for (const auto& name : param_names)
-        param_indices[name] = idx++;
 
       for (const auto& [phase_name, properties] : required)
       {
@@ -311,8 +305,8 @@ namespace miam
                   {
                     for (const auto& prop : properties)
                     {
-                      result[prefix].push_back(r.template GetPropertyProvider<DenseMatrixPolicy>(
-                          prop, param_indices, state_variable_indices, phase_name));
+                      result[prefix][prop] = r.template GetPropertyProvider<DenseMatrixPolicy>(
+                          prop, state_parameter_indices, state_variable_indices, phase_name);
                     }
                   }
                 },

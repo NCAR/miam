@@ -6,6 +6,7 @@
 #include <cmath>
 #include <functional>
 #include <numbers>
+#include <stdexcept>
 
 namespace miam
 {
@@ -46,10 +47,19 @@ namespace miam
     /// @return A CondensationRateProvider with the Fuchs-Sutugin regime correction
     inline CondensationRateProvider make_condensation_rate_provider(double D_g, double alpha, double Mw_gas)
     {
+      if (D_g <= 0)
+        throw std::invalid_argument("Diffusion coefficient D_g must be positive.");
+      if (alpha <= 0)
+        throw std::invalid_argument("Accommodation coefficient alpha must be positive.");
+      if (Mw_gas <= 0)
+        throw std::invalid_argument("Molecular weight Mw_gas must be positive.");
+
       CondensationRateProvider provider;
 
       provider.ComputeValue = [D_g, alpha, Mw_gas](double r_eff, double N, double T) -> double
       {
+        if (r_eff <= 0 || N <= 0 || T <= 0)
+          return 0.0;
         double c_bar = std::sqrt(8.0 * R_gas * T / (std::numbers::pi * Mw_gas));
         double lambda = 3.0 * D_g / c_bar;
         double Kn = lambda / r_eff;
@@ -61,6 +71,13 @@ namespace miam
       provider.ComputeValueAndDerivatives =
           [D_g, alpha, Mw_gas](double r_eff, double N, double T, double& k_cond, double& dk_dr, double& dk_dN)
       {
+        if (r_eff <= 0 || N <= 0 || T <= 0)
+        {
+          k_cond = 0.0;
+          dk_dr = 0.0;
+          dk_dN = 0.0;
+          return;
+        }
         double c_bar = std::sqrt(8.0 * R_gas * T / (std::numbers::pi * Mw_gas));
         double lambda = 3.0 * D_g / c_bar;
         double Kn = lambda / r_eff;

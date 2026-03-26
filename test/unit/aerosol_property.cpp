@@ -4,6 +4,8 @@
 #include <miam/aerosol_property.hpp>
 #include <micm/util/vector_matrix.hpp>
 
+#include <map>
+
 #include <gtest/gtest.h>
 
 using namespace miam;

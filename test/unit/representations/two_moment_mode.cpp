@@ -355,3 +355,32 @@ TEST(TwoMomentMode, ProviderPhaseVolumeFractionSinglePhase)
   provider.ComputeValue(params, vars, result);
   EXPECT_DOUBLE_EQ(result[0][0], 1.0);
 }
+
+// ============================================================================
+// Policy Tests — cross-representation property contracts
+// ============================================================================
+
+TEST(TwoMomentMode, PolicyPhaseStatePrefixes)
+{
+    testPhaseStatePrefixes<TwoMomentMode>();
+}
+
+TEST(TwoMomentMode, PolicyPhaseVolumeFractionSinglePhase)
+{
+    testPhaseVolumeFractionSinglePhase<TwoMomentMode>();
+}
+
+TEST(TwoMomentMode, PolicyPhaseVolumeFractionMultiPhase)
+{
+    testPhaseVolumeFractionMultiPhase<TwoMomentMode>();
+}
+
+TEST(TwoMomentMode, PolicyEffectiveRadius)
+{
+    testEffectiveRadiusProvider<TwoMomentMode>();
+}
+
+TEST(TwoMomentMode, PolicyNumberConcentration)
+{
+    testNumberConcentrationProvider<TwoMomentMode>();
+}

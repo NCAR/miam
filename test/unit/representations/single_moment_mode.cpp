@@ -411,3 +411,32 @@ TEST(SingleMomentMode, ProviderMultiCell)
     EXPECT_NEAR(result[i][0], expected, expected * 1e-10) << "Cell " << i;
   }
 }
+
+// ============================================================================
+// Policy Tests — cross-representation property contracts
+// ============================================================================
+
+TEST(SingleMomentMode, PolicyPhaseStatePrefixes)
+{
+    testPhaseStatePrefixes<SingleMomentMode>();
+}
+
+TEST(SingleMomentMode, PolicyPhaseVolumeFractionSinglePhase)
+{
+    testPhaseVolumeFractionSinglePhase<SingleMomentMode>();
+}
+
+TEST(SingleMomentMode, PolicyPhaseVolumeFractionMultiPhase)
+{
+    testPhaseVolumeFractionMultiPhase<SingleMomentMode>();
+}
+
+TEST(SingleMomentMode, PolicyEffectiveRadius)
+{
+    testEffectiveRadiusProvider<SingleMomentMode>();
+}
+
+TEST(SingleMomentMode, PolicyNumberConcentration)
+{
+    testNumberConcentrationProvider<SingleMomentMode>();
+}

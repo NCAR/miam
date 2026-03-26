@@ -72,7 +72,7 @@ namespace miam
             Mw_gas_(Mw_gas),
             Mw_solvent_(Mw_solvent),
             rho_solvent_(rho_solvent),
-            uuid_(generate_uuid_v4())
+            uuid_(miam::util::generate_uuid_v4())
       {
       }
 
@@ -182,18 +182,18 @@ namespace miam
       std::set<std::pair<std::size_t, std::size_t>> NonZeroJacobianElements(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
           const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-          const std::map<std::string, std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>>& providers) const
+          const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>>& providers) const
       {
         auto elements = NonZeroJacobianElements(phase_prefixes, state_variable_indices);
         auto gas_idx = state_variable_indices.at(gas_species_.name_);
 
         // Add indirect dependencies through aerosol property providers
-        for (const auto& [prefix, provider_vec] : providers)
+        for (const auto& [prefix, prov_map] : providers)
         {
           std::size_t aq_idx = state_variable_indices.at(
               prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
 
-          for (const auto& provider : provider_vec)
+          for (const auto& [prop, provider] : prov_map)
           {
             for (std::size_t var_j : provider.dependent_variable_indices)
             {
@@ -258,7 +258,7 @@ namespace miam
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
           const auto& state_parameter_indices,
           const auto& state_variable_indices,
-          std::map<std::string, std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>> providers) const
+          std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> providers) const
       {
         auto gas_idx = state_variable_indices.at(gas_species_.name_);
 
@@ -284,7 +284,7 @@ namespace miam
             auto prov_it = providers.find(prefix);
             if (prov_it == providers.end())
               continue;
-            const auto& provider_vec = prov_it->second;
+            const auto& prov_map = prov_it->second;
             InstanceData inst;
             inst.aq_species_idx = state_variable_indices.at(
                 prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
@@ -295,9 +295,9 @@ namespace miam
             inst.temperature_param_idx = state_parameter_indices.at(
                 prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
             inst.Mw_rho = Mw_solvent_ / rho_solvent_;
-            inst.r_eff_provider = provider_vec[0];
-            inst.N_provider = provider_vec[1];
-            inst.phi_provider = provider_vec[2];
+            inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
+            inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
+            inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
             inst.cond_rate_provider = util::make_condensation_rate_provider(D_g_, alpha_, Mw_gas_);
             instances.push_back(std::move(inst));
           }
@@ -352,7 +352,7 @@ namespace miam
           const auto& state_parameter_indices,
           const auto& state_variable_indices,
           const SparseMatrixPolicy& jacobian,
-          std::map<std::string, std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>> providers) const
+          std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> providers) const
       {
         auto gas_idx = state_variable_indices.at(gas_species_.name_);
 
@@ -392,7 +392,7 @@ namespace miam
             auto prov_it = providers.find(prefix);
             if (prov_it == providers.end())
               continue;
-            const auto& provider_vec = prov_it->second;
+            const auto& prov_map = prov_it->second;
             JacobianInstanceData jac_inst;
             jac_inst.instance.aq_species_idx = state_variable_indices.at(
                 prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
@@ -403,9 +403,9 @@ namespace miam
             jac_inst.instance.temperature_param_idx = state_parameter_indices.at(
                 prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
             jac_inst.instance.Mw_rho = Mw_solvent_ / rho_solvent_;
-            jac_inst.instance.r_eff_provider = provider_vec[0];
-            jac_inst.instance.N_provider = provider_vec[1];
-            jac_inst.instance.phi_provider = provider_vec[2];
+            jac_inst.instance.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
+            jac_inst.instance.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
+            jac_inst.instance.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
             jac_inst.instance.cond_rate_provider = util::make_condensation_rate_provider(D_g_, alpha_, Mw_gas_);
 
             std::size_t aq_idx = jac_inst.instance.aq_species_idx;
@@ -420,19 +420,19 @@ namespace miam
           jac_inst.direct_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, solvent_idx));
 
           // Indirect through r_eff
-          for (std::size_t var_j : provider_vec[0].dependent_variable_indices)
+          for (std::size_t var_j : prov_map.at(AerosolProperty::EffectiveRadius).dependent_variable_indices)
           {
             jac_inst.r_eff_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, var_j));
             jac_inst.r_eff_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, var_j));
           }
           // Indirect through N
-          for (std::size_t var_j : provider_vec[1].dependent_variable_indices)
+          for (std::size_t var_j : prov_map.at(AerosolProperty::NumberConcentration).dependent_variable_indices)
           {
             jac_inst.N_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, var_j));
             jac_inst.N_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, var_j));
           }
           // Indirect through phi
-          for (std::size_t var_j : provider_vec[2].dependent_variable_indices)
+          for (std::size_t var_j : prov_map.at(AerosolProperty::PhaseVolumeFraction).dependent_variable_indices)
           {
             jac_inst.phi_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, var_j));
             jac_inst.phi_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, var_j));
