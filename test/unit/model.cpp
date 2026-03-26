@@ -58,7 +58,7 @@ TEST(Model, SpeciesUsedWithSingleRepresentationAndProcess)
     Model model;
     model.name_ = "TEST_MODEL";
     model.representations_.push_back(mode);
-    model.dissolved_reactions_.push_back(reaction);
+    model.processes_.push_back(reaction);
     
     auto species_used = model.SpeciesUsed();
     
@@ -96,7 +96,7 @@ TEST(Model, SpeciesUsedWithMultipleRepresentations)
     model.name_ = "TEST_MODEL";
     model.representations_.push_back(small_drop);
     model.representations_.push_back(large_drop);
-    model.dissolved_reactions_.push_back(reaction);
+    model.processes_.push_back(reaction);
     
     auto species_used = model.SpeciesUsed();
     
@@ -153,8 +153,8 @@ TEST(Model, SpeciesUsedWithMultipleProcesses)
     Model model;
     model.name_ = "TEST_MODEL";
     model.representations_.push_back(mode);
-    model.dissolved_reactions_.push_back(h2o_dissociation);
-    model.dissolved_reactions_.push_back(co2_hydration);
+    model.processes_.push_back(h2o_dissociation);
+    model.processes_.push_back(co2_hydration);
     
     auto species_used = model.SpeciesUsed();
     
@@ -196,7 +196,7 @@ TEST(Model, SpeciesUsedMixedRepresentationTypes)
     model.representations_.push_back(mode1);
     model.representations_.push_back(mode2);
     model.representations_.push_back(section);
-    model.dissolved_reactions_.push_back(reaction);
+    model.processes_.push_back(reaction);
     
     auto species_used = model.SpeciesUsed();
     
@@ -247,11 +247,11 @@ TEST(Model, AddProcesses)
     model.name_ = "TEST_MODEL";
     model.representations_.push_back(mode);
     
-    EXPECT_EQ(model.dissolved_reactions_.size(), 0);
+    EXPECT_EQ(model.processes_.size(), 0);
     
     model.AddProcesses({ reaction1, reaction2 });
     
-    EXPECT_EQ(model.dissolved_reactions_.size(), 2);
+    EXPECT_EQ(model.processes_.size(), 2);
 }
 
 TEST(Model, CollectPhaseStatePrefixesValidation)
@@ -302,7 +302,7 @@ TEST(Model, SpeciesUsedWithDifferentPhasesInReactions)
     model.name_ = "TEST_MODEL";
     model.representations_.push_back(aqueous_mode);
     model.representations_.push_back(organic_mode);
-    model.dissolved_reactions_.push_back(aqueous_reaction);
+    model.processes_.push_back(aqueous_reaction);
     
     auto species_used = model.SpeciesUsed();
     
@@ -364,7 +364,7 @@ TEST(Model, NonZeroJacobianElementsWithSingleProcess)
     Model model;
     model.name_ = "TEST_MODEL";
     model.representations_.push_back(mode);
-    model.dissolved_reactions_.push_back(reaction);
+    model.processes_.push_back(reaction);
     
     std::unordered_map<std::string, std::size_t> state_indices;
     state_indices["SMALL_DROP.AQUEOUS.H2O"] = 0;
@@ -425,8 +425,8 @@ TEST(Model, NonZeroJacobianElementsWithMultipleProcesses)
     Model model;
     model.name_ = "TEST_MODEL";
     model.representations_.push_back(mode);
-    model.dissolved_reactions_.push_back(h2o_dissociation);
-    model.dissolved_reactions_.push_back(co2_hydration);
+    model.processes_.push_back(h2o_dissociation);
+    model.processes_.push_back(co2_hydration);
     
     std::unordered_map<std::string, std::size_t> state_indices;
     state_indices["AITKEN.AQUEOUS.H2O"] = 0;
@@ -478,7 +478,7 @@ TEST(Model, NonZeroJacobianElementsWithMultipleRepresentations)
     model.name_ = "TEST_MODEL";
     model.representations_.push_back(small_drop);
     model.representations_.push_back(large_drop);
-    model.dissolved_reactions_.push_back(reaction);
+    model.processes_.push_back(reaction);
     
     std::unordered_map<std::string, std::size_t> state_indices;
     state_indices["SMALL_DROP.AQUEOUS.H2O"] = 0;
@@ -527,7 +527,7 @@ TEST(Model, NonZeroJacobianElementsMixedTypes)
     model.name_ = "TEST_MODEL";
     model.representations_.push_back(mode1);
     model.representations_.push_back(mode2);
-    model.dissolved_reactions_.push_back(reaction);
+    model.processes_.push_back(reaction);
     
     std::unordered_map<std::string, std::size_t> state_indices;
     state_indices["MODE1.AQUEOUS.H2O"] = 0;

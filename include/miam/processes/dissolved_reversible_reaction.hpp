@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <miam/aerosol_property.hpp>
 #include <miam/util/uuid.hpp>
 
 #include <micm/system/conditions.hpp>
@@ -60,7 +61,7 @@ namespace miam
             products_(products),
             solvent_(solvent),
             phase_(phase),
-            uuid_(generate_uuid_v4())
+            uuid_(miam::util::generate_uuid_v4())
       {
       }
 
@@ -116,6 +117,14 @@ namespace miam
               "Internal Error: Phase " + phase_.name_ + " not found in phase_prefixes map for process " + uuid_);
         }
         return species_names;
+      }
+
+      /// @brief Returns the aerosol properties required by this process
+      /// @details DissolvedReversibleReaction does not depend on aerosol properties.
+      /// @return Empty map
+      std::map<std::string, std::vector<AerosolProperty>> RequiredAerosolProperties() const
+      {
+        return {};
       }
 
       /// @brief Returns a set of Jacobian index pairs for this process
@@ -185,6 +194,17 @@ namespace miam
         return jacobian_indices;
       }
 
+      /// @brief Returns non-zero Jacobian elements (common interface overload accepting providers)
+      /// @details Delegates to the existing two-argument version; providers are unused.
+      template<typename DenseMatrixPolicy>
+      std::set<std::pair<std::size_t, std::size_t>> NonZeroJacobianElements(
+          const std::map<std::string, std::set<std::string>>& phase_prefixes,
+          const std::unordered_map<std::string, std::size_t>& state_variable_indices,
+          const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>>& /* providers */) const
+      {
+        return NonZeroJacobianElements(phase_prefixes, state_variable_indices);
+      }
+
       /// @brief Returns a function that updates state parameters for this process
       /// @param phase_prefixes Map of phase names to sets of state variable prefixes (prefix does not include phase or
       /// species names)
@@ -246,6 +266,18 @@ namespace miam
       /// @param state_variable_indices Map of state variable names to their corresponding indices in the state variable
       /// vector
       /// @return Function that calculates the forcing terms for this process
+      template<typename DenseMatrixPolicy>
+      std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ForcingFunction(
+          const std::map<std::string, std::set<std::string>>& phase_prefixes,
+          const auto& state_parameter_indices,  // acts like std::unordered_map<std::string, std::size_t>
+          const auto& state_variable_indices,   // acts like std::unordered_map<std::string, std::size_t>
+          std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> /* providers */
+      ) const
+      {
+        return ForcingFunction<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+      }
+
+      /// @brief Returns a function that calculates the forcing terms for this process (original)
       template<typename DenseMatrixPolicy>
       std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ForcingFunction(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
@@ -331,15 +363,20 @@ namespace miam
             dummy_state_variables);
       }
 
-      /// @brief Returns a function that calculates the Jacobian contributions for this process
-      /// @param phase_prefixes Map of phase names to sets of state variable prefixes (prefix does not include phase or
-      /// species names)
-      /// @param state_parameter_indices Map of state parameter names to their corresponding indices in the state parameter
-      /// vector
-      /// @param state_variable_indices Map of state variable names to their corresponding indices in the state variable
-      /// vector
-      /// @param jacobian Sparse matrix policy object for the Jacobian structure
-      /// @return Function that calculates the Jacobian contributions for this process
+      /// @brief Returns a function that calculates the Jacobian contributions for this process (common interface overload)
+      template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+      std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> JacobianFunction(
+          const std::map<std::string, std::set<std::string>>& phase_prefixes,
+          const auto& state_parameter_indices,  // acts like std::unordered_map<std::string, std::size_t>
+          const auto& state_variable_indices,   // acts like std::unordered_map<std::string, std::size_t>
+          const SparseMatrixPolicy& jacobian,
+          std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> /* providers */) const
+      {
+        return JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
+            phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+      }
+
+      /// @brief Returns a function that calculates the Jacobian contributions for this process (original)
       template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
       std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> JacobianFunction(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,

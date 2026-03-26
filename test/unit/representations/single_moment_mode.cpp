@@ -3,8 +3,16 @@
 
 #include "../representation_policy.hpp"
 
+#include <miam/aerosol_property.hpp>
 #include <miam/representations/single_moment_mode.hpp>
 
+#include <micm/util/matrix.hpp>
+
+#include <cmath>
+#include <numbers>
+#include <unordered_map>
+
+using namespace miam;
 using namespace miam::representation;
 
 TEST(SingleMomentMode, StateSize)
@@ -201,4 +209,234 @@ TEST(SingleMomentMode, PhaseStatePrefixesWithMultiplePhases)
     EXPECT_TRUE(phase_prefixes["AQUEOUS"].find(prefix) != phase_prefixes["AQUEOUS"].end());
     EXPECT_TRUE(phase_prefixes["ORGANIC"].find(prefix) != phase_prefixes["ORGANIC"].end());
     EXPECT_TRUE(phase_prefixes["GAS"].find(prefix) != phase_prefixes["GAS"].end());
+}
+
+// ============================================================================
+// Property Provider Tests
+// ============================================================================
+
+namespace
+{
+  using Matrix = micm::Matrix<double>;
+
+  micm::Species MakeSpecies(const std::string& name, double mw, double rho)
+  {
+    return micm::Species{ name, { { "molecular weight [kg mol-1]", mw }, { "density [kg m-3]", rho } } };
+  }
+
+  const double mw_A = 0.018;
+  const double rho_A = 1000.0;
+  const double mw_B = 0.044;
+  const double rho_B = 2000.0;
+  const double mwr_A = mw_A / rho_A;
+  const double mwr_B = mw_B / rho_B;
+
+  micm::Phase MakeProviderTestPhase()
+  {
+    return micm::Phase{ "aqueous", { { MakeSpecies("A", mw_A, rho_A) }, { MakeSpecies("B", mw_B, rho_B) } } };
+  }
+}  // namespace
+
+TEST(SingleMomentMode, ProviderEffectiveRadius)
+{
+  auto phase = MakeProviderTestPhase();
+  SingleMomentMode mode("MODE1", { phase }, 1.0e-6, 2.0);
+  std::unordered_map<std::string, std::size_t> param_idx = { { "MODE1.GEOMETRIC_MEAN_RADIUS", 0 },
+                                                             { "MODE1.GEOMETRIC_STANDARD_DEVIATION", 1 } };
+  std::unordered_map<std::string, std::size_t> var_idx = { { "MODE1.aqueous.A", 0 }, { "MODE1.aqueous.B", 1 } };
+
+  auto provider = mode.GetPropertyProvider<Matrix>(AerosolProperty::EffectiveRadius, param_idx, var_idx);
+  EXPECT_TRUE(provider.dependent_variable_indices.empty());
+
+  Matrix params{ 1, 2, 0.0 };
+  Matrix vars{ 1, 2, 0.0 };
+  Matrix result{ 1, 1, 0.0 };
+  params[0][0] = 1.0e-6;
+  params[0][1] = 2.0;
+
+  provider.ComputeValue(params, vars, result);
+
+  double ln_gsd = std::log(2.0);
+  double expected = 1.0e-6 * std::exp(2.5 * ln_gsd * ln_gsd);
+  EXPECT_NEAR(result[0][0], expected, expected * 1e-10);
+
+  Matrix result2{ 1, 1, 0.0 };
+  Matrix partials{ 1, 0, 0.0 };
+  provider.ComputeValueAndDerivatives(params, vars, result2, partials);
+  EXPECT_NEAR(result2[0][0], expected, expected * 1e-10);
+}
+
+TEST(SingleMomentMode, ProviderNumberConcentration)
+{
+  auto phase = MakeProviderTestPhase();
+  SingleMomentMode mode("MODE1", { phase }, 1.0e-6, 2.0);
+  std::unordered_map<std::string, std::size_t> param_idx = { { "MODE1.GEOMETRIC_MEAN_RADIUS", 0 },
+                                                             { "MODE1.GEOMETRIC_STANDARD_DEVIATION", 1 } };
+  std::unordered_map<std::string, std::size_t> var_idx = { { "MODE1.aqueous.A", 0 }, { "MODE1.aqueous.B", 1 } };
+
+  auto provider = mode.GetPropertyProvider<Matrix>(AerosolProperty::NumberConcentration, param_idx, var_idx);
+  ASSERT_EQ(provider.dependent_variable_indices.size(), 2u);
+
+  double gmd = 1.0e-6;
+  double gsd = 2.0;
+  double conc_A = 100.0;
+  double conc_B = 200.0;
+
+  Matrix params{ 1, 2, 0.0 };
+  Matrix vars{ 1, 2, 0.0 };
+  Matrix result{ 1, 1, 0.0 };
+  params[0][0] = gmd;
+  params[0][1] = gsd;
+  vars[0][0] = conc_A;
+  vars[0][1] = conc_B;
+
+  provider.ComputeValue(params, vars, result);
+
+  double V_total = conc_A * mwr_A + conc_B * mwr_B;
+  double ln_gsd = std::log(gsd);
+  double V_single = (4.0 / 3.0) * std::numbers::pi * gmd * gmd * gmd * std::exp(4.5 * ln_gsd * ln_gsd);
+  double expected_N = V_total / V_single;
+  EXPECT_NEAR(result[0][0], expected_N, std::abs(expected_N) * 1e-10);
+
+  Matrix result2{ 1, 1, 0.0 };
+  Matrix partials{ 1, 2, 0.0 };
+  provider.ComputeValueAndDerivatives(params, vars, result2, partials);
+  EXPECT_NEAR(result2[0][0], expected_N, std::abs(expected_N) * 1e-10);
+  EXPECT_NEAR(partials[0][0], mwr_A / V_single, std::abs(mwr_A / V_single) * 1e-10);
+  EXPECT_NEAR(partials[0][1], mwr_B / V_single, std::abs(mwr_B / V_single) * 1e-10);
+}
+
+TEST(SingleMomentMode, ProviderPhaseVolumeFractionSinglePhase)
+{
+  auto phase = MakeProviderTestPhase();
+  SingleMomentMode mode("MODE1", { phase });
+  std::unordered_map<std::string, std::size_t> param_idx = { { "MODE1.GEOMETRIC_MEAN_RADIUS", 0 },
+                                                             { "MODE1.GEOMETRIC_STANDARD_DEVIATION", 1 } };
+  std::unordered_map<std::string, std::size_t> var_idx = { { "MODE1.aqueous.A", 0 }, { "MODE1.aqueous.B", 1 } };
+
+  auto provider = mode.GetPropertyProvider<Matrix>(AerosolProperty::PhaseVolumeFraction, param_idx, var_idx);
+  EXPECT_TRUE(provider.dependent_variable_indices.empty());
+
+  Matrix params{ 1, 2, 0.0 };
+  Matrix vars{ 1, 2, 0.0 };
+  Matrix result{ 1, 1, 0.0 };
+  vars[0][0] = 100.0;
+  vars[0][1] = 200.0;
+
+  provider.ComputeValue(params, vars, result);
+  EXPECT_DOUBLE_EQ(result[0][0], 1.0);
+
+  Matrix result2{ 1, 1, 0.0 };
+  Matrix partials{ 1, 0, 0.0 };
+  provider.ComputeValueAndDerivatives(params, vars, result2, partials);
+  EXPECT_DOUBLE_EQ(result2[0][0], 1.0);
+}
+
+TEST(SingleMomentMode, ProviderPhaseVolumeFractionMultiPhase)
+{
+  auto species_A = MakeSpecies("A", mw_A, rho_A);
+  auto species_B = MakeSpecies("B", mw_B, rho_B);
+  micm::Phase aqueous("aqueous", { { species_A } });
+  micm::Phase organic("organic", { { species_B } });
+  SingleMomentMode mode("MODE1", { aqueous, organic }, 1.0e-6, 2.0);
+
+  std::unordered_map<std::string, std::size_t> param_idx = { { "MODE1.GEOMETRIC_MEAN_RADIUS", 0 },
+                                                             { "MODE1.GEOMETRIC_STANDARD_DEVIATION", 1 } };
+  std::unordered_map<std::string, std::size_t> var_idx = { { "MODE1.aqueous.A", 0 }, { "MODE1.organic.B", 1 } };
+
+  auto provider =
+      mode.GetPropertyProvider<Matrix>(AerosolProperty::PhaseVolumeFraction, param_idx, var_idx, "aqueous");
+
+  ASSERT_EQ(provider.dependent_variable_indices.size(), 2u);
+  EXPECT_EQ(provider.dependent_variable_indices[0], 0u);
+  EXPECT_EQ(provider.dependent_variable_indices[1], 1u);
+
+  double conc_A = 100.0;
+  double conc_B = 200.0;
+  Matrix params{ 1, 2, 0.0 };
+  Matrix vars{ 1, 2, 0.0 };
+  Matrix result{ 1, 1, 0.0 };
+  vars[0][0] = conc_A;
+  vars[0][1] = conc_B;
+
+  provider.ComputeValue(params, vars, result);
+
+  double V_aqueous = conc_A * mwr_A;
+  double V_organic = conc_B * mwr_B;
+  double V_total = V_aqueous + V_organic;
+  double expected_phi = V_aqueous / V_total;
+  EXPECT_NEAR(result[0][0], expected_phi, 1e-10);
+
+  Matrix result2{ 1, 1, 0.0 };
+  Matrix partials{ 1, 2, 0.0 };
+  provider.ComputeValueAndDerivatives(params, vars, result2, partials);
+  EXPECT_NEAR(result2[0][0], expected_phi, 1e-10);
+
+  double dphi_dA = mwr_A * (1.0 - expected_phi) / V_total;
+  EXPECT_NEAR(partials[0][0], dphi_dA, std::abs(dphi_dA) * 1e-10);
+
+  double dphi_dB = -mwr_B * expected_phi / V_total;
+  EXPECT_NEAR(partials[0][1], dphi_dB, std::abs(dphi_dB) * 1e-10);
+}
+
+TEST(SingleMomentMode, ProviderMultiCell)
+{
+  auto phase = MakeProviderTestPhase();
+  SingleMomentMode mode("MODE1", { phase }, 1.0e-6, 2.0);
+  std::unordered_map<std::string, std::size_t> param_idx = { { "MODE1.GEOMETRIC_MEAN_RADIUS", 0 },
+                                                             { "MODE1.GEOMETRIC_STANDARD_DEVIATION", 1 } };
+  std::unordered_map<std::string, std::size_t> var_idx = { { "MODE1.aqueous.A", 0 }, { "MODE1.aqueous.B", 1 } };
+
+  auto provider = mode.GetPropertyProvider<Matrix>(AerosolProperty::EffectiveRadius, param_idx, var_idx);
+
+  const std::size_t num_cells = 3;
+  Matrix params{ num_cells, 2, 0.0 };
+  Matrix vars{ num_cells, 2, 0.0 };
+  Matrix result{ num_cells, 1, 0.0 };
+
+  double gmds[] = { 1.0e-6, 2.0e-6, 0.5e-6 };
+  double gsds[] = { 1.5, 2.0, 1.2 };
+  for (std::size_t i = 0; i < num_cells; ++i)
+  {
+    params[i][0] = gmds[i];
+    params[i][1] = gsds[i];
+  }
+
+  provider.ComputeValue(params, vars, result);
+
+  for (std::size_t i = 0; i < num_cells; ++i)
+  {
+    double ln_gsd = std::log(gsds[i]);
+    double expected = gmds[i] * std::exp(2.5 * ln_gsd * ln_gsd);
+    EXPECT_NEAR(result[i][0], expected, expected * 1e-10) << "Cell " << i;
+  }
+}
+
+// ============================================================================
+// Policy Tests — cross-representation property contracts
+// ============================================================================
+
+TEST(SingleMomentMode, PolicyPhaseStatePrefixes)
+{
+    testPhaseStatePrefixes<SingleMomentMode>();
+}
+
+TEST(SingleMomentMode, PolicyPhaseVolumeFractionSinglePhase)
+{
+    testPhaseVolumeFractionSinglePhase<SingleMomentMode>();
+}
+
+TEST(SingleMomentMode, PolicyPhaseVolumeFractionMultiPhase)
+{
+    testPhaseVolumeFractionMultiPhase<SingleMomentMode>();
+}
+
+TEST(SingleMomentMode, PolicyEffectiveRadius)
+{
+    testEffectiveRadiusProvider<SingleMomentMode>();
+}
+
+TEST(SingleMomentMode, PolicyNumberConcentration)
+{
+    testNumberConcentrationProvider<SingleMomentMode>();
 }

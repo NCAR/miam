@@ -7,7 +7,7 @@
 
 # Find all the public headers
 get_target_property(PUBLIC_HEADER_DIR miam INTERFACE_INCLUDE_DIRECTORIES)
-file(GLOB_RECURSE PUBLIC_HEADERS ${PUBLIC_HEADER_DIR}/*.h)
+file(GLOB_RECURSE PUBLIC_HEADERS ${PUBLIC_HEADER_DIR}/*.hpp)
 
 #This will be the main output of our command
 set(DOXYGEN_INPUT_DIR "${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src")
@@ -36,7 +36,7 @@ add_custom_target(Doxygen ALL DEPENDS ${DOXYGEN_INDEX_FILE})
 ################################################################################
 # Sphinx
 
-set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/source)
+set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(SPHINX_BUILD ${CMAKE_CURRENT_BINARY_DIR}/sphinx)
 set(SPHINX_INDEX_FILE ${SPHINX_BUILD}/index.html)
 
