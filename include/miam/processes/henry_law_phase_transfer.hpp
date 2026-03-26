@@ -280,23 +280,31 @@ namespace miam
         };
 
         std::vector<InstanceData> instances;
-        for (const auto& [prefix, provider_vec] : providers)
+        auto my_phase_it = phase_prefixes.find(condensed_phase_.name_);
+        if (my_phase_it != phase_prefixes.end())
         {
-          InstanceData inst;
-          inst.aq_species_idx = state_variable_indices.at(
-              prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
-          inst.solvent_species_idx = state_variable_indices.at(
-              prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
-          inst.hlc_param_idx = state_parameter_indices.at(
-              prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc");
-          inst.temperature_param_idx = state_parameter_indices.at(
-              prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
-          inst.Mw_rho = Mw_solvent_ / rho_solvent_;
-          inst.r_eff_provider = provider_vec[0];
-          inst.N_provider = provider_vec[1];
-          inst.phi_provider = provider_vec[2];
-          inst.cond_rate_provider = util::make_condensation_rate_provider(D_g_, alpha_, Mw_gas_);
-          instances.push_back(std::move(inst));
+          for (const auto& prefix : my_phase_it->second)
+          {
+            auto prov_it = providers.find(prefix);
+            if (prov_it == providers.end())
+              continue;
+            const auto& provider_vec = prov_it->second;
+            InstanceData inst;
+            inst.aq_species_idx = state_variable_indices.at(
+                prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
+            inst.solvent_species_idx = state_variable_indices.at(
+                prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
+            inst.hlc_param_idx = state_parameter_indices.at(
+                prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc");
+            inst.temperature_param_idx = state_parameter_indices.at(
+                prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
+            inst.Mw_rho = Mw_solvent_ / rho_solvent_;
+            inst.r_eff_provider = provider_vec[0];
+            inst.N_provider = provider_vec[1];
+            inst.phi_provider = provider_vec[2];
+            inst.cond_rate_provider = util::make_condensation_rate_provider(D_g_, alpha_, Mw_gas_);
+            instances.push_back(std::move(inst));
+          }
         }
 
         return [instances = std::move(instances), gas_idx](
@@ -380,25 +388,32 @@ namespace miam
         };
 
         std::vector<JacobianInstanceData> jac_instances;
-        for (const auto& [prefix, provider_vec] : providers)
+        auto my_jac_phase_it = phase_prefixes.find(condensed_phase_.name_);
+        if (my_jac_phase_it != phase_prefixes.end())
         {
-          JacobianInstanceData jac_inst;
-          jac_inst.instance.aq_species_idx = state_variable_indices.at(
-              prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
-          jac_inst.instance.solvent_species_idx = state_variable_indices.at(
-              prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
-          jac_inst.instance.hlc_param_idx = state_parameter_indices.at(
-              prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc");
-          jac_inst.instance.temperature_param_idx = state_parameter_indices.at(
-              prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
-          jac_inst.instance.Mw_rho = Mw_solvent_ / rho_solvent_;
-          jac_inst.instance.r_eff_provider = provider_vec[0];
-          jac_inst.instance.N_provider = provider_vec[1];
-          jac_inst.instance.phi_provider = provider_vec[2];
-          jac_inst.instance.cond_rate_provider = util::make_condensation_rate_provider(D_g_, alpha_, Mw_gas_);
+          for (const auto& prefix : my_jac_phase_it->second)
+          {
+            auto prov_it = providers.find(prefix);
+            if (prov_it == providers.end())
+              continue;
+            const auto& provider_vec = prov_it->second;
+            JacobianInstanceData jac_inst;
+            jac_inst.instance.aq_species_idx = state_variable_indices.at(
+                prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
+            jac_inst.instance.solvent_species_idx = state_variable_indices.at(
+                prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
+            jac_inst.instance.hlc_param_idx = state_parameter_indices.at(
+                prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc");
+            jac_inst.instance.temperature_param_idx = state_parameter_indices.at(
+                prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
+            jac_inst.instance.Mw_rho = Mw_solvent_ / rho_solvent_;
+            jac_inst.instance.r_eff_provider = provider_vec[0];
+            jac_inst.instance.N_provider = provider_vec[1];
+            jac_inst.instance.phi_provider = provider_vec[2];
+            jac_inst.instance.cond_rate_provider = util::make_condensation_rate_provider(D_g_, alpha_, Mw_gas_);
 
-          std::size_t aq_idx = jac_inst.instance.aq_species_idx;
-          std::size_t solvent_idx = jac_inst.instance.solvent_species_idx;
+            std::size_t aq_idx = jac_inst.instance.aq_species_idx;
+            std::size_t solvent_idx = jac_inst.instance.solvent_species_idx;
 
           // Direct entries (6 total)
           jac_inst.direct_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, gas_idx));
@@ -427,7 +442,8 @@ namespace miam
             jac_inst.phi_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, var_j));
           }
 
-          jac_instances.push_back(std::move(jac_inst));
+            jac_instances.push_back(std::move(jac_inst));
+          }
         }
 
         // Compute the block stride: difference between VectorIndex(0,...) and VectorIndex(1,...)
@@ -495,19 +511,19 @@ namespace miam
               double fv = solvent_conc * inst.Mw_rho;
               double R = kc * gas_conc - ke * aq_conc / fv;
 
-              // Direct Jacobian entries
-              // J[gas, gas] -= φ · k_cond
-              jac_vec[jac_inst.direct_jac_indices[0] + jac_offset] -= phi_val * kc;
-              // J[gas, aq] += φ · k_evap / f_v
-              jac_vec[jac_inst.direct_jac_indices[1] + jac_offset] += phi_val * ke / fv;
-              // J[gas, solvent] -= φ · k_evap · [aq] / (f_v · [solvent])
-              jac_vec[jac_inst.direct_jac_indices[2] + jac_offset] -= phi_val * ke * aq_conc / (fv * solvent_conc);
-              // J[aq, gas] += φ · k_cond
-              jac_vec[jac_inst.direct_jac_indices[3] + jac_offset] += phi_val * kc;
-              // J[aq, aq] -= φ · k_evap / f_v
-              jac_vec[jac_inst.direct_jac_indices[4] + jac_offset] -= phi_val * ke / fv;
-              // J[aq, solvent] += φ · k_evap · [aq] / (f_v · [solvent])
-              jac_vec[jac_inst.direct_jac_indices[5] + jac_offset] += phi_val * ke * aq_conc / (fv * solvent_conc);
+              // Direct Jacobian entries (negated: MICM solver expects -J)
+              // -J[gas, gas] = +φ · k_cond
+              jac_vec[jac_inst.direct_jac_indices[0] + jac_offset] += phi_val * kc;
+              // -J[gas, aq] = -φ · k_evap / f_v
+              jac_vec[jac_inst.direct_jac_indices[1] + jac_offset] -= phi_val * ke / fv;
+              // -J[gas, solvent] = +φ · k_evap · [aq] / (f_v · [solvent])
+              jac_vec[jac_inst.direct_jac_indices[2] + jac_offset] += phi_val * ke * aq_conc / (fv * solvent_conc);
+              // -J[aq, gas] = -φ · k_cond
+              jac_vec[jac_inst.direct_jac_indices[3] + jac_offset] -= phi_val * kc;
+              // -J[aq, aq] = +φ · k_evap / f_v
+              jac_vec[jac_inst.direct_jac_indices[4] + jac_offset] += phi_val * ke / fv;
+              // -J[aq, solvent] = -φ · k_evap · [aq] / (f_v · [solvent])
+              jac_vec[jac_inst.direct_jac_indices[5] + jac_offset] -= phi_val * ke * aq_conc / (fv * solvent_conc);
 
               // Indirect entries through r_eff
               if (n_r_eff_deps > 0)
@@ -521,8 +537,8 @@ namespace miam
                 {
                   double dr_dvar = r_eff_partials[block][k];
                   double effect = phi_val * (dk_dr * dr_dvar * gas_conc - dke_dr * dr_dvar * aq_conc / fv);
-                  jac_vec[jac_inst.r_eff_jac_indices[2 * k] + jac_offset] -= effect;
-                  jac_vec[jac_inst.r_eff_jac_indices[2 * k + 1] + jac_offset] += effect;
+                  jac_vec[jac_inst.r_eff_jac_indices[2 * k] + jac_offset] += effect;
+                  jac_vec[jac_inst.r_eff_jac_indices[2 * k + 1] + jac_offset] -= effect;
                 }
               }
 
@@ -538,17 +554,17 @@ namespace miam
                 {
                   double dN_dvar = N_partials[block][k];
                   double effect = phi_val * (dk_dN * dN_dvar * gas_conc - dke_dN * dN_dvar * aq_conc / fv);
-                  jac_vec[jac_inst.N_jac_indices[2 * k] + jac_offset] -= effect;
-                  jac_vec[jac_inst.N_jac_indices[2 * k + 1] + jac_offset] += effect;
+                  jac_vec[jac_inst.N_jac_indices[2 * k] + jac_offset] += effect;
+                  jac_vec[jac_inst.N_jac_indices[2 * k + 1] + jac_offset] -= effect;
                 }
               }
 
-              // Indirect entries through φ_p
+              // Indirect entries through φ_p (negated: MICM solver expects -J)
               for (std::size_t k = 0; k < n_phi_deps; ++k)
               {
                 double dphi_dvar = phi_partials[block][k];
-                jac_vec[jac_inst.phi_jac_indices[2 * k] + jac_offset] -= R * dphi_dvar;
-                jac_vec[jac_inst.phi_jac_indices[2 * k + 1] + jac_offset] += R * dphi_dvar;
+                jac_vec[jac_inst.phi_jac_indices[2 * k] + jac_offset] += R * dphi_dvar;
+                jac_vec[jac_inst.phi_jac_indices[2 * k + 1] + jac_offset] -= R * dphi_dvar;
               }
             }
           }

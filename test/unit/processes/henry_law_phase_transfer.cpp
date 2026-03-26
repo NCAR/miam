@@ -580,18 +580,18 @@ TEST(HenryLawPhaseTransfer, JacobianFunctionDirectEntries)
   double ke = kc / (hlc * miam::util::R_gas * T);
   double fv = solvent_conc * Mw_solvent / rho_solvent;
 
-  // J[gas,gas] = -φ · k_cond
-  EXPECT_NEAR(jacobian[0][0][0], -phi_val * kc, std::abs(phi_val * kc) * 1e-10);
-  // J[gas,aq] = +φ · k_evap / f_v
-  EXPECT_NEAR(jacobian[0][0][1], phi_val * ke / fv, std::abs(phi_val * ke / fv) * 1e-10);
-  // J[gas,solvent] = -φ · k_evap · [aq] / (f_v · [solvent])
-  double expected_gas_solvent = -phi_val * ke * aq_conc / (fv * solvent_conc);
+  // Stored as -J (MICM convention). -J[gas,gas] = +φ · k_cond
+  EXPECT_NEAR(jacobian[0][0][0], phi_val * kc, std::abs(phi_val * kc) * 1e-10);
+  // -J[gas,aq] = -φ · k_evap / f_v
+  EXPECT_NEAR(jacobian[0][0][1], -phi_val * ke / fv, std::abs(phi_val * ke / fv) * 1e-10);
+  // -J[gas,solvent] = +φ · k_evap · [aq] / (f_v · [solvent])
+  double expected_gas_solvent = phi_val * ke * aq_conc / (fv * solvent_conc);
   EXPECT_NEAR(jacobian[0][0][2], expected_gas_solvent, std::abs(expected_gas_solvent) * 1e-10);
-  // J[aq,gas] = +φ · k_cond
-  EXPECT_NEAR(jacobian[0][1][0], phi_val * kc, std::abs(phi_val * kc) * 1e-10);
-  // J[aq,aq] = -φ · k_evap / f_v
-  EXPECT_NEAR(jacobian[0][1][1], -phi_val * ke / fv, std::abs(phi_val * ke / fv) * 1e-10);
-  // J[aq,solvent] = +φ · k_evap · [aq] / (f_v · [solvent])
+  // -J[aq,gas] = -φ · k_cond
+  EXPECT_NEAR(jacobian[0][1][0], -phi_val * kc, std::abs(phi_val * kc) * 1e-10);
+  // -J[aq,aq] = +φ · k_evap / f_v
+  EXPECT_NEAR(jacobian[0][1][1], phi_val * ke / fv, std::abs(phi_val * ke / fv) * 1e-10);
+  // -J[aq,solvent] = -φ · k_evap · [aq] / (f_v · [solvent])
   EXPECT_NEAR(jacobian[0][1][2], -expected_gas_solvent, std::abs(expected_gas_solvent) * 1e-10);
 }
 
@@ -732,10 +732,11 @@ TEST(HenryLawPhaseTransfer, JacobianFunctionFiniteDifference)
     double fd_aq = (forcing_plus[0][1] - forcing_minus[0][1]) / (2.0 * h);
 
     double tol = 1e-4;  // relative tolerance for finite difference
+    // Jacobian stores -J (MICM convention), finite difference gives +J, so ratio is -1
     if (std::abs(jacobian[0][0][j]) > 1e-30)
-      EXPECT_NEAR(fd_gas / jacobian[0][0][j], 1.0, tol) << "J[gas," << j << "]";
+      EXPECT_NEAR(fd_gas / jacobian[0][0][j], -1.0, tol) << "J[gas," << j << "]";
     if (std::abs(jacobian[0][1][j]) > 1e-30)
-      EXPECT_NEAR(fd_aq / jacobian[0][1][j], 1.0, tol) << "J[aq," << j << "]";
+      EXPECT_NEAR(fd_aq / jacobian[0][1][j], -1.0, tol) << "J[aq," << j << "]";
   }
 }
 
@@ -796,10 +797,10 @@ TEST(HenryLawPhaseTransfer, JacobianFunctionMultipleCells)
   auto cond_rate_provider = miam::util::make_condensation_rate_provider(D_g, alpha, Mw_gas);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
 
-  // Both cells should have same J[gas,gas] = -φ · k_cond
+  // Both cells should have same -J[gas,gas] = +φ · k_cond (MICM convention)
   for (std::size_t i = 0; i < num_cells; ++i)
   {
-    EXPECT_NEAR(jacobian[i][0][0], -phi_val * kc, std::abs(phi_val * kc) * 1e-10);
+    EXPECT_NEAR(jacobian[i][0][0], phi_val * kc, std::abs(phi_val * kc) * 1e-10);
     // Mass conservation symmetry per cell
     EXPECT_NEAR(jacobian[i][0][0] + jacobian[i][1][0], 0.0, 1e-20);
   }
