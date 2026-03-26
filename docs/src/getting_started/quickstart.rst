@@ -49,7 +49,6 @@ Save the following as ``henry_law_example.cpp``:
      auto transfer = process::HenryLawPhaseTransferBuilder()
        .SetCondensedPhase(aqueous_phase)
        .SetGasSpecies(A)
-       .SetGasSpeciesName("A")
        .SetCondensedSpecies(A)
        .SetSolvent(H2O)
        .SetHenrysLawConstant(process::constant::HenrysLawConstant(

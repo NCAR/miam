@@ -79,7 +79,6 @@ Gas-condensed phase mass transfer governed by Henry's Law:
    auto transfer = process::HenryLawPhaseTransferBuilder()
      .SetCondensedPhase(aqueous_phase)
      .SetGasSpecies(A_gas)
-     .SetGasSpeciesName("A_g")
      .SetCondensedSpecies(A_aq)
      .SetSolvent(H2O)
      .SetHenrysLawConstant(process::constant::HenrysLawConstant(
@@ -101,8 +100,6 @@ Builder methods
      - Target condensed phase
    * - ``SetGasSpecies(species)``
      - Gas-phase species (must carry ``molecular weight``)
-   * - ``SetGasSpeciesName(name)``
-     - Name used for the gas species in the state variable map
    * - ``SetCondensedSpecies(species)``
      - Condensed-phase solute species (must carry ``molecular weight``
        and ``density``)

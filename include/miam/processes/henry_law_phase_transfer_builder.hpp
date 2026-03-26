@@ -39,14 +39,6 @@ namespace miam
         return *this;
       }
 
-      /// @brief Sets the state variable name for the gas species
-      HenryLawPhaseTransferBuilder& SetGasSpeciesName(const std::string& name)
-      {
-        gas_species_name_ = name;
-        gas_species_name_is_set_ = true;
-        return *this;
-      }
-
       /// @brief Sets the condensed-phase solute species
       HenryLawPhaseTransferBuilder& SetCondensedSpecies(const micm::Species& species)
       {
@@ -94,8 +86,6 @@ namespace miam
           throw std::runtime_error("HenryLawPhaseTransferBuilder requires the condensed phase to be set.");
         if (!gas_species_is_set_)
           throw std::runtime_error("HenryLawPhaseTransferBuilder requires the gas species to be set.");
-        if (!gas_species_name_is_set_)
-          throw std::runtime_error("HenryLawPhaseTransferBuilder requires the gas species name to be set.");
         if (!condensed_species_is_set_)
           throw std::runtime_error("HenryLawPhaseTransferBuilder requires the condensed species to be set.");
         if (!solvent_is_set_)
@@ -121,8 +111,7 @@ namespace miam
             alpha_,
             Mw_gas,
             Mw_solvent,
-            rho_solvent,
-            gas_species_name_);
+            rho_solvent);
       }
 
      private:
@@ -130,8 +119,6 @@ namespace miam
       bool condensed_phase_is_set_ = false;
       micm::Species gas_species_;
       bool gas_species_is_set_ = false;
-      std::string gas_species_name_;
-      bool gas_species_name_is_set_ = false;
       micm::Species condensed_species_;
       bool condensed_species_is_set_ = false;
       micm::Species solvent_;

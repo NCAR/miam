@@ -46,7 +46,6 @@ namespace miam
       double Mw_gas_;                ///< Gas-phase molecular weight [kg mol⁻¹]
       double Mw_solvent_;            ///< Solvent molecular weight [kg mol⁻¹]
       double rho_solvent_;           ///< Solvent density [kg m⁻³]
-      std::string gas_species_name_;  ///< State variable name for the gas species
       std::string uuid_;             ///< Unique identifier
 
       HenryLawPhaseTransfer() = delete;
@@ -62,8 +61,7 @@ namespace miam
           double alpha,
           double Mw_gas,
           double Mw_solvent,
-          double rho_solvent,
-          const std::string& gas_species_name)
+          double rho_solvent)
           : henry_law_constant_(henry_law_constant),
             gas_species_(gas_species),
             condensed_species_(condensed_species),
@@ -74,7 +72,6 @@ namespace miam
             Mw_gas_(Mw_gas),
             Mw_solvent_(Mw_solvent),
             rho_solvent_(rho_solvent),
-            gas_species_name_(gas_species_name),
             uuid_(generate_uuid_v4())
       {
       }
@@ -92,8 +89,7 @@ namespace miam
             alpha_,
             Mw_gas_,
             Mw_solvent_,
-            rho_solvent_,
-            gas_species_name_);
+            rho_solvent_);
       }
 
       /// @brief Returns unique parameter names for this process
@@ -118,7 +114,7 @@ namespace miam
       {
         std::set<std::string> species_names;
         // Gas species is a standalone state variable
-        species_names.insert(gas_species_name_);
+        species_names.insert(gas_species_.name_);
         // Condensed-phase species are per instance
         auto it = phase_prefixes.find(condensed_phase_.name_);
         if (it != phase_prefixes.end())
@@ -152,9 +148,9 @@ namespace miam
           const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
       {
         std::set<std::pair<std::size_t, std::size_t>> elements;
-        auto gas_it = state_variable_indices.find(gas_species_name_);
+        auto gas_it = state_variable_indices.find(gas_species_.name_);
         if (gas_it == state_variable_indices.end())
-          throw std::runtime_error("Internal Error: Gas species " + gas_species_name_ + " not found in state_variable_indices");
+          throw std::runtime_error("Internal Error: Gas species " + gas_species_.name_ + " not found in state_variable_indices");
         std::size_t gas_idx = gas_it->second;
 
         auto phase_it = phase_prefixes.find(condensed_phase_.name_);
@@ -189,7 +185,7 @@ namespace miam
           const std::map<std::string, std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>>& providers) const
       {
         auto elements = NonZeroJacobianElements(phase_prefixes, state_variable_indices);
-        auto gas_idx = state_variable_indices.at(gas_species_name_);
+        auto gas_idx = state_variable_indices.at(gas_species_.name_);
 
         // Add indirect dependencies through aerosol property providers
         for (const auto& [prefix, provider_vec] : providers)
@@ -264,7 +260,7 @@ namespace miam
           const auto& state_variable_indices,
           std::map<std::string, std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>> providers) const
       {
-        auto gas_idx = state_variable_indices.at(gas_species_name_);
+        auto gas_idx = state_variable_indices.at(gas_species_.name_);
 
         struct InstanceData
         {
@@ -358,7 +354,7 @@ namespace miam
           const SparseMatrixPolicy& jacobian,
           std::map<std::string, std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>> providers) const
       {
-        auto gas_idx = state_variable_indices.at(gas_species_name_);
+        auto gas_idx = state_variable_indices.at(gas_species_.name_);
 
         struct InstanceData
         {

@@ -110,7 +110,6 @@ int main()
   auto co2_transfer = process::HenryLawPhaseTransferBuilder()
     .SetCondensedPhase(aqueous_phase)
     .SetGasSpecies(co2)
-    .SetGasSpeciesName("CO2")
     .SetCondensedSpecies(co2)
     .SetSolvent(h2o)
     .SetHenrysLawConstant(process::constant::HenrysLawConstant(

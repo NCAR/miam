@@ -71,8 +71,7 @@ namespace
         alpha,
         Mw_gas,
         Mw_solvent,
-        rho_solvent,
-        "CO2_g");
+        rho_solvent);
   }
 
   /// Create a simple AerosolPropertyProvider that returns a constant value
@@ -347,7 +346,7 @@ TEST(HenryLawPhaseTransfer, CopyWithNewUuid)
   auto copy = process.CopyWithNewUuid();
 
   EXPECT_NE(process.uuid_, copy.uuid_);
-  EXPECT_EQ(process.gas_species_name_, copy.gas_species_name_);
+  EXPECT_EQ(process.gas_species_.name_, copy.gas_species_.name_);
   EXPECT_DOUBLE_EQ(process.D_g_, copy.D_g_);
   EXPECT_DOUBLE_EQ(process.alpha_, copy.alpha_);
   EXPECT_DOUBLE_EQ(process.Mw_gas_, copy.Mw_gas_);
@@ -819,7 +818,6 @@ TEST(HenryLawPhaseTransferBuilder, BuildSuccess)
   auto process = HenryLawPhaseTransferBuilder()
       .SetCondensedPhase(MakeAqueousPhase())
       .SetGasSpecies(MakeGasSpecies())
-      .SetGasSpeciesName("CO2_g")
       .SetCondensedSpecies(MakeCondensedSpecies())
       .SetSolvent(MakeSolvent())
       .SetHenrysLawConstant(hlc)
@@ -832,7 +830,7 @@ TEST(HenryLawPhaseTransferBuilder, BuildSuccess)
   EXPECT_DOUBLE_EQ(process.Mw_gas_, Mw_gas);
   EXPECT_DOUBLE_EQ(process.Mw_solvent_, Mw_solvent);
   EXPECT_DOUBLE_EQ(process.rho_solvent_, rho_solvent);
-  EXPECT_EQ(process.gas_species_name_, "CO2_g");
+  EXPECT_EQ(process.gas_species_.name_, "CO2_g");
   EXPECT_FALSE(process.uuid_.empty());
 }
 
@@ -845,7 +843,6 @@ TEST(HenryLawPhaseTransferBuilder, MissingCondensedPhaseThrows)
   EXPECT_THROW(
       HenryLawPhaseTransferBuilder()
           .SetGasSpecies(MakeGasSpecies())
-          .SetGasSpeciesName("CO2_g")
           .SetCondensedSpecies(MakeCondensedSpecies())
           .SetSolvent(MakeSolvent())
           .SetHenrysLawConstant(hlc)
@@ -864,7 +861,6 @@ TEST(HenryLawPhaseTransferBuilder, MissingGasSpeciesThrows)
   EXPECT_THROW(
       HenryLawPhaseTransferBuilder()
           .SetCondensedPhase(MakeAqueousPhase())
-          .SetGasSpeciesName("CO2_g")
           .SetCondensedSpecies(MakeCondensedSpecies())
           .SetSolvent(MakeSolvent())
           .SetHenrysLawConstant(hlc)
@@ -880,7 +876,6 @@ TEST(HenryLawPhaseTransferBuilder, MissingHLCThrows)
       HenryLawPhaseTransferBuilder()
           .SetCondensedPhase(MakeAqueousPhase())
           .SetGasSpecies(MakeGasSpecies())
-          .SetGasSpeciesName("CO2_g")
           .SetCondensedSpecies(MakeCondensedSpecies())
           .SetSolvent(MakeSolvent())
           .SetDiffusionCoefficient(D_g)
@@ -899,7 +894,6 @@ TEST(HenryLawPhaseTransferBuilder, MissingDiffusionCoefficientThrows)
       HenryLawPhaseTransferBuilder()
           .SetCondensedPhase(MakeAqueousPhase())
           .SetGasSpecies(MakeGasSpecies())
-          .SetGasSpeciesName("CO2_g")
           .SetCondensedSpecies(MakeCondensedSpecies())
           .SetSolvent(MakeSolvent())
           .SetHenrysLawConstant(hlc)
@@ -918,7 +912,6 @@ TEST(HenryLawPhaseTransferBuilder, MissingAccommodationCoefficientThrows)
       HenryLawPhaseTransferBuilder()
           .SetCondensedPhase(MakeAqueousPhase())
           .SetGasSpecies(MakeGasSpecies())
-          .SetGasSpeciesName("CO2_g")
           .SetCondensedSpecies(MakeCondensedSpecies())
           .SetSolvent(MakeSolvent())
           .SetHenrysLawConstant(hlc)
@@ -938,7 +931,6 @@ TEST(HenryLawPhaseTransferBuilder, BuiltProcessHLCWorks)
   auto process = HenryLawPhaseTransferBuilder()
       .SetCondensedPhase(MakeAqueousPhase())
       .SetGasSpecies(MakeGasSpecies())
-      .SetGasSpeciesName("CO2_g")
       .SetCondensedSpecies(MakeCondensedSpecies())
       .SetSolvent(MakeSolvent())
       .SetHenrysLawConstant(hlc)
