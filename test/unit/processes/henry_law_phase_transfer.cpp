@@ -400,7 +400,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionBasicRates)
   forcing_func(state_parameters, state_variables, forcing_terms);
 
   // Compute expected net rate
-  auto cond_rate_provider = miam::util::make_condensation_rate_provider(D_g, alpha, Mw_gas);
+  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, Mw_gas);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
   double kc_eff = phi_val * kc;
   double ke_eff = kc_eff / (hlc * miam::util::R_gas * T);
@@ -460,7 +460,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionMultipleCells)
 
   forcing_func(state_parameters, state_variables, forcing_terms);
 
-  auto cond_rate_provider = miam::util::make_condensation_rate_provider(D_g, alpha, Mw_gas);
+  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, Mw_gas);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
   double kc_eff = phi_val * kc;
   double ke_eff = kc_eff / (hlc * miam::util::R_gas * T);
@@ -572,7 +572,7 @@ TEST(HenryLawPhaseTransfer, JacobianFunctionDirectEntries)
 
   jac_func(state_parameters, state_variables, jacobian);
 
-  auto cond_rate_provider = miam::util::make_condensation_rate_provider(D_g, alpha, Mw_gas);
+  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, Mw_gas);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
   double ke = kc / (hlc * miam::util::R_gas * T);
   double fv = solvent_conc * Mw_solvent / rho_solvent;
@@ -791,7 +791,7 @@ TEST(HenryLawPhaseTransfer, JacobianFunctionMultipleCells)
 
   jac_func(state_parameters, state_variables, jacobian);
 
-  auto cond_rate_provider = miam::util::make_condensation_rate_provider(D_g, alpha, Mw_gas);
+  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, Mw_gas);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
 
   // Both cells should have same -J[gas,gas] = +φ · k_cond (MICM convention)

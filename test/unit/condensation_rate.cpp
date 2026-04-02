@@ -38,7 +38,7 @@ namespace
 
 TEST(CondensationRate, ComputeValueMatchesHandCalculation)
 {
-  auto provider = make_condensation_rate_provider(D_g, alpha, Mw_gas);
+  auto provider = MakeCondensationRateProvider(D_g, alpha, Mw_gas);
 
   double c_bar = mean_molecular_speed(T, Mw_gas);
   double lambda = mean_free_path(D_g, c_bar);
@@ -55,7 +55,7 @@ TEST(CondensationRate, ContinuumLimit)
   // For very large particles (Kn → 0), f(Kn) → 1
   // k_cond → 4π · r_eff · N · D_g
   double large_r = 1.0e-3;  // 1 mm radius — continuum regime
-  auto provider = make_condensation_rate_provider(D_g, alpha, Mw_gas);
+  auto provider = MakeCondensationRateProvider(D_g, alpha, Mw_gas);
 
   double k_cond = provider.ComputeValue(large_r, N, T);
   double continuum_limit = 4.0 * std::numbers::pi * large_r * N * D_g;
@@ -68,8 +68,8 @@ TEST(CondensationRate, FullAccommodation)
 {
   // With α = 1, the correction factor should be closer to 1
   double alpha_full = 1.0;
-  auto provider_full = make_condensation_rate_provider(D_g, alpha_full, Mw_gas);
-  auto provider_low = make_condensation_rate_provider(D_g, 0.01, Mw_gas);
+  auto provider_full = MakeCondensationRateProvider(D_g, alpha_full, Mw_gas);
+  auto provider_low = MakeCondensationRateProvider(D_g, 0.01, Mw_gas);
 
   double k_full = provider_full.ComputeValue(r_eff, N, T);
   double k_low = provider_low.ComputeValue(r_eff, N, T);
@@ -80,7 +80,7 @@ TEST(CondensationRate, FullAccommodation)
 
 TEST(CondensationRate, LinearInN)
 {
-  auto provider = make_condensation_rate_provider(D_g, alpha, Mw_gas);
+  auto provider = MakeCondensationRateProvider(D_g, alpha, Mw_gas);
 
   double k1 = provider.ComputeValue(r_eff, N, T);
   double k2 = provider.ComputeValue(r_eff, 2.0 * N, T);
@@ -91,7 +91,7 @@ TEST(CondensationRate, LinearInN)
 
 TEST(CondensationRate, TemperatureDependence)
 {
-  auto provider = make_condensation_rate_provider(D_g, alpha, Mw_gas);
+  auto provider = MakeCondensationRateProvider(D_g, alpha, Mw_gas);
 
   double k_cold = provider.ComputeValue(r_eff, N, 250.0);
   double k_warm = provider.ComputeValue(r_eff, N, 350.0);
@@ -105,7 +105,7 @@ TEST(CondensationRate, TemperatureDependence)
 
 TEST(CondensationRate, ComputeValueAndDerivativesConsistency)
 {
-  auto provider = make_condensation_rate_provider(D_g, alpha, Mw_gas);
+  auto provider = MakeCondensationRateProvider(D_g, alpha, Mw_gas);
 
   double k_cond_val = provider.ComputeValue(r_eff, N, T);
 
@@ -118,7 +118,7 @@ TEST(CondensationRate, ComputeValueAndDerivativesConsistency)
 
 TEST(CondensationRate, DerivativesDkDrFiniteDifference)
 {
-  auto provider = make_condensation_rate_provider(D_g, alpha, Mw_gas);
+  auto provider = MakeCondensationRateProvider(D_g, alpha, Mw_gas);
 
   double k_cond, dk_dr, dk_dN;
   provider.ComputeValueAndDerivatives(r_eff, N, T, k_cond, dk_dr, dk_dN);
@@ -134,7 +134,7 @@ TEST(CondensationRate, DerivativesDkDrFiniteDifference)
 
 TEST(CondensationRate, DerivativesDkDnFiniteDifference)
 {
-  auto provider = make_condensation_rate_provider(D_g, alpha, Mw_gas);
+  auto provider = MakeCondensationRateProvider(D_g, alpha, Mw_gas);
 
   double k_cond, dk_dr, dk_dN;
   provider.ComputeValueAndDerivatives(r_eff, N, T, k_cond, dk_dr, dk_dN);
@@ -153,7 +153,7 @@ TEST(CondensationRate, DerivativesDkDnFiniteDifference)
 
 TEST(CondensationRate, DerivativesDkDrAtDifferentRegimes)
 {
-  auto provider = make_condensation_rate_provider(D_g, alpha, Mw_gas);
+  auto provider = MakeCondensationRateProvider(D_g, alpha, Mw_gas);
 
   // Small particle (large Kn — free molecular regime)
   {
@@ -190,7 +190,7 @@ TEST(CondensationRate, DerivativesContinuumLimit)
   // k_cond ≈ 4π · r · N · D_g
   // dk/dr ≈ 4π · N · D_g
   double r_large = 1.0e-3;
-  auto provider = make_condensation_rate_provider(D_g, alpha, Mw_gas);
+  auto provider = MakeCondensationRateProvider(D_g, alpha, Mw_gas);
 
   double k_cond, dk_dr, dk_dN;
   provider.ComputeValueAndDerivatives(r_large, N, T, k_cond, dk_dr, dk_dN);
@@ -205,8 +205,8 @@ TEST(CondensationRate, DifferentGasSpecies)
   double Mw_light = 0.018015;  // Water [kg mol⁻¹]
   double Mw_heavy = 0.098079;  // H2SO4 [kg mol⁻¹]
 
-  auto provider_light = make_condensation_rate_provider(D_g, alpha, Mw_light);
-  auto provider_heavy = make_condensation_rate_provider(D_g, alpha, Mw_heavy);
+  auto provider_light = MakeCondensationRateProvider(D_g, alpha, Mw_light);
+  auto provider_heavy = MakeCondensationRateProvider(D_g, alpha, Mw_heavy);
 
   double k_light = provider_light.ComputeValue(r_eff, N, T);
   double k_heavy = provider_heavy.ComputeValue(r_eff, N, T);
@@ -219,7 +219,7 @@ TEST(CondensationRate, DifferentGasSpecies)
 
 TEST(CondensationRate, PositiveKcondForAllInputs)
 {
-  auto provider = make_condensation_rate_provider(D_g, alpha, Mw_gas);
+  auto provider = MakeCondensationRateProvider(D_g, alpha, Mw_gas);
 
   // Test a range of realistic physical conditions
   for (double r : { 1.0e-9, 1.0e-8, 1.0e-7, 1.0e-6, 1.0e-5, 1.0e-4 })

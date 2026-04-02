@@ -152,7 +152,7 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   double phi = 1.0;
 
   // k_cond from condensation rate utility
-  auto cond_provider = miam::util::make_condensation_rate_provider(D_g, alpha, Mw_gas);
+  auto cond_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, Mw_gas);
   double k_cond = cond_provider.ComputeValue(r_eff, N, T);
   double k_evap = k_cond / (HLC_val * R_gas * T);
 

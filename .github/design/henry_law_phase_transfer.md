@@ -1391,7 +1391,7 @@ for (const auto& [prefix, provider_vec] : providers) {
     inst.r_eff_provider = provider_vec[0];
     inst.N_provider     = provider_vec[1];
     inst.phi_provider   = provider_vec[2];
-    inst.cond_rate_provider = make_condensation_rate_provider(D_g_, alpha_, Mw_gas_);
+    inst.cond_rate_provider = MakeCondensationRateProvider(D_g_, alpha_, Mw_gas_);
     instances.push_back(std::move(inst));
 }
 
@@ -2191,7 +2191,7 @@ and the provider can short-circuit.
 
    ```cpp
    // include/miam/util/condensation_rate.hpp
-   CondensationRateProvider make_condensation_rate_provider(
+   CondensationRateProvider MakeCondensationRateProvider(
        double D_g, double alpha, double Mw_gas);
    ```
 
@@ -2276,7 +2276,7 @@ is written to a state parameter column (`hlc`) for each phase instance.
 
 `include/miam/util/condensation_rate.hpp` — `CondensationRateProvider` struct
 with `ComputeValue` and `ComputeValueAndDerivatives` lambdas, plus factory
-function `make_condensation_rate_provider(D_g, alpha, Mw_gas)`. Encapsulates
+function `MakeCondensationRateProvider(D_g, alpha, Mw_gas)`. Encapsulates
 mean molecular speed, mean free path, Knudsen number, Fuchs-Sutugin correction,
 and all derivatives (`dk_cond/dr_eff`, `dk_cond/dN`) — same provider pattern as
 aerosol properties. Helper functions (mean free path, Fuchs-Sutugin factor) are

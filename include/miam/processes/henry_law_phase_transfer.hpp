@@ -34,8 +34,9 @@ namespace miam
     ///
     ///          where k_evap = k_cond / (HLC · R · T), f_v = [solvent] · Mw/ρ,
     ///          and φ_p is the phase volume fraction.
-    struct HenryLawPhaseTransfer
+    class HenryLawPhaseTransfer
     {
+      public:
       std::function<double(const micm::Conditions& conditions)> henry_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
       micm::Species gas_species_;                                                      ///< Gas-phase species
       micm::Species condensed_species_;                                                ///< Condensed-phase solute species
@@ -298,7 +299,7 @@ namespace miam
             inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
             inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
             inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
-            inst.cond_rate_provider = util::make_condensation_rate_provider(D_g_, alpha_, Mw_gas_);
+            inst.cond_rate_provider = util::MakeCondensationRateProvider(D_g_, alpha_, Mw_gas_);
             instances.push_back(std::move(inst));
           }
         }
@@ -406,7 +407,7 @@ namespace miam
             jac_inst.instance.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
             jac_inst.instance.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
             jac_inst.instance.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
-            jac_inst.instance.cond_rate_provider = util::make_condensation_rate_provider(D_g_, alpha_, Mw_gas_);
+            jac_inst.instance.cond_rate_provider = util::MakeCondensationRateProvider(D_g_, alpha_, Mw_gas_);
 
             std::size_t aq_idx = jac_inst.instance.aq_species_idx;
             std::size_t solvent_idx = jac_inst.instance.solvent_species_idx;

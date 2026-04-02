@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <micm/Util.hpp>
+
 #include <cmath>
 #include <functional>
 #include <numbers>
@@ -13,7 +15,7 @@ namespace miam
   namespace util
   {
     /// @brief Gas constant [J mol⁻¹ K⁻¹]
-    constexpr double R_gas = 8.314462618;
+    constexpr double R_gas = micm::constants::GAS_CONSTANT;
 
     /// @brief Provider for condensation rate and its derivatives
     /// @details Encapsulates the Fuchs-Sutugin transition regime calculation:
@@ -45,7 +47,7 @@ namespace miam
     /// @param alpha Mass accommodation coefficient [dimensionless, 0-1]
     /// @param Mw_gas Molecular weight of the gas species [kg mol⁻¹]
     /// @return A CondensationRateProvider with the Fuchs-Sutugin regime correction
-    inline CondensationRateProvider make_condensation_rate_provider(double D_g, double alpha, double Mw_gas)
+    inline CondensationRateProvider MakeCondensationRateProvider(double D_g, double alpha, double Mw_gas)
     {
       if (D_g <= 0)
         throw std::invalid_argument("Diffusion coefficient D_g must be positive.");

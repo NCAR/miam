@@ -35,8 +35,9 @@ namespace miam
     ///          with forward rate constant \f$ k_f \f$ and reverse rate constant \f$ k_r \f$. The
     ///          relationship between the rate constants and the equilibrium constant \f$ K_{eq} \f$ is:
     ///          \f$ K_{eq} = \frac{k_f}{k_r} = \frac{\prod[\mathrm{Products}]}{\prod[\mathrm{Reactants}]} \f$.
-    struct DissolvedReversibleReaction
+    class DissolvedReversibleReaction
     {
+      public:
       std::function<double(const micm::Conditions& conditions)> forward_rate_constant_;  ///< Forward rate constant function
       std::function<double(const micm::Conditions& conditions)> reverse_rate_constant_;  ///< Reverse rate constant function
       std::vector<micm::Species> reactants_;                                             ///< Reactant species
