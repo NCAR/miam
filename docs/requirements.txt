@@ -1,6 +1,5 @@
-breathe
-sphinx
-sphinx-book-theme
-sphinx-copybutton
-sphinx-design
-sphinxcontrib-bibtex
+breathe>=4.35.0
+sphinx>=7.0.0
+sphinx-book-theme>=1.0.0
+sphinx-copybutton>=0.5.0
+sphinx-design>=0.5.0
