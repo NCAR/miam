@@ -1,6 +1,7 @@
 FROM fedora:latest
 
 ARG MIAM_GIT_TAG=main
+ARG BUILD_TYPE=Release
 
 RUN dnf -y update \
     && dnf -y install \
@@ -25,6 +26,7 @@ RUN cd miam \
              -B build \
              -D CMAKE_BUILD_TYPE=${BUILD_TYPE} \
              -D MIAM_BUILD_DOCS=ON \
+             -D MIAM_ENABLE_TESTS=OFF \
     && cd build \
     && make docs
 
