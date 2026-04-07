@@ -36,18 +36,18 @@ namespace miam
     ///          and φ_p is the phase volume fraction.
     class HenryLawPhaseTransfer
     {
-      public:
+     public:
       std::function<double(const micm::Conditions& conditions)> henry_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
-      micm::Species gas_species_;                                                      ///< Gas-phase species
-      micm::Species condensed_species_;                                                ///< Condensed-phase solute species
-      micm::Species solvent_;                                                          ///< Condensed-phase solvent species
-      micm::Phase condensed_phase_;  ///< The condensed phase
-      double D_g_;                   ///< Gas-phase diffusion coefficient [m² s⁻¹]
-      double alpha_;                 ///< Mass accommodation coefficient [dimensionless]
-      double Mw_gas_;                ///< Gas-phase molecular weight [kg mol⁻¹]
-      double Mw_solvent_;            ///< Solvent molecular weight [kg mol⁻¹]
-      double rho_solvent_;           ///< Solvent density [kg m⁻³]
-      std::string uuid_;             ///< Unique identifier
+      micm::Species gas_species_;                                                     ///< Gas-phase species
+      micm::Species condensed_species_;                                               ///< Condensed-phase solute species
+      micm::Species solvent_;                                                         ///< Condensed-phase solvent species
+      micm::Phase condensed_phase_;                                                   ///< The condensed phase
+      double D_g_;          ///< Gas-phase diffusion coefficient [m² s⁻¹]
+      double alpha_;        ///< Mass accommodation coefficient [dimensionless]
+      double Mw_gas_;       ///< Gas-phase molecular weight [kg mol⁻¹]
+      double Mw_solvent_;   ///< Solvent molecular weight [kg mol⁻¹]
+      double rho_solvent_;  ///< Solvent density [kg m⁻³]
+      std::string uuid_;    ///< Unique identifier
 
       HenryLawPhaseTransfer() = delete;
 
@@ -94,8 +94,7 @@ namespace miam
       }
 
       /// @brief Returns unique parameter names for this process
-      std::set<std::string> ProcessParameterNames(
-          const std::map<std::string, std::set<std::string>>& phase_prefixes) const
+      std::set<std::string> ProcessParameterNames(const std::map<std::string, std::set<std::string>>& phase_prefixes) const
       {
         std::set<std::string> names;
         auto it = phase_prefixes.find(condensed_phase_.name_);
@@ -151,7 +150,8 @@ namespace miam
         std::set<std::pair<std::size_t, std::size_t>> elements;
         auto gas_it = state_variable_indices.find(gas_species_.name_);
         if (gas_it == state_variable_indices.end())
-          throw std::runtime_error("Internal Error: Gas species " + gas_species_.name_ + " not found in state_variable_indices");
+          throw std::runtime_error(
+              "Internal Error: Gas species " + gas_species_.name_ + " not found in state_variable_indices");
         std::size_t gas_idx = gas_it->second;
 
         auto phase_it = phase_prefixes.find(condensed_phase_.name_);
@@ -162,10 +162,9 @@ namespace miam
         // Return the direct dependencies; the provider-based overload adds indirect ones.
         for (const auto& prefix : phase_it->second)
         {
-          std::size_t aq_idx = state_variable_indices.at(
-              prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
-          std::size_t solvent_idx = state_variable_indices.at(
-              prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
+          std::size_t aq_idx =
+              state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
+          std::size_t solvent_idx = state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
 
           // Direct dependencies
           elements.insert({ gas_idx, gas_idx });
@@ -183,7 +182,8 @@ namespace miam
       std::set<std::pair<std::size_t, std::size_t>> NonZeroJacobianElements(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
           const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-          const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>>& providers) const
+          const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>>& providers)
+          const
       {
         auto elements = NonZeroJacobianElements(phase_prefixes, state_variable_indices);
         auto gas_idx = state_variable_indices.at(gas_species_.name_);
@@ -191,8 +191,8 @@ namespace miam
         // Add indirect dependencies through aerosol property providers
         for (const auto& [prefix, prov_map] : providers)
         {
-          std::size_t aq_idx = state_variable_indices.at(
-              prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
+          std::size_t aq_idx =
+              state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
 
           for (const auto& [prop, provider] : prov_map)
           {
@@ -287,14 +287,13 @@ namespace miam
               continue;
             const auto& prov_map = prov_it->second;
             InstanceData inst;
-            inst.aq_species_idx = state_variable_indices.at(
-                prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
-            inst.solvent_species_idx = state_variable_indices.at(
-                prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
-            inst.hlc_param_idx = state_parameter_indices.at(
-                prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc");
-            inst.temperature_param_idx = state_parameter_indices.at(
-                prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
+            inst.aq_species_idx =
+                state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
+            inst.solvent_species_idx =
+                state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
+            inst.hlc_param_idx = state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc");
+            inst.temperature_param_idx =
+                state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
             inst.Mw_rho = Mw_solvent_ / rho_solvent_;
             inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
             inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
@@ -395,14 +394,14 @@ namespace miam
               continue;
             const auto& prov_map = prov_it->second;
             JacobianInstanceData jac_inst;
-            jac_inst.instance.aq_species_idx = state_variable_indices.at(
-                prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
-            jac_inst.instance.solvent_species_idx = state_variable_indices.at(
-                prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
-            jac_inst.instance.hlc_param_idx = state_parameter_indices.at(
-                prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc");
-            jac_inst.instance.temperature_param_idx = state_parameter_indices.at(
-                prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
+            jac_inst.instance.aq_species_idx =
+                state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
+            jac_inst.instance.solvent_species_idx =
+                state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
+            jac_inst.instance.hlc_param_idx =
+                state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc");
+            jac_inst.instance.temperature_param_idx =
+                state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
             jac_inst.instance.Mw_rho = Mw_solvent_ / rho_solvent_;
             jac_inst.instance.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
             jac_inst.instance.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
@@ -412,32 +411,32 @@ namespace miam
             std::size_t aq_idx = jac_inst.instance.aq_species_idx;
             std::size_t solvent_idx = jac_inst.instance.solvent_species_idx;
 
-          // Direct entries (6 total)
-          jac_inst.direct_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, gas_idx));
-          jac_inst.direct_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, aq_idx));
-          jac_inst.direct_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, solvent_idx));
-          jac_inst.direct_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, gas_idx));
-          jac_inst.direct_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, aq_idx));
-          jac_inst.direct_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, solvent_idx));
+            // Direct entries (6 total)
+            jac_inst.direct_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, gas_idx));
+            jac_inst.direct_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, aq_idx));
+            jac_inst.direct_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, solvent_idx));
+            jac_inst.direct_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, gas_idx));
+            jac_inst.direct_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, aq_idx));
+            jac_inst.direct_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, solvent_idx));
 
-          // Indirect through r_eff
-          for (std::size_t var_j : prov_map.at(AerosolProperty::EffectiveRadius).dependent_variable_indices)
-          {
-            jac_inst.r_eff_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, var_j));
-            jac_inst.r_eff_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, var_j));
-          }
-          // Indirect through N
-          for (std::size_t var_j : prov_map.at(AerosolProperty::NumberConcentration).dependent_variable_indices)
-          {
-            jac_inst.N_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, var_j));
-            jac_inst.N_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, var_j));
-          }
-          // Indirect through phi
-          for (std::size_t var_j : prov_map.at(AerosolProperty::PhaseVolumeFraction).dependent_variable_indices)
-          {
-            jac_inst.phi_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, var_j));
-            jac_inst.phi_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, var_j));
-          }
+            // Indirect through r_eff
+            for (std::size_t var_j : prov_map.at(AerosolProperty::EffectiveRadius).dependent_variable_indices)
+            {
+              jac_inst.r_eff_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, var_j));
+              jac_inst.r_eff_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, var_j));
+            }
+            // Indirect through N
+            for (std::size_t var_j : prov_map.at(AerosolProperty::NumberConcentration).dependent_variable_indices)
+            {
+              jac_inst.N_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, var_j));
+              jac_inst.N_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, var_j));
+            }
+            // Indirect through phi
+            for (std::size_t var_j : prov_map.at(AerosolProperty::PhaseVolumeFraction).dependent_variable_indices)
+            {
+              jac_inst.phi_jac_indices.push_back(jacobian.VectorIndex(0, gas_idx, var_j));
+              jac_inst.phi_jac_indices.push_back(jacobian.VectorIndex(0, aq_idx, var_j));
+            }
 
             jac_instances.push_back(std::move(jac_inst));
           }

@@ -169,8 +169,7 @@ namespace miam
                 [rmin_idx, rmax_idx](auto&& params, auto&& vars, auto&& result)
                 {
                   params.ForEachRow(
-                      [](const double& r_min, const double& r_max, double& r_eff)
-                      { r_eff = 0.5 * (r_min + r_max); },
+                      [](const double& r_min, const double& r_max, double& r_eff) { r_eff = 0.5 * (r_min + r_max); },
                       params.GetConstColumnView(rmin_idx),
                       params.GetConstColumnView(rmax_idx),
                       result.GetColumnView(0));
@@ -182,8 +181,7 @@ namespace miam
                 [rmin_idx, rmax_idx](auto&& params, auto&& vars, auto&& result, auto&& partials)
                 {
                   params.ForEachRow(
-                      [](const double& r_min, const double& r_max, double& r_eff)
-                      { r_eff = 0.5 * (r_min + r_max); },
+                      [](const double& r_min, const double& r_max, double& r_eff) { r_eff = 0.5 * (r_min + r_max); },
                       params.GetConstColumnView(rmin_idx),
                       params.GetConstColumnView(rmax_idx),
                       result.GetColumnView(0));
@@ -310,8 +308,7 @@ namespace miam
                 for (const auto& ps : phase.phase_species_)
                   if (!ps.species_.IsParameterized())
                   {
-                    all_species.push_back(
-                        state_variable_indices.at(prefix_ + "." + phase.name_ + "." + ps.species_.name_));
+                    all_species.push_back(state_variable_indices.at(prefix_ + "." + phase.name_ + "." + ps.species_.name_));
                     all_mw_over_rho.push_back(
                         ps.species_.GetProperty<double>("molecular weight [kg mol-1]") /
                         ps.species_.GetProperty<double>("density [kg m-3]"));
@@ -326,8 +323,7 @@ namespace miam
               for (const auto& ps : phase.phase_species_)
                 if (!ps.species_.IsParameterized())
                 {
-                  all_species.push_back(
-                      state_variable_indices.at(prefix_ + "." + phase.name_ + "." + ps.species_.name_));
+                  all_species.push_back(state_variable_indices.at(prefix_ + "." + phase.name_ + "." + ps.species_.name_));
                   all_mw_over_rho.push_back(
                       ps.species_.GetProperty<double>("molecular weight [kg mol-1]") /
                       ps.species_.GetProperty<double>("density [kg m-3]"));
@@ -340,7 +336,14 @@ namespace miam
                 {
                   auto phi = result.GetColumnView(0);
                   auto V_phase = result.GetRowVariable();
-                  params.ForEachRow([](double& vt, double& vp) { vt = 0.0; vp = 0.0; }, phi, V_phase);
+                  params.ForEachRow(
+                      [](double& vt, double& vp)
+                      {
+                        vt = 0.0;
+                        vp = 0.0;
+                      },
+                      phi,
+                      V_phase);
                   for (std::size_t k = 0; k < all_species.size(); ++k)
                   {
                     if (k < phase_count)
@@ -360,20 +363,25 @@ namespace miam
                           vars.GetConstColumnView(all_species[k]),
                           phi);
                   }
-                  params.ForEachRow(
-                      [](double& phi, const double& vp) { phi = (phi > 0.0) ? vp / phi : 1.0; }, phi, V_phase);
+                  params.ForEachRow([](double& phi, const double& vp) { phi = (phi > 0.0) ? vp / phi : 1.0; }, phi, V_phase);
                 },
                 dummy_params,
                 dummy_vars,
                 dummy_result);
             provider.ComputeValueAndDerivatives = DenseMatrixPolicy::Function(
-                [all_species, all_mw_over_rho, phase_count](
-                    auto&& params, auto&& vars, auto&& result, auto&& partials)
+                [all_species, all_mw_over_rho, phase_count](auto&& params, auto&& vars, auto&& result, auto&& partials)
                 {
                   auto result_col = result.GetColumnView(0);
                   auto V_phase = result.GetRowVariable();
                   auto V_total = result.GetRowVariable();
-                  params.ForEachRow([](double& vt, double& vp) { vt = 0.0; vp = 0.0; }, V_total, V_phase);
+                  params.ForEachRow(
+                      [](double& vt, double& vp)
+                      {
+                        vt = 0.0;
+                        vp = 0.0;
+                      },
+                      V_total,
+                      V_phase);
                   for (std::size_t k = 0; k < all_species.size(); ++k)
                   {
                     if (k < phase_count)
@@ -394,8 +402,7 @@ namespace miam
                           V_total);
                   }
                   params.ForEachRow(
-                      [](const double& vp, const double& vt, double& phi)
-                      { phi = (vt > 0.0) ? vp / vt : 1.0; },
+                      [](const double& vp, const double& vt, double& phi) { phi = (vt > 0.0) ? vp / vt : 1.0; },
                       V_phase,
                       V_total,
                       result_col);

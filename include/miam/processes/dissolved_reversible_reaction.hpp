@@ -37,7 +37,7 @@ namespace miam
     ///          \f$ K_{eq} = \frac{k_f}{k_r} = \frac{\prod[\mathrm{Products}]}{\prod[\mathrm{Reactants}]} \f$.
     class DissolvedReversibleReaction
     {
-      public:
+     public:
       std::function<double(const micm::Conditions& conditions)> forward_rate_constant_;  ///< Forward rate constant function
       std::function<double(const micm::Conditions& conditions)> reverse_rate_constant_;  ///< Reverse rate constant function
       std::vector<micm::Species> reactants_;                                             ///< Reactant species
@@ -201,7 +201,8 @@ namespace miam
       std::set<std::pair<std::size_t, std::size_t>> NonZeroJacobianElements(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
           const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-          const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>>& /* providers */) const
+          const std::
+              map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>>& /* providers */) const
       {
         return NonZeroJacobianElements(phase_prefixes, state_variable_indices);
       }
