@@ -6,7 +6,12 @@
 #include <random>
 #include <sstream>
 
-std::string generate_uuid_v4()
+namespace miam
+{
+namespace util
+{
+
+inline std::string generate_uuid_v4()
 {
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -42,3 +47,6 @@ std::string generate_uuid_v4()
   }
   return ss.str();
 }
+
+}  // namespace util
+}  // namespace miam

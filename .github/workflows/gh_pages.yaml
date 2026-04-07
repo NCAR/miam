@@ -61,16 +61,16 @@ jobs:
           # 1. the frozen version, represented as vX.X in the version switcher
           docker build -t miam -f docker/Dockerfile.docs .
           id=$(docker create miam)
-          docker cp $id:/build/docs/sphinx tmpdocs
+          docker cp $id:/miam/build/docs/sphinx tmpdocs
           docker rm -v $id
-          version=$(sed -nr "s/^release = f'v(.+)\{suffix\}'.*$/\1/p" docs/source/conf.py)
+          version=$(sed -nr "s/^release = f'v(.+)\{suffix\}'.*$/\1/p" docs/src/conf.py)
           mv tmpdocs _build/html/versions/${version}
 
           # 2. stable, represented as vX.X (stable) in the version switcher
           # edit conf.py to produce a version string that looks like vX.X (stable)
           docker build -t miam -f docker/Dockerfile.docs --build-arg SUFFIX=" (stable)" .
           id=$(docker create miam)
-          docker cp $id:/build/docs/sphinx tmpdocs
+          docker cp $id:/miam/build/docs/sphinx tmpdocs
           docker rm -v $id
           mv tmpdocs _build/html/versions/stable
           # Delete everything under _gh-pages/ that is from the
@@ -94,7 +94,7 @@ jobs:
           set -x
           docker build -t miam -f docker/Dockerfile.docs .
           id=$(docker create miam)
-          docker cp $id:/build/docs/sphinx tmpdocs
+          docker cp $id:/miam/build/docs/sphinx tmpdocs
           docker rm -v $id
           brname="${{github.ref}}"
           brname="${brname##refs/heads/}"
@@ -125,7 +125,7 @@ jobs:
       # Deploy
       # https://github.com/peaceiris/actions-gh-pages
       - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch'}}
         with:
           publish_branch: gh-pages

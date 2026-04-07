@@ -1,1 +1,3 @@
 create_standard_test(NAME dissolved_reversible_reaction SOURCES dissolved_reversible_reaction.cpp)
+create_standard_test(NAME henry_law_phase_transfer SOURCES henry_law_phase_transfer.cpp)
+create_standard_test(NAME henrys_law_constant SOURCES henrys_law_constant.cpp)

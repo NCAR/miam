@@ -3,8 +3,16 @@
 
 #include "../representation_policy.hpp"
 
+#include <miam/aerosol_property.hpp>
 #include <miam/representations/uniform_section.hpp>
 
+#include <micm/util/matrix.hpp>
+
+#include <cmath>
+#include <numbers>
+#include <unordered_map>
+
+using namespace miam;
 using namespace miam::representation;
 
 TEST(UniformSection, StateSize)
@@ -218,4 +226,146 @@ TEST(UniformSection, PhaseStatePrefixesWithMultiplePhases)
     EXPECT_TRUE(phase_prefixes["AQUEOUS"].find(prefix) != phase_prefixes["AQUEOUS"].end());
     EXPECT_TRUE(phase_prefixes["ORGANIC"].find(prefix) != phase_prefixes["ORGANIC"].end());
     EXPECT_TRUE(phase_prefixes["GAS"].find(prefix) != phase_prefixes["GAS"].end());
+}
+
+// ============================================================================
+// Property Provider Tests
+// ============================================================================
+
+namespace
+{
+  using Matrix = micm::Matrix<double>;
+
+  micm::Species MakeSpecies(const std::string& name, double mw, double rho)
+  {
+    return micm::Species{ name, { { "molecular weight [kg mol-1]", mw }, { "density [kg m-3]", rho } } };
+  }
+
+  const double mw_A = 0.018;
+  const double rho_A = 1000.0;
+  const double mw_B = 0.044;
+  const double rho_B = 2000.0;
+  const double mwr_A = mw_A / rho_A;
+  const double mwr_B = mw_B / rho_B;
+
+  micm::Phase MakeProviderTestPhase()
+  {
+    return micm::Phase{ "aqueous", { { MakeSpecies("A", mw_A, rho_A) }, { MakeSpecies("B", mw_B, rho_B) } } };
+  }
+}  // namespace
+
+TEST(UniformSection, ProviderEffectiveRadius)
+{
+  auto phase = MakeProviderTestPhase();
+  UniformSection section("SECT1", { phase }, 1.0e-6, 5.0e-6);
+  std::unordered_map<std::string, std::size_t> param_idx = { { "SECT1.MIN_RADIUS", 0 },
+                                                             { "SECT1.MAX_RADIUS", 1 } };
+  std::unordered_map<std::string, std::size_t> var_idx = { { "SECT1.aqueous.A", 0 }, { "SECT1.aqueous.B", 1 } };
+
+  auto provider = section.GetPropertyProvider<Matrix>(AerosolProperty::EffectiveRadius, param_idx, var_idx);
+  EXPECT_TRUE(provider.dependent_variable_indices.empty());
+
+  double r_min = 1.0e-6;
+  double r_max = 5.0e-6;
+  Matrix params{ 1, 2, 0.0 };
+  Matrix vars{ 1, 2, 0.0 };
+  Matrix result{ 1, 1, 0.0 };
+  params[0][0] = r_min;
+  params[0][1] = r_max;
+
+  provider.ComputeValue(params, vars, result);
+  EXPECT_DOUBLE_EQ(result[0][0], 0.5 * (r_min + r_max));
+
+  Matrix result2{ 1, 1, 0.0 };
+  Matrix partials{ 1, 0, 0.0 };
+  provider.ComputeValueAndDerivatives(params, vars, result2, partials);
+  EXPECT_DOUBLE_EQ(result2[0][0], 0.5 * (r_min + r_max));
+}
+
+TEST(UniformSection, ProviderNumberConcentration)
+{
+  auto phase = MakeProviderTestPhase();
+  UniformSection section("SECT1", { phase }, 1.0e-6, 5.0e-6);
+  std::unordered_map<std::string, std::size_t> param_idx = { { "SECT1.MIN_RADIUS", 0 },
+                                                             { "SECT1.MAX_RADIUS", 1 } };
+  std::unordered_map<std::string, std::size_t> var_idx = { { "SECT1.aqueous.A", 0 }, { "SECT1.aqueous.B", 1 } };
+
+  auto provider = section.GetPropertyProvider<Matrix>(AerosolProperty::NumberConcentration, param_idx, var_idx);
+  ASSERT_EQ(provider.dependent_variable_indices.size(), 2u);
+
+  double r_min = 1.0e-6;
+  double r_max = 5.0e-6;
+  double conc_A = 100.0;
+  double conc_B = 200.0;
+
+  Matrix params{ 1, 2, 0.0 };
+  Matrix vars{ 1, 2, 0.0 };
+  Matrix result{ 1, 1, 0.0 };
+  params[0][0] = r_min;
+  params[0][1] = r_max;
+  vars[0][0] = conc_A;
+  vars[0][1] = conc_B;
+
+  provider.ComputeValue(params, vars, result);
+
+  double r_eff = 0.5 * (r_min + r_max);
+  double V_total = conc_A * mwr_A + conc_B * mwr_B;
+  double V_single = (4.0 / 3.0) * std::numbers::pi * r_eff * r_eff * r_eff;
+  double expected_N = V_total / V_single;
+  EXPECT_NEAR(result[0][0], expected_N, std::abs(expected_N) * 1e-10);
+
+  Matrix result2{ 1, 1, 0.0 };
+  Matrix partials{ 1, 2, 0.0 };
+  provider.ComputeValueAndDerivatives(params, vars, result2, partials);
+  EXPECT_NEAR(result2[0][0], expected_N, std::abs(expected_N) * 1e-10);
+  EXPECT_NEAR(partials[0][0], mwr_A / V_single, std::abs(mwr_A / V_single) * 1e-10);
+  EXPECT_NEAR(partials[0][1], mwr_B / V_single, std::abs(mwr_B / V_single) * 1e-10);
+}
+
+TEST(UniformSection, ProviderPhaseVolumeFractionSinglePhase)
+{
+  auto phase = MakeProviderTestPhase();
+  UniformSection section("SECT1", { phase }, 1.0e-6, 5.0e-6);
+  std::unordered_map<std::string, std::size_t> param_idx = { { "SECT1.MIN_RADIUS", 0 },
+                                                             { "SECT1.MAX_RADIUS", 1 } };
+  std::unordered_map<std::string, std::size_t> var_idx = { { "SECT1.aqueous.A", 0 }, { "SECT1.aqueous.B", 1 } };
+
+  auto provider = section.GetPropertyProvider<Matrix>(AerosolProperty::PhaseVolumeFraction, param_idx, var_idx);
+  EXPECT_TRUE(provider.dependent_variable_indices.empty());
+
+  Matrix params{ 1, 2, 0.0 };
+  Matrix vars{ 1, 2, 0.0 };
+  Matrix result{ 1, 1, 0.0 };
+
+  provider.ComputeValue(params, vars, result);
+  EXPECT_DOUBLE_EQ(result[0][0], 1.0);
+}
+
+// ============================================================================
+// Policy Tests — cross-representation property contracts
+// ============================================================================
+
+TEST(UniformSection, PolicyPhaseStatePrefixes)
+{
+    testPhaseStatePrefixes<UniformSection>();
+}
+
+TEST(UniformSection, PolicyPhaseVolumeFractionSinglePhase)
+{
+    testPhaseVolumeFractionSinglePhase<UniformSection>();
+}
+
+TEST(UniformSection, PolicyPhaseVolumeFractionMultiPhase)
+{
+    testPhaseVolumeFractionMultiPhase<UniformSection>();
+}
+
+TEST(UniformSection, PolicyEffectiveRadius)
+{
+    testEffectiveRadiusProvider<UniformSection>();
+}
+
+TEST(UniformSection, PolicyNumberConcentration)
+{
+    testNumberConcentrationProvider<UniformSection>();
 }

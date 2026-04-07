@@ -3,8 +3,16 @@
 
 #include "../representation_policy.hpp"
 
+#include <miam/aerosol_property.hpp>
 #include <miam/representations/two_moment_mode.hpp>
 
+#include <micm/util/matrix.hpp>
+
+#include <cmath>
+#include <numbers>
+#include <unordered_map>
+
+using namespace miam;
 using namespace miam::representation;
 
 TEST(TwoMomentMode, StateSize)
@@ -213,4 +221,166 @@ TEST(TwoMomentMode, PhaseStatePrefixesWithMultiplePhases)
     EXPECT_TRUE(phase_prefixes["AQUEOUS"].find(prefix) != phase_prefixes["AQUEOUS"].end());
     EXPECT_TRUE(phase_prefixes["ORGANIC"].find(prefix) != phase_prefixes["ORGANIC"].end());
     EXPECT_TRUE(phase_prefixes["GAS"].find(prefix) != phase_prefixes["GAS"].end());
+}
+
+// ============================================================================
+// Property Provider Tests
+// ============================================================================
+
+namespace
+{
+  using Matrix = micm::Matrix<double>;
+
+  micm::Species MakeSpecies(const std::string& name, double mw, double rho)
+  {
+    return micm::Species{ name, { { "molecular weight [kg mol-1]", mw }, { "density [kg m-3]", rho } } };
+  }
+
+  const double mw_A = 0.018;
+  const double rho_A = 1000.0;
+  const double mw_B = 0.044;
+  const double rho_B = 2000.0;
+  const double mwr_A = mw_A / rho_A;
+  const double mwr_B = mw_B / rho_B;
+
+  micm::Phase MakeProviderTestPhase()
+  {
+    return micm::Phase{ "aqueous", { { MakeSpecies("A", mw_A, rho_A) }, { MakeSpecies("B", mw_B, rho_B) } } };
+  }
+}  // namespace
+
+TEST(TwoMomentMode, ProviderEffectiveRadius)
+{
+  auto phase = MakeProviderTestPhase();
+  TwoMomentMode mode("MODE1", { phase }, 2.0);
+  std::unordered_map<std::string, std::size_t> param_idx = { { "MODE1.GEOMETRIC_STANDARD_DEVIATION", 0 } };
+  std::unordered_map<std::string, std::size_t> var_idx = {
+    { "MODE1.aqueous.A", 0 }, { "MODE1.aqueous.B", 1 }, { "MODE1.NUMBER_CONCENTRATION", 2 }
+  };
+
+  auto provider = mode.GetPropertyProvider<Matrix>(AerosolProperty::EffectiveRadius, param_idx, var_idx);
+
+  ASSERT_EQ(provider.dependent_variable_indices.size(), 3u);
+  EXPECT_EQ(provider.dependent_variable_indices[0], 0u);
+  EXPECT_EQ(provider.dependent_variable_indices[1], 1u);
+  EXPECT_EQ(provider.dependent_variable_indices[2], 2u);
+
+  double gsd = 2.0;
+  double conc_A = 100.0;
+  double conc_B = 200.0;
+  double N = 1.0e12;
+
+  Matrix params{ 1, 1, 0.0 };
+  Matrix vars{ 1, 3, 0.0 };
+  Matrix result{ 1, 1, 0.0 };
+  params[0][0] = gsd;
+  vars[0][0] = conc_A;
+  vars[0][1] = conc_B;
+  vars[0][2] = N;
+
+  provider.ComputeValue(params, vars, result);
+
+  double V_total = conc_A * mwr_A + conc_B * mwr_B;
+  double ln_gsd = std::log(gsd);
+  double V_mean = V_total / N;
+  double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
+  double expected = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
+  EXPECT_NEAR(result[0][0], expected, std::abs(expected) * 1e-10);
+
+  Matrix result2{ 1, 1, 0.0 };
+  Matrix partials{ 1, 3, 0.0 };
+  provider.ComputeValueAndDerivatives(params, vars, result2, partials);
+  EXPECT_NEAR(result2[0][0], expected, std::abs(expected) * 1e-10);
+
+  double dr_dA = expected * mwr_A / (3.0 * V_total);
+  EXPECT_NEAR(partials[0][0], dr_dA, std::abs(dr_dA) * 1e-10);
+
+  double dr_dB = expected * mwr_B / (3.0 * V_total);
+  EXPECT_NEAR(partials[0][1], dr_dB, std::abs(dr_dB) * 1e-10);
+
+  double dr_dN = -expected / (3.0 * N);
+  EXPECT_NEAR(partials[0][2], dr_dN, std::abs(dr_dN) * 1e-10);
+}
+
+TEST(TwoMomentMode, ProviderNumberConcentration)
+{
+  auto phase = MakeProviderTestPhase();
+  TwoMomentMode mode("MODE1", { phase }, 2.0);
+  std::unordered_map<std::string, std::size_t> param_idx = { { "MODE1.GEOMETRIC_STANDARD_DEVIATION", 0 } };
+  std::unordered_map<std::string, std::size_t> var_idx = {
+    { "MODE1.aqueous.A", 0 }, { "MODE1.aqueous.B", 1 }, { "MODE1.NUMBER_CONCENTRATION", 2 }
+  };
+
+  auto provider = mode.GetPropertyProvider<Matrix>(AerosolProperty::NumberConcentration, param_idx, var_idx);
+
+  ASSERT_EQ(provider.dependent_variable_indices.size(), 1u);
+  EXPECT_EQ(provider.dependent_variable_indices[0], 2u);
+
+  double N_input = 1.5e12;
+  Matrix params{ 1, 1, 0.0 };
+  Matrix vars{ 1, 3, 0.0 };
+  Matrix result{ 1, 1, 0.0 };
+  params[0][0] = 2.0;
+  vars[0][2] = N_input;
+
+  provider.ComputeValue(params, vars, result);
+  EXPECT_DOUBLE_EQ(result[0][0], N_input);
+
+  Matrix result2{ 1, 1, 0.0 };
+  Matrix partials{ 1, 1, 0.0 };
+  provider.ComputeValueAndDerivatives(params, vars, result2, partials);
+  EXPECT_DOUBLE_EQ(result2[0][0], N_input);
+  EXPECT_DOUBLE_EQ(partials[0][0], 1.0);
+}
+
+TEST(TwoMomentMode, ProviderPhaseVolumeFractionSinglePhase)
+{
+  auto phase = MakeProviderTestPhase();
+  TwoMomentMode mode("MODE1", { phase }, 2.0);
+  std::unordered_map<std::string, std::size_t> param_idx = { { "MODE1.GEOMETRIC_STANDARD_DEVIATION", 0 } };
+  std::unordered_map<std::string, std::size_t> var_idx = {
+    { "MODE1.aqueous.A", 0 }, { "MODE1.aqueous.B", 1 }, { "MODE1.NUMBER_CONCENTRATION", 2 }
+  };
+
+  auto provider = mode.GetPropertyProvider<Matrix>(AerosolProperty::PhaseVolumeFraction, param_idx, var_idx);
+  EXPECT_TRUE(provider.dependent_variable_indices.empty());
+
+  Matrix params{ 1, 1, 0.0 };
+  Matrix vars{ 1, 3, 0.0 };
+  Matrix result{ 1, 1, 0.0 };
+  vars[0][0] = 100.0;
+  vars[0][1] = 200.0;
+  vars[0][2] = 1e12;
+
+  provider.ComputeValue(params, vars, result);
+  EXPECT_DOUBLE_EQ(result[0][0], 1.0);
+}
+
+// ============================================================================
+// Policy Tests — cross-representation property contracts
+// ============================================================================
+
+TEST(TwoMomentMode, PolicyPhaseStatePrefixes)
+{
+    testPhaseStatePrefixes<TwoMomentMode>();
+}
+
+TEST(TwoMomentMode, PolicyPhaseVolumeFractionSinglePhase)
+{
+    testPhaseVolumeFractionSinglePhase<TwoMomentMode>();
+}
+
+TEST(TwoMomentMode, PolicyPhaseVolumeFractionMultiPhase)
+{
+    testPhaseVolumeFractionMultiPhase<TwoMomentMode>();
+}
+
+TEST(TwoMomentMode, PolicyEffectiveRadius)
+{
+    testEffectiveRadiusProvider<TwoMomentMode>();
+}
+
+TEST(TwoMomentMode, PolicyNumberConcentration)
+{
+    testNumberConcentrationProvider<TwoMomentMode>();
 }
