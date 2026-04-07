@@ -32,8 +32,7 @@ namespace miam
    public:
     using RepresentationVariant =
         std::variant<representation::SingleMomentMode, representation::TwoMomentMode, representation::UniformSection>;
-    using ProcessVariant =
-        std::variant<process::DissolvedReversibleReaction, process::HenryLawPhaseTransfer>;
+    using ProcessVariant = std::variant<process::DissolvedReversibleReaction, process::HenryLawPhaseTransfer>;
 
     std::string name_;
     std::vector<RepresentationVariant> representations_;
