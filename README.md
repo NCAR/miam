@@ -182,7 +182,7 @@ Henry's Law equilibrium:
   1000,           6.98e-04,           3.02e-04,           3.00e+02
 ```
 
-See the [MIAM documentation](https://ncar.github.io/miam/) for the full API
+See the [MIAM documentation](https://miam.readthedocs.io/) for the full API
 reference, science guide, and additional examples including dissolved reversible
 reactions and combined gas–aqueous chemistry.
 
@@ -226,7 +226,7 @@ the content or appearance of the documentation to new and cutting-edge science.
 
 # Documentation
 
-Please see the [MIAM documentation](https://ncar.github.io/miam/) for detailed
+Please see the [MIAM documentation](https://miam.readthedocs.io/) for detailed
 installation and usage instructions, the science guide, and the full API
 reference.
 
