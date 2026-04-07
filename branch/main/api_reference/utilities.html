@@ -1,0 +1,852 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Utilities &#8212; MIAM v0.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=28af074a"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/utilities';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Adding a Process" href="../developer_guide/adding_a_process.html" />
+    <link rel="prev" title="Representations" href="representations.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.0.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">MIAM v0.0.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/quickstart.html">Quickstart</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/concepts.html">Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/representations.html">Representations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/processes.html">Processes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/building_a_model.html">Building a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/aerosol_properties.html">Aerosol Properties</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Science Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../science_guide/henry_law_phase_transfer.html">Henry’s Law Phase Transfer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../science_guide/dissolved_reversible_reaction.html">Dissolved Reversible Reactions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../science_guide/size_distributions.html">Size Distributions</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="model.html">Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processes.html">Processes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="representations.html">Representations</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Utilities</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/adding_a_process.html">Adding a Process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/adding_a_representation.html">Adding a Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/testing.html">Testing</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/NCAR/miam" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/NCAR/miam/issues/new?title=Issue%20on%20page%20%2Fapi_reference/utilities.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/api_reference/utilities.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Utilities</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#aerosolproperty">AerosolProperty</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam15AerosolPropertyE"><code class="docutils literal notranslate"><span class="pre">AerosolProperty</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam15AerosolProperty15EffectiveRadiusE"><code class="docutils literal notranslate"><span class="pre">EffectiveRadius</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam15AerosolProperty19NumberConcentrationE"><code class="docutils literal notranslate"><span class="pre">NumberConcentration</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam15AerosolProperty19PhaseVolumeFractionE"><code class="docutils literal notranslate"><span class="pre">PhaseVolumeFraction</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#aerosolpropertyprovider">AerosolPropertyProvider</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0EN4miam23AerosolPropertyProviderE"><code class="docutils literal notranslate"><span class="pre">miam::AerosolPropertyProvider</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam23AerosolPropertyProvider26dependent_variable_indicesE"><code class="docutils literal notranslate"><span class="pre">dependent_variable_indices</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam23AerosolPropertyProvider12ComputeValueE"><code class="docutils literal notranslate"><span class="pre">ComputeValue</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam23AerosolPropertyProvider26ComputeValueAndDerivativesE"><code class="docutils literal notranslate"><span class="pre">ComputeValueAndDerivatives</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#rate-constants">Rate Constants</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant19EquilibriumConstantE"><code class="docutils literal notranslate"><span class="pre">miam::process::constant::EquilibriumConstant</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant19EquilibriumConstant19EquilibriumConstantEv"><code class="docutils literal notranslate"><span class="pre">EquilibriumConstant()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant19EquilibriumConstant19EquilibriumConstantERK29EquilibriumConstantParameters"><code class="docutils literal notranslate"><span class="pre">EquilibriumConstant()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam7process8constant19EquilibriumConstant9CalculateERKN4micm10ConditionsE"><code class="docutils literal notranslate"><span class="pre">Calculate()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam7process8constant19EquilibriumConstant9CalculateERKd"><code class="docutils literal notranslate"><span class="pre">Calculate()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant19EquilibriumConstant11parameters_E"><code class="docutils literal notranslate"><span class="pre">parameters_</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant17HenrysLawConstantE"><code class="docutils literal notranslate"><span class="pre">miam::process::constant::HenrysLawConstant</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant17HenrysLawConstant17HenrysLawConstantEv"><code class="docutils literal notranslate"><span class="pre">HenrysLawConstant()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant17HenrysLawConstant17HenrysLawConstantERK27HenrysLawConstantParameters"><code class="docutils literal notranslate"><span class="pre">HenrysLawConstant()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam7process8constant17HenrysLawConstant9CalculateERKN4micm10ConditionsE"><code class="docutils literal notranslate"><span class="pre">Calculate()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam7process8constant17HenrysLawConstant9CalculateERKd"><code class="docutils literal notranslate"><span class="pre">Calculate()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant17HenrysLawConstant11parameters_E"><code class="docutils literal notranslate"><span class="pre">parameters_</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#condensation-rate">Condensation Rate</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam4util24CondensationRateProviderE"><code class="docutils literal notranslate"><span class="pre">miam::util::CondensationRateProvider</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam4util24CondensationRateProvider12ComputeValueE"><code class="docutils literal notranslate"><span class="pre">ComputeValue</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam4util24CondensationRateProvider26ComputeValueAndDerivativesE"><code class="docutils literal notranslate"><span class="pre">ComputeValueAndDerivatives</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#uuid-generation">UUID Generation</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam4util16generate_uuid_v4Ev"><code class="docutils literal notranslate"><span class="pre">generate_uuid_v4()</span></code></a></li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="utilities">
+<h1>Utilities<a class="headerlink" href="#utilities" title="Link to this heading">#</a></h1>
+<section id="aerosolproperty">
+<h2>AerosolProperty<a class="headerlink" href="#aerosolproperty" title="Link to this heading">#</a></h2>
+<dl class="cpp enum-class">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam15AerosolPropertyE">
+<span id="_CPPv3N4miam15AerosolPropertyE"></span><span id="_CPPv2N4miam15AerosolPropertyE"></span><span class="target" id="aerosol__property_8hpp_1aebe643debf17129cc6382af3ee6a4a1b"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">miam</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">AerosolProperty</span></span></span><a class="headerlink" href="#_CPPv4N4miam15AerosolPropertyE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Aerosol/cloud particle properties that representations can provide. </p>
+<p><em>Values:</em></p>
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam15AerosolProperty15EffectiveRadiusE">
+<span id="_CPPv3N4miam15AerosolProperty15EffectiveRadiusE"></span><span id="_CPPv2N4miam15AerosolProperty15EffectiveRadiusE"></span><span class="target" id="aerosol__property_8hpp_1aebe643debf17129cc6382af3ee6a4a1ba95596dfba5436711b9333618d731a438"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">EffectiveRadius</span></span></span><a class="headerlink" href="#_CPPv4N4miam15AerosolProperty15EffectiveRadiusE" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam15AerosolProperty19NumberConcentrationE">
+<span id="_CPPv3N4miam15AerosolProperty19NumberConcentrationE"></span><span id="_CPPv2N4miam15AerosolProperty19NumberConcentrationE"></span><span class="target" id="aerosol__property_8hpp_1aebe643debf17129cc6382af3ee6a4a1ba13408fb942647bbb0c47d96ac3a82682"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NumberConcentration</span></span></span><a class="headerlink" href="#_CPPv4N4miam15AerosolProperty19NumberConcentrationE" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam15AerosolProperty19PhaseVolumeFractionE">
+<span id="_CPPv3N4miam15AerosolProperty19PhaseVolumeFractionE"></span><span id="_CPPv2N4miam15AerosolProperty19PhaseVolumeFractionE"></span><span class="target" id="aerosol__property_8hpp_1aebe643debf17129cc6382af3ee6a4a1ba93fa7ee622dc01fc8cd0a5d87e4ad66d"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">PhaseVolumeFraction</span></span></span><a class="headerlink" href="#_CPPv4N4miam15AerosolProperty19PhaseVolumeFractionE" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="aerosolpropertyprovider">
+<h2>AerosolPropertyProvider<a class="headerlink" href="#aerosolpropertyprovider" title="Link to this heading">#</a></h2>
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN4miam23AerosolPropertyProviderE">
+<span id="_CPPv3I0EN4miam23AerosolPropertyProviderE"></span><span id="_CPPv2I0EN4miam23AerosolPropertyProviderE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="structmiam_1_1AerosolPropertyProvider"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">AerosolPropertyProvider</span></span></span><a class="headerlink" href="#_CPPv4I0EN4miam23AerosolPropertyProviderE" title="Link to this definition">#</a><br /></dt>
+<dd><p>A provider for a single aerosol property, created at setup time by a representation instance. </p>
+<p>Captures all needed parameter/variable column indices internally. Operates on ForEachRow-compatible column views — no per-cell indexing. Partial derivatives are written into columns of a pre-allocated DenseMatrixPolicy, one column per dependent variable. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>DenseMatrixPolicy</strong> – The dense matrix type used for state data </p>
+</dd>
+</dl>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam23AerosolPropertyProvider26dependent_variable_indicesE">
+<span id="_CPPv3N4miam23AerosolPropertyProvider26dependent_variable_indicesE"></span><span id="_CPPv2N4miam23AerosolPropertyProvider26dependent_variable_indicesE"></span><span id="miam::AerosolPropertyProvider::dependent_variable_indices__std::vector:std::s:"></span><span class="target" id="structmiam_1_1AerosolPropertyProvider_1a40edcb869bb7e0516169ae461c1adf48"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">dependent_variable_indices</span></span></span><a class="headerlink" href="#_CPPv4N4miam23AerosolPropertyProvider26dependent_variable_indicesE" title="Link to this definition">#</a><br /></dt>
+<dd><p>State variable indices that this property has non-zero partial derivatives with respect to. </p>
+<p>Fixed at creation time. Used by processes to:<ol class="lowerroman simple">
+<li><p>Determine Jacobian sparsity (NonZeroJacobianElements)</p></li>
+<li><p>Know how many columns the partials matrix needs</p></li>
+<li><p>Map partials columns back to state variable indices </p></li>
+</ol>
+</p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam23AerosolPropertyProvider12ComputeValueE">
+<span id="_CPPv3N4miam23AerosolPropertyProvider12ComputeValueE"></span><span id="_CPPv2N4miam23AerosolPropertyProvider12ComputeValueE"></span><span class="target" id="structmiam_1_1AerosolPropertyProvider_1a9fbf7c7609a312b7861d29263d99f4ec"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">void</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN4miam23AerosolPropertyProviderE" title="miam::AerosolPropertyProvider::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN4miam23AerosolPropertyProviderE" title="miam::AerosolPropertyProvider::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN4miam23AerosolPropertyProviderE" title="miam::AerosolPropertyProvider::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ComputeValue</span></span></span><a class="headerlink" href="#_CPPv4N4miam23AerosolPropertyProvider12ComputeValueE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Compute the property value for all grid cells in the current group. </p>
+<p>Called inside a ForEachRow loop — receives column views and writes into a RowVariable. The provider internally calls params_view.GetConstColumnView(…) and vars_view.GetConstColumnView(…) using its captured indices.</p>
+<p>Parameters: params_view: const GroupView of state parameters vars_view: const GroupView of state variables result: mutable RowVariable to write the property value into </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam23AerosolPropertyProvider26ComputeValueAndDerivativesE">
+<span id="_CPPv3N4miam23AerosolPropertyProvider26ComputeValueAndDerivativesE"></span><span id="_CPPv2N4miam23AerosolPropertyProvider26ComputeValueAndDerivativesE"></span><span class="target" id="structmiam_1_1AerosolPropertyProvider_1afa0b7ba6b257d8a629013d5f88c65567"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">void</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN4miam23AerosolPropertyProviderE" title="miam::AerosolPropertyProvider::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN4miam23AerosolPropertyProviderE" title="miam::AerosolPropertyProvider::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN4miam23AerosolPropertyProviderE" title="miam::AerosolPropertyProvider::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN4miam23AerosolPropertyProviderE" title="miam::AerosolPropertyProvider::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ComputeValueAndDerivatives</span></span></span><a class="headerlink" href="#_CPPv4N4miam23AerosolPropertyProvider26ComputeValueAndDerivativesE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Compute the property value AND partial derivatives for all grid cells in the current group. </p>
+<p>Called inside a ForEachRow loop.</p>
+<p>Parameters: params_view: const GroupView of state parameters vars_view: const GroupView of state variables result: mutable RowVariable for the property value partials_matrix: mutable GroupView of the partials DenseMatrix (num_cells x num_dependent_variables) Column k corresponds to d(property)/d(var[dependent_variable_indices[k]]) </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+<section id="rate-constants">
+<h2>Rate Constants<a class="headerlink" href="#rate-constants" title="Link to this heading">#</a></h2>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam7process8constant19EquilibriumConstantE">
+<span id="_CPPv3N4miam7process8constant19EquilibriumConstantE"></span><span id="_CPPv2N4miam7process8constant19EquilibriumConstantE"></span><span id="miam::process::constant::EquilibriumConstant"></span><span class="target" id="classmiam_1_1process_1_1constant_1_1EquilibriumConstant"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">EquilibriumConstant</span></span></span><a class="headerlink" href="#_CPPv4N4miam7process8constant19EquilibriumConstantE" title="Link to this definition">#</a><br /></dt>
+<dd><p>An equilibrium constant dependent on temperature. </p>
+<p>Calculates equilibrium constant as: K_eq = A * exp( C * ( 1 / T0 - 1 / T ) ) </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam7process8constant19EquilibriumConstant19EquilibriumConstantEv">
+<span id="_CPPv3N4miam7process8constant19EquilibriumConstant19EquilibriumConstantEv"></span><span id="_CPPv2N4miam7process8constant19EquilibriumConstant19EquilibriumConstantEv"></span><span id="miam::process::constant::EquilibriumConstant::EquilibriumConstant"></span><span class="target" id="classmiam_1_1process_1_1constant_1_1EquilibriumConstant_1a957ce1bd446db2a058628e035fed10b0"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">EquilibriumConstant</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4miam7process8constant19EquilibriumConstant19EquilibriumConstantEv" title="Link to this definition">#</a><br /></dt>
+<dd><p>Default constructor. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam7process8constant19EquilibriumConstant19EquilibriumConstantERK29EquilibriumConstantParameters">
+<span id="_CPPv3N4miam7process8constant19EquilibriumConstant19EquilibriumConstantERK29EquilibriumConstantParameters"></span><span id="_CPPv2N4miam7process8constant19EquilibriumConstant19EquilibriumConstantERK29EquilibriumConstantParameters"></span><span id="miam::process::constant::EquilibriumConstant::EquilibriumConstant__EquilibriumConstantParametersCR"></span><span class="target" id="classmiam_1_1process_1_1constant_1_1EquilibriumConstant_1a95d2645346d28b801402acddc77cb44e"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">EquilibriumConstant</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">EquilibriumConstantParameters</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">parameters</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4miam7process8constant19EquilibriumConstant19EquilibriumConstantERK29EquilibriumConstantParameters" title="Link to this definition">#</a><br /></dt>
+<dd><p>Constructor with parameters. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>parameters</strong> – A set of equilibrium constant parameters </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam7process8constant19EquilibriumConstant9CalculateERKN4micm10ConditionsE">
+<span id="_CPPv3NK4miam7process8constant19EquilibriumConstant9CalculateERKN4micm10ConditionsE"></span><span id="_CPPv2NK4miam7process8constant19EquilibriumConstant9CalculateERKN4micm10ConditionsE"></span><span id="miam::process::constant::EquilibriumConstant::Calculate__micm::ConditionsCRC"></span><span class="target" id="classmiam_1_1process_1_1constant_1_1EquilibriumConstant_1ac773adad8fef3c711528e9d3f8904bac"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Calculate</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">micm</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Conditions</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">conditions</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam7process8constant19EquilibriumConstant9CalculateERKN4micm10ConditionsE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Calculate the equilibrium constant. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>conditions</strong> – The current environmental conditions of the chemical system </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An equilibrium constant based off of the conditions in the system </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam7process8constant19EquilibriumConstant9CalculateERKd">
+<span id="_CPPv3NK4miam7process8constant19EquilibriumConstant9CalculateERKd"></span><span id="_CPPv2NK4miam7process8constant19EquilibriumConstant9CalculateERKd"></span><span id="miam::process::constant::EquilibriumConstant::Calculate__doubleCRC"></span><span class="target" id="classmiam_1_1process_1_1constant_1_1EquilibriumConstant_1af1400c2eb8179a739c5f2f9408e65f0c"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Calculate</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">temperature</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam7process8constant19EquilibriumConstant9CalculateERKd" title="Link to this definition">#</a><br /></dt>
+<dd><p>Calculate the equilibrium constant. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>temperature</strong> – The temperature [K] </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An equilibrium constant </p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam7process8constant19EquilibriumConstant11parameters_E">
+<span id="_CPPv3N4miam7process8constant19EquilibriumConstant11parameters_E"></span><span id="_CPPv2N4miam7process8constant19EquilibriumConstant11parameters_E"></span><span id="miam::process::constant::EquilibriumConstant::parameters___EquilibriumConstantParametersC"></span><span class="target" id="classmiam_1_1process_1_1constant_1_1EquilibriumConstant_1a3121f055fbcbb482aa41179d3c196553"></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">EquilibriumConstantParameters</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">parameters_</span></span></span><a class="headerlink" href="#_CPPv4N4miam7process8constant19EquilibriumConstant11parameters_E" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam7process8constant17HenrysLawConstantE">
+<span id="_CPPv3N4miam7process8constant17HenrysLawConstantE"></span><span id="_CPPv2N4miam7process8constant17HenrysLawConstantE"></span><span id="miam::process::constant::HenrysLawConstant"></span><span class="target" id="classmiam_1_1process_1_1constant_1_1HenrysLawConstant"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">HenrysLawConstant</span></span></span><a class="headerlink" href="#_CPPv4N4miam7process8constant17HenrysLawConstantE" title="Link to this definition">#</a><br /></dt>
+<dd><p>A Henry’s Law constant dependent on temperature. </p>
+<p>Calculates Henry’s Law constant as: HLC(T) = HLC_ref * exp( C * ( 1 / T - 1 / T0 ) ) </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam7process8constant17HenrysLawConstant17HenrysLawConstantEv">
+<span id="_CPPv3N4miam7process8constant17HenrysLawConstant17HenrysLawConstantEv"></span><span id="_CPPv2N4miam7process8constant17HenrysLawConstant17HenrysLawConstantEv"></span><span id="miam::process::constant::HenrysLawConstant::HenrysLawConstant"></span><span class="target" id="classmiam_1_1process_1_1constant_1_1HenrysLawConstant_1a68d11b261de947d76656d01e47975658"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">HenrysLawConstant</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4miam7process8constant17HenrysLawConstant17HenrysLawConstantEv" title="Link to this definition">#</a><br /></dt>
+<dd><p>Default constructor. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam7process8constant17HenrysLawConstant17HenrysLawConstantERK27HenrysLawConstantParameters">
+<span id="_CPPv3N4miam7process8constant17HenrysLawConstant17HenrysLawConstantERK27HenrysLawConstantParameters"></span><span id="_CPPv2N4miam7process8constant17HenrysLawConstant17HenrysLawConstantERK27HenrysLawConstantParameters"></span><span id="miam::process::constant::HenrysLawConstant::HenrysLawConstant__HenrysLawConstantParametersCR"></span><span class="target" id="classmiam_1_1process_1_1constant_1_1HenrysLawConstant_1a1225808b6a3fc732c073d658a9ef9c85"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">HenrysLawConstant</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">HenrysLawConstantParameters</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">parameters</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4miam7process8constant17HenrysLawConstant17HenrysLawConstantERK27HenrysLawConstantParameters" title="Link to this definition">#</a><br /></dt>
+<dd><p>Constructor with parameters. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>parameters</strong> – A set of Henry’s Law constant parameters </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam7process8constant17HenrysLawConstant9CalculateERKN4micm10ConditionsE">
+<span id="_CPPv3NK4miam7process8constant17HenrysLawConstant9CalculateERKN4micm10ConditionsE"></span><span id="_CPPv2NK4miam7process8constant17HenrysLawConstant9CalculateERKN4micm10ConditionsE"></span><span id="miam::process::constant::HenrysLawConstant::Calculate__micm::ConditionsCRC"></span><span class="target" id="classmiam_1_1process_1_1constant_1_1HenrysLawConstant_1aedc4c9424630624cb81a5ff3502a3e43"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Calculate</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">micm</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Conditions</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">conditions</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam7process8constant17HenrysLawConstant9CalculateERKN4micm10ConditionsE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Calculate the Henry’s Law constant. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>conditions</strong> – The current environmental conditions of the chemical system </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Henry’s Law constant based off of the conditions in the system [mol m⁻³ Pa⁻¹] </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam7process8constant17HenrysLawConstant9CalculateERKd">
+<span id="_CPPv3NK4miam7process8constant17HenrysLawConstant9CalculateERKd"></span><span id="_CPPv2NK4miam7process8constant17HenrysLawConstant9CalculateERKd"></span><span id="miam::process::constant::HenrysLawConstant::Calculate__doubleCRC"></span><span class="target" id="classmiam_1_1process_1_1constant_1_1HenrysLawConstant_1a804b63ab6df85fc7fff64d860c983c05"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Calculate</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">temperature</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam7process8constant17HenrysLawConstant9CalculateERKd" title="Link to this definition">#</a><br /></dt>
+<dd><p>Calculate the Henry’s Law constant. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>temperature</strong> – The temperature [K] </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Henry’s Law constant [mol m⁻³ Pa⁻¹] </p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam7process8constant17HenrysLawConstant11parameters_E">
+<span id="_CPPv3N4miam7process8constant17HenrysLawConstant11parameters_E"></span><span id="_CPPv2N4miam7process8constant17HenrysLawConstant11parameters_E"></span><span id="miam::process::constant::HenrysLawConstant::parameters___HenrysLawConstantParametersC"></span><span class="target" id="classmiam_1_1process_1_1constant_1_1HenrysLawConstant_1a2702a63542d2849496de4e11bbfcc08f"></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">HenrysLawConstantParameters</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">parameters_</span></span></span><a class="headerlink" href="#_CPPv4N4miam7process8constant17HenrysLawConstant11parameters_E" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+<section id="condensation-rate">
+<h2>Condensation Rate<a class="headerlink" href="#condensation-rate" title="Link to this heading">#</a></h2>
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam4util24CondensationRateProviderE">
+<span id="_CPPv3N4miam4util24CondensationRateProviderE"></span><span id="_CPPv2N4miam4util24CondensationRateProviderE"></span><span id="miam::util::CondensationRateProvider"></span><span class="target" id="structmiam_1_1util_1_1CondensationRateProvider"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">CondensationRateProvider</span></span></span><a class="headerlink" href="#_CPPv4N4miam4util24CondensationRateProviderE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Provider for condensation rate and its derivatives. </p>
+<p>Encapsulates the Fuchs-Sutugin transition regime calculation: k_cond = 4π · r_eff · N · D_g · f(Kn) where f(Kn) = (1 + Kn) / (1 + 2·Kn·(1 + Kn) / α) Kn = λ / r_eff, λ = 3·D_g / c̄, c̄ = √(8RT / (π·Mw)) </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam4util24CondensationRateProvider12ComputeValueE">
+<span id="_CPPv3N4miam4util24CondensationRateProvider12ComputeValueE"></span><span id="_CPPv2N4miam4util24CondensationRateProvider12ComputeValueE"></span><span class="target" id="structmiam_1_1util_1_1CondensationRateProvider_1a56cc0f318f5f49e3025cfb0d78da73f7"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">double</span></span><span class="p"><span class="pre">(</span></span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n"><span class="pre">r_eff</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n"><span class="pre">N</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ComputeValue</span></span></span><a class="headerlink" href="#_CPPv4N4miam4util24CondensationRateProvider12ComputeValueE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Compute condensation rate k_cond [s⁻¹]. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Param r_eff<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Effective radius [m] </p>
+</dd>
+<dt class="field-even">Param N<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number concentration [# m⁻³] </p>
+</dd>
+<dt class="field-odd">Param T<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Temperature [K] </p>
+</dd>
+<dt class="field-even">Return<span class="colon">:</span></dt>
+<dd class="field-even"><p>k_cond [s⁻¹] </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam4util24CondensationRateProvider26ComputeValueAndDerivativesE">
+<span id="_CPPv3N4miam4util24CondensationRateProvider26ComputeValueAndDerivativesE"></span><span id="_CPPv2N4miam4util24CondensationRateProvider26ComputeValueAndDerivativesE"></span><span class="target" id="structmiam_1_1util_1_1CondensationRateProvider_1a933c544118353b977c3d06552ef7fdb9"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">void</span></span><span class="p"><span class="pre">(</span></span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n"><span class="pre">r_eff</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n"><span class="pre">N</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n"><span class="pre">k_cond</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n"><span class="pre">dk_dr</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n"><span class="pre">dk_dN</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ComputeValueAndDerivatives</span></span></span><a class="headerlink" href="#_CPPv4N4miam4util24CondensationRateProvider26ComputeValueAndDerivativesE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Compute condensation rate and partial derivatives. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Param r_eff<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Effective radius [m] </p>
+</dd>
+<dt class="field-even">Param N<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number concentration [# m⁻³] </p>
+</dd>
+<dt class="field-odd">Param T<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Temperature [K] </p>
+</dd>
+<dt class="field-even">Param k_cond<span class="colon">:</span></dt>
+<dd class="field-even"><p>Output: condensation rate [s⁻¹] </p>
+</dd>
+<dt class="field-odd">Param dk_dr<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Output: ∂k_cond/∂r_eff [s⁻¹ m⁻¹] </p>
+</dd>
+<dt class="field-even">Param dk_dN<span class="colon">:</span></dt>
+<dd class="field-even"><p>Output: ∂k_cond/∂N [s⁻¹ m³ #⁻¹] </p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+<section id="uuid-generation">
+<h2>UUID Generation<a class="headerlink" href="#uuid-generation" title="Link to this heading">#</a></h2>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam4util16generate_uuid_v4Ev">
+<span id="_CPPv3N4miam4util16generate_uuid_v4Ev"></span><span id="_CPPv2N4miam4util16generate_uuid_v4Ev"></span><span id="miam::util::generate_uuid_v4"></span><span class="target" id="uuid_8hpp_1a8c1ea0aa3c85448d65c583b7dd722b28"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">miam</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">util</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">generate_uuid_v4</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4miam4util16generate_uuid_v4Ev" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="representations.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Representations</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../developer_guide/adding_a_process.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Adding a Process</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#aerosolproperty">AerosolProperty</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam15AerosolPropertyE"><code class="docutils literal notranslate"><span class="pre">AerosolProperty</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam15AerosolProperty15EffectiveRadiusE"><code class="docutils literal notranslate"><span class="pre">EffectiveRadius</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam15AerosolProperty19NumberConcentrationE"><code class="docutils literal notranslate"><span class="pre">NumberConcentration</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam15AerosolProperty19PhaseVolumeFractionE"><code class="docutils literal notranslate"><span class="pre">PhaseVolumeFraction</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#aerosolpropertyprovider">AerosolPropertyProvider</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0EN4miam23AerosolPropertyProviderE"><code class="docutils literal notranslate"><span class="pre">miam::AerosolPropertyProvider</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam23AerosolPropertyProvider26dependent_variable_indicesE"><code class="docutils literal notranslate"><span class="pre">dependent_variable_indices</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam23AerosolPropertyProvider12ComputeValueE"><code class="docutils literal notranslate"><span class="pre">ComputeValue</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam23AerosolPropertyProvider26ComputeValueAndDerivativesE"><code class="docutils literal notranslate"><span class="pre">ComputeValueAndDerivatives</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#rate-constants">Rate Constants</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant19EquilibriumConstantE"><code class="docutils literal notranslate"><span class="pre">miam::process::constant::EquilibriumConstant</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant19EquilibriumConstant19EquilibriumConstantEv"><code class="docutils literal notranslate"><span class="pre">EquilibriumConstant()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant19EquilibriumConstant19EquilibriumConstantERK29EquilibriumConstantParameters"><code class="docutils literal notranslate"><span class="pre">EquilibriumConstant()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam7process8constant19EquilibriumConstant9CalculateERKN4micm10ConditionsE"><code class="docutils literal notranslate"><span class="pre">Calculate()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam7process8constant19EquilibriumConstant9CalculateERKd"><code class="docutils literal notranslate"><span class="pre">Calculate()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant19EquilibriumConstant11parameters_E"><code class="docutils literal notranslate"><span class="pre">parameters_</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant17HenrysLawConstantE"><code class="docutils literal notranslate"><span class="pre">miam::process::constant::HenrysLawConstant</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant17HenrysLawConstant17HenrysLawConstantEv"><code class="docutils literal notranslate"><span class="pre">HenrysLawConstant()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant17HenrysLawConstant17HenrysLawConstantERK27HenrysLawConstantParameters"><code class="docutils literal notranslate"><span class="pre">HenrysLawConstant()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam7process8constant17HenrysLawConstant9CalculateERKN4micm10ConditionsE"><code class="docutils literal notranslate"><span class="pre">Calculate()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam7process8constant17HenrysLawConstant9CalculateERKd"><code class="docutils literal notranslate"><span class="pre">Calculate()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam7process8constant17HenrysLawConstant11parameters_E"><code class="docutils literal notranslate"><span class="pre">parameters_</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#condensation-rate">Condensation Rate</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam4util24CondensationRateProviderE"><code class="docutils literal notranslate"><span class="pre">miam::util::CondensationRateProvider</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam4util24CondensationRateProvider12ComputeValueE"><code class="docutils literal notranslate"><span class="pre">ComputeValue</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam4util24CondensationRateProvider26ComputeValueAndDerivativesE"><code class="docutils literal notranslate"><span class="pre">ComputeValueAndDerivatives</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#uuid-generation">UUID Generation</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam4util16generate_uuid_v4Ev"><code class="docutils literal notranslate"><span class="pre">generate_uuid_v4()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By NCAR
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, University Corporation for Atmospheric Research.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

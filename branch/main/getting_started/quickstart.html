@@ -1,0 +1,634 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Quickstart &#8212; MIAM v0.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=28af074a"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'getting_started/quickstart';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Concepts" href="../user_guide/concepts.html" />
+    <link rel="prev" title="Installation" href="installation.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.0.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">MIAM v0.0.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Quickstart</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/concepts.html">Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/representations.html">Representations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/processes.html">Processes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/building_a_model.html">Building a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/aerosol_properties.html">Aerosol Properties</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Science Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../science_guide/henry_law_phase_transfer.html">Henry’s Law Phase Transfer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../science_guide/dissolved_reversible_reaction.html">Dissolved Reversible Reactions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../science_guide/size_distributions.html">Size Distributions</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api_reference/index.html">API Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api_reference/model.html">Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api_reference/processes.html">Processes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api_reference/representations.html">Representations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api_reference/utilities.html">Utilities</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/adding_a_process.html">Adding a Process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/adding_a_representation.html">Adding a Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/testing.html">Testing</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/NCAR/miam" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/NCAR/miam/issues/new?title=Issue%20on%20page%20%2Fgetting_started/quickstart.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/getting_started/quickstart.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Quickstart</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#complete-example">Complete example</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-happens">What happens</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#next-steps">Next steps</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="quickstart">
+<h1>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading">#</a></h1>
+<p>This example sets up a cloud droplet system and models CO₂ dissolving from
+the gas phase into aqueous droplets via Henry’s Law phase transfer.</p>
+<section id="complete-example">
+<h2>Complete example<a class="headerlink" href="#complete-example" title="Link to this heading">#</a></h2>
+<p>Save the following as <code class="docutils literal notranslate"><span class="pre">cloud_chem.cpp</span></code>:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;miam/miam.hpp&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;miam/processes/constants/henrys_law_constant.hpp&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;micm/CPU.hpp&gt;</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;iomanip&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;iostream&gt;</span>
+
+<span class="k">using</span><span class="w"> </span><span class="k">namespace</span><span class="w"> </span><span class="nn">micm</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="k">namespace</span><span class="w"> </span><span class="nn">miam</span><span class="p">;</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="c1">// Define species with physical properties required for mass transfer</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">co2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Species</span><span class="p">{</span><span class="w"> </span><span class="s">&quot;CO2&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;molecular weight [kg mol-1]&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">0.044</span><span class="w"> </span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;density [kg m-3]&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">1800.0</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">};</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">h2o</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Species</span><span class="p">{</span><span class="w"> </span><span class="s">&quot;H2O&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;molecular weight [kg mol-1]&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">0.018</span><span class="w"> </span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;density [kg m-3]&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">1000.0</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">};</span>
+
+<span class="w">  </span><span class="c1">// Define phases</span>
+<span class="w">  </span><span class="n">Phase</span><span class="w"> </span><span class="n">gas_phase</span><span class="p">{</span><span class="w"> </span><span class="s">&quot;GAS&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">co2</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">};</span>
+<span class="w">  </span><span class="n">Phase</span><span class="w"> </span><span class="n">aqueous_phase</span><span class="p">{</span><span class="w"> </span><span class="s">&quot;AQUEOUS&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">co2</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">h2o</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">};</span>
+
+<span class="w">  </span><span class="c1">// Cloud droplets with a single-moment log-normal distribution</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">cloud</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">representation</span><span class="o">::</span><span class="n">SingleMomentMode</span><span class="p">{</span>
+<span class="w">    </span><span class="s">&quot;CLOUD&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="n">aqueous_phase</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="mf">5.0e-6</span><span class="p">,</span><span class="w">  </span><span class="c1">// geometric mean radius [m]</span>
+<span class="w">    </span><span class="mf">1.2</span><span class="w">      </span><span class="c1">// geometric standard deviation</span>
+<span class="w">  </span><span class="p">};</span>
+
+<span class="w">  </span><span class="c1">// Henry&#39;s Law phase transfer: CO2(g) &lt;-&gt; CO2(aq)</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">co2_transfer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">process</span><span class="o">::</span><span class="n">HenryLawPhaseTransferBuilder</span><span class="p">()</span>
+<span class="w">    </span><span class="p">.</span><span class="n">SetCondensedPhase</span><span class="p">(</span><span class="n">aqueous_phase</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="n">SetGasSpecies</span><span class="p">(</span><span class="n">co2</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="n">SetCondensedSpecies</span><span class="p">(</span><span class="n">co2</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="n">SetSolvent</span><span class="p">(</span><span class="n">h2o</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="n">SetHenrysLawConstant</span><span class="p">(</span><span class="n">process</span><span class="o">::</span><span class="n">constant</span><span class="o">::</span><span class="n">HenrysLawConstant</span><span class="p">(</span>
+<span class="w">        </span><span class="p">{</span><span class="w"> </span><span class="p">.</span><span class="n">HLC_ref_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">3.4e-2</span><span class="w"> </span><span class="p">}))</span><span class="w">       </span><span class="c1">// mol m-3 Pa-1 at 298 K</span>
+<span class="w">    </span><span class="p">.</span><span class="n">SetDiffusionCoefficient</span><span class="p">(</span><span class="mf">1.5e-5</span><span class="p">)</span><span class="w">    </span><span class="c1">// m2 s-1</span>
+<span class="w">    </span><span class="p">.</span><span class="n">SetAccommodationCoefficient</span><span class="p">(</span><span class="mf">5.0e-6</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="n">Build</span><span class="p">();</span>
+
+<span class="w">  </span><span class="c1">// Create model and add processes</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">cloud_model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Model</span><span class="p">{</span>
+<span class="w">    </span><span class="p">.</span><span class="n">name_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;CLOUD&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">.</span><span class="n">representations_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">cloud</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">};</span>
+<span class="w">  </span><span class="n">cloud_model</span><span class="p">.</span><span class="n">AddProcesses</span><span class="p">({</span><span class="w"> </span><span class="n">co2_transfer</span><span class="w"> </span><span class="p">});</span>
+
+<span class="w">  </span><span class="c1">// Build solver (MICM Rosenbrock)</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">system</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">(</span><span class="n">gas_phase</span><span class="p">,</span><span class="w"> </span><span class="n">cloud_model</span><span class="p">);</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">solver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CpuSolverBuilder</span><span class="o">&lt;</span><span class="n">RosenbrockSolverParameters</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="w">                    </span><span class="n">RosenbrockSolverParameters</span><span class="o">::</span><span class="n">ThreeStageRosenbrockParameters</span><span class="p">())</span>
+<span class="w">                    </span><span class="p">.</span><span class="n">SetSystem</span><span class="p">(</span><span class="n">system</span><span class="p">)</span>
+<span class="w">                    </span><span class="p">.</span><span class="n">AddExternalModelProcesses</span><span class="p">(</span><span class="n">cloud_model</span><span class="p">)</span>
+<span class="w">                    </span><span class="p">.</span><span class="n">SetIgnoreUnusedSpecies</span><span class="p">(</span><span class="nb">true</span><span class="p">)</span>
+<span class="w">                    </span><span class="p">.</span><span class="n">Build</span><span class="p">();</span>
+
+<span class="w">  </span><span class="n">State</span><span class="w"> </span><span class="n">state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">solver</span><span class="p">.</span><span class="n">GetState</span><span class="p">();</span>
+
+<span class="w">  </span><span class="c1">// Initial conditions</span>
+<span class="w">  </span><span class="n">state</span><span class="p">.</span><span class="n">conditions_</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">temperature_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">298.15</span><span class="p">;</span><span class="w">   </span><span class="c1">// K</span>
+<span class="w">  </span><span class="n">state</span><span class="p">.</span><span class="n">conditions_</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">pressure_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">101325.0</span><span class="p">;</span><span class="w">    </span><span class="c1">// Pa</span>
+<span class="w">  </span><span class="n">state</span><span class="p">.</span><span class="n">conditions_</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">CalculateIdealAirDensity</span><span class="p">();</span>
+
+<span class="w">  </span><span class="n">state</span><span class="p">[</span><span class="n">co2</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0e-3</span><span class="p">;</span><span class="w">                                  </span><span class="c1">// mol m-3 air</span>
+<span class="w">  </span><span class="n">state</span><span class="p">[</span><span class="n">cloud</span><span class="p">.</span><span class="n">Species</span><span class="p">(</span><span class="n">aqueous_phase</span><span class="p">,</span><span class="w"> </span><span class="n">h2o</span><span class="p">)]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">300.0</span><span class="p">;</span><span class="w">      </span><span class="c1">// mol m-3 (liquid water content)</span>
+<span class="w">  </span><span class="n">cloud</span><span class="p">.</span><span class="n">SetDefaultParameters</span><span class="p">(</span><span class="n">state</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// Integrate</span>
+<span class="w">  </span><span class="n">state</span><span class="p">.</span><span class="n">PrintHeader</span><span class="p">();</span>
+<span class="w">  </span><span class="n">state</span><span class="p">.</span><span class="n">PrintState</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">10</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="n">solver</span><span class="p">.</span><span class="n">CalculateRateConstants</span><span class="p">(</span><span class="n">state</span><span class="p">);</span>
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">solver</span><span class="p">.</span><span class="n">Solve</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span><span class="w"> </span><span class="n">state</span><span class="p">);</span><span class="w">  </span><span class="c1">// 100 ms steps</span>
+<span class="w">    </span><span class="n">state</span><span class="p">.</span><span class="n">PrintState</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Build and run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>g++<span class="w"> </span>-o<span class="w"> </span>cloud_chem<span class="w"> </span>cloud_chem.cpp<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-I/usr/local/miam/include<span class="w"> </span>-I/usr/local/micm/include<span class="w"> </span>-std<span class="o">=</span>c++20
+./cloud_chem
+</pre></div>
+</div>
+<p>Expected output — gas-phase CO₂ dissolves into the cloud droplets, approaching
+Henry’s Law equilibrium:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>time,                CO2,  CLOUD.AQUEOUS.CO2,  CLOUD.AQUEOUS.H2O
+   0,           1.00e-03,           0.00e+00,           3.00e+02
+ 100,           9.12e-04,           8.85e-05,           3.00e+02
+ 200,           8.48e-04,           1.52e-04,           3.00e+02
+ 300,           8.03e-04,           1.97e-04,           3.00e+02
+ 400,           7.47e-04,           2.53e-04,           3.00e+02
+ 500,           7.30e-04,           2.70e-04,           3.00e+02
+ 600,           7.18e-04,           2.82e-04,           3.00e+02
+ 700,           7.09e-04,           2.91e-04,           3.00e+02
+ 800,           7.03e-04,           2.97e-04,           3.00e+02
+ 900,           6.98e-04,           3.02e-04,           3.00e+02
+1000,           6.98e-04,           3.02e-04,           3.00e+02
+</pre></div>
+</div>
+</section>
+<section id="what-happens">
+<h2>What happens<a class="headerlink" href="#what-happens" title="Link to this heading">#</a></h2>
+<ol class="arabic simple">
+<li><p><strong>Species and phases</strong> are declared with physical properties (molecular
+weight, density) that the aerosol property providers need. The same
+<code class="docutils literal notranslate"><span class="pre">CO2</span></code> species appears in both the gas and aqueous phases.</p></li>
+<li><p>A <strong>SingleMomentMode</strong> representation describes a log-normal droplet
+population with fixed geometric mean radius and standard deviation.
+The model derives effective radius, number concentration, and phase
+volume fraction from these parameters and the species concentrations.</p></li>
+<li><p>A <strong>HenryLawPhaseTransfer</strong> process is configured with a Henry’s Law
+constant, gas-phase diffusion coefficient, and mass accommodation
+coefficient. The builder extracts molecular weights and densities from
+the species objects.</p></li>
+<li><p>The <strong>Model</strong> bundles representations and processes. When passed to
+MICM’s <code class="docutils literal notranslate"><span class="pre">CpuSolverBuilder</span></code>, it exposes its state variables and
+parameters through MICM’s <code class="docutils literal notranslate"><span class="pre">ExternalModelSystem</span></code> interface.</p></li>
+<li><p>The <strong>Rosenbrock solver</strong> integrates the coupled ODE system, calling
+MIAM’s forcing and Jacobian functions at each solver iteration.</p></li>
+</ol>
+</section>
+<section id="next-steps">
+<h2>Next steps<a class="headerlink" href="#next-steps" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../user_guide/concepts.html"><span class="doc">Concepts</span></a> — understand the architecture</p></li>
+<li><p><a class="reference internal" href="../user_guide/representations.html"><span class="doc">Representations</span></a> — all three representation types</p></li>
+<li><p><a class="reference internal" href="../user_guide/processes.html"><span class="doc">Processes</span></a> — all process types and their builders</p></li>
+<li><p><a class="reference internal" href="../science_guide/henry_law_phase_transfer.html"><span class="doc">Henry’s Law Phase Transfer</span></a> — the full equation set</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="installation.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Installation</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../user_guide/concepts.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Concepts</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#complete-example">Complete example</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-happens">What happens</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#next-steps">Next steps</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By NCAR
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, University Corporation for Atmospheric Research.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

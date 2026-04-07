@@ -1,0 +1,890 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Representations &#8212; MIAM v0.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=28af074a"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/representations';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Utilities" href="utilities.html" />
+    <link rel="prev" title="Processes" href="processes.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.0.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">MIAM v0.0.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/quickstart.html">Quickstart</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/concepts.html">Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/representations.html">Representations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/processes.html">Processes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/building_a_model.html">Building a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/aerosol_properties.html">Aerosol Properties</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Science Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../science_guide/henry_law_phase_transfer.html">Henry’s Law Phase Transfer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../science_guide/dissolved_reversible_reaction.html">Dissolved Reversible Reactions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../science_guide/size_distributions.html">Size Distributions</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="model.html">Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processes.html">Processes</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Representations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utilities.html">Utilities</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/adding_a_process.html">Adding a Process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/adding_a_representation.html">Adding a Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/testing.html">Testing</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/NCAR/miam" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/NCAR/miam/issues/new?title=Issue%20on%20page%20%2Fapi_reference/representations.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/api_reference/representations.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Representations</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#singlemomentmode">SingleMomentMode</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation16SingleMomentModeE"><code class="docutils literal notranslate"><span class="pre">miam::representation::SingleMomentMode</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation16SingleMomentMode16SingleMomentModeEv"><code class="docutils literal notranslate"><span class="pre">SingleMomentMode()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation16SingleMomentMode16SingleMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE"><code class="docutils literal notranslate"><span class="pre">SingleMomentMode()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation16SingleMomentMode16SingleMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKdKd"><code class="docutils literal notranslate"><span class="pre">SingleMomentMode()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode9StateSizeEv"><code class="docutils literal notranslate"><span class="pre">StateSize()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode18StateVariableNamesEv"><code class="docutils literal notranslate"><span class="pre">StateVariableNames()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode19StateParameterNamesEv"><code class="docutils literal notranslate"><span class="pre">StateParameterNames()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE"><code class="docutils literal notranslate"><span class="pre">Species()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode17DefaultParametersEv"><code class="docutils literal notranslate"><span class="pre">DefaultParameters()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode19GeometricMeanRadiusEv"><code class="docutils literal notranslate"><span class="pre">GeometricMeanRadius()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode26GeometricStandardDeviationEv"><code class="docutils literal notranslate"><span class="pre">GeometricStandardDeviation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode20SetDefaultParametersERDa"><code class="docutils literal notranslate"><span class="pre">SetDefaultParameters()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode17NumPhaseInstancesEv"><code class="docutils literal notranslate"><span class="pre">NumPhaseInstances()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode18PhaseStatePrefixesEv"><code class="docutils literal notranslate"><span class="pre">PhaseStatePrefixes()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0ENK4miam14representation16SingleMomentMode19GetPropertyProviderE23AerosolPropertyProviderI17DenseMatrixPolicyE15AerosolPropertyRKDaRKDaRKNSt6stringE"><code class="docutils literal notranslate"><span class="pre">GetPropertyProvider()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#twomomentmode">TwoMomentMode</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation13TwoMomentModeE"><code class="docutils literal notranslate"><span class="pre">miam::representation::TwoMomentMode</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation13TwoMomentMode13TwoMomentModeEv"><code class="docutils literal notranslate"><span class="pre">TwoMomentMode()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation13TwoMomentMode13TwoMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE"><code class="docutils literal notranslate"><span class="pre">TwoMomentMode()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation13TwoMomentMode13TwoMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKd"><code class="docutils literal notranslate"><span class="pre">TwoMomentMode()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode9StateSizeEv"><code class="docutils literal notranslate"><span class="pre">StateSize()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode18StateVariableNamesEv"><code class="docutils literal notranslate"><span class="pre">StateVariableNames()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode19StateParameterNamesEv"><code class="docutils literal notranslate"><span class="pre">StateParameterNames()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE"><code class="docutils literal notranslate"><span class="pre">Species()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode17DefaultParametersEv"><code class="docutils literal notranslate"><span class="pre">DefaultParameters()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode19NumberConcentrationEv"><code class="docutils literal notranslate"><span class="pre">NumberConcentration()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode26GeometricStandardDeviationEv"><code class="docutils literal notranslate"><span class="pre">GeometricStandardDeviation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode20SetDefaultParametersERDa"><code class="docutils literal notranslate"><span class="pre">SetDefaultParameters()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode17NumPhaseInstancesEv"><code class="docutils literal notranslate"><span class="pre">NumPhaseInstances()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode18PhaseStatePrefixesEv"><code class="docutils literal notranslate"><span class="pre">PhaseStatePrefixes()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0ENK4miam14representation13TwoMomentMode19GetPropertyProviderE23AerosolPropertyProviderI17DenseMatrixPolicyE15AerosolPropertyRKDaRKDaRKNSt6stringE"><code class="docutils literal notranslate"><span class="pre">GetPropertyProvider()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#uniformsection">UniformSection</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation14UniformSectionE"><code class="docutils literal notranslate"><span class="pre">miam::representation::UniformSection</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation14UniformSection14UniformSectionEv"><code class="docutils literal notranslate"><span class="pre">UniformSection()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation14UniformSection14UniformSectionERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE"><code class="docutils literal notranslate"><span class="pre">UniformSection()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation14UniformSection14UniformSectionERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKdKd"><code class="docutils literal notranslate"><span class="pre">UniformSection()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection9StateSizeEv"><code class="docutils literal notranslate"><span class="pre">StateSize()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection18StateVariableNamesEv"><code class="docutils literal notranslate"><span class="pre">StateVariableNames()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection19StateParameterNamesEv"><code class="docutils literal notranslate"><span class="pre">StateParameterNames()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE"><code class="docutils literal notranslate"><span class="pre">Species()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection17DefaultParametersEv"><code class="docutils literal notranslate"><span class="pre">DefaultParameters()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection9MinRadiusEv"><code class="docutils literal notranslate"><span class="pre">MinRadius()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection9MaxRadiusEv"><code class="docutils literal notranslate"><span class="pre">MaxRadius()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection20SetDefaultParametersERDa"><code class="docutils literal notranslate"><span class="pre">SetDefaultParameters()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection17NumPhaseInstancesEv"><code class="docutils literal notranslate"><span class="pre">NumPhaseInstances()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection18PhaseStatePrefixesEv"><code class="docutils literal notranslate"><span class="pre">PhaseStatePrefixes()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0ENK4miam14representation14UniformSection19GetPropertyProviderE23AerosolPropertyProviderI17DenseMatrixPolicyE15AerosolPropertyRKDaRKDaRKNSt6stringE"><code class="docutils literal notranslate"><span class="pre">GetPropertyProvider()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="representations">
+<h1>Representations<a class="headerlink" href="#representations" title="Link to this heading">#</a></h1>
+<section id="singlemomentmode">
+<h2>SingleMomentMode<a class="headerlink" href="#singlemomentmode" title="Link to this heading">#</a></h2>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam14representation16SingleMomentModeE">
+<span id="_CPPv3N4miam14representation16SingleMomentModeE"></span><span id="_CPPv2N4miam14representation16SingleMomentModeE"></span><span id="miam::representation::SingleMomentMode"></span><span class="target" id="classmiam_1_1representation_1_1SingleMomentMode"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SingleMomentMode</span></span></span><a class="headerlink" href="#_CPPv4N4miam14representation16SingleMomentModeE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Single moment log-normal particle size distribution representation. </p>
+<p>Represents a single moment log-normal distribution for aerosol or cloud particle size distributions. Characterized by a geometric mean radius and geometric standard deviation. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam14representation16SingleMomentMode16SingleMomentModeEv">
+<span id="_CPPv3N4miam14representation16SingleMomentMode16SingleMomentModeEv"></span><span id="_CPPv2N4miam14representation16SingleMomentMode16SingleMomentModeEv"></span><span id="miam::representation::SingleMomentMode::SingleMomentMode"></span><span class="target" id="classmiam_1_1representation_1_1SingleMomentMode_1a3b04ca3c0c7704dd158d665c20138d8a"></span><span class="sig-name descname"><span class="n"><span class="pre">SingleMomentMode</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N4miam14representation16SingleMomentMode16SingleMomentModeEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam14representation16SingleMomentMode16SingleMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE">
+<span id="_CPPv3N4miam14representation16SingleMomentMode16SingleMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE"></span><span id="_CPPv2N4miam14representation16SingleMomentMode16SingleMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE"></span><span id="miam::representation::SingleMomentMode::SingleMomentMode__ssCR.std::vector:micm::Phase:CR"></span><span class="target" id="classmiam_1_1representation_1_1SingleMomentMode_1aa1d4882eb0b65a6469745350e07e58f1"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SingleMomentMode</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">prefix</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">micm</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Phase</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">phases</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4miam14representation16SingleMomentMode16SingleMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam14representation16SingleMomentMode16SingleMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKdKd">
+<span id="_CPPv3N4miam14representation16SingleMomentMode16SingleMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKdKd"></span><span id="_CPPv2N4miam14representation16SingleMomentMode16SingleMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKdKd"></span><span id="miam::representation::SingleMomentMode::SingleMomentMode__ssCR.std::vector:micm::Phase:CR.doubleC.doubleC"></span><span class="target" id="classmiam_1_1representation_1_1SingleMomentMode_1a35fe4e67eac572b6a125f01d300494a5"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SingleMomentMode</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">prefix</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">micm</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Phase</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">phases</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">geometric_mean_radius</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">geometric_standard_deviation</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4miam14representation16SingleMomentMode16SingleMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKdKd" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation16SingleMomentMode9StateSizeEv">
+<span id="_CPPv3NK4miam14representation16SingleMomentMode9StateSizeEv"></span><span id="_CPPv2NK4miam14representation16SingleMomentMode9StateSizeEv"></span><span id="miam::representation::SingleMomentMode::StateSizeC"></span><span class="target" id="classmiam_1_1representation_1_1SingleMomentMode_1acad4f54ab4bf964a41ee62a1f1a3dcf5"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">tuple</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">StateSize</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation16SingleMomentMode9StateSizeEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation16SingleMomentMode18StateVariableNamesEv">
+<span id="_CPPv3NK4miam14representation16SingleMomentMode18StateVariableNamesEv"></span><span id="_CPPv2NK4miam14representation16SingleMomentMode18StateVariableNamesEv"></span><span id="miam::representation::SingleMomentMode::StateVariableNamesC"></span><span class="target" id="classmiam_1_1representation_1_1SingleMomentMode_1adf920a99125ac9deb33db60f5a4429a9"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">set</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">StateVariableNames</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation16SingleMomentMode18StateVariableNamesEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation16SingleMomentMode19StateParameterNamesEv">
+<span id="_CPPv3NK4miam14representation16SingleMomentMode19StateParameterNamesEv"></span><span id="_CPPv2NK4miam14representation16SingleMomentMode19StateParameterNamesEv"></span><span id="miam::representation::SingleMomentMode::StateParameterNamesC"></span><span class="target" id="classmiam_1_1representation_1_1SingleMomentMode_1a11918df2f94918439162351b88cb8775"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">set</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">StateParameterNames</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation16SingleMomentMode19StateParameterNamesEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation16SingleMomentMode7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE">
+<span id="_CPPv3NK4miam14representation16SingleMomentMode7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE"></span><span id="_CPPv2NK4miam14representation16SingleMomentMode7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE"></span><span id="miam::representation::SingleMomentMode::Species__micm::PhaseCR.micm::SpeciesCRC"></span><span class="target" id="classmiam_1_1representation_1_1SingleMomentMode_1ad8567d80a077efde07c1621ea28723c1"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Species</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">micm</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Phase</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">phase</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">micm</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Species</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">species</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation16SingleMomentMode7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation16SingleMomentMode17DefaultParametersEv">
+<span id="_CPPv3NK4miam14representation16SingleMomentMode17DefaultParametersEv"></span><span id="_CPPv2NK4miam14representation16SingleMomentMode17DefaultParametersEv"></span><span id="miam::representation::SingleMomentMode::DefaultParametersC"></span><span class="target" id="classmiam_1_1representation_1_1SingleMomentMode_1a39e6450cec7ae1030646610342d8c892"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">map</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DefaultParameters</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation16SingleMomentMode17DefaultParametersEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation16SingleMomentMode19GeometricMeanRadiusEv">
+<span id="_CPPv3NK4miam14representation16SingleMomentMode19GeometricMeanRadiusEv"></span><span id="_CPPv2NK4miam14representation16SingleMomentMode19GeometricMeanRadiusEv"></span><span id="miam::representation::SingleMomentMode::GeometricMeanRadiusC"></span><span class="target" id="classmiam_1_1representation_1_1SingleMomentMode_1ace560779e0d4929ba67fa3431661b1c1"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">GeometricMeanRadius</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation16SingleMomentMode19GeometricMeanRadiusEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation16SingleMomentMode26GeometricStandardDeviationEv">
+<span id="_CPPv3NK4miam14representation16SingleMomentMode26GeometricStandardDeviationEv"></span><span id="_CPPv2NK4miam14representation16SingleMomentMode26GeometricStandardDeviationEv"></span><span id="miam::representation::SingleMomentMode::GeometricStandardDeviationC"></span><span class="target" id="classmiam_1_1representation_1_1SingleMomentMode_1afef861bb328237d9776f2434d89f7987"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">GeometricStandardDeviation</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation16SingleMomentMode26GeometricStandardDeviationEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation16SingleMomentMode20SetDefaultParametersERDa">
+<span id="_CPPv3NK4miam14representation16SingleMomentMode20SetDefaultParametersERDa"></span><span id="_CPPv2NK4miam14representation16SingleMomentMode20SetDefaultParametersERDa"></span><span id="miam::representation::SingleMomentMode::SetDefaultParameters__autoRC"></span><span class="target" id="classmiam_1_1representation_1_1SingleMomentMode_1a87a4058817889c09bdb7948abb211c7d"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SetDefaultParameters</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation16SingleMomentMode20SetDefaultParametersERDa" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation16SingleMomentMode17NumPhaseInstancesEv">
+<span id="_CPPv3NK4miam14representation16SingleMomentMode17NumPhaseInstancesEv"></span><span id="_CPPv2NK4miam14representation16SingleMomentMode17NumPhaseInstancesEv"></span><span id="miam::representation::SingleMomentMode::NumPhaseInstancesC"></span><span class="target" id="classmiam_1_1representation_1_1SingleMomentMode_1a5aa4b3543cb6e001cdf5612d581baf70"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">map</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NumPhaseInstances</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation16SingleMomentMode17NumPhaseInstancesEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation16SingleMomentMode18PhaseStatePrefixesEv">
+<span id="_CPPv3NK4miam14representation16SingleMomentMode18PhaseStatePrefixesEv"></span><span id="_CPPv2NK4miam14representation16SingleMomentMode18PhaseStatePrefixesEv"></span><span id="miam::representation::SingleMomentMode::PhaseStatePrefixesC"></span><span class="target" id="classmiam_1_1representation_1_1SingleMomentMode_1ae45581dbe723c5ce5cbab40c92585f03"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">map</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">set</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">PhaseStatePrefixes</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation16SingleMomentMode18PhaseStatePrefixesEv" title="Link to this definition">#</a><br /></dt>
+<dd><p>Returns a map of phase names to sets of state variable prefixes associated with that phase The prefix does not include the phase or species names, and each prefix must be unique across all representations. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Map of phase names to sets of state variable prefixes </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I0ENK4miam14representation16SingleMomentMode19GetPropertyProviderE23AerosolPropertyProviderI17DenseMatrixPolicyE15AerosolPropertyRKDaRKDaRKNSt6stringE">
+<span id="_CPPv3I0ENK4miam14representation16SingleMomentMode19GetPropertyProviderE15AerosolPropertyRKDaRKDaRKNSt6stringE"></span><span id="_CPPv2I0ENK4miam14representation16SingleMomentMode19GetPropertyProviderE15AerosolPropertyRKDaRKDaRKNSt6stringE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classmiam_1_1representation_1_1SingleMomentMode_1a0c3a33199c68c23b4f4bec1b0365cfe6"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="utilities.html#_CPPv4I0EN4miam23AerosolPropertyProviderE" title="miam::AerosolPropertyProvider"><span class="n"><span class="pre">AerosolPropertyProvider</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0ENK4miam14representation16SingleMomentMode19GetPropertyProviderE23AerosolPropertyProviderI17DenseMatrixPolicyE15AerosolPropertyRKDaRKDaRKNSt6stringE" title="miam::representation::SingleMomentMode::GetPropertyProvider::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">GetPropertyProvider</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="utilities.html#_CPPv4N4miam15AerosolPropertyE" title="miam::AerosolProperty"><span class="n"><span class="pre">AerosolProperty</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">property</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state_parameter_indices</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state_variable_indices</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">target_phase_name</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="s"><span class="pre">&quot;&quot;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4I0ENK4miam14representation16SingleMomentMode19GetPropertyProviderE23AerosolPropertyProviderI17DenseMatrixPolicyE15AerosolPropertyRKDaRKDaRKNSt6stringE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Returns a provider for the requested aerosol property. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>DenseMatrixPolicy</strong> – The dense matrix type used for state data </p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>property</strong> – The aerosol property to provide </p></li>
+<li><p><strong>state_parameter_indices</strong> – Map of parameter names to column indices </p></li>
+<li><p><strong>state_variable_indices</strong> – Map of variable names to column indices </p></li>
+<li><p><strong>target_phase_name</strong> – Phase name for PhaseVolumeFraction (required if multi-phase) </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+<section id="twomomentmode">
+<h2>TwoMomentMode<a class="headerlink" href="#twomomentmode" title="Link to this heading">#</a></h2>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam14representation13TwoMomentModeE">
+<span id="_CPPv3N4miam14representation13TwoMomentModeE"></span><span id="_CPPv2N4miam14representation13TwoMomentModeE"></span><span id="miam::representation::TwoMomentMode"></span><span class="target" id="classmiam_1_1representation_1_1TwoMomentMode"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">TwoMomentMode</span></span></span><a class="headerlink" href="#_CPPv4N4miam14representation13TwoMomentModeE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Two moment log-normal particle size distribution representation. </p>
+<p>Represents a two moment log-normal distribution for aerosol or cloud particle size distributions. Characterized by number concentration, geometric mean radius, and geometric standard deviation. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam14representation13TwoMomentMode13TwoMomentModeEv">
+<span id="_CPPv3N4miam14representation13TwoMomentMode13TwoMomentModeEv"></span><span id="_CPPv2N4miam14representation13TwoMomentMode13TwoMomentModeEv"></span><span id="miam::representation::TwoMomentMode::TwoMomentMode"></span><span class="target" id="classmiam_1_1representation_1_1TwoMomentMode_1a4bff2b5046d42cbe59ea5c114c6c9883"></span><span class="sig-name descname"><span class="n"><span class="pre">TwoMomentMode</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N4miam14representation13TwoMomentMode13TwoMomentModeEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam14representation13TwoMomentMode13TwoMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE">
+<span id="_CPPv3N4miam14representation13TwoMomentMode13TwoMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE"></span><span id="_CPPv2N4miam14representation13TwoMomentMode13TwoMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE"></span><span id="miam::representation::TwoMomentMode::TwoMomentMode__ssCR.std::vector:micm::Phase:CR"></span><span class="target" id="classmiam_1_1representation_1_1TwoMomentMode_1af465eda7844f60d99721230e48c063b9"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">TwoMomentMode</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">prefix</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">micm</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Phase</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">phases</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4miam14representation13TwoMomentMode13TwoMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam14representation13TwoMomentMode13TwoMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKd">
+<span id="_CPPv3N4miam14representation13TwoMomentMode13TwoMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKd"></span><span id="_CPPv2N4miam14representation13TwoMomentMode13TwoMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKd"></span><span id="miam::representation::TwoMomentMode::TwoMomentMode__ssCR.std::vector:micm::Phase:CR.doubleC"></span><span class="target" id="classmiam_1_1representation_1_1TwoMomentMode_1a8c43cbbffe5fff420da2768bec8ead31"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">TwoMomentMode</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">prefix</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">micm</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Phase</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">phases</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">geometric_standard_deviation</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4miam14representation13TwoMomentMode13TwoMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKd" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation13TwoMomentMode9StateSizeEv">
+<span id="_CPPv3NK4miam14representation13TwoMomentMode9StateSizeEv"></span><span id="_CPPv2NK4miam14representation13TwoMomentMode9StateSizeEv"></span><span id="miam::representation::TwoMomentMode::StateSizeC"></span><span class="target" id="classmiam_1_1representation_1_1TwoMomentMode_1a506179e4c972a73d44b0b92a5e085103"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">tuple</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">StateSize</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation13TwoMomentMode9StateSizeEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation13TwoMomentMode18StateVariableNamesEv">
+<span id="_CPPv3NK4miam14representation13TwoMomentMode18StateVariableNamesEv"></span><span id="_CPPv2NK4miam14representation13TwoMomentMode18StateVariableNamesEv"></span><span id="miam::representation::TwoMomentMode::StateVariableNamesC"></span><span class="target" id="classmiam_1_1representation_1_1TwoMomentMode_1aa130c5ec8566738a7480335e6a132b00"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">set</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">StateVariableNames</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation13TwoMomentMode18StateVariableNamesEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation13TwoMomentMode19StateParameterNamesEv">
+<span id="_CPPv3NK4miam14representation13TwoMomentMode19StateParameterNamesEv"></span><span id="_CPPv2NK4miam14representation13TwoMomentMode19StateParameterNamesEv"></span><span id="miam::representation::TwoMomentMode::StateParameterNamesC"></span><span class="target" id="classmiam_1_1representation_1_1TwoMomentMode_1ac09c81d207ef1869de76c25389efae29"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">set</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">StateParameterNames</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation13TwoMomentMode19StateParameterNamesEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation13TwoMomentMode7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE">
+<span id="_CPPv3NK4miam14representation13TwoMomentMode7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE"></span><span id="_CPPv2NK4miam14representation13TwoMomentMode7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE"></span><span id="miam::representation::TwoMomentMode::Species__micm::PhaseCR.micm::SpeciesCRC"></span><span class="target" id="classmiam_1_1representation_1_1TwoMomentMode_1a90c8f2b777d95dec80aba2b30daad527"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Species</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">micm</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Phase</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">phase</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">micm</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Species</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">species</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation13TwoMomentMode7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation13TwoMomentMode17DefaultParametersEv">
+<span id="_CPPv3NK4miam14representation13TwoMomentMode17DefaultParametersEv"></span><span id="_CPPv2NK4miam14representation13TwoMomentMode17DefaultParametersEv"></span><span id="miam::representation::TwoMomentMode::DefaultParametersC"></span><span class="target" id="classmiam_1_1representation_1_1TwoMomentMode_1ad26da5186cf4009a0383b84bff103d20"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">map</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DefaultParameters</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation13TwoMomentMode17DefaultParametersEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation13TwoMomentMode19NumberConcentrationEv">
+<span id="_CPPv3NK4miam14representation13TwoMomentMode19NumberConcentrationEv"></span><span id="_CPPv2NK4miam14representation13TwoMomentMode19NumberConcentrationEv"></span><span id="miam::representation::TwoMomentMode::NumberConcentrationC"></span><span class="target" id="classmiam_1_1representation_1_1TwoMomentMode_1a5287f9bfd98ed59f09a275f0e5d2275f"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NumberConcentration</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation13TwoMomentMode19NumberConcentrationEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation13TwoMomentMode26GeometricStandardDeviationEv">
+<span id="_CPPv3NK4miam14representation13TwoMomentMode26GeometricStandardDeviationEv"></span><span id="_CPPv2NK4miam14representation13TwoMomentMode26GeometricStandardDeviationEv"></span><span id="miam::representation::TwoMomentMode::GeometricStandardDeviationC"></span><span class="target" id="classmiam_1_1representation_1_1TwoMomentMode_1a206ccc7bb56fb14f4cba945225bc20d1"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">GeometricStandardDeviation</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation13TwoMomentMode26GeometricStandardDeviationEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation13TwoMomentMode20SetDefaultParametersERDa">
+<span id="_CPPv3NK4miam14representation13TwoMomentMode20SetDefaultParametersERDa"></span><span id="_CPPv2NK4miam14representation13TwoMomentMode20SetDefaultParametersERDa"></span><span id="miam::representation::TwoMomentMode::SetDefaultParameters__autoRC"></span><span class="target" id="classmiam_1_1representation_1_1TwoMomentMode_1a73a7a0dd54467867df36583d473d3e12"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SetDefaultParameters</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation13TwoMomentMode20SetDefaultParametersERDa" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation13TwoMomentMode17NumPhaseInstancesEv">
+<span id="_CPPv3NK4miam14representation13TwoMomentMode17NumPhaseInstancesEv"></span><span id="_CPPv2NK4miam14representation13TwoMomentMode17NumPhaseInstancesEv"></span><span id="miam::representation::TwoMomentMode::NumPhaseInstancesC"></span><span class="target" id="classmiam_1_1representation_1_1TwoMomentMode_1a698f54aa307674f2c1d360eaa64befa4"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">map</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NumPhaseInstances</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation13TwoMomentMode17NumPhaseInstancesEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation13TwoMomentMode18PhaseStatePrefixesEv">
+<span id="_CPPv3NK4miam14representation13TwoMomentMode18PhaseStatePrefixesEv"></span><span id="_CPPv2NK4miam14representation13TwoMomentMode18PhaseStatePrefixesEv"></span><span id="miam::representation::TwoMomentMode::PhaseStatePrefixesC"></span><span class="target" id="classmiam_1_1representation_1_1TwoMomentMode_1adf5659165718cfed139214eb37fc1e07"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">map</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">set</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">PhaseStatePrefixes</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation13TwoMomentMode18PhaseStatePrefixesEv" title="Link to this definition">#</a><br /></dt>
+<dd><p>Returns a map of phase names to sets of state variable prefixes associated with that phase The prefix does not include the phase or species names, and each prefix must be unique across all representations. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Map of phase names to sets of state variable prefixes </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I0ENK4miam14representation13TwoMomentMode19GetPropertyProviderE23AerosolPropertyProviderI17DenseMatrixPolicyE15AerosolPropertyRKDaRKDaRKNSt6stringE">
+<span id="_CPPv3I0ENK4miam14representation13TwoMomentMode19GetPropertyProviderE15AerosolPropertyRKDaRKDaRKNSt6stringE"></span><span id="_CPPv2I0ENK4miam14representation13TwoMomentMode19GetPropertyProviderE15AerosolPropertyRKDaRKDaRKNSt6stringE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classmiam_1_1representation_1_1TwoMomentMode_1ac230e880daf4d60ed526471f4bcb9798"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="utilities.html#_CPPv4I0EN4miam23AerosolPropertyProviderE" title="miam::AerosolPropertyProvider"><span class="n"><span class="pre">AerosolPropertyProvider</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0ENK4miam14representation13TwoMomentMode19GetPropertyProviderE23AerosolPropertyProviderI17DenseMatrixPolicyE15AerosolPropertyRKDaRKDaRKNSt6stringE" title="miam::representation::TwoMomentMode::GetPropertyProvider::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">GetPropertyProvider</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="utilities.html#_CPPv4N4miam15AerosolPropertyE" title="miam::AerosolProperty"><span class="n"><span class="pre">AerosolProperty</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">property</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state_parameter_indices</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state_variable_indices</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">target_phase_name</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="s"><span class="pre">&quot;&quot;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4I0ENK4miam14representation13TwoMomentMode19GetPropertyProviderE23AerosolPropertyProviderI17DenseMatrixPolicyE15AerosolPropertyRKDaRKDaRKNSt6stringE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Returns a provider for the requested aerosol property. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+<section id="uniformsection">
+<h2>UniformSection<a class="headerlink" href="#uniformsection" title="Link to this heading">#</a></h2>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam14representation14UniformSectionE">
+<span id="_CPPv3N4miam14representation14UniformSectionE"></span><span id="_CPPv2N4miam14representation14UniformSectionE"></span><span id="miam::representation::UniformSection"></span><span class="target" id="classmiam_1_1representation_1_1UniformSection"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniformSection</span></span></span><a class="headerlink" href="#_CPPv4N4miam14representation14UniformSectionE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Sectional particle size distribution representation with uniform sections. </p>
+<p>Represents a sectional distribution with uniform sections for aerosol or cloud particle size distributions. Each section is characterized by a fixed size range and variable total volume. Number concentrations are derived from the total volume and section size. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam14representation14UniformSection14UniformSectionEv">
+<span id="_CPPv3N4miam14representation14UniformSection14UniformSectionEv"></span><span id="_CPPv2N4miam14representation14UniformSection14UniformSectionEv"></span><span id="miam::representation::UniformSection::UniformSection"></span><span class="target" id="classmiam_1_1representation_1_1UniformSection_1ac9a69289ea49c7e0d1d46c7507c9e013"></span><span class="sig-name descname"><span class="n"><span class="pre">UniformSection</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N4miam14representation14UniformSection14UniformSectionEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam14representation14UniformSection14UniformSectionERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE">
+<span id="_CPPv3N4miam14representation14UniformSection14UniformSectionERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE"></span><span id="_CPPv2N4miam14representation14UniformSection14UniformSectionERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE"></span><span id="miam::representation::UniformSection::UniformSection__ssCR.std::vector:micm::Phase:CR"></span><span class="target" id="classmiam_1_1representation_1_1UniformSection_1aa5d206e05a1aeedd1cb9cf99b517cc33"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniformSection</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">prefix</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">micm</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Phase</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">phases</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4miam14representation14UniformSection14UniformSectionERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam14representation14UniformSection14UniformSectionERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKdKd">
+<span id="_CPPv3N4miam14representation14UniformSection14UniformSectionERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKdKd"></span><span id="_CPPv2N4miam14representation14UniformSection14UniformSectionERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKdKd"></span><span id="miam::representation::UniformSection::UniformSection__ssCR.std::vector:micm::Phase:CR.doubleC.doubleC"></span><span class="target" id="classmiam_1_1representation_1_1UniformSection_1a0495392df7f66f17ed57dff8c4417ec6"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniformSection</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">prefix</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">micm</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Phase</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">phases</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">minimum_radius</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">maximum_radius</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4miam14representation14UniformSection14UniformSectionERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKdKd" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation14UniformSection9StateSizeEv">
+<span id="_CPPv3NK4miam14representation14UniformSection9StateSizeEv"></span><span id="_CPPv2NK4miam14representation14UniformSection9StateSizeEv"></span><span id="miam::representation::UniformSection::StateSizeC"></span><span class="target" id="classmiam_1_1representation_1_1UniformSection_1a9cd2fce73d61896fc9f3ba1b212b37a4"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">tuple</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">StateSize</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation14UniformSection9StateSizeEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation14UniformSection18StateVariableNamesEv">
+<span id="_CPPv3NK4miam14representation14UniformSection18StateVariableNamesEv"></span><span id="_CPPv2NK4miam14representation14UniformSection18StateVariableNamesEv"></span><span id="miam::representation::UniformSection::StateVariableNamesC"></span><span class="target" id="classmiam_1_1representation_1_1UniformSection_1af7b44b5b3a0fccdac733bfad89dd3281"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">set</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">StateVariableNames</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation14UniformSection18StateVariableNamesEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation14UniformSection19StateParameterNamesEv">
+<span id="_CPPv3NK4miam14representation14UniformSection19StateParameterNamesEv"></span><span id="_CPPv2NK4miam14representation14UniformSection19StateParameterNamesEv"></span><span id="miam::representation::UniformSection::StateParameterNamesC"></span><span class="target" id="classmiam_1_1representation_1_1UniformSection_1a1d30999bf86823d033eba6a3d8009cd6"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">set</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">StateParameterNames</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation14UniformSection19StateParameterNamesEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation14UniformSection7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE">
+<span id="_CPPv3NK4miam14representation14UniformSection7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE"></span><span id="_CPPv2NK4miam14representation14UniformSection7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE"></span><span id="miam::representation::UniformSection::Species__micm::PhaseCR.micm::SpeciesCRC"></span><span class="target" id="classmiam_1_1representation_1_1UniformSection_1a6d3859c9e47c4b7136266070a6fd0914"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Species</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">micm</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Phase</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">phase</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">micm</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Species</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">species</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation14UniformSection7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation14UniformSection17DefaultParametersEv">
+<span id="_CPPv3NK4miam14representation14UniformSection17DefaultParametersEv"></span><span id="_CPPv2NK4miam14representation14UniformSection17DefaultParametersEv"></span><span id="miam::representation::UniformSection::DefaultParametersC"></span><span class="target" id="classmiam_1_1representation_1_1UniformSection_1a24d1e515ef1b3a311c46d79c51e581bf"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">map</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DefaultParameters</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation14UniformSection17DefaultParametersEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation14UniformSection9MinRadiusEv">
+<span id="_CPPv3NK4miam14representation14UniformSection9MinRadiusEv"></span><span id="_CPPv2NK4miam14representation14UniformSection9MinRadiusEv"></span><span id="miam::representation::UniformSection::MinRadiusC"></span><span class="target" id="classmiam_1_1representation_1_1UniformSection_1af9c57e11b80c5d85243a07266ccc5457"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">MinRadius</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation14UniformSection9MinRadiusEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation14UniformSection9MaxRadiusEv">
+<span id="_CPPv3NK4miam14representation14UniformSection9MaxRadiusEv"></span><span id="_CPPv2NK4miam14representation14UniformSection9MaxRadiusEv"></span><span id="miam::representation::UniformSection::MaxRadiusC"></span><span class="target" id="classmiam_1_1representation_1_1UniformSection_1a48d9fd2452e405ad2aae47581f9f95ae"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">MaxRadius</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation14UniformSection9MaxRadiusEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation14UniformSection20SetDefaultParametersERDa">
+<span id="_CPPv3NK4miam14representation14UniformSection20SetDefaultParametersERDa"></span><span id="_CPPv2NK4miam14representation14UniformSection20SetDefaultParametersERDa"></span><span id="miam::representation::UniformSection::SetDefaultParameters__autoRC"></span><span class="target" id="classmiam_1_1representation_1_1UniformSection_1a23b1d965176d0513e1419402f77a71ef"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SetDefaultParameters</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation14UniformSection20SetDefaultParametersERDa" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation14UniformSection17NumPhaseInstancesEv">
+<span id="_CPPv3NK4miam14representation14UniformSection17NumPhaseInstancesEv"></span><span id="_CPPv2NK4miam14representation14UniformSection17NumPhaseInstancesEv"></span><span id="miam::representation::UniformSection::NumPhaseInstancesC"></span><span class="target" id="classmiam_1_1representation_1_1UniformSection_1a4eb7c61ac697f10633bc2a7f20a26554"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">map</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NumPhaseInstances</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation14UniformSection17NumPhaseInstancesEv" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam14representation14UniformSection18PhaseStatePrefixesEv">
+<span id="_CPPv3NK4miam14representation14UniformSection18PhaseStatePrefixesEv"></span><span id="_CPPv2NK4miam14representation14UniformSection18PhaseStatePrefixesEv"></span><span id="miam::representation::UniformSection::PhaseStatePrefixesC"></span><span class="target" id="classmiam_1_1representation_1_1UniformSection_1a55ec7e67e1bc335d9a1f82e6cfcf0c9e"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">map</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">set</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">PhaseStatePrefixes</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam14representation14UniformSection18PhaseStatePrefixesEv" title="Link to this definition">#</a><br /></dt>
+<dd><p>Returns a map of phase names to sets of state variable prefixes associated with that phase The prefix does not include the phase or species names, and each prefix must be unique across all representations. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Map of phase names to sets of state variable prefixes </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I0ENK4miam14representation14UniformSection19GetPropertyProviderE23AerosolPropertyProviderI17DenseMatrixPolicyE15AerosolPropertyRKDaRKDaRKNSt6stringE">
+<span id="_CPPv3I0ENK4miam14representation14UniformSection19GetPropertyProviderE15AerosolPropertyRKDaRKDaRKNSt6stringE"></span><span id="_CPPv2I0ENK4miam14representation14UniformSection19GetPropertyProviderE15AerosolPropertyRKDaRKDaRKNSt6stringE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classmiam_1_1representation_1_1UniformSection_1a94c810d424533797702c83ee148cf231"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="utilities.html#_CPPv4I0EN4miam23AerosolPropertyProviderE" title="miam::AerosolPropertyProvider"><span class="n"><span class="pre">AerosolPropertyProvider</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0ENK4miam14representation14UniformSection19GetPropertyProviderE23AerosolPropertyProviderI17DenseMatrixPolicyE15AerosolPropertyRKDaRKDaRKNSt6stringE" title="miam::representation::UniformSection::GetPropertyProvider::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">GetPropertyProvider</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="utilities.html#_CPPv4N4miam15AerosolPropertyE" title="miam::AerosolProperty"><span class="n"><span class="pre">AerosolProperty</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">property</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state_parameter_indices</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state_variable_indices</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">target_phase_name</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="s"><span class="pre">&quot;&quot;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4I0ENK4miam14representation14UniformSection19GetPropertyProviderE23AerosolPropertyProviderI17DenseMatrixPolicyE15AerosolPropertyRKDaRKDaRKNSt6stringE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Returns a provider for the requested aerosol property. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="processes.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Processes</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="utilities.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Utilities</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#singlemomentmode">SingleMomentMode</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation16SingleMomentModeE"><code class="docutils literal notranslate"><span class="pre">miam::representation::SingleMomentMode</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation16SingleMomentMode16SingleMomentModeEv"><code class="docutils literal notranslate"><span class="pre">SingleMomentMode()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation16SingleMomentMode16SingleMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE"><code class="docutils literal notranslate"><span class="pre">SingleMomentMode()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation16SingleMomentMode16SingleMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKdKd"><code class="docutils literal notranslate"><span class="pre">SingleMomentMode()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode9StateSizeEv"><code class="docutils literal notranslate"><span class="pre">StateSize()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode18StateVariableNamesEv"><code class="docutils literal notranslate"><span class="pre">StateVariableNames()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode19StateParameterNamesEv"><code class="docutils literal notranslate"><span class="pre">StateParameterNames()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE"><code class="docutils literal notranslate"><span class="pre">Species()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode17DefaultParametersEv"><code class="docutils literal notranslate"><span class="pre">DefaultParameters()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode19GeometricMeanRadiusEv"><code class="docutils literal notranslate"><span class="pre">GeometricMeanRadius()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode26GeometricStandardDeviationEv"><code class="docutils literal notranslate"><span class="pre">GeometricStandardDeviation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode20SetDefaultParametersERDa"><code class="docutils literal notranslate"><span class="pre">SetDefaultParameters()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode17NumPhaseInstancesEv"><code class="docutils literal notranslate"><span class="pre">NumPhaseInstances()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation16SingleMomentMode18PhaseStatePrefixesEv"><code class="docutils literal notranslate"><span class="pre">PhaseStatePrefixes()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0ENK4miam14representation16SingleMomentMode19GetPropertyProviderE23AerosolPropertyProviderI17DenseMatrixPolicyE15AerosolPropertyRKDaRKDaRKNSt6stringE"><code class="docutils literal notranslate"><span class="pre">GetPropertyProvider()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#twomomentmode">TwoMomentMode</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation13TwoMomentModeE"><code class="docutils literal notranslate"><span class="pre">miam::representation::TwoMomentMode</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation13TwoMomentMode13TwoMomentModeEv"><code class="docutils literal notranslate"><span class="pre">TwoMomentMode()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation13TwoMomentMode13TwoMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE"><code class="docutils literal notranslate"><span class="pre">TwoMomentMode()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation13TwoMomentMode13TwoMomentModeERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKd"><code class="docutils literal notranslate"><span class="pre">TwoMomentMode()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode9StateSizeEv"><code class="docutils literal notranslate"><span class="pre">StateSize()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode18StateVariableNamesEv"><code class="docutils literal notranslate"><span class="pre">StateVariableNames()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode19StateParameterNamesEv"><code class="docutils literal notranslate"><span class="pre">StateParameterNames()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE"><code class="docutils literal notranslate"><span class="pre">Species()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode17DefaultParametersEv"><code class="docutils literal notranslate"><span class="pre">DefaultParameters()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode19NumberConcentrationEv"><code class="docutils literal notranslate"><span class="pre">NumberConcentration()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode26GeometricStandardDeviationEv"><code class="docutils literal notranslate"><span class="pre">GeometricStandardDeviation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode20SetDefaultParametersERDa"><code class="docutils literal notranslate"><span class="pre">SetDefaultParameters()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode17NumPhaseInstancesEv"><code class="docutils literal notranslate"><span class="pre">NumPhaseInstances()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation13TwoMomentMode18PhaseStatePrefixesEv"><code class="docutils literal notranslate"><span class="pre">PhaseStatePrefixes()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0ENK4miam14representation13TwoMomentMode19GetPropertyProviderE23AerosolPropertyProviderI17DenseMatrixPolicyE15AerosolPropertyRKDaRKDaRKNSt6stringE"><code class="docutils literal notranslate"><span class="pre">GetPropertyProvider()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#uniformsection">UniformSection</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation14UniformSectionE"><code class="docutils literal notranslate"><span class="pre">miam::representation::UniformSection</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation14UniformSection14UniformSectionEv"><code class="docutils literal notranslate"><span class="pre">UniformSection()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation14UniformSection14UniformSectionERKNSt6stringERKNSt6vectorIN4micm5PhaseEEE"><code class="docutils literal notranslate"><span class="pre">UniformSection()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam14representation14UniformSection14UniformSectionERKNSt6stringERKNSt6vectorIN4micm5PhaseEEEKdKd"><code class="docutils literal notranslate"><span class="pre">UniformSection()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection9StateSizeEv"><code class="docutils literal notranslate"><span class="pre">StateSize()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection18StateVariableNamesEv"><code class="docutils literal notranslate"><span class="pre">StateVariableNames()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection19StateParameterNamesEv"><code class="docutils literal notranslate"><span class="pre">StateParameterNames()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection7SpeciesERKN4micm5PhaseERKN4micm7SpeciesE"><code class="docutils literal notranslate"><span class="pre">Species()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection17DefaultParametersEv"><code class="docutils literal notranslate"><span class="pre">DefaultParameters()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection9MinRadiusEv"><code class="docutils literal notranslate"><span class="pre">MinRadius()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection9MaxRadiusEv"><code class="docutils literal notranslate"><span class="pre">MaxRadius()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection20SetDefaultParametersERDa"><code class="docutils literal notranslate"><span class="pre">SetDefaultParameters()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection17NumPhaseInstancesEv"><code class="docutils literal notranslate"><span class="pre">NumPhaseInstances()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam14representation14UniformSection18PhaseStatePrefixesEv"><code class="docutils literal notranslate"><span class="pre">PhaseStatePrefixes()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0ENK4miam14representation14UniformSection19GetPropertyProviderE23AerosolPropertyProviderI17DenseMatrixPolicyE15AerosolPropertyRKDaRKDaRKNSt6stringE"><code class="docutils literal notranslate"><span class="pre">GetPropertyProvider()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By NCAR
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, University Corporation for Atmospheric Research.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

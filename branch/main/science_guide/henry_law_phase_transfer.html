@@ -1,0 +1,777 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Henry’s Law Phase Transfer &#8212; MIAM v0.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=28af074a"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'science_guide/henry_law_phase_transfer';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Dissolved Reversible Reactions" href="dissolved_reversible_reaction.html" />
+    <link rel="prev" title="Aerosol Properties" href="../user_guide/aerosol_properties.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.0.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">MIAM v0.0.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/quickstart.html">Quickstart</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/concepts.html">Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/representations.html">Representations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/processes.html">Processes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/building_a_model.html">Building a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/aerosol_properties.html">Aerosol Properties</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Science Guide</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Henry’s Law Phase Transfer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dissolved_reversible_reaction.html">Dissolved Reversible Reactions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="size_distributions.html">Size Distributions</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api_reference/index.html">API Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api_reference/model.html">Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api_reference/processes.html">Processes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api_reference/representations.html">Representations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api_reference/utilities.html">Utilities</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/adding_a_process.html">Adding a Process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/adding_a_representation.html">Adding a Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/testing.html">Testing</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/NCAR/miam" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/NCAR/miam/issues/new?title=Issue%20on%20page%20%2Fscience_guide/henry_law_phase_transfer.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/science_guide/henry_law_phase_transfer.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Henry’s Law Phase Transfer</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#physics">Physics</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#henry-s-law-constant">Henry’s Law Constant</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#condensation-rate">Condensation Rate</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mean-molecular-speed">Mean molecular speed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mean-free-path">Mean free path</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#knudsen-number">Knudsen number</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fuchs-sutugin-correction">Fuchs-Sutugin correction</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#condensation-rate-constant">Condensation rate constant</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#evaporation-rate">Evaporation Rate</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-volume-fraction">Phase Volume Fraction</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#solvent-volume-fraction">Solvent Volume Fraction</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#net-transfer-rate">Net Transfer Rate</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#jacobian">Jacobian</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#direct-entries">Direct entries</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#indirect-entries-chain-rule">Indirect entries (chain rule)</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#aerosol-property-derivatives">Aerosol Property Derivatives</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#effective-radius">Effective radius</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#number-concentration">Number concentration</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Phase volume fraction</a></li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="henry-s-law-phase-transfer">
+<h1>Henry’s Law Phase Transfer<a class="headerlink" href="#henry-s-law-phase-transfer" title="Link to this heading">#</a></h1>
+<p>Gas-condensed phase mass transfer governed by Henry’s Law equilibrium and
+Fuchs-Sutugin transition-regime kinetics.</p>
+<section id="physics">
+<h2>Physics<a class="headerlink" href="#physics" title="Link to this heading">#</a></h2>
+<p>For gas species A partitioning into a condensed phase:</p>
+<div class="math notranslate nohighlight">
+\[\text{A(gas)} \rightleftharpoons \text{A(condensed)}\]</div>
+<p>The condensation rate describes how fast gas molecules transfer into
+particles, the evaporation rate describes the reverse, and Henry’s Law
+defines the equilibrium ratio.</p>
+</section>
+<section id="henry-s-law-constant">
+<h2>Henry’s Law Constant<a class="headerlink" href="#henry-s-law-constant" title="Link to this heading">#</a></h2>
+<p>Temperature-dependent:</p>
+<div class="math notranslate nohighlight">
+\[H(T) = H_\text{ref} \cdot \exp\!\left(C \left(\frac{1}{T} - \frac{1}{T_0}\right)\right)\]</div>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 50.0%" />
+<col style="width: 30.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Symbol</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Units</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(H_\text{ref}\)</span></p></td>
+<td><p>Reference HLC at <span class="math notranslate nohighlight">\(T_0\)</span></p></td>
+<td><p>mol m⁻³ Pa⁻¹</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(C\)</span></p></td>
+<td><p>Temperature dependence parameter</p></td>
+<td><p>K</p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(T_0\)</span></p></td>
+<td><p>Reference temperature (default 298.15)</p></td>
+<td><p>K</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>HLC is evaluated once per time step and stored as a state parameter.</p>
+</section>
+<section id="condensation-rate">
+<h2>Condensation Rate<a class="headerlink" href="#condensation-rate" title="Link to this heading">#</a></h2>
+<section id="mean-molecular-speed">
+<h3>Mean molecular speed<a class="headerlink" href="#mean-molecular-speed" title="Link to this heading">#</a></h3>
+<div class="math notranslate nohighlight">
+\[\bar{c} = \sqrt{\frac{8 R T}{\pi M_w}}\]</div>
+</section>
+<section id="mean-free-path">
+<h3>Mean free path<a class="headerlink" href="#mean-free-path" title="Link to this heading">#</a></h3>
+<div class="math notranslate nohighlight">
+\[\lambda = \frac{3 D_g}{\bar{c}}\]</div>
+</section>
+<section id="knudsen-number">
+<h3>Knudsen number<a class="headerlink" href="#knudsen-number" title="Link to this heading">#</a></h3>
+<div class="math notranslate nohighlight">
+\[\text{Kn} = \frac{\lambda}{r_\text{eff}}\]</div>
+<p>Characterizes the gas-particle interaction regime (Kn ≪ 1 → continuum,
+Kn ≫ 1 → free molecular).</p>
+</section>
+<section id="fuchs-sutugin-correction">
+<h3>Fuchs-Sutugin correction<a class="headerlink" href="#fuchs-sutugin-correction" title="Link to this heading">#</a></h3>
+<div class="math notranslate nohighlight">
+\[f(\text{Kn}) = \frac{1 + \text{Kn}}{1 + \frac{2 \text{Kn}(1 + \text{Kn})}{\alpha}}\]</div>
+<p>Interpolates between the continuum (<span class="math notranslate nohighlight">\(f \to 1\)</span>) and free-molecular
+(<span class="math notranslate nohighlight">\(f \to \alpha / (2 \text{Kn})\)</span>) limits.</p>
+<p><strong>Derivative with respect to Kn</strong>:</p>
+<div class="math notranslate nohighlight">
+\[\frac{df}{d\text{Kn}} = \frac{\alpha - 2 - 4\text{Kn} - 2\text{Kn}^2}{\alpha \cdot D^2}\]</div>
+<p>where <span class="math notranslate nohighlight">\(D = 1 + 2\text{Kn}(1 + \text{Kn})/\alpha\)</span>.</p>
+</section>
+<section id="condensation-rate-constant">
+<h3>Condensation rate constant<a class="headerlink" href="#condensation-rate-constant" title="Link to this heading">#</a></h3>
+<div class="math notranslate nohighlight">
+\[k_c = 4\pi \, r_\text{eff} \, N \, D_g \, f(\text{Kn})\]</div>
+<p>Units: s⁻¹. First-order rate constant for gas-to-condensed transfer.</p>
+<p><strong>Partial derivatives</strong>:</p>
+<div class="math notranslate nohighlight">
+\[\frac{\partial k_c}{\partial r_\text{eff}} =
+    4\pi N D_g \left[ f(\text{Kn}) - \text{Kn} \cdot \frac{df}{d\text{Kn}} \right]\]</div>
+<div class="math notranslate nohighlight">
+\[\frac{\partial k_c}{\partial N} = \frac{k_c}{N}\]</div>
+</section>
+</section>
+<section id="evaporation-rate">
+<h2>Evaporation Rate<a class="headerlink" href="#evaporation-rate" title="Link to this heading">#</a></h2>
+<div class="math notranslate nohighlight">
+\[k_e = \frac{k_c}{H \cdot R \cdot T}\]</div>
+<p><strong>Partial derivatives</strong> — obtained by dividing <span class="math notranslate nohighlight">\(k_c\)</span> partials by the
+same constant factor:</p>
+<div class="math notranslate nohighlight">
+\[\frac{\partial k_e}{\partial r_\text{eff}} =
+    \frac{1}{HRT} \frac{\partial k_c}{\partial r_\text{eff}},\qquad
+\frac{\partial k_e}{\partial N} = \frac{k_e}{N}\]</div>
+</section>
+<section id="phase-volume-fraction">
+<h2>Phase Volume Fraction<a class="headerlink" href="#phase-volume-fraction" title="Link to this heading">#</a></h2>
+<p>For multi-phase modes, the exposed surface area of phase <span class="math notranslate nohighlight">\(p\)</span> is
+proportional to its volume fraction:</p>
+<div class="math notranslate nohighlight">
+\[\varphi_p = \frac{V_\text{phase}}{V_\text{total}}\]</div>
+<p>where</p>
+<div class="math notranslate nohighlight">
+\[V_\text{phase} = \sum_i [\text{species}_{p,i}] \cdot \frac{M_{w,i}}{\rho_i}, \qquad
+V_\text{total} = \sum_q \sum_i [\text{species}_{q,i}] \cdot \frac{M_{w,i}}{\rho_i}\]</div>
+</section>
+<section id="solvent-volume-fraction">
+<h2>Solvent Volume Fraction<a class="headerlink" href="#solvent-volume-fraction" title="Link to this heading">#</a></h2>
+<p>Converts between concentration bases:</p>
+<div class="math notranslate nohighlight">
+\[f_v = [\text{solvent}] \cdot \frac{M_{w,\text{solvent}}}{\rho_\text{solvent}}\]</div>
+</section>
+<section id="net-transfer-rate">
+<h2>Net Transfer Rate<a class="headerlink" href="#net-transfer-rate" title="Link to this heading">#</a></h2>
+<div class="math notranslate nohighlight">
+\[R_\text{net} = \varphi_p \, k_c \, [\text{A}]_\text{gas}
+  - \varphi_p \, k_e \, \frac{[\text{A}]_\text{aq}}{f_v}\]</div>
+<p>The ODE right-hand sides:</p>
+<div class="math notranslate nohighlight">
+\[\frac{d[\text{A}]_\text{gas}}{dt} = -R_\text{net}, \qquad
+\frac{d[\text{A}]_\text{aq}}{dt} = +R_\text{net}\]</div>
+<p>When multiple condensed-phase instances exist (e.g., multiple aerosol
+modes containing the same phase), each contributes its own
+<span class="math notranslate nohighlight">\(R_\text{net}\)</span> and contributions are summed.</p>
+</section>
+<section id="jacobian">
+<h2>Jacobian<a class="headerlink" href="#jacobian" title="Link to this heading">#</a></h2>
+<p>The MICM Rosenbrock solver stores <strong>−J</strong> (negative Jacobian). All values
+below show the mathematical derivative and the stored value.</p>
+<section id="direct-entries">
+<h3>Direct entries<a class="headerlink" href="#direct-entries" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 22.0%" />
+<col style="width: 38.0%" />
+<col style="width: 40.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Entry</p></th>
+<th class="head"><p>Mathematical <span class="math notranslate nohighlight">\(J\)</span></p></th>
+<th class="head"><p>Stored <span class="math notranslate nohighlight">\(-J\)</span></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(J[\text{gas}, \text{gas}]\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(-\varphi_p k_c\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(+\varphi_p k_c\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(J[\text{gas}, \text{aq}]\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(+\varphi_p k_e / f_v\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(-\varphi_p k_e / f_v\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(J[\text{gas}, \text{solvent}]\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(-\varphi_p k_e [\text{A}]_\text{aq} / (f_v \cdot [\text{solvent}])\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(+\varphi_p k_e [\text{A}]_\text{aq} / (f_v \cdot [\text{solvent}])\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(J[\text{aq}, x]\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(-J[\text{gas}, x]\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(-(-J[\text{gas}, x])\)</span></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The antisymmetry <span class="math notranslate nohighlight">\(J[\text{aq}, x] = -J[\text{gas}, x]\)</span> is a direct
+consequence of mass conservation.</p>
+</section>
+<section id="indirect-entries-chain-rule">
+<h3>Indirect entries (chain rule)<a class="headerlink" href="#indirect-entries-chain-rule" title="Link to this heading">#</a></h3>
+<p>When an aerosol property <span class="math notranslate nohighlight">\(P\)</span> depends on state variable <span class="math notranslate nohighlight">\(y_j\)</span>,
+additional terms appear:</p>
+<p><strong>Through</strong> <span class="math notranslate nohighlight">\(r_\text{eff}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\text{stored } {-J[\text{gas}, y_j]} \mathrel{+}=
+  \varphi_p \left(
+    \frac{\partial k_c}{\partial r} [\text{A}]_\text{gas}
+  - \frac{\partial k_e}{\partial r} \frac{[\text{A}]_\text{aq}}{f_v}
+  \right) \frac{\partial r}{\partial y_j}\]</div>
+<p><strong>Through</strong> <span class="math notranslate nohighlight">\(N\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\text{stored } {-J[\text{gas}, y_j]} \mathrel{+}=
+  \varphi_p \left(
+    \frac{\partial k_c}{\partial N} [\text{A}]_\text{gas}
+  - \frac{\partial k_e}{\partial N} \frac{[\text{A}]_\text{aq}}{f_v}
+  \right) \frac{\partial N}{\partial y_j}\]</div>
+<p><strong>Through</strong> <span class="math notranslate nohighlight">\(\varphi_p\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\text{stored } {-J[\text{gas}, y_j]} \mathrel{+}=
+  R \cdot \frac{\partial \varphi_p}{\partial y_j}\]</div>
+<p>where <span class="math notranslate nohighlight">\(R = k_c [\text{A}]_\text{gas} - k_e [\text{A}]_\text{aq}/f_v\)</span>
+is the un-scaled net rate.</p>
+</section>
+</section>
+<section id="aerosol-property-derivatives">
+<h2>Aerosol Property Derivatives<a class="headerlink" href="#aerosol-property-derivatives" title="Link to this heading">#</a></h2>
+<section id="effective-radius">
+<h3>Effective radius<a class="headerlink" href="#effective-radius" title="Link to this heading">#</a></h3>
+<ul>
+<li><p><strong>SingleMomentMode / UniformSection</strong>: <span class="math notranslate nohighlight">\(\partial r / \partial y_j = 0\)</span>
+(parameterized).</p></li>
+<li><p><strong>TwoMomentMode</strong>:</p>
+<div class="math notranslate nohighlight">
+\[\frac{\partial r_\text{eff}}{\partial [\text{species}_{p,i}]} =
+  \frac{r_\text{eff} \cdot M_{w,i}}{3 \, V_\text{total} \, \rho_i},
+\qquad
+\frac{\partial r_\text{eff}}{\partial N} =
+  -\frac{r_\text{eff}}{3 N}\]</div>
+</li>
+</ul>
+</section>
+<section id="number-concentration">
+<h3>Number concentration<a class="headerlink" href="#number-concentration" title="Link to this heading">#</a></h3>
+<ul>
+<li><p><strong>SingleMomentMode / UniformSection</strong>: <span class="math notranslate nohighlight">\(N = V_\text{total}/V_\text{single}\)</span>, so</p>
+<div class="math notranslate nohighlight">
+\[\frac{\partial N}{\partial [\text{species}_{p,i}]} =
+  \frac{M_{w,i}}{\rho_i \cdot V_\text{single}}\]</div>
+</li>
+<li><p><strong>TwoMomentMode</strong>: <span class="math notranslate nohighlight">\(N\)</span> is a prognostic variable, so
+<span class="math notranslate nohighlight">\(\partial N / \partial N_\text{var} = 1\)</span>.</p></li>
+</ul>
+</section>
+<section id="id1">
+<h3>Phase volume fraction<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<p>For a mode/section with a single phase, <span class="math notranslate nohighlight">\(\varphi_p = 1\)</span> and all
+partials are zero. For multi-phase:</p>
+<div class="math notranslate nohighlight">
+\[\frac{\partial \varphi_p}{\partial [\text{species}_{p,i}]} =
+  \frac{M_{w,i}}{\rho_i} \cdot \frac{1 - \varphi_p}{V_\text{total}}\]</div>
+<div class="math notranslate nohighlight">
+\[\frac{\partial \varphi_p}{\partial [\text{species}_{q,i}]} =
+  -\frac{M_{w,i}}{\rho_i} \cdot \frac{\varphi_p}{V_\text{total}}
+  \qquad (q \neq p)\]</div>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../user_guide/aerosol_properties.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Aerosol Properties</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="dissolved_reversible_reaction.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Dissolved Reversible Reactions</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#physics">Physics</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#henry-s-law-constant">Henry’s Law Constant</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#condensation-rate">Condensation Rate</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mean-molecular-speed">Mean molecular speed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mean-free-path">Mean free path</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#knudsen-number">Knudsen number</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fuchs-sutugin-correction">Fuchs-Sutugin correction</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#condensation-rate-constant">Condensation rate constant</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#evaporation-rate">Evaporation Rate</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-volume-fraction">Phase Volume Fraction</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#solvent-volume-fraction">Solvent Volume Fraction</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#net-transfer-rate">Net Transfer Rate</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#jacobian">Jacobian</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#direct-entries">Direct entries</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#indirect-entries-chain-rule">Indirect entries (chain rule)</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#aerosol-property-derivatives">Aerosol Property Derivatives</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#effective-radius">Effective radius</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#number-concentration">Number concentration</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Phase volume fraction</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By NCAR
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, University Corporation for Atmospheric Research.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

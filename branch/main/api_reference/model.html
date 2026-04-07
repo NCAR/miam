@@ -1,0 +1,625 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Model &#8212; MIAM v0.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=28af074a"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/model';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Processes" href="processes.html" />
+    <link rel="prev" title="API Reference" href="index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.0.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">MIAM v0.0.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/quickstart.html">Quickstart</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/concepts.html">Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/representations.html">Representations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/processes.html">Processes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/building_a_model.html">Building a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/aerosol_properties.html">Aerosol Properties</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Science Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../science_guide/henry_law_phase_transfer.html">Henry’s Law Phase Transfer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../science_guide/dissolved_reversible_reaction.html">Dissolved Reversible Reactions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../science_guide/size_distributions.html">Size Distributions</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processes.html">Processes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="representations.html">Representations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utilities.html">Utilities</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/adding_a_process.html">Adding a Process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/adding_a_representation.html">Adding a Representation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/testing.html">Testing</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/NCAR/miam" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/NCAR/miam/issues/new?title=Issue%20on%20page%20%2Fapi_reference/model.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/api_reference/model.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Model</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam5ModelE"><code class="docutils literal notranslate"><span class="pre">miam::Model</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam5Model21RepresentationVariantE"><code class="docutils literal notranslate"><span class="pre">RepresentationVariant</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam5Model14ProcessVariantE"><code class="docutils literal notranslate"><span class="pre">ProcessVariant</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam5Model9StateSizeEv"><code class="docutils literal notranslate"><span class="pre">StateSize()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam5Model18StateVariableNamesEv"><code class="docutils literal notranslate"><span class="pre">StateVariableNames()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam5Model19StateParameterNamesEv"><code class="docutils literal notranslate"><span class="pre">StateParameterNames()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam5Model11SpeciesUsedEv"><code class="docutils literal notranslate"><span class="pre">SpeciesUsed()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0EN4miam5Model12AddProcessesEvRKNSt6vectorI11ProcessTypeEE"><code class="docutils literal notranslate"><span class="pre">AddProcesses()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0EN4miam5Model12AddProcessesEvNSt16initializer_listI11ProcessTypeEE"><code class="docutils literal notranslate"><span class="pre">AddProcesses()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam5Model23NonZeroJacobianElementsERKNSt13unordered_mapINSt6stringENSt6size_tEEE"><code class="docutils literal notranslate"><span class="pre">NonZeroJacobianElements()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0ENK4miam5Model29UpdateStateParametersFunctionENSt8functionIFvRKNSt6vectorIN4micm10ConditionsEEER17DenseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEE"><code class="docutils literal notranslate"><span class="pre">UpdateStateParametersFunction()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0ENK4miam5Model15ForcingFunctionENSt8functionIFvRK17DenseMatrixPolicyRK17DenseMatrixPolicyR17DenseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEE"><code class="docutils literal notranslate"><span class="pre">ForcingFunction()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I00ENK4miam5Model16JacobianFunctionENSt8functionIFvRK17DenseMatrixPolicyRK17DenseMatrixPolicyR18SparseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERK18SparseMatrixPolicy"><code class="docutils literal notranslate"><span class="pre">JacobianFunction()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam5Model5name_E"><code class="docutils literal notranslate"><span class="pre">name_</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam5Model16representations_E"><code class="docutils literal notranslate"><span class="pre">representations_</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam5Model10processes_E"><code class="docutils literal notranslate"><span class="pre">processes_</span></code></a></li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="model">
+<h1>Model<a class="headerlink" href="#model" title="Link to this heading">#</a></h1>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam5ModelE">
+<span id="_CPPv3N4miam5ModelE"></span><span id="_CPPv2N4miam5ModelE"></span><span id="miam::Model"></span><span class="target" id="classmiam_1_1Model"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Model</span></span></span><a class="headerlink" href="#_CPPv4N4miam5ModelE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Aerosol/Cloud <a class="reference internal" href="#classmiam_1_1Model"><span class="std std-ref">Model</span></a>. </p>
+<p><a class="reference internal" href="#classmiam_1_1Model"><span class="std std-ref">Model</span></a> is a collection of representations that collectively define an aerosol and/or cloud system. <a class="reference internal" href="#classmiam_1_1Model"><span class="std std-ref">Model</span></a> is compatible with the micm::ExternalModelSystem and micm::ExternalModelProcessSet interfaces. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-types">Public Types</p>
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam5Model21RepresentationVariantE">
+<span id="_CPPv3N4miam5Model21RepresentationVariantE"></span><span id="_CPPv2N4miam5Model21RepresentationVariantE"></span><span class="target" id="classmiam_1_1Model_1ad29e825a493c2df830d9fc9633cd3f53"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">RepresentationVariant</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">variant</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">representation</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="representations.html#_CPPv4N4miam14representation16SingleMomentModeE" title="miam::representation::SingleMomentMode"><span class="n"><span class="pre">SingleMomentMode</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">representation</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="representations.html#_CPPv4N4miam14representation13TwoMomentModeE" title="miam::representation::TwoMomentMode"><span class="n"><span class="pre">TwoMomentMode</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">representation</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="representations.html#_CPPv4N4miam14representation14UniformSectionE" title="miam::representation::UniformSection"><span class="n"><span class="pre">UniformSection</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N4miam5Model21RepresentationVariantE" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam5Model14ProcessVariantE">
+<span id="_CPPv3N4miam5Model14ProcessVariantE"></span><span id="_CPPv2N4miam5Model14ProcessVariantE"></span><span class="target" id="classmiam_1_1Model_1adef0d69677e6fea9f29aaa631391c579"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ProcessVariant</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">variant</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">process</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="processes.html#_CPPv4N4miam7process27DissolvedReversibleReactionE" title="miam::process::DissolvedReversibleReaction"><span class="n"><span class="pre">DissolvedReversibleReaction</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">process</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="processes.html#_CPPv4N4miam7process21HenryLawPhaseTransferE" title="miam::process::HenryLawPhaseTransfer"><span class="n"><span class="pre">HenryLawPhaseTransfer</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N4miam5Model14ProcessVariantE" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam5Model9StateSizeEv">
+<span id="_CPPv3NK4miam5Model9StateSizeEv"></span><span id="_CPPv2NK4miam5Model9StateSizeEv"></span><span id="miam::Model::StateSizeC"></span><span class="target" id="classmiam_1_1Model_1ac842be8e9dc8d5dadc83a27217504532"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">tuple</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">StateSize</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam5Model9StateSizeEv" title="Link to this definition">#</a><br /></dt>
+<dd><p>Returns the total state size (number of variables, number of parameters) </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam5Model18StateVariableNamesEv">
+<span id="_CPPv3NK4miam5Model18StateVariableNamesEv"></span><span id="_CPPv2NK4miam5Model18StateVariableNamesEv"></span><span id="miam::Model::StateVariableNamesC"></span><span class="target" id="classmiam_1_1Model_1a6d060cc8cf90fe1842510031b36d25f1"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">set</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">StateVariableNames</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam5Model18StateVariableNamesEv" title="Link to this definition">#</a><br /></dt>
+<dd><p>Returns unique names for all state variables. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam5Model19StateParameterNamesEv">
+<span id="_CPPv3NK4miam5Model19StateParameterNamesEv"></span><span id="_CPPv2NK4miam5Model19StateParameterNamesEv"></span><span id="miam::Model::StateParameterNamesC"></span><span class="target" id="classmiam_1_1Model_1a05148d4d8e7c43ef106aaa862d836903"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">set</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">StateParameterNames</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam5Model19StateParameterNamesEv" title="Link to this definition">#</a><br /></dt>
+<dd><p>Returns unique names for all state parameters. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam5Model11SpeciesUsedEv">
+<span id="_CPPv3NK4miam5Model11SpeciesUsedEv"></span><span id="_CPPv2NK4miam5Model11SpeciesUsedEv"></span><span id="miam::Model::SpeciesUsedC"></span><span class="target" id="classmiam_1_1Model_1a4633ce4241d013afc152fb22403f7a8e"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">set</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SpeciesUsed</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam5Model11SpeciesUsedEv" title="Link to this definition">#</a><br /></dt>
+<dd><p>Returns names of all species used in the model’s processes. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN4miam5Model12AddProcessesEvRKNSt6vectorI11ProcessTypeEE">
+<span id="_CPPv3I0EN4miam5Model12AddProcessesERKNSt6vectorI11ProcessTypeEE"></span><span id="_CPPv2I0EN4miam5Model12AddProcessesERKNSt6vectorI11ProcessTypeEE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ProcessType</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classmiam_1_1Model_1a93dca86375dcb476a14f9202e4dcdf63"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">AddProcesses</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN4miam5Model12AddProcessesEvRKNSt6vectorI11ProcessTypeEE" title="miam::Model::AddProcesses::ProcessType"><span class="n"><span class="pre">ProcessType</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">new_processes</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN4miam5Model12AddProcessesEvRKNSt6vectorI11ProcessTypeEE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Add processes to the model. </p>
+<p>Accepts a vector of any process type stored in ProcessVariant. Each process is copied with a new UUID to ensure uniqueness across models. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN4miam5Model12AddProcessesEvNSt16initializer_listI11ProcessTypeEE">
+<span id="_CPPv3I0EN4miam5Model12AddProcessesENSt16initializer_listI11ProcessTypeEE"></span><span id="_CPPv2I0EN4miam5Model12AddProcessesENSt16initializer_listI11ProcessTypeEE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ProcessType</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classmiam_1_1Model_1a45d5f5f5fca14c6c75c0cf0ce2a6e458"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">AddProcesses</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">initializer_list</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN4miam5Model12AddProcessesEvNSt16initializer_listI11ProcessTypeEE" title="miam::Model::AddProcesses::ProcessType"><span class="n"><span class="pre">ProcessType</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">new_processes</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN4miam5Model12AddProcessesEvNSt16initializer_listI11ProcessTypeEE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Add processes to the model from an initializer list. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4miam5Model23NonZeroJacobianElementsERKNSt13unordered_mapINSt6stringENSt6size_tEEE">
+<span id="_CPPv3NK4miam5Model23NonZeroJacobianElementsERKNSt13unordered_mapINSt6stringENSt6size_tEEE"></span><span id="_CPPv2NK4miam5Model23NonZeroJacobianElementsERKNSt13unordered_mapINSt6stringENSt6size_tEEE"></span><span id="miam::Model::NonZeroJacobianElements__std::unordered_map:ss.std::s:CRC"></span><span class="target" id="classmiam_1_1Model_1a7e49982476fa10e0419d3f127f513e12"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">set</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">pair</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NonZeroJacobianElements</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unordered_map</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state_indices</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4miam5Model23NonZeroJacobianElementsERKNSt13unordered_mapINSt6stringENSt6size_tEEE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Returns non-zero Jacobian element positions. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I0ENK4miam5Model29UpdateStateParametersFunctionENSt8functionIFvRKNSt6vectorIN4micm10ConditionsEEER17DenseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEE">
+<span id="_CPPv3I0ENK4miam5Model29UpdateStateParametersFunctionERKNSt13unordered_mapINSt6stringENSt6size_tEEE"></span><span id="_CPPv2I0ENK4miam5Model29UpdateStateParametersFunctionERKNSt13unordered_mapINSt6stringENSt6size_tEEE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classmiam_1_1Model_1a3be5807ef6d2a4a30b530624a1aaabb9"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">void</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">micm</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Conditions</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0ENK4miam5Model29UpdateStateParametersFunctionENSt8functionIFvRKNSt6vectorIN4micm10ConditionsEEER17DenseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEE" title="miam::Model::UpdateStateParametersFunction::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UpdateStateParametersFunction</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unordered_map</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state_parameter_indices</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4I0ENK4miam5Model29UpdateStateParametersFunctionENSt8functionIFvRKNSt6vectorIN4micm10ConditionsEEER17DenseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Returns a function that updates state parameters. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I0ENK4miam5Model15ForcingFunctionENSt8functionIFvRK17DenseMatrixPolicyRK17DenseMatrixPolicyR17DenseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEE">
+<span id="_CPPv3I0ENK4miam5Model15ForcingFunctionERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEE"></span><span id="_CPPv2I0ENK4miam5Model15ForcingFunctionERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classmiam_1_1Model_1afd9ef4aa46c5ad8aa27abc2ca2b1bb4e"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">void</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0ENK4miam5Model15ForcingFunctionENSt8functionIFvRK17DenseMatrixPolicyRK17DenseMatrixPolicyR17DenseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEE" title="miam::Model::ForcingFunction::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0ENK4miam5Model15ForcingFunctionENSt8functionIFvRK17DenseMatrixPolicyRK17DenseMatrixPolicyR17DenseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEE" title="miam::Model::ForcingFunction::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0ENK4miam5Model15ForcingFunctionENSt8functionIFvRK17DenseMatrixPolicyRK17DenseMatrixPolicyR17DenseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEE" title="miam::Model::ForcingFunction::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ForcingFunction</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unordered_map</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state_parameter_indices</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unordered_map</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state_variable_indices</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4I0ENK4miam5Model15ForcingFunctionENSt8functionIFvRK17DenseMatrixPolicyRK17DenseMatrixPolicyR17DenseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Returns a function that calculates forcing terms. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I00ENK4miam5Model16JacobianFunctionENSt8functionIFvRK17DenseMatrixPolicyRK17DenseMatrixPolicyR18SparseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERK18SparseMatrixPolicy">
+<span id="_CPPv3I00ENK4miam5Model16JacobianFunctionERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERK18SparseMatrixPolicy"></span><span id="_CPPv2I00ENK4miam5Model16JacobianFunctionERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERK18SparseMatrixPolicy"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SparseMatrixPolicy</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classmiam_1_1Model_1af0d445c3c4dafa2ec95a0e31239eea5c"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">void</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00ENK4miam5Model16JacobianFunctionENSt8functionIFvRK17DenseMatrixPolicyRK17DenseMatrixPolicyR18SparseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERK18SparseMatrixPolicy" title="miam::Model::JacobianFunction::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00ENK4miam5Model16JacobianFunctionENSt8functionIFvRK17DenseMatrixPolicyRK17DenseMatrixPolicyR18SparseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERK18SparseMatrixPolicy" title="miam::Model::JacobianFunction::DenseMatrixPolicy"><span class="n"><span class="pre">DenseMatrixPolicy</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00ENK4miam5Model16JacobianFunctionENSt8functionIFvRK17DenseMatrixPolicyRK17DenseMatrixPolicyR18SparseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERK18SparseMatrixPolicy" title="miam::Model::JacobianFunction::SparseMatrixPolicy"><span class="n"><span class="pre">SparseMatrixPolicy</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">JacobianFunction</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unordered_map</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state_parameter_indices</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unordered_map</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state_variable_indices</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00ENK4miam5Model16JacobianFunctionENSt8functionIFvRK17DenseMatrixPolicyRK17DenseMatrixPolicyR18SparseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERK18SparseMatrixPolicy" title="miam::Model::JacobianFunction::SparseMatrixPolicy"><span class="n"><span class="pre">SparseMatrixPolicy</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">jacobian</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4I00ENK4miam5Model16JacobianFunctionENSt8functionIFvRK17DenseMatrixPolicyRK17DenseMatrixPolicyR18SparseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERK18SparseMatrixPolicy" title="Link to this definition">#</a><br /></dt>
+<dd><p>Returns a function that calculates Jacobian contributions. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam5Model5name_E">
+<span id="_CPPv3N4miam5Model5name_E"></span><span id="_CPPv2N4miam5Model5name_E"></span><span id="miam::Model::name___ss"></span><span class="target" id="classmiam_1_1Model_1ae6ad879fbcee95a56997dd2325e9750e"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">name_</span></span></span><a class="headerlink" href="#_CPPv4N4miam5Model5name_E" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam5Model16representations_E">
+<span id="_CPPv3N4miam5Model16representations_E"></span><span id="_CPPv2N4miam5Model16representations_E"></span><span id="miam::Model::representations___std::vector:RepresentationVariant:"></span><span class="target" id="classmiam_1_1Model_1ae56b320bc396aac9c49ea9547790bf59"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N4miam5Model21RepresentationVariantE" title="miam::Model::RepresentationVariant"><span class="n"><span class="pre">RepresentationVariant</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">representations_</span></span></span><a class="headerlink" href="#_CPPv4N4miam5Model16representations_E" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N4miam5Model10processes_E">
+<span id="_CPPv3N4miam5Model10processes_E"></span><span id="_CPPv2N4miam5Model10processes_E"></span><span id="miam::Model::processes___std::vector:ProcessVariant:"></span><span class="target" id="classmiam_1_1Model_1a333007d09cb990a08f93a38b3bb1c84c"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N4miam5Model14ProcessVariantE" title="miam::Model::ProcessVariant"><span class="n"><span class="pre">ProcessVariant</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">processes_</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N4miam5Model10processes_E" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="index.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">API Reference</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="processes.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Processes</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam5ModelE"><code class="docutils literal notranslate"><span class="pre">miam::Model</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam5Model21RepresentationVariantE"><code class="docutils literal notranslate"><span class="pre">RepresentationVariant</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam5Model14ProcessVariantE"><code class="docutils literal notranslate"><span class="pre">ProcessVariant</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam5Model9StateSizeEv"><code class="docutils literal notranslate"><span class="pre">StateSize()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam5Model18StateVariableNamesEv"><code class="docutils literal notranslate"><span class="pre">StateVariableNames()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam5Model19StateParameterNamesEv"><code class="docutils literal notranslate"><span class="pre">StateParameterNames()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam5Model11SpeciesUsedEv"><code class="docutils literal notranslate"><span class="pre">SpeciesUsed()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0EN4miam5Model12AddProcessesEvRKNSt6vectorI11ProcessTypeEE"><code class="docutils literal notranslate"><span class="pre">AddProcesses()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0EN4miam5Model12AddProcessesEvNSt16initializer_listI11ProcessTypeEE"><code class="docutils literal notranslate"><span class="pre">AddProcesses()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4miam5Model23NonZeroJacobianElementsERKNSt13unordered_mapINSt6stringENSt6size_tEEE"><code class="docutils literal notranslate"><span class="pre">NonZeroJacobianElements()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0ENK4miam5Model29UpdateStateParametersFunctionENSt8functionIFvRKNSt6vectorIN4micm10ConditionsEEER17DenseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEE"><code class="docutils literal notranslate"><span class="pre">UpdateStateParametersFunction()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0ENK4miam5Model15ForcingFunctionENSt8functionIFvRK17DenseMatrixPolicyRK17DenseMatrixPolicyR17DenseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEE"><code class="docutils literal notranslate"><span class="pre">ForcingFunction()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I00ENK4miam5Model16JacobianFunctionENSt8functionIFvRK17DenseMatrixPolicyRK17DenseMatrixPolicyR18SparseMatrixPolicyEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERKNSt13unordered_mapINSt6stringENSt6size_tEEERK18SparseMatrixPolicy"><code class="docutils literal notranslate"><span class="pre">JacobianFunction()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam5Model5name_E"><code class="docutils literal notranslate"><span class="pre">name_</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam5Model16representations_E"><code class="docutils literal notranslate"><span class="pre">representations_</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4miam5Model10processes_E"><code class="docutils literal notranslate"><span class="pre">processes_</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By NCAR
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, University Corporation for Atmospheric Research.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
