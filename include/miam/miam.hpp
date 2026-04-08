@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <miam/constraint.hpp>
 #include <miam/model.hpp>
 #include <miam/process.hpp>
 #include <miam/representation.hpp>
