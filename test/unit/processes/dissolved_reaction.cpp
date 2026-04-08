@@ -798,13 +798,13 @@ TEST(DissolvedReaction, JacobianFunctionBasicPartials)
     // d(rate)/d[A] = k
     // d(rate)/d[S] = k * (1-1) / [S]^1 * [A] = 0
 
-    // d[A]/d[A] = -d(rate)/d[A] = -k
-    EXPECT_NEAR(jacobian[0][0][0], -k, 1e-15);
-    // d[B]/d[A] = +d(rate)/d[A] = +k
-    EXPECT_NEAR(jacobian[0][1][0], k, 1e-15);
-    // d[A]/d[S] = -d(rate)/d[S] = 0
+    // -J[A,A] = +d(rate)/d[A] = +k (stores negative Jacobian)
+    EXPECT_NEAR(jacobian[0][0][0], k, 1e-15);
+    // -J[B,A] = -d(rate)/d[A] = -k
+    EXPECT_NEAR(jacobian[0][1][0], -k, 1e-15);
+    // -J[A,S] = +d(rate)/d[S] = 0
     EXPECT_NEAR(jacobian[0][0][2], 0.0, 1e-15);
-    // d[B]/d[S] = +d(rate)/d[S] = 0
+    // -J[B,S] = -d(rate)/d[S] = 0
     EXPECT_NEAR(jacobian[0][1][2], 0.0, 1e-15);
 }
 
@@ -877,24 +877,25 @@ TEST(DissolvedReaction, JacobianFunctionMultipleReactants)
     // d(rate)/d[S] = k * (1-2) / [S]^2 * [A] * [B] = -1.0 / 2500 * 0.001 * 0.002
     double d_rate_d_s = k * (1 - 2) / std::pow(50.0, 2) * 0.001 * 0.002;
 
-    // d[A]/d[A] = -d(rate)/d[A]
-    EXPECT_NEAR(jacobian[0][0][0], -d_rate_d_a, 1e-15);
-    // d[A]/d[B] = -d(rate)/d[B]
-    EXPECT_NEAR(jacobian[0][0][1], -d_rate_d_b, 1e-15);
-    // d[B]/d[A] = -d(rate)/d[A]
-    EXPECT_NEAR(jacobian[0][1][0], -d_rate_d_a, 1e-15);
-    // d[B]/d[B] = -d(rate)/d[B]
-    EXPECT_NEAR(jacobian[0][1][1], -d_rate_d_b, 1e-15);
-    // d[C]/d[A] = +d(rate)/d[A]
-    EXPECT_NEAR(jacobian[0][2][0], d_rate_d_a, 1e-15);
-    // d[C]/d[B] = +d(rate)/d[B]
-    EXPECT_NEAR(jacobian[0][2][1], d_rate_d_b, 1e-15);
-    // d[A]/d[S] = -d(rate)/d[S]
-    EXPECT_NEAR(jacobian[0][0][3], -d_rate_d_s, 1e-15);
-    // d[B]/d[S] = -d(rate)/d[S]
-    EXPECT_NEAR(jacobian[0][1][3], -d_rate_d_s, 1e-15);
-    // d[C]/d[S] = +d(rate)/d[S]
-    EXPECT_NEAR(jacobian[0][2][3], d_rate_d_s, 1e-15);
+    // Stores -J convention: reactant rows get +, product rows get -
+    // -J[A,A]
+    EXPECT_NEAR(jacobian[0][0][0], d_rate_d_a, 1e-15);
+    // -J[A,B]
+    EXPECT_NEAR(jacobian[0][0][1], d_rate_d_b, 1e-15);
+    // -J[B,A]
+    EXPECT_NEAR(jacobian[0][1][0], d_rate_d_a, 1e-15);
+    // -J[B,B]
+    EXPECT_NEAR(jacobian[0][1][1], d_rate_d_b, 1e-15);
+    // -J[C,A]
+    EXPECT_NEAR(jacobian[0][2][0], -d_rate_d_a, 1e-15);
+    // -J[C,B]
+    EXPECT_NEAR(jacobian[0][2][1], -d_rate_d_b, 1e-15);
+    // -J[A,S]
+    EXPECT_NEAR(jacobian[0][0][3], d_rate_d_s, 1e-15);
+    // -J[B,S]
+    EXPECT_NEAR(jacobian[0][1][3], d_rate_d_s, 1e-15);
+    // -J[C,S]
+    EXPECT_NEAR(jacobian[0][2][3], -d_rate_d_s, 1e-15);
 }
 
 TEST(DissolvedReaction, JacobianFunctionSolventPartial)
@@ -964,13 +965,13 @@ TEST(DissolvedReaction, JacobianFunctionSolventPartial)
     // d(rate)/d[C] (as solvent) = k * (1-2) / [C]^2 * [A] * [C] = -k * [A] / [C]
     double d_rate_d_c_solvent = k * (1 - 2) / std::pow(40.0, 2) * 0.5 * 40.0;
 
-    // The solvent and reactant C contributions are separate Jacobian entries applied additively.
-    // d[A]/d[A] = -d(rate)/d[A] = -k
-    EXPECT_NEAR(jacobian[0][0][0], -d_rate_d_a, 1e-10);
-    // d[B]/d[A] = +d(rate)/d[A] = +k
-    EXPECT_NEAR(jacobian[0][2][0], d_rate_d_a, 1e-10);
-    // d[A]/d[C] = -d(rate)/d[C]_reactant + -d(rate)/d[C]_solvent
-    EXPECT_NEAR(jacobian[0][0][1], -d_rate_d_c_reactant - d_rate_d_c_solvent, 1e-10);
-    // d[B]/d[C] = +d(rate)/d[C]_reactant + +d(rate)/d[C]_solvent
-    EXPECT_NEAR(jacobian[0][2][1], d_rate_d_c_reactant + d_rate_d_c_solvent, 1e-10);
+    // Stores -J convention
+    // -J[A,A] = +d(rate)/d[A]
+    EXPECT_NEAR(jacobian[0][0][0], d_rate_d_a, 1e-10);
+    // -J[B,A] = -d(rate)/d[A]
+    EXPECT_NEAR(jacobian[0][2][0], -d_rate_d_a, 1e-10);
+    // -J[A,C] = +d(rate)/d[C]_reactant + d(rate)/d[C]_solvent
+    EXPECT_NEAR(jacobian[0][0][1], d_rate_d_c_reactant + d_rate_d_c_solvent, 1e-10);
+    // -J[B,C] = -d(rate)/d[C]_reactant - d(rate)/d[C]_solvent
+    EXPECT_NEAR(jacobian[0][2][1], -d_rate_d_c_reactant - d_rate_d_c_solvent, 1e-10);
 }

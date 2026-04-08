@@ -423,19 +423,19 @@ namespace miam
                         state_variables.GetConstColumnView(variable_indices.reactant_indices_[i_phase][r]),
                         d_forward_rate_d_ind);
                   }
-                  // apply partial to dependent reactants
+                  // apply partial to dependent reactants (subtract: -J convention)
                   for (std::size_t i_dep = 0; i_dep < reactants_.size(); ++i_dep)
                   {
                     jacobian_values.ForEachBlock(
-                        [&](const double& partial, double& jacobian) { jacobian -= partial; },
+                        [&](const double& partial, double& jacobian) { jacobian += partial; },
                         d_forward_rate_d_ind,
                         jacobian_values.GetBlockView(*jac_id++));
                   }
-                  // apply partial to dependent products
+                  // apply partial to dependent products (subtract: -J convention)
                   for (std::size_t i_dep = 0; i_dep < products_.size(); ++i_dep)
                   {
                     jacobian_values.ForEachBlock(
-                        [&](const double& partial, double& jacobian) { jacobian += partial; },
+                        [&](const double& partial, double& jacobian) { jacobian -= partial; },
                         d_forward_rate_d_ind,
                         jacobian_values.GetBlockView(*jac_id++));
                   }
@@ -460,19 +460,19 @@ namespace miam
                         state_variables.GetConstColumnView(variable_indices.product_indices_[i_phase][p]),
                         d_reverse_rate_d_ind);
                   }
-                  // apply partial to dependent reactants
+                  // apply partial to dependent reactants (subtract: -J convention)
                   for (std::size_t i_dep = 0; i_dep < reactants_.size(); ++i_dep)
                   {
                     jacobian_values.ForEachBlock(
-                        [&](const double& partial, double& jacobian) { jacobian += partial; },
+                        [&](const double& partial, double& jacobian) { jacobian -= partial; },
                         d_reverse_rate_d_ind,
                         jacobian_values.GetBlockView(*jac_id++));
                   }
-                  // apply partial to dependent products
+                  // apply partial to dependent products (subtract: -J convention)
                   for (std::size_t i_dep = 0; i_dep < products_.size(); ++i_dep)
                   {
                     jacobian_values.ForEachBlock(
-                        [&](const double& partial, double& jacobian) { jacobian -= partial; },
+                        [&](const double& partial, double& jacobian) { jacobian += partial; },
                         d_reverse_rate_d_ind,
                         jacobian_values.GetBlockView(*jac_id++));
                   }
@@ -510,27 +510,27 @@ namespace miam
                       state_variables.GetConstColumnView(variable_indices.product_indices_[i_phase][p]),
                       d_reverse_rate_d_ind);
                 }
-                // apply partials to dependent reactants
+                // apply partials to dependent reactants (subtract: -J convention)
                 for (std::size_t i_dep = 0; i_dep < reactants_.size(); ++i_dep)
-                {
-                  jacobian_values.ForEachBlock(
-                      [&](const double& forward_partial, const double& reverse_partial, double& jacobian)
-                      {
-                        jacobian -= forward_partial;
-                        jacobian += reverse_partial;
-                      },
-                      d_forward_rate_d_ind,
-                      d_reverse_rate_d_ind,
-                      jacobian_values.GetBlockView(*jac_id++));
-                }
-                // apply partials to dependent products
-                for (std::size_t i_dep = 0; i_dep < products_.size(); ++i_dep)
                 {
                   jacobian_values.ForEachBlock(
                       [&](const double& forward_partial, const double& reverse_partial, double& jacobian)
                       {
                         jacobian += forward_partial;
                         jacobian -= reverse_partial;
+                      },
+                      d_forward_rate_d_ind,
+                      d_reverse_rate_d_ind,
+                      jacobian_values.GetBlockView(*jac_id++));
+                }
+                // apply partials to dependent products (subtract: -J convention)
+                for (std::size_t i_dep = 0; i_dep < products_.size(); ++i_dep)
+                {
+                  jacobian_values.ForEachBlock(
+                      [&](const double& forward_partial, const double& reverse_partial, double& jacobian)
+                      {
+                        jacobian -= forward_partial;
+                        jacobian += reverse_partial;
                       },
                       d_forward_rate_d_ind,
                       d_reverse_rate_d_ind,

@@ -176,22 +176,30 @@ namespace miam
         auto hlc_rt_values = hlc_rt_values_;
         double Mw_rho = Mw_solvent_ / rho_solvent_;
 
-        return [indices, hlc_rt_values, Mw_rho](const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& residual)
-        {
-          for (std::size_t i_phase = 0; i_phase < indices.number_of_phase_instances_; ++i_phase)
-          {
-            for (std::size_t row = 0; row < state_variables.NumRows(); ++row)
-            {
-              double hlc_rt = (*hlc_rt_values)[row];
-              double gas_conc = state_variables[row][indices.gas_idx_];
-              double aq_conc = state_variables[row][indices.aq_indices_[i_phase]];
-              double solvent_conc = state_variables[row][indices.solvent_indices_[i_phase]];
+        DenseMatrixPolicy dummy_state{ 1, state_variable_indices.size(), 0.0 };
+        std::vector<double> dummy_hlc;
 
-              double f_v = solvent_conc * Mw_rho;
-              residual[row][indices.aq_indices_[i_phase]] = hlc_rt * f_v * gas_conc - aq_conc;
-            }
-          }
-        };
+        auto inner = DenseMatrixPolicy::Function(
+            [indices, Mw_rho](auto&& hlc_rt_vec, auto&& state_variables, auto&& residual)
+            {
+              for (std::size_t i_phase = 0; i_phase < indices.number_of_phase_instances_; ++i_phase)
+              {
+                // G = HLC*R*T * f_v * [A_g] - [A_aq],  where f_v = [S] * Mw/rho
+                residual.ForEachRow(
+                    [Mw_rho](const double& hlc_rt, const double& gas, const double& aq, const double& sol, double& res)
+                    { res = hlc_rt * (sol * Mw_rho) * gas - aq; },
+                    hlc_rt_vec,
+                    state_variables.GetConstColumnView(indices.gas_idx_),
+                    state_variables.GetConstColumnView(indices.aq_indices_[i_phase]),
+                    state_variables.GetConstColumnView(indices.solvent_indices_[i_phase]),
+                    residual.GetColumnView(indices.aq_indices_[i_phase]));
+              }
+            },
+            dummy_hlc, dummy_state, dummy_state);
+
+        return [inner = std::move(inner), hlc_rt_values](
+                   const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& residual) mutable
+        { inner(*hlc_rt_values, state_variables, residual); };
       }
 
       /// @brief Returns a function that computes constraint Jacobian entries (subtracts dG/dy)
@@ -206,34 +214,62 @@ namespace miam
           const SparseMatrixPolicy& jacobian) const
       {
         auto indices = GetStateVariableIndices(phase_prefixes, state_variable_indices);
-        auto jac_indices = GetJacobianIndices(indices, jacobian);
         auto hlc_rt_values = hlc_rt_values_;
         double Mw_rho = Mw_solvent_ / rho_solvent_;
 
-        return [indices, jac_indices, hlc_rt_values, Mw_rho](
-                   const DenseMatrixPolicy& state_variables, SparseMatrixPolicy& jacobian_values)
+        // Pre-compute block-0 VectorIndex offsets per instance
+        struct PerInstanceJacData
         {
-          for (std::size_t i_phase = 0; i_phase < indices.number_of_phase_instances_; ++i_phase)
-          {
-            for (std::size_t row = 0; row < state_variables.NumRows(); ++row)
-            {
-              double hlc_rt = (*hlc_rt_values)[row];
-              double gas_conc = state_variables[row][indices.gas_idx_];
-              double solvent_conc = state_variables[row][indices.solvent_indices_[i_phase]];
-
-              double f_v = solvent_conc * Mw_rho;
-
-              // jac -= dG/d[A_g] = HLC * R * T * f_v
-              jacobian_values.AsVector()[jac_indices.gas_jac_indices_[i_phase]] -= hlc_rt * f_v;
-
-              // jac -= dG/d[A_aq] = -1
-              jacobian_values.AsVector()[jac_indices.aq_jac_indices_[i_phase]] -= (-1.0);
-
-              // jac -= dG/d[S] = HLC * R * T * Mw/rho * [A_g]
-              jacobian_values.AsVector()[jac_indices.solvent_jac_indices_[i_phase]] -= hlc_rt * Mw_rho * gas_conc;
-            }
-          }
+          std::size_t gas_vec;
+          std::size_t aq_vec;
+          std::size_t solvent_vec;
         };
+        std::vector<PerInstanceJacData> jac_data(indices.number_of_phase_instances_);
+        for (std::size_t i_phase = 0; i_phase < indices.number_of_phase_instances_; ++i_phase)
+        {
+          std::size_t aq_row = indices.aq_indices_[i_phase];
+          jac_data[i_phase].gas_vec = jacobian.VectorIndex(0, aq_row, indices.gas_idx_);
+          jac_data[i_phase].aq_vec = jacobian.VectorIndex(0, aq_row, aq_row);
+          jac_data[i_phase].solvent_vec = jacobian.VectorIndex(0, aq_row, indices.solvent_indices_[i_phase]);
+        }
+
+        DenseMatrixPolicy dummy_state{ 1, state_variable_indices.size(), 0.0 };
+        std::vector<double> dummy_hlc;
+
+        auto inner = SparseMatrixPolicy::Function(
+            [indices, jac_data, Mw_rho](auto&& hlc_rt_vec, auto&& state_variables, auto&& jacobian_values)
+            {
+              for (std::size_t i_phase = 0; i_phase < indices.number_of_phase_instances_; ++i_phase)
+              {
+                const auto& jd = jac_data[i_phase];
+
+                auto bv_gas = jacobian_values.GetBlockView(jd.gas_vec);
+                auto bv_aq = jacobian_values.GetBlockView(jd.aq_vec);
+                auto bv_sol = jacobian_values.GetBlockView(jd.solvent_vec);
+
+                // jac -= dG/d[A_g] = HLC*R*T * f_v
+                // jac -= dG/d[A_aq] = -1
+                // jac -= dG/d[S] = HLC*R*T * Mw/rho * [A_g]
+                jacobian_values.ForEachBlock(
+                    [Mw_rho](const double& hlc_rt, const double& gas, const double& sol,
+                             double& j_gas, double& j_aq, double& j_sol)
+                    {
+                      double f_v = sol * Mw_rho;
+                      j_gas -= hlc_rt * f_v;
+                      j_aq -= (-1.0);
+                      j_sol -= hlc_rt * Mw_rho * gas;
+                    },
+                    hlc_rt_vec,
+                    state_variables.GetConstColumnView(indices.gas_idx_),
+                    state_variables.GetConstColumnView(indices.solvent_indices_[i_phase]),
+                    bv_gas, bv_aq, bv_sol);
+              }
+            },
+            dummy_hlc, dummy_state, jacobian);
+
+        return [inner = std::move(inner), hlc_rt_values](
+                   const DenseMatrixPolicy& state_variables, SparseMatrixPolicy& jacobian_values) mutable
+        { inner(*hlc_rt_values, state_variables, jacobian_values); };
       }
 
      private:
@@ -249,9 +285,10 @@ namespace miam
       /// @brief Helper struct for Jacobian sparse matrix indices
       struct JacobianIndices
       {
-        std::vector<std::size_t> gas_jac_indices_;      ///< [aq_row, gas_col] per instance
-        std::vector<std::size_t> aq_jac_indices_;       ///< [aq_row, aq_col] per instance
-        std::vector<std::size_t> solvent_jac_indices_;   ///< [aq_row, solvent_col] per instance
+        std::vector<std::size_t> gas_jac_indices_;      ///< [aq_row, gas_col] per instance (block 0)
+        std::vector<std::size_t> aq_jac_indices_;       ///< [aq_row, aq_col] per instance (block 0)
+        std::vector<std::size_t> solvent_jac_indices_;   ///< [aq_row, solvent_col] per instance (block 0)
+        std::size_t block_stride_;                       ///< Flat vector stride between blocks
       };
 
       /// @brief Build state variable indices for all phase instances
@@ -297,9 +334,12 @@ namespace miam
           const auto& jacobian) const
       {
         JacobianIndices jac_indices;
+        std::size_t num_blocks = jacobian.NumberOfBlocks();
+        std::size_t block_stride = jacobian.FlatBlockSize();
         jac_indices.gas_jac_indices_.resize(var_indices.number_of_phase_instances_);
         jac_indices.aq_jac_indices_.resize(var_indices.number_of_phase_instances_);
         jac_indices.solvent_jac_indices_.resize(var_indices.number_of_phase_instances_);
+        jac_indices.block_stride_ = block_stride;
 
         for (std::size_t i_phase = 0; i_phase < var_indices.number_of_phase_instances_; ++i_phase)
         {
