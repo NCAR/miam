@@ -133,14 +133,14 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
   double time = 0.0;
   const double tolerance = 5.0e-3;  // Allow some tolerance for DAE solver
 
-  solver.CalculateRateConstants(state);
+  solver.UpdateStateParameters(state);
 
   for (double target_time : test_times)
   {
     while (time < target_time - 1.0e-10)
     {
       double dt = std::min(0.1, target_time - time);
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
       ASSERT_EQ(result.state_, SolverState::Converged)
         << "Solver failed at t = " << time << " s with dt = " << dt;
@@ -300,7 +300,7 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
   while (time < 200.0)
   {
     double dt = 0.1;
-    solver.CalculateRateConstants(state);
+    solver.UpdateStateParameters(state);
     auto result = solver.Solve(dt, state);
     ASSERT_EQ(result.state_, SolverState::Converged)
       << "Solver failed at t = " << time;

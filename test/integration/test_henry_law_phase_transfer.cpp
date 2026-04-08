@@ -169,7 +169,7 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   while (time < total_time - 1.0e-15)
   {
     double step = std::min(dt, total_time - time);
-    solver.CalculateRateConstants(state);
+    solver.UpdateStateParameters(state);
     auto result = solver.Solve(step, state);
     ASSERT_EQ(result.state_, SolverState::Converged)
         << "Solver failed at t = " << time;
@@ -314,7 +314,7 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
   while (time < total_time - 1.0e-15)
   {
     double step = std::min(dt, total_time - time);
-    solver.CalculateRateConstants(state);
+    solver.UpdateStateParameters(state);
     auto result = solver.Solve(step, state);
     ASSERT_EQ(result.state_, SolverState::Converged)
         << "Solver failed at t = " << time;
@@ -437,7 +437,7 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
     while (time < total_time - 1.0e-15)
     {
       double step = std::min(dt, total_time - time);
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(step, state);
       EXPECT_EQ(result.state_, SolverState::Converged)
           << "Solver failed at T=" << T << " t=" << time;
@@ -555,7 +555,7 @@ TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
     while (time < total_time - 1.0e-15)
     {
       double step = std::min(dt, total_time - time);
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(step, state);
       EXPECT_EQ(result.state_, SolverState::Converged);
       time += step;

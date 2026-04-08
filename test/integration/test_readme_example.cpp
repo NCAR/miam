@@ -84,7 +84,7 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   state.PrintState(0);
   for (int i = 1; i <= 10; ++i)
   {
-    solver.CalculateRateConstants(state);
+    solver.UpdateStateParameters(state);
     auto result = solver.Solve(0.1, state);  // 100 ms steps
     state.PrintState(i * 100);
   }

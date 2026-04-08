@@ -79,14 +79,14 @@ TEST(DissolvedReactionIntegration, SimpleFirstOrderDecay)
   double time = 0.0;
   const double tolerance = 2.0e-4;
 
-  solver.CalculateRateConstants(state);
+  solver.UpdateStateParameters(state);
 
   for (double target_time : test_times)
   {
     while (time < target_time - 1.0e-10)
     {
       double dt = std::min(0.01, target_time - time);
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
       ASSERT_EQ(result.state_, SolverState::Converged)
         << "Solver failed at t = " << time << " s";
@@ -189,14 +189,14 @@ TEST(DissolvedReactionIntegration, SolventAsReactant)
   double time = 0.0;
   const double tolerance = 1.0e-8;
 
-  solver.CalculateRateConstants(state);
+  solver.UpdateStateParameters(state);
 
   for (double target_time : test_times)
   {
     while (time < target_time - 1.0e-10)
     {
       double dt = std::min(1.0, target_time - time);
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
       ASSERT_EQ(result.state_, SolverState::Converged)
         << "Solver failed at t = " << time << " s";
@@ -296,14 +296,14 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
   double time = 0.0;
   const double tolerance = 1.0e-4;
 
-  solver.CalculateRateConstants(state);
+  solver.UpdateStateParameters(state);
 
   for (double target_time : test_times)
   {
     while (time < target_time - 1.0e-10)
     {
       double dt = std::min(1.0, target_time - time);
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
       ASSERT_EQ(result.state_, SolverState::Converged)
         << "Solver failed at t = " << time << " s";
@@ -434,14 +434,14 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
   double time = 0.0;
   const double tolerance = 2.0e-4;
 
-  solver.CalculateRateConstants(state);
+  solver.UpdateStateParameters(state);
 
   for (double target_time : test_times)
   {
     while (time < target_time - 1.0e-10)
     {
       double dt = std::min(0.01, target_time - time);
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
       ASSERT_EQ(result.state_, SolverState::Converged)
         << "Solver failed at t = " << time << " s";
@@ -567,14 +567,14 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
   double time = 0.0;
   const double tolerance = 1.0e-5;
 
-  solver.CalculateRateConstants(state);
+  solver.UpdateStateParameters(state);
 
   for (double target_time : test_times)
   {
     while (time < target_time - 1.0e-10)
     {
       double dt = std::min(t_half * 0.001, target_time - time);
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
       ASSERT_EQ(result.state_, SolverState::Converged)
         << "Solver failed at t = " << time << " s";

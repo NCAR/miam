@@ -82,7 +82,7 @@ namespace
     // Integrate to steady state
     for (int step = 0; step < 5000; ++step)
     {
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(0.01, state);
       if (result.state_ != SolverState::Converged)
         break;
@@ -181,7 +181,7 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
     // Integrate well past all timescales
     for (int step = 0; step < 5000; ++step)
     {
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(0.01, state);
       EXPECT_EQ(result.state_, SolverState::Converged) << "Kinetic solver failed at step " << step;
     }
@@ -262,7 +262,7 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
     // just need enough time for A to decay
     for (int step = 0; step < 500; ++step)
     {
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(0.1, state);
       EXPECT_EQ(result.state_, SolverState::Converged) << "DAE solver failed at step " << step;
     }
@@ -395,7 +395,7 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
     // Integrate to equilibrium (long enough for mass transfer)
     for (int step = 0; step < 10000; ++step)
     {
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(0.01, state);
       if (result.state_ != SolverState::Converged)
         break;
@@ -476,7 +476,7 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
     // DAE solver should reach equilibrium quickly
     for (int step = 0; step < 100; ++step)
     {
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(1.0, state);
       EXPECT_EQ(result.state_, SolverState::Converged) << "DAE solver failed at step " << step;
     }

@@ -343,9 +343,6 @@ namespace miam
     }
 
     /// @brief Returns non-zero constraint Jacobian element positions
-    /// @details Also includes process Jacobian elements for algebraic rows, since the solver builder
-    ///          removes process elements from algebraic rows but the process JacobianFunction still
-    ///          needs those elements to exist in the sparse matrix for VectorIndex lookups.
     std::set<std::pair<std::size_t, std::size_t>> NonZeroConstraintJacobianElements(
         const std::unordered_map<std::string, std::size_t>& state_indices) const
     {
@@ -357,32 +354,6 @@ namespace miam
             auto c_elements = c.NonZeroConstraintJacobianElements(phase_prefixes, state_indices);
             elements.insert(c_elements.begin(), c_elements.end());
           });
-
-      // Include process Jacobian elements whose rows are algebraic.
-      // The solver builder filters process elements from algebraic rows, then merges
-      // constraint elements. By including process elements here, they survive the filter.
-      auto algebraic_names = ConstraintAlgebraicVariableNames();
-      std::set<std::size_t> algebraic_rows;
-      for (const auto& name : algebraic_names)
-      {
-        auto it = state_indices.find(name);
-        if (it != state_indices.end())
-          algebraic_rows.insert(it->second);
-      }
-      if (!algebraic_rows.empty())
-      {
-        ForEachProcess(
-            [&](const auto& process)
-            {
-              auto p_elements = process.NonZeroJacobianElements(phase_prefixes, state_indices);
-              for (const auto& elem : p_elements)
-              {
-                if (algebraic_rows.count(elem.first) > 0)
-                  elements.insert(elem);
-              }
-            });
-      }
-
       return elements;
     }
 
