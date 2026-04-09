@@ -50,11 +50,20 @@ namespace miam
         return *this;
       }
 
-      /// @brief Sets the rate constant function
-      DissolvedReactionBuilder& SetRateConstant(const auto& rate_constant)
+      /// @brief Sets the rate constant from an object with a Calculate method
+      template<typename T>
+          requires requires(const T& t, const micm::Conditions& c) { { t.Calculate(c) }; }
+      DissolvedReactionBuilder& SetRateConstant(const T& rate_constant)
       {
         rate_constant_ = [rate_constant](const micm::Conditions& conditions)
         { return rate_constant.Calculate(conditions); };
+        return *this;
+      }
+
+      /// @brief Sets the rate constant from a std::function or lambda
+      DissolvedReactionBuilder& SetRateConstant(std::function<double(const micm::Conditions&)> rate_constant)
+      {
+        rate_constant_ = std::move(rate_constant);
         return *this;
       }
 

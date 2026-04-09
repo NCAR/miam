@@ -10,3 +10,4 @@ create_standard_test(NAME equilibrium_constraints_integration SOURCES test_equil
 create_standard_test(NAME henry_law_equilibrium_constraint_integration SOURCES test_henry_law_equilibrium_constraint.cpp)
 create_standard_test(NAME kinetic_vs_constrained SOURCES test_kinetic_vs_constrained.cpp)
 create_standard_test(NAME jacobian_verification SOURCES test_jacobian_verification.cpp)
+create_standard_test(NAME cam_cloud_chemistry SOURCES test_cam_cloud_chemistry.cpp)
