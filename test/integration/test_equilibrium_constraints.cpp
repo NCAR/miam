@@ -335,3 +335,140 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
   EXPECT_NEAR(state.variables_[0][i_C_small] / state.variables_[0][i_B_small], K_eq, 1.0e-3);
   EXPECT_NEAR(state.variables_[0][i_C_large] / state.variables_[0][i_B_large], K_eq, 1.0e-3);
 }
+
+// ============================================================================
+// Test 3: Same as Test 1 but with deliberately inconsistent initial conditions
+//
+// The algebraic variables B and C are initialized to values that violate
+// both the equilibrium constraint (C ≠ K_eq * B) and the mass conservation
+// ([A]+[B]+[C] ≠ total). The solver's constraint initialization (Newton
+// iteration) should project them onto the constraint manifold before
+// time-stepping begins.
+// ============================================================================
+TEST(EquilibriumConstraintsIntegration, InconsistentInitialConditions)
+{
+  auto A = Species{ "A" };
+  auto B = Species{ "B" };
+  auto C = Species{ "C" };
+  auto S = Species{ "S" };
+
+  auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
+  auto droplet = representation::UniformSection{
+    "DROPLET",
+    { aqueous_phase }
+  };
+
+  double k = 0.1;
+  double K_eq = 2.0;
+  double A0 = 1.0;
+  double total = A0;
+
+  auto rate = [k](const Conditions& conditions) { return k; };
+  auto reaction = process::DissolvedReaction{
+    rate, { A }, { B }, S, aqueous_phase
+  };
+
+  auto equil = constraint::DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ B })
+      .SetProducts({ C })
+      .SetAlgebraicSpecies(C)
+      .SetSolvent(S)
+      .SetEquilibriumConstant(process::constant::EquilibriumConstant(
+          process::constant::EquilibriumConstantParameters{ .A_ = K_eq }))
+      .Build();
+
+  auto mass_cons = constraint::LinearConstraintBuilder()
+      .SetAlgebraicSpecies(aqueous_phase, B)
+      .AddTerm(aqueous_phase, A, 1.0)
+      .AddTerm(aqueous_phase, B, 1.0)
+      .AddTerm(aqueous_phase, C, 1.0)
+      .SetConstant(total)
+      .Build();
+
+  auto model = Model{
+    .name_ = "AEROSOL",
+    .representations_ = { droplet }
+  };
+  model.AddProcesses({ reaction });
+  model.AddConstraints(equil, mass_cons);
+
+  Phase gas_phase{ "GAS", {} };
+  auto system = System(gas_phase, model);
+  auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
+                    RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
+                    .SetSystem(system)
+                    .AddExternalModel(model)
+                    .SetIgnoreUnusedSpecies(true)
+                    .Build();
+
+  State state = solver.GetState();
+
+  auto find_idx = [&](const std::string& name) {
+    auto it = std::find(state.variable_names_.begin(), state.variable_names_.end(), name);
+    EXPECT_NE(it, state.variable_names_.end()) << "Species " << name << " not found";
+    return static_cast<std::size_t>(it - state.variable_names_.begin());
+  };
+
+  std::size_t i_A = find_idx("DROPLET.AQUEOUS.A");
+  std::size_t i_B = find_idx("DROPLET.AQUEOUS.B");
+  std::size_t i_C = find_idx("DROPLET.AQUEOUS.C");
+  std::size_t i_S = find_idx("DROPLET.AQUEOUS.S");
+
+  // Deliberately INCONSISTENT initial conditions:
+  // The constraint-consistent values are B=0, C=0 (since A0=total).
+  // Instead, set B and C to arbitrary wrong values.
+  state.variables_[0][i_A] = A0;
+  state.variables_[0][i_B] = 5.0;   // wrong: violates [A]+[B]+[C]=total
+  state.variables_[0][i_C] = 10.0;  // wrong: violates C = K_eq*B
+  state.variables_[0][i_S] = 1.0e-4;
+
+  state.conditions_[0].temperature_ = 298.15;
+  state.conditions_[0].pressure_ = 101325.0;
+
+  droplet.SetDefaultParameters(state);
+
+  std::vector<double> test_times = { 1.0, 5.0, 10.0, 100.0 };
+  double time = 0.0;
+  const double tolerance = 5.0e-3;
+
+  solver.UpdateStateParameters(state);
+
+  for (double target_time : test_times)
+  {
+    while (time < target_time - 1.0e-10)
+    {
+      double dt = std::min(0.1, target_time - time);
+      solver.UpdateStateParameters(state);
+      auto result = solver.Solve(dt, state);
+      ASSERT_EQ(result.state_, SolverState::Converged)
+        << "Solver failed at t = " << time << " s with dt = " << dt;
+      time += dt;
+    }
+
+    double A_num = state.variables_[0][i_A];
+    double B_num = state.variables_[0][i_B];
+    double C_num = state.variables_[0][i_C];
+
+    double A_an = A0 * std::exp(-k * time);
+    double B_an = (total - A_an) / (1.0 + K_eq);
+    double C_an = K_eq * (total - A_an) / (1.0 + K_eq);
+
+    EXPECT_NEAR(A_num, A_an, tolerance)
+      << "Species A mismatch at t = " << time << " s";
+    EXPECT_NEAR(B_num, B_an, tolerance)
+      << "Species B mismatch at t = " << time << " s";
+    EXPECT_NEAR(C_num, C_an, tolerance)
+      << "Species C mismatch at t = " << time << " s";
+
+    double mass = A_num + B_num + C_num;
+    EXPECT_NEAR(mass, total, 1.0e-4)
+      << "Mass conservation violated at t = " << time << " s";
+
+    if (B_num > 1.0e-10)
+    {
+      EXPECT_NEAR(C_num / B_num, K_eq, 1.0e-3)
+        << "Equilibrium ratio violated at t = " << time << " s";
+    }
+  }
+}
