@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <miam/constraints/linear_constraint.hpp>
+#include <miam/constraints/linear_constraint_builder.hpp>
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>

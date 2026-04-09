@@ -36,7 +36,14 @@ namespace
 TEST(DissolvedEquilibriumConstraint, AlgebraicVariableNamesSinglePrefix)
 {
   auto keq = [](const micm::Conditions&) { return 10.0; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -49,7 +56,14 @@ TEST(DissolvedEquilibriumConstraint, AlgebraicVariableNamesSinglePrefix)
 TEST(DissolvedEquilibriumConstraint, AlgebraicVariableNamesMultiplePrefixes)
 {
   auto keq = [](const micm::Conditions&) { return 10.0; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -64,7 +78,14 @@ TEST(DissolvedEquilibriumConstraint, AlgebraicVariableNamesMultiplePrefixes)
 TEST(DissolvedEquilibriumConstraint, AlgebraicVariableNamesNoMatchingPhase)
 {
   auto keq = [](const micm::Conditions&) { return 10.0; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["OTHER"].insert("PREFIX");
@@ -78,7 +99,14 @@ TEST(DissolvedEquilibriumConstraint, AlgebraicVariableNamesNoMatchingPhase)
 TEST(DissolvedEquilibriumConstraint, SpeciesDependencies)
 {
   auto keq = [](const micm::Conditions&) { return 10.0; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B, hp }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B, hp })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -97,7 +125,14 @@ TEST(DissolvedEquilibriumConstraint, SpeciesDependencies)
 TEST(DissolvedEquilibriumConstraint, NonZeroJacobianElements)
 {
   auto keq = [](const micm::Conditions&) { return 10.0; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B, hp }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B, hp })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -124,7 +159,14 @@ TEST(DissolvedEquilibriumConstraint, ResidualSimpleAB)
   // G = K_eq * [A] - [B] = 0
   double K_eq = 10.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -162,7 +204,14 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultiReactant)
   // G = K_eq * [A]*[B] / [S] - [C] / [S]^0 = K_eq * [A]*[B]/[S] - [C]
   double K_eq = 2.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A, B }, { C }, C, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A, B })
+      .SetProducts({ C })
+      .SetAlgebraicSpecies(C)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -201,7 +250,14 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleInstances)
 {
   double K_eq = 5.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("LARGE");
@@ -245,7 +301,14 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleCells)
 {
   double K_eq = 4.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -287,7 +350,14 @@ TEST(DissolvedEquilibriumConstraint, JacobianSimpleAB)
   // dG/dA = K_eq, dG/dB = -1
   double K_eq = 10.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -337,7 +407,14 @@ TEST(DissolvedEquilibriumConstraint, JacobianMultiReactant)
   // G = K_eq * [A]*[B]/[S] - [C]
   double K_eq = 2.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A, B }, { C }, C, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A, B })
+      .SetProducts({ C })
+      .SetAlgebraicSpecies(C)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -395,7 +472,14 @@ TEST(DissolvedEquilibriumConstraint, UpdateConstraintParametersTemperatureDep)
 {
   // K_eq(T) = 1000.0 / T
   auto keq = [](const micm::Conditions& c) { return 1000.0 / c.temperature_; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   auto update_fn = constraint.UpdateConstraintParametersFunction<micm::Matrix<double>>();
 
@@ -554,7 +638,14 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDSimpleAB)
 {
   double K_eq = 10.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -580,7 +671,14 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDMultiReactant)
 {
   double K_eq = 2.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A, B }, { C }, C, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A, B })
+      .SetProducts({ C })
+      .SetAlgebraicSpecies(C)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -608,7 +706,14 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDMultiProduct)
 {
   double K_eq = 0.5;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B, hp }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B, hp })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -636,7 +741,14 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDMultiReactantMultiProduct)
 {
   double K_eq = 3.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A, B }, { C, hp }, C, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A, B })
+      .SetProducts({ C, hp })
+      .SetAlgebraicSpecies(C)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("M1");
@@ -666,7 +778,14 @@ TEST(DissolvedEquilibriumConstraint, ResidualAndJacobianFDMultipleCells)
 {
   double K_eq = 5.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -706,7 +825,14 @@ TEST(DissolvedEquilibriumConstraint, MultiInstanceMultiCellFD)
 {
   double K_eq = 3.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A, B }, { C }, C, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A, B })
+      .SetProducts({ C })
+      .SetAlgebraicSpecies(C)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("LARGE");
@@ -764,7 +890,14 @@ TEST(DissolvedEquilibriumConstraint, ThreeInstancesFD)
 {
   double K_eq = 7.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B, hp }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B, hp })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("A");
@@ -798,7 +931,14 @@ TEST(DissolvedEquilibriumConstraint, JacobianAccumulates)
 {
   double K_eq = 10.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -833,7 +973,14 @@ TEST(DissolvedEquilibriumConstraint, ResidualSetsNotAccumulates)
 {
   double K_eq = 10.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -864,7 +1011,14 @@ TEST(DissolvedEquilibriumConstraint, TemperatureDependentKeqFD)
 {
   // K_eq(T) = 1000.0 / T
   auto keq = [](const micm::Conditions& c) { return 1000.0 / c.temperature_; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -907,7 +1061,14 @@ TEST(DissolvedEquilibriumConstraint, LargeKeqRange)
   // Very large K_eq
   double K_eq = 1.0e8;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -940,7 +1101,14 @@ TEST(DissolvedEquilibriumConstraint, CopiedConstraintProducesSameResults)
 {
   double K_eq = 10.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint original(keq, { A, B }, { C }, C, h2o, aqueous_phase);
+  auto original = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A, B })
+      .SetProducts({ C })
+      .SetAlgebraicSpecies(C)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   auto copy = original.CopyWithNewUuid();
   EXPECT_NE(copy.uuid_, original.uuid_);
@@ -980,7 +1148,14 @@ TEST(DissolvedEquilibriumConstraint, SolventJacobianMultiReactant)
   // dG/dS = K_eq * [A]*[B] * (-1) / [S]^2 = -K_eq*[A]*[B]/[S]^2
   double K_eq = 2.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A, B }, { C }, C, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A, B })
+      .SetProducts({ C })
+      .SetAlgebraicSpecies(C)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1020,7 +1195,14 @@ TEST(DissolvedEquilibriumConstraint, KitchenSinkFD)
 {
   // A + B <-> C + H+,  K_eq(T) = 500.0 / T
   auto keq = [](const micm::Conditions& c) { return 500.0 / c.temperature_; };
-  DissolvedEquilibriumConstraint constraint(keq, { A, B }, { C, hp }, C, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A, B })
+      .SetProducts({ C, hp })
+      .SetAlgebraicSpecies(C)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("M1");
@@ -1060,7 +1242,14 @@ TEST(DissolvedEquilibriumConstraint, CrossInstanceIsolation)
 {
   double K_eq = 5.0;
   auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
-  DissolvedEquilibriumConstraint constraint(keq, { A }, { B }, B, h2o, aqueous_phase);
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetAlgebraicSpecies(B)
+      .SetSolvent(h2o)
+      .SetEquilibriumConstant(keq)
+      .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");

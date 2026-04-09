@@ -53,10 +53,19 @@ namespace miam
         return *this;
       }
 
-      DissolvedEquilibriumConstraintBuilder& SetEquilibriumConstant(const auto& equilibrium_constant)
+      template<typename T>
+          requires requires(const T& t, const micm::Conditions& c) { { t.Calculate(c) }; }
+      DissolvedEquilibriumConstraintBuilder& SetEquilibriumConstant(const T& equilibrium_constant)
       {
         equilibrium_constant_ = [equilibrium_constant](const micm::Conditions& conditions)
         { return equilibrium_constant.Calculate(conditions); };
+        return *this;
+      }
+
+      DissolvedEquilibriumConstraintBuilder& SetEquilibriumConstant(
+          std::function<double(const micm::Conditions&)> equilibrium_constant)
+      {
+        equilibrium_constant_ = std::move(equilibrium_constant);
         return *this;
       }
 

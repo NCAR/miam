@@ -48,10 +48,19 @@ namespace miam
         return *this;
       }
 
-      HenryLawEquilibriumConstraintBuilder& SetHenryLawConstant(const auto& henry_law_constant)
+      template<typename T>
+          requires requires(const T& t, const micm::Conditions& c) { { t.Calculate(c) }; }
+      HenryLawEquilibriumConstraintBuilder& SetHenryLawConstant(const T& henry_law_constant)
       {
         henry_law_constant_ = [henry_law_constant](const micm::Conditions& conditions)
         { return henry_law_constant.Calculate(conditions); };
+        return *this;
+      }
+
+      HenryLawEquilibriumConstraintBuilder& SetHenryLawConstant(
+          std::function<double(const micm::Conditions&)> henry_law_constant)
+      {
+        henry_law_constant_ = std::move(henry_law_constant);
         return *this;
       }
 

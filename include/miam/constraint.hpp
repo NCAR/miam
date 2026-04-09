@@ -8,3 +8,4 @@
 #include <miam/constraints/henry_law_equilibrium_constraint.hpp>
 #include <miam/constraints/henry_law_equilibrium_constraint_builder.hpp>
 #include <miam/constraints/linear_constraint.hpp>
+#include <miam/constraints/linear_constraint_builder.hpp>
