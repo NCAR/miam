@@ -1,0 +1,3 @@
+create_standard_test(NAME dissolved_equilibrium_constraint SOURCES dissolved_equilibrium_constraint.cpp)
+create_standard_test(NAME henry_law_equilibrium_constraint SOURCES henry_law_equilibrium_constraint.cpp)
+create_standard_test(NAME linear_constraint SOURCES linear_constraint.cpp)

@@ -124,7 +124,7 @@ TEST(DissolvedReversibleReactionIntegration, SimpleAtoB)
   const double tolerance = 1.0e-4;  // mol/m^3 (reasonable for numerical integration)
   
   // Calculate rate constants once before starting
-  solver.CalculateRateConstants(state);
+  solver.UpdateStateParameters(state);
   
   for (double target_time : test_times)
   {
@@ -132,7 +132,7 @@ TEST(DissolvedReversibleReactionIntegration, SimpleAtoB)
     while (time < target_time - 1.0e-10)
     {
       double dt = std::min(0.01, target_time - time);  // Smaller time step
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
       ASSERT_EQ(result.state_, SolverState::Converged) 
         << "Solver failed to converge at time " << time << " s with dt = " << dt << " s";
@@ -256,14 +256,14 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsReactant)
   double time = 0.0;
   const double tolerance = 1.0e-8;  // mol/m^3
   
-  solver.CalculateRateConstants(state);
+  solver.UpdateStateParameters(state);
   
   for (double target_time : test_times)
   {
     while (time < target_time - 1.0e-10)
     {
       double dt = std::min(1.0, target_time - time);
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
       ASSERT_EQ(result.state_, SolverState::Converged) 
         << "Solver failed to converge at time " << time << " s with dt = " << dt << " s";
@@ -403,14 +403,14 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsProduct) {
   // Test integration at multiple times
   std::vector<double> test_times = {1000.0, 2000.0, 4000.0, 10000.0};
   
-  solver.CalculateRateConstants(state);
+  solver.UpdateStateParameters(state);
   double time = 0.0;
   
   for (double target_time : test_times) {
     // Integrate to target time
     while (time < target_time - 1.0e-10) {
       double dt = std::min(1.0, target_time - time);  // 1.0s timestep
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
       ASSERT_EQ(result.state_, SolverState::Converged);
       time += dt;
@@ -590,14 +590,14 @@ TEST(DissolvedReversibleReactionIntegration, MultiPhaseInstances) {
   // Use 100s to reach equilibrium (about 15×tau_small)
   std::vector<double> test_times = { 5.0, 10.0, 20.0, 100.0 };
   
-  solver.CalculateRateConstants(state);
+  solver.UpdateStateParameters(state);
   double time = 0.0;
   
   for (double target_time : test_times) {
     // Integrate to target time
     while (time < target_time - 1.0e-10) {
       double dt = std::min(0.01, target_time - time);  // 0.01s timestep
-      solver.CalculateRateConstants(state);
+      solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
       ASSERT_EQ(result.state_, SolverState::Converged);
       time += dt;
