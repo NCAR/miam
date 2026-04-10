@@ -107,7 +107,7 @@ namespace
       const Model& model, const IndexMaps& maps,
       const DenseMatrix& variables, const DenseMatrix& parameters,
       const std::vector<Conditions>& conditions,
-      double atol = 1.0e-5, double rtol = 1.0e-4)
+      double atol = 0, double rtol = 0)
   {
     const std::size_t num_species = maps.num_variables;
     auto update_fn = model.UpdateStateParametersFunction<DenseMatrix>(maps.parameter_indices);
@@ -126,8 +126,11 @@ namespace
     auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing)
     { forcing_fn(params_copy, vars, forcing); };
     auto fd_jac = FiniteDifferenceJacobian<DenseMatrix>(fd_wrapper, variables, num_species);
-    auto comparison = CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
-        analytical_jac, fd_jac, num_species, atol, rtol);
+    auto comparison = (atol > 0 && rtol > 0)
+        ? CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
+              analytical_jac, fd_jac, num_species, atol, rtol)
+        : CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
+              analytical_jac, fd_jac, num_species);
     EXPECT_TRUE(comparison.passed) << "Process Jacobian mismatch: row=" << comparison.worst_row
                                    << " col=" << comparison.worst_col
                                    << " analytical=" << comparison.worst_analytical
@@ -143,12 +146,14 @@ namespace
       const Model& model, const IndexMaps& maps,
       const DenseMatrix& variables, const DenseMatrix& parameters,
       const std::vector<Conditions>& conditions,
-      double atol = 1.0e-5, double rtol = 1.0e-4)
+      double atol = 0, double rtol = 0)
   {
     const std::size_t num_species = maps.num_variables;
     auto update_fn = model.UpdateStateParametersFunction<DenseMatrix>(maps.parameter_indices);
     DenseMatrix params_copy(parameters);
     update_fn(conditions, params_copy);
+    auto constraint_update_fn = model.ConstraintUpdateStateParametersFunction<DenseMatrix>(maps.parameter_indices);
+    constraint_update_fn(conditions, params_copy);
     auto nz_elements = model.NonZeroConstraintJacobianElements(maps.variable_indices);
     auto builder = SparseMatrixFD::Create(num_species)
                        .SetNumberOfBlocks(variables.NumRows()).InitialValue(0.0);
@@ -156,14 +161,17 @@ namespace
       builder = builder.WithElement(elem.first, elem.second);
     SparseMatrixFD analytical_jac(builder);
     auto jac_fn =
-        model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(maps.variable_indices, analytical_jac);
-    jac_fn(variables, analytical_jac);
-    auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(maps.variable_indices);
+        model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, analytical_jac);
+    jac_fn(variables, DenseMatrix(variables.NumRows(), std::max(maps.num_parameters, std::size_t(1)), 0.0), analytical_jac);
+    auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
     auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing)
-    { residual_fn(vars, forcing); };
+    { residual_fn(vars, DenseMatrix(vars.NumRows(), std::max(maps.num_parameters, std::size_t(1)), 0.0), forcing); };
     auto fd_jac = FiniteDifferenceJacobian<DenseMatrix>(fd_wrapper, variables, num_species);
-    auto comparison = CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
-        analytical_jac, fd_jac, num_species, atol, rtol);
+    auto comparison = (atol > 0 && rtol > 0)
+        ? CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
+              analytical_jac, fd_jac, num_species, atol, rtol)
+        : CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
+              analytical_jac, fd_jac, num_species);
     EXPECT_TRUE(comparison.passed) << "Constraint Jacobian mismatch: row=" << comparison.worst_row
                                    << " col=" << comparison.worst_col
                                    << " analytical=" << comparison.worst_analytical

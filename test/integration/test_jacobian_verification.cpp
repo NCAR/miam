@@ -66,8 +66,8 @@ namespace
       const DenseMatrix& variables,
       const DenseMatrix& parameters,
       const std::vector<micm::Conditions>& conditions,
-      double atol = 1.0e-5,
-      double rtol = 1.0e-4)
+      double atol = 0,
+      double rtol = 0)
   {
     const std::size_t num_blocks = variables.NumRows();
     const std::size_t num_species = maps.num_variables;
@@ -97,8 +97,11 @@ namespace
     auto fd_jac = micm::FiniteDifferenceJacobian<DenseMatrix>(fd_wrapper, variables, num_species);
 
     // Compare
-    auto comparison = micm::CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
-        analytical_jac, fd_jac, num_species, atol, rtol);
+    auto comparison = (atol > 0 && rtol > 0)
+        ? micm::CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
+              analytical_jac, fd_jac, num_species, atol, rtol)
+        : micm::CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
+              analytical_jac, fd_jac, num_species);
 
     EXPECT_TRUE(comparison.passed) << "Process Jacobian mismatch: block=" << comparison.worst_block
                                    << " row=" << comparison.worst_row << " col=" << comparison.worst_col
@@ -120,8 +123,8 @@ namespace
       const DenseMatrix& variables,
       const DenseMatrix& parameters,
       const std::vector<micm::Conditions>& conditions,
-      double atol = 1.0e-5,
-      double rtol = 1.0e-4)
+      double atol = 0,
+      double rtol = 0)
   {
     const std::size_t num_blocks = variables.NumRows();
     const std::size_t num_species = maps.num_variables;
@@ -130,6 +133,8 @@ namespace
     auto update_fn = model.UpdateStateParametersFunction<DenseMatrix>(maps.parameter_indices);
     DenseMatrix params_copy(parameters);
     update_fn(conditions, params_copy);
+    auto constraint_update_fn = model.ConstraintUpdateStateParametersFunction<DenseMatrix>(maps.parameter_indices);
+    constraint_update_fn(conditions, params_copy);
 
     // Build sparse Jacobian with declared sparsity
     auto nz_elements = model.NonZeroConstraintJacobianElements(maps.variable_indices);
@@ -140,19 +145,22 @@ namespace
 
     // Compute analytical Jacobian
     auto jac_fn =
-        model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(maps.variable_indices, analytical_jac);
-    jac_fn(variables, analytical_jac);
+        model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, analytical_jac);
+    jac_fn(variables, DenseMatrix(variables.NumRows(), std::max(maps.num_parameters, std::size_t(1)), 0.0), analytical_jac);
 
     // Compute finite-difference Jacobian from residual function
-    auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(maps.variable_indices);
+    auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
     auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing)
-    { residual_fn(vars, forcing); };
+    { residual_fn(vars, DenseMatrix(vars.NumRows(), std::max(maps.num_parameters, std::size_t(1)), 0.0), forcing); };
 
     auto fd_jac = micm::FiniteDifferenceJacobian<DenseMatrix>(fd_wrapper, variables, num_species);
 
     // Compare
-    auto comparison = micm::CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
-        analytical_jac, fd_jac, num_species, atol, rtol);
+    auto comparison = (atol > 0 && rtol > 0)
+        ? micm::CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
+              analytical_jac, fd_jac, num_species, atol, rtol)
+        : micm::CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
+              analytical_jac, fd_jac, num_species);
 
     EXPECT_TRUE(comparison.passed) << "Constraint Jacobian mismatch: block=" << comparison.worst_block
                                    << " row=" << comparison.worst_row << " col=" << comparison.worst_col
