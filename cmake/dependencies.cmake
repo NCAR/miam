@@ -23,8 +23,7 @@ endif()
 # MICM
 
 FetchContent_Declare(micm
-    GIT_REPOSITORY https://github.com/NCAR/micm.git
-    GIT_TAG 46acd7f140b612d6a0b4cde4422ab69050ace4bf
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/micm
     GIT_PROGRESS NOT ${FETCHCONTENT_QUIET}
     FIND_PACKAGE_ARGS NAMES micm
 )

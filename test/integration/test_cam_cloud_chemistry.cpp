@@ -92,6 +92,10 @@ namespace
     for (const auto& name : species_used)
       var_names.insert(name);
     auto param_names = model.StateParameterNames();
+    auto constraint_param_names = model.ConstraintStateParameterNames();
+    param_names.insert(constraint_param_names.begin(), constraint_param_names.end());
+    auto init_param_names = model.InitializeConstraintParameterNames();
+    param_names.insert(init_param_names.begin(), init_param_names.end());
     std::size_t idx = 0;
     for (const auto& name : var_names)
       result.variable_indices[name] = idx++;
@@ -236,7 +240,7 @@ TEST(CamCloudChemistry, Step1_SingleHLC)
       .SetAlgebraicSpecies(gas_phase, so2_g)
       .AddTerm(gas_phase, so2_g, 1.0)
       .AddTerm(aqueous_phase, so2_aq, 1.0)
-      .SetConstant(total_so2)
+      .DiagnoseConstantFromState()
       .Build();
 
   auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
@@ -544,7 +548,7 @@ TEST(CamCloudChemistry, Step2_HLC_Plus_Dissociation)
       .AddTerm(gas_phase, so2_g, 1.0)
       .AddTerm(aqueous_phase, so2_aq, 1.0)
       .AddTerm(aqueous_phase, hso3m, 1.0)
-      .SetConstant(total_S)
+      .DiagnoseConstantFromState()
       .Build();
 
   // Charge balance: [H+] = [OH-] + [HSO3-]  (H+ algebraic)
@@ -781,21 +785,21 @@ TEST(CamCloudChemistry, Step3_FullEquilibrium)
       .AddTerm(aqueous_phase, so2_aq, 1.0)
       .AddTerm(aqueous_phase, hso3m, 1.0)
       .AddTerm(aqueous_phase, so3mm, 1.0)
-      .SetConstant(gas0_so2)
+      .DiagnoseConstantFromState()
       .Build();
 
   auto mass_H2O2 = constraint::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, h2o2_g)
       .AddTerm(gas_phase, h2o2_g, 1.0)
       .AddTerm(aqueous_phase, h2o2_aq, 1.0)
-      .SetConstant(gas0_h2o2)
+      .DiagnoseConstantFromState()
       .Build();
 
   auto mass_O3 = constraint::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, o3_g)
       .AddTerm(gas_phase, o3_g, 1.0)
       .AddTerm(aqueous_phase, o3_aq, 1.0)
-      .SetConstant(gas0_o3)
+      .DiagnoseConstantFromState()
       .Build();
 
   // --- Charge balance: [H+] = [OH-] + [HSO3-] + 2[SO3--] + 2[SO4--] ---
@@ -1023,21 +1027,21 @@ TEST(CamCloudChemistry, Step3b_NaiveInitialConditions)
       .AddTerm(aqueous_phase, so2_aq, 1.0)
       .AddTerm(aqueous_phase, hso3m, 1.0)
       .AddTerm(aqueous_phase, so3mm, 1.0)
-      .SetConstant(gas0_so2)
+      .DiagnoseConstantFromState()
       .Build();
 
   auto mass_H2O2 = constraint::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, h2o2_g)
       .AddTerm(gas_phase, h2o2_g, 1.0)
       .AddTerm(aqueous_phase, h2o2_aq, 1.0)
-      .SetConstant(gas0_h2o2)
+      .DiagnoseConstantFromState()
       .Build();
 
   auto mass_O3 = constraint::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, o3_g)
       .AddTerm(gas_phase, o3_g, 1.0)
       .AddTerm(aqueous_phase, o3_aq, 1.0)
-      .SetConstant(gas0_o3)
+      .DiagnoseConstantFromState()
       .Build();
 
   auto charge = constraint::LinearConstraintBuilder()
@@ -1235,21 +1239,21 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
       .AddTerm(aqueous_phase, hso3m, 1.0)
       .AddTerm(aqueous_phase, so3mm, 1.0)
       .AddTerm(aqueous_phase, so4mm, 1.0)
-      .SetConstant(total_S)
+      .DiagnoseConstantFromState()
       .Build();
 
   auto mass_H2O2 = constraint::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, h2o2_g)
       .AddTerm(gas_phase, h2o2_g, 1.0)
       .AddTerm(aqueous_phase, h2o2_aq, 1.0)
-      .SetConstant(gas0_h2o2)
+      .DiagnoseConstantFromState()
       .Build();
 
   auto mass_O3 = constraint::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, o3_g)
       .AddTerm(gas_phase, o3_g, 1.0)
       .AddTerm(aqueous_phase, o3_aq, 1.0)
-      .SetConstant(gas0_o3)
+      .DiagnoseConstantFromState()
       .Build();
 
   // Charge balance
@@ -1543,21 +1547,21 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
       .AddTerm(aqueous_phase, hso3m, 1.0)
       .AddTerm(aqueous_phase, so3mm, 1.0)
       .AddTerm(aqueous_phase, so4mm, 1.0)
-      .SetConstant(total_S)
+      .DiagnoseConstantFromState()
       .Build();
 
   auto mass_H2O2 = constraint::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, h2o2_g)
       .AddTerm(gas_phase, h2o2_g, 1.0)
       .AddTerm(aqueous_phase, h2o2_aq, 1.0)
-      .SetConstant(gas0_h2o2)
+      .DiagnoseConstantFromState()
       .Build();
 
   auto mass_O3 = constraint::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, o3_g)
       .AddTerm(gas_phase, o3_g, 1.0)
       .AddTerm(aqueous_phase, o3_aq, 1.0)
-      .SetConstant(gas0_o3)
+      .DiagnoseConstantFromState()
       .Build();
 
   auto charge = constraint::LinearConstraintBuilder()
@@ -1794,21 +1798,21 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
       .AddTerm(aqueous_phase, hso3m, 1.0)
       .AddTerm(aqueous_phase, so3mm, 1.0)
       .AddTerm(aqueous_phase, so4mm, 1.0)
-      .SetConstant(total_S)
+      .DiagnoseConstantFromState()
       .Build();
 
   auto mass_H2O2 = constraint::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, h2o2_g)
       .AddTerm(gas_phase, h2o2_g, 1.0)
       .AddTerm(aqueous_phase, h2o2_aq, 1.0)
-      .SetConstant(3.01e-8)
+      .DiagnoseConstantFromState()
       .Build();
 
   auto mass_O3 = constraint::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, o3_g)
       .AddTerm(gas_phase, o3_g, 1.0)
       .AddTerm(aqueous_phase, o3_aq, 1.0)
-      .SetConstant(1.50e-6)
+      .DiagnoseConstantFromState()
       .Build();
 
   auto charge = constraint::LinearConstraintBuilder()

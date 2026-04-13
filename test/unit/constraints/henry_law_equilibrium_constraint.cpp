@@ -24,6 +24,10 @@ using namespace miam::constraint;
 
 namespace
 {
+  using DMP = micm::Matrix<double>;
+  std::unordered_map<std::string, std::size_t> param_indices;
+  const DMP no_params{};
+
   auto h2o = micm::Species{ "H2O" };
   auto A_g = micm::Species{ "A_g" };
   auto A_aq = micm::Species{ "A_aq" };
@@ -196,7 +200,7 @@ TEST(HenryLawEquilibriumConstraint, ResidualSingleInstance)
   update_fn(conditions);
 
   using DMP = micm::Matrix<double>;
-  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, state_indices);
+  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
 
   double gas_conc = 1.0e-6;
   double aq_conc = 0.5;
@@ -208,7 +212,7 @@ TEST(HenryLawEquilibriumConstraint, ResidualSingleInstance)
   state_variables[0][2] = solvent_conc;
 
   DMP residual{ 1, 3, 0.0 };
-  residual_fn(state_variables, residual);
+  residual_fn(state_variables, no_params, residual);
 
   double f_v = solvent_conc * Mw_water / rho_water;
   double hlc_rt = HLC * miam::util::R_gas * T;
@@ -250,7 +254,7 @@ TEST(HenryLawEquilibriumConstraint, ResidualMultipleInstances)
   update_fn(conditions);
 
   using DMP = micm::Matrix<double>;
-  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, state_indices);
+  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
 
   DMP state_variables{ 1, 5, 0.0 };
   state_variables[0][0] = 1.0e-5;  // [A_g]
@@ -260,7 +264,7 @@ TEST(HenryLawEquilibriumConstraint, ResidualMultipleInstances)
   state_variables[0][4] = 200.0;   // SMALL [H2O]
 
   DMP residual{ 1, 5, 0.0 };
-  residual_fn(state_variables, residual);
+  residual_fn(state_variables, no_params, residual);
 
   double hlc_rt = HLC * miam::util::R_gas * T;
   double gas_conc = 1.0e-5;
@@ -479,10 +483,10 @@ namespace
 
       DMP res_plus(num_blocks, num_vars, 0.0);
       DMP res_minus(num_blocks, num_vars, 0.0);
-      auto rf_plus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, state_indices);
-      auto rf_minus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, state_indices);
-      rf_plus(vars_plus, res_plus);
-      rf_minus(vars_minus, res_minus);
+      auto rf_plus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
+      auto rf_minus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
+      rf_plus(vars_plus, no_params, res_plus);
+      rf_minus(vars_minus, no_params, res_minus);
 
       for (std::size_t b = 0; b < num_blocks; ++b)
       {
@@ -626,9 +630,9 @@ TEST(HenryLawEquilibriumConstraint, ResidualMultipleCells)
   sv[1][0] = 2.0e-5;  sv[1][1] = 1.0;  sv[1][2] = 200.0;
   sv[2][0] = 5.0e-7;  sv[2][1] = 0.01; sv[2][2] = 55.5;
 
-  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, si);
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ nc, 3, 0.0 };
-  rf(sv, residual);
+  rf(sv, no_params, residual);
 
   for (std::size_t c = 0; c < nc; ++c)
   {
@@ -798,16 +802,16 @@ TEST(HenryLawEquilibriumConstraint, ResidualSetsNotAccumulates)
 
   InitHlcRt(constraint, 1, T);
 
-  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, si);
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
 
   DMP sv{ 1, 3, 0.0 };
   sv[0][0] = 1.0e-6;  sv[0][1] = 0.5;  sv[0][2] = 300.0;
 
   DMP residual{ 1, 3, 999.0 };
-  rf(sv, residual);
+  rf(sv, no_params, residual);
   double val1 = residual[0][1];
 
-  rf(sv, residual);
+  rf(sv, no_params, residual);
   EXPECT_NEAR(residual[0][1], val1, 1e-15);
 }
 
@@ -849,9 +853,9 @@ TEST(HenryLawEquilibriumConstraint, TemperatureDependentHlcMultiCell)
   sv[2][0] = 5e-7;  sv[2][1] = 0.1;  sv[2][2] = 55.5;
 
   // Check residuals with per-cell HLC*R*T
-  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, si);
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ nc, 3, 0.0 };
-  rf(sv, residual);
+  rf(sv, no_params, residual);
 
   for (std::size_t c = 0; c < nc; ++c)
   {
@@ -1016,9 +1020,9 @@ TEST(HenryLawEquilibriumConstraint, LargeHLC)
   sv[0][1] = 0.1;
   sv[0][2] = 55.5;
 
-  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, si);
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ 1, 3, 0.0 };
-  rf(sv, residual);
+  rf(sv, no_params, residual);
 
   double hlc_rt = HLC * miam::util::R_gas * T;
   double fv = 55.5 * Mw_water / rho_water;
@@ -1062,13 +1066,13 @@ TEST(HenryLawEquilibriumConstraint, CopiedConstraintProducesSameResults)
   DMP sv{ 1, 3, 0.0 };
   sv[0][0] = 1.0e-6;  sv[0][1] = 0.5;  sv[0][2] = 300.0;
 
-  auto rf_orig = original.ConstraintResidualFunction<DMP>(phase_prefixes, si);
-  auto rf_copy = copy.ConstraintResidualFunction<DMP>(phase_prefixes, si);
+  auto rf_orig = original.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
+  auto rf_copy = copy.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
 
   DMP res_orig{ 1, 3, 0.0 };
   DMP res_copy{ 1, 3, 0.0 };
-  rf_orig(sv, res_orig);
-  rf_copy(sv, res_copy);
+  rf_orig(sv, no_params, res_orig);
+  rf_copy(sv, no_params, res_copy);
 
   EXPECT_NEAR(res_orig[0][1], res_copy[0][1], 1e-15);
 }
@@ -1111,9 +1115,9 @@ TEST(HenryLawEquilibriumConstraint, ResidualZeroAtEquilibrium)
   sv[0][1] = aq_conc_eq;
   sv[0][2] = solvent_conc;
 
-  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, si);
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ 1, 3, 0.0 };
-  rf(sv, residual);
+  rf(sv, no_params, residual);
 
   EXPECT_NEAR(residual[0][1], 0.0, 1e-15);
 }

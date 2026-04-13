@@ -168,8 +168,9 @@ namespace miam
       /// @details G = HLC * R * T * f_v * [A_g] - [A_aq]
       ///          where f_v = [S] * Mw_solvent / rho_solvent
       template<typename DenseMatrixPolicy>
-      std::function<void(const DenseMatrixPolicy&, DenseMatrixPolicy&)> ConstraintResidualFunction(
+      std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ConstraintResidualFunction(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
+          const std::unordered_map<std::string, std::size_t>& /*state_parameter_indices*/,
           const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
       {
         auto indices = GetStateVariableIndices(phase_prefixes, state_variable_indices);
@@ -198,7 +199,9 @@ namespace miam
             dummy_hlc, dummy_state, dummy_state);
 
         return [inner = std::move(inner), hlc_rt_values](
-                   const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& residual) mutable
+                   const DenseMatrixPolicy& state_variables,
+                   const DenseMatrixPolicy& /*state_parameters*/,
+                   DenseMatrixPolicy& residual) mutable
         { inner(*hlc_rt_values, state_variables, residual); };
       }
 

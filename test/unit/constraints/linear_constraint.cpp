@@ -23,6 +23,10 @@ using namespace miam::constraint;
 
 namespace
 {
+  using DMP = micm::Matrix<double>;
+  std::unordered_map<std::string, std::size_t> param_indices;
+  const DMP no_params{};
+
   auto h2o = micm::Species{ "H2O" };
   auto A_g = micm::Species{ "A_g" };
   auto A_aq = micm::Species{ "A_aq" };
@@ -119,7 +123,7 @@ TEST(LinearConstraint, ResidualGlobal)
   state_indices["SMALL.AQUEOUS.A_aq"] = 2;
 
   using DMP = micm::Matrix<double>;
-  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, state_indices);
+  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
 
   DMP state_variables{ 1, 3, 0.0 };
   state_variables[0][0] = 50.0;  // [A_g]
@@ -127,7 +131,7 @@ TEST(LinearConstraint, ResidualGlobal)
   state_variables[0][2] = 20.0;  // SMALL [A_aq]
 
   DMP residual{ 1, 3, 0.0 };
-  residual_fn(state_variables, residual);
+  residual_fn(state_variables, no_params, residual);
 
   // G = 50 + 30 + 20 - 100 = 0
   EXPECT_NEAR(residual[0][0], 0.0, 1.0e-12);
@@ -136,7 +140,7 @@ TEST(LinearConstraint, ResidualGlobal)
   state_variables[0][0] = 60.0;
   for (auto& v : residual.AsVector())
     v = 0.0;
-  residual_fn(state_variables, residual);
+  residual_fn(state_variables, no_params, residual);
   // G = 60 + 30 + 20 - 100 = 10
   EXPECT_NEAR(residual[0][0], 10.0, 1.0e-12);
 }
@@ -246,7 +250,7 @@ TEST(LinearConstraint, ResidualPerInstance)
   state_indices["SMALL.AQUEOUS.B-"] = 5;
 
   using DMP = micm::Matrix<double>;
-  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, state_indices);
+  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
 
   DMP state_variables{ 1, 6, 0.0 };
   state_variables[0][0] = 1.0e-4;  // LARGE H+
@@ -257,7 +261,7 @@ TEST(LinearConstraint, ResidualPerInstance)
   state_variables[0][5] = 8.0e-5;  // SMALL B-
 
   DMP residual{ 1, 6, 0.0 };
-  residual_fn(state_variables, residual);
+  residual_fn(state_variables, no_params, residual);
 
   // LARGE: G = 1e-4 - 5e-5 - 3e-5 = 2e-5
   EXPECT_NEAR(residual[0][0], 2.0e-5, 1.0e-18);
@@ -374,14 +378,14 @@ TEST(LinearConstraint, ResidualWithNonUnitCoefficients)
   state_indices["DROP.AQUEOUS.A_aq"] = 1;
 
   using DMP = micm::Matrix<double>;
-  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, state_indices);
+  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
 
   DMP state_variables{ 1, 2, 0.0 };
   state_variables[0][0] = 3.0;  // [A_g]
   state_variables[0][1] = 8.0;  // [A_aq]
 
   DMP residual{ 1, 2, 0.0 };
-  residual_fn(state_variables, residual);
+  residual_fn(state_variables, no_params, residual);
 
   // G = 2*3 + 0.5*8 - 10 = 6 + 4 - 10 = 0
   EXPECT_NEAR(residual[0][0], 0.0, 1.0e-12);
@@ -463,10 +467,10 @@ namespace
       DMP res_plus(num_blocks, num_vars, 0.0);
       DMP res_minus(num_blocks, num_vars, 0.0);
 
-      auto rf_plus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, state_indices);
-      auto rf_minus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, state_indices);
-      rf_plus(vars_plus, res_plus);
-      rf_minus(vars_minus, res_minus);
+      auto rf_plus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
+      auto rf_minus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
+      rf_plus(vars_plus, no_params, res_plus);
+      rf_minus(vars_minus, no_params, res_minus);
 
       for (std::size_t b = 0; b < num_blocks; ++b)
       {
@@ -531,9 +535,9 @@ TEST(LinearConstraint, ResidualGlobalMultipleCells)
   // Cell 3: zero concentrations (sum = 0)
   state_variables[3][0] = 0.0;   state_variables[3][1] = 0.0;   state_variables[3][2] = 0.0;
 
-  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, state_indices);
+  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
   DMP residual{ num_cells, 3, 0.0 };
-  residual_fn(state_variables, residual);
+  residual_fn(state_variables, no_params, residual);
 
   EXPECT_NEAR(residual[0][0], 0.0, 1e-12);
   EXPECT_NEAR(residual[1][0], 10.0, 1e-12);
@@ -647,9 +651,9 @@ TEST(LinearConstraint, ResidualPerInstanceMultipleCells)
   state_variables[2][0] = 1.0e-5;  state_variables[2][1] = 2.0e-5;  state_variables[2][2] = 3.0e-5;
   state_variables[2][3] = 4.0e-5;  state_variables[2][4] = 1.0e-5;  state_variables[2][5] = 1.0e-5;
 
-  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, state_indices);
+  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
   DMP residual{ num_cells, 6, 0.0 };
-  residual_fn(state_variables, residual);
+  residual_fn(state_variables, no_params, residual);
 
   // Cell 0: LARGE: 1e-4 - 5e-5 - 5e-5 = 0; SMALL: 2e-4 - 1e-4 - 5e-5 = 5e-5
   EXPECT_NEAR(residual[0][0], 0.0, 1e-18);
@@ -778,9 +782,9 @@ TEST(LinearConstraint, ThreeInstances)
   state_variables[1][2] = 20.0;  state_variables[1][3] = 15.0;
   state_variables[1][4] = 30.0;  state_variables[1][5] = 25.0;
 
-  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, si);
+  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ 2, 6, 0.0 };
-  residual_fn(state_variables, residual);
+  residual_fn(state_variables, no_params, residual);
 
   // Cell 0: A: 1.0 - 0.5 = 0.5; B: 2.0 - 2.0 = 0.0; C: 3.0 - 4.0 = -1.0
   EXPECT_NEAR(residual[0][0], 0.5, 1e-12);
@@ -823,9 +827,9 @@ TEST(LinearConstraint, GlobalWithManyInstances)
   DMP sv{ 1, 5, 0.0 };
   sv[0][0] = 10.0;  sv[0][1] = 10.0;  sv[0][2] = 10.0;  sv[0][3] = 10.0;  sv[0][4] = 10.0;
 
-  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, si);
+  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ 1, 5, 0.0 };
-  residual_fn(sv, residual);
+  residual_fn(sv, no_params, residual);
   // G = 10+10+10+10+10 - 50 = 0
   EXPECT_NEAR(residual[0][0], 0.0, 1e-12);
 
@@ -892,17 +896,17 @@ TEST(LinearConstraint, ResidualSetsNotAccumulates)
   std::unordered_map<std::string, std::size_t> si;
   si["A_g"] = 0;
 
-  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, si);
+  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
 
   DMP sv{ 1, 1, 0.0 };
   sv[0][0] = 7.0;
 
   DMP residual{ 1, 1, 999.0 };  // pre-filled with junk
-  residual_fn(sv, residual);
+  residual_fn(sv, no_params, residual);
   EXPECT_NEAR(residual[0][0], -3.0, 1e-12);  // 7 - 10 = -3
 
   // Second call still gives same result (assignment, not accumulation)
-  residual_fn(sv, residual);
+  residual_fn(sv, no_params, residual);
   EXPECT_NEAR(residual[0][0], -3.0, 1e-12);
 }
 
@@ -934,8 +938,8 @@ TEST(LinearConstraint, MultipleConstraintsCombined)
   si["MODE1.AQUEOUS.A-"] = 3;
 
   // Residuals from both constraints
-  auto rf1 = mass_cons.ConstraintResidualFunction<DMP>(phase_prefixes, si);
-  auto rf2 = charge_bal.ConstraintResidualFunction<DMP>(phase_prefixes, si);
+  auto rf1 = mass_cons.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
+  auto rf2 = charge_bal.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
 
   DMP sv{ 1, 4, 0.0 };
   sv[0][0] = 60.0;   // A_g
@@ -944,8 +948,8 @@ TEST(LinearConstraint, MultipleConstraintsCombined)
   sv[0][3] = 1.0e-3; // A-
 
   DMP residual{ 1, 4, 0.0 };
-  rf1(sv, residual);
-  rf2(sv, residual);
+  rf1(sv, no_params, residual);
+  rf2(sv, no_params, residual);
 
   // Mass: 60 + 40 - 100 = 0 → residual at A_g (idx 0)
   EXPECT_NEAR(residual[0][0], 0.0, 1e-12);
@@ -1030,9 +1034,9 @@ TEST(LinearConstraint, PerInstanceWithGasTerms)
   sv[0][1] = 4.0;  // LARGE aq
   sv[0][2] = 8.0;  // SMALL aq
 
-  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, si);
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ 1, 3, 0.0 };
-  rf(sv, residual);
+  rf(sv, no_params, residual);
 
   // LARGE: 4 + 3 - 10 = -3
   EXPECT_NEAR(residual[0][1], -3.0, 1e-12);
@@ -1129,14 +1133,14 @@ TEST(LinearConstraint, SingleTerm)
   DMP sv{ 1, 1, 0.0 };
   sv[0][0] = 5.0;
 
-  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, si);
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ 1, 1, 0.0 };
-  rf(sv, residual);
+  rf(sv, no_params, residual);
   // 3*5 - 15 = 0
   EXPECT_NEAR(residual[0][0], 0.0, 1e-12);
 
   sv[0][0] = 4.0;
-  rf(sv, residual);
+  rf(sv, no_params, residual);
   // 3*4 - 15 = -3
   EXPECT_NEAR(residual[0][0], -3.0, 1e-12);
 
@@ -1171,9 +1175,9 @@ TEST(LinearConstraint, LargeCoefficientRange)
   sv[0][0] = 5.0e-4;   // 1e6 * 5e-4 = 500
   sv[0][1] = 1.0e6;    // 1e-6 * 1e6 = 1
 
-  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, si);
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ 1, 2, 0.0 };
-  rf(sv, residual);
+  rf(sv, no_params, residual);
   // 500 + 1 - 500 = 1
   EXPECT_NEAR(residual[0][0], 1.0, 1e-9);
 
@@ -1203,13 +1207,13 @@ TEST(LinearConstraint, CopiedConstraintProducesSameResults)
   DMP sv{ 1, 2, 0.0 };
   sv[0][0] = 3.0;  sv[0][1] = 8.0;
 
-  auto rf_orig = original.ConstraintResidualFunction<DMP>(phase_prefixes, si);
-  auto rf_copy = copy.ConstraintResidualFunction<DMP>(phase_prefixes, si);
+  auto rf_orig = original.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
+  auto rf_copy = copy.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
 
   DMP res_orig{ 1, 2, 0.0 };
   DMP res_copy{ 1, 2, 0.0 };
-  rf_orig(sv, res_orig);
-  rf_copy(sv, res_copy);
+  rf_orig(sv, no_params, res_orig);
+  rf_copy(sv, no_params, res_copy);
 
   EXPECT_NEAR(res_orig[0][0], res_copy[0][0], 1e-15);
 }

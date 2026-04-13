@@ -304,9 +304,69 @@ namespace miam
     // ── HasConstraints concept methods ──
 
     /// @brief Returns unique names for constraint-specific state parameters
+    ///        Includes parameters for diagnosed constants (mass conservation totals)
     std::set<std::string> ConstraintStateParameterNames() const
     {
-      return {};  // miam constraints manage parameters internally via shared_ptrs
+      auto phase_prefixes = CollectPhaseStatePrefixes();
+      std::set<std::string> names;
+      ForEachConstraint(
+          [&](const auto& c)
+          {
+            if constexpr (requires { c.ConstraintStateParameterNames(phase_prefixes); })
+            {
+              auto c_names = c.ConstraintStateParameterNames(phase_prefixes);
+              names.insert(c_names.begin(), c_names.end());
+            }
+          });
+      return names;
+    }
+
+    // ── HasInitializeConstraintParameters concept methods ──
+
+    /// @brief Returns parameter names that need initialization from state variables
+    std::set<std::string> InitializeConstraintParameterNames() const
+    {
+      auto phase_prefixes = CollectPhaseStatePrefixes();
+      std::set<std::string> names;
+      ForEachConstraint(
+          [&](const auto& c)
+          {
+            if constexpr (requires { c.InitializeConstraintParameterNames(phase_prefixes); })
+            {
+              auto c_names = c.InitializeConstraintParameterNames(phase_prefixes);
+              names.insert(c_names.begin(), c_names.end());
+            }
+          });
+      return names;
+    }
+
+    /// @brief Returns a function that diagnoses constraint parameters from current state
+    template<typename DenseMatrixPolicy>
+    std::function<void(const DenseMatrixPolicy&, DenseMatrixPolicy&)>
+    InitializeConstraintParametersFunction(
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
+    {
+      auto phase_prefixes = CollectPhaseStatePrefixes();
+      std::vector<std::function<void(const DenseMatrixPolicy&, DenseMatrixPolicy&)>> init_fns;
+      ForEachConstraint(
+          [&](const auto& c)
+          {
+            if constexpr (requires {
+              c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
+                  phase_prefixes, state_parameter_indices, state_variable_indices);
+            })
+            {
+              init_fns.push_back(
+                  c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
+                      phase_prefixes, state_parameter_indices, state_variable_indices));
+            }
+          });
+      return [init_fns](const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters)
+      {
+        for (const auto& fn : init_fns)
+          fn(state_variables, state_parameters);
+      };
     }
 
     /// @brief Returns a function that updates constraint parameters based on conditions
@@ -374,21 +434,25 @@ namespace miam
     /// @brief Returns combined constraint residual function G(y) = 0
     template<typename DenseMatrixPolicy>
     std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ConstraintResidualFunction(
-        const std::unordered_map<std::string, std::size_t>& /*state_parameter_indices*/,
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
     {
       auto phase_prefixes = CollectPhaseStatePrefixes();
-      std::vector<std::function<void(const DenseMatrixPolicy&, DenseMatrixPolicy&)>> residual_fns;
+      std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>> residual_fns;
       ForEachConstraint(
           [&](const auto& c)
           {
             residual_fns.push_back(
-                c.template ConstraintResidualFunction<DenseMatrixPolicy>(phase_prefixes, state_variable_indices));
+                c.template ConstraintResidualFunction<DenseMatrixPolicy>(
+                    phase_prefixes, state_parameter_indices, state_variable_indices));
           });
-      return [residual_fns](const DenseMatrixPolicy& state_variables, const DenseMatrixPolicy&, DenseMatrixPolicy& residual)
+      return [residual_fns](
+                 const DenseMatrixPolicy& state_variables,
+                 const DenseMatrixPolicy& state_parameters,
+                 DenseMatrixPolicy& residual)
       {
         for (const auto& fn : residual_fns)
-          fn(state_variables, residual);
+          fn(state_variables, state_parameters, residual);
       };
     }
 

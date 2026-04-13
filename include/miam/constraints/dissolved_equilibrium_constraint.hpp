@@ -179,8 +179,9 @@ namespace miam
       /// @brief Returns a function that computes constraint residuals G(y) = 0
       /// @details G = K_eq * prod([R_i]) / [S]^(n_r-1) - prod([P_j]) / [S]^(n_p-1)
       template<typename DenseMatrixPolicy>
-      std::function<void(const DenseMatrixPolicy&, DenseMatrixPolicy&)> ConstraintResidualFunction(
+      std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ConstraintResidualFunction(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
+          const std::unordered_map<std::string, std::size_t>& /*state_parameter_indices*/,
           const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
       {
         auto indices = GetStateVariableIndices(phase_prefixes, state_variable_indices);
@@ -238,7 +239,9 @@ namespace miam
             dummy_keq, dummy_state, dummy_state);
 
         return [inner = std::move(inner), k_eq_values](
-                   const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& residual) mutable
+                   const DenseMatrixPolicy& state_variables,
+                   const DenseMatrixPolicy& /*state_parameters*/,
+                   DenseMatrixPolicy& residual) mutable
         { inner(*k_eq_values, state_variables, residual); };
       }
 
