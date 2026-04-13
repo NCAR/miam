@@ -1,12 +1,12 @@
 FROM fedora:latest
 
 ARG MIAM_GIT_TAG=main
+ARG BUILD_TYPE=Release
 
 RUN dnf -y update \
     && dnf -y install \
         cmake \
         gcc-c++ \
-        gdb \
         git \
         make \
         doxygen \
@@ -20,17 +20,13 @@ COPY . miam
 
 RUN pip3 install -r /miam/docs/requirements.txt
 
-ARG SUFFIX=""
-ENV SWITCHER_SUFFIX=$SUFFIX
-
-RUN echo "The suffix is '$SWITCHER_SUFFIX'"
-
 # Build the library
 RUN cd miam \
     && cmake -S . \
              -B build \
              -D CMAKE_BUILD_TYPE=${BUILD_TYPE} \
              -D MIAM_BUILD_DOCS=ON \
+             -D MIAM_ENABLE_TESTS=OFF \
     && cd build \
     && make docs
 
