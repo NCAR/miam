@@ -261,10 +261,15 @@ namespace miam
               for (std::size_t i_phase = 0; i_phase < variable_indices.number_of_phase_instances_; ++i_phase)
               {
                 // Calculate the rate: k / [S]^{n_r-1} * prod([reactants])
+                // When solvent concentration is negligible, there is no solution phase
+                // and the dissolved reaction rate is physically zero.
                 state_parameters.ForEachRow(
                     [&](const double& rate_constant, const double& solvent, double& rate)
                     {
-                      rate = rate_constant / std::pow(solvent, reactants_.size() - 1);
+                      if (solvent < 1.0e-20)
+                        rate = 0.0;
+                      else
+                        rate = rate_constant / std::pow(solvent, reactants_.size() - 1);
                     },
                     state_parameters.GetConstColumnView(k_index),
                     state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
@@ -339,9 +344,15 @@ namespace miam
                 for (std::size_t i_ind = 0; i_ind < reactants_.size(); ++i_ind)
                 {
                   // Start the rate calculation with the rate constant and solvent
+                  // When solvent is negligible, partial is zero (no solution phase).
                   jacobian_values.ForEachBlock(
                       [&](const double& rate_constant, const double& solvent, double& partial)
-                      { partial = rate_constant / std::pow(solvent, reactants_.size() - 1); },
+                      {
+                        if (solvent < 1.0e-20)
+                          partial = 0.0;
+                        else
+                          partial = rate_constant / std::pow(solvent, reactants_.size() - 1);
+                      },
                       state_parameters.GetConstColumnView(k_index),
                       state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                       d_rate_d_ind);
@@ -373,11 +384,15 @@ namespace miam
                   }
                 }
                 // Calculate partials for independent solvent
+                // When solvent is negligible, partial is zero (no solution phase).
                 jacobian_values.ForEachBlock(
                     [&](const double& rate_constant, const double& solvent, double& partial)
                     {
-                      partial = rate_constant * (1 - static_cast<int>(reactants_.size())) /
-                                std::pow(solvent, reactants_.size());
+                      if (solvent < 1.0e-20)
+                        partial = 0.0;
+                      else
+                        partial = rate_constant * (1 - static_cast<int>(reactants_.size())) /
+                                  std::pow(solvent, reactants_.size());
                     },
                     state_parameters.GetConstColumnView(k_index),
                     state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
