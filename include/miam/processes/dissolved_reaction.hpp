@@ -51,6 +51,7 @@ namespace miam
       micm::Species solvent_;                                                    ///< Solvent species
       micm::Phase phase_;  ///< Phase in which the reaction occurs
       std::string uuid_;   ///< Unique identifier for the reaction
+      double solvent_damping_epsilon_{ 1.0e-10 };  ///< Regularization parameter to prevent singularity as solvent → 0
 
       DissolvedReaction() = delete;
 
@@ -60,13 +61,15 @@ namespace miam
           const std::vector<micm::Species>& reactants,
           const std::vector<micm::Species>& products,
           micm::Species solvent,
-          micm::Phase phase)
+          micm::Phase phase,
+          double solvent_damping_epsilon = 1.0e-10)
           : rate_constant_(rate_constant),
             reactants_(reactants),
             products_(products),
             solvent_(solvent),
             phase_(phase),
-            uuid_(miam::util::generate_uuid_v4())
+            uuid_(miam::util::generate_uuid_v4()),
+            solvent_damping_epsilon_(solvent_damping_epsilon)
       {
       }
 
@@ -74,7 +77,7 @@ namespace miam
       /// @return A new DissolvedReaction with the same properties but a unique UUID
       DissolvedReaction CopyWithNewUuid() const
       {
-        return DissolvedReaction(rate_constant_, reactants_, products_, solvent_, phase_);
+        return DissolvedReaction(rate_constant_, reactants_, products_, solvent_, phase_, solvent_damping_epsilon_);
       }
 
       /// @brief Returns a set of unique parameter names for this process
@@ -267,15 +270,17 @@ namespace miam
             [this, variable_indices, k_index](auto&& state_parameters, auto&& state_variables, auto&& forcing_terms)
             {
               auto rate = forcing_terms.GetRowVariable();
+              const double eps = solvent_damping_epsilon_;
+              const std::size_t n_r = reactants_.size();
 
               // For each phase instance, calculate the reaction rate and update the forcing terms
               for (std::size_t i_phase = 0; i_phase < variable_indices.number_of_phase_instances_; ++i_phase)
               {
-                // Calculate the rate: k / [S]^{n_r-1} * prod([reactants])
+                // Calculate the damped rate: k * [S] / ([S] + eps)^n_r * prod([reactants])
                 state_parameters.ForEachRow(
                     [&](const double& rate_constant, const double& solvent, double& rate)
                     {
-                      rate = rate_constant / std::pow(solvent, reactants_.size() - 1);
+                      rate = rate_constant * solvent / std::pow(solvent + eps, n_r);
                     },
                     state_parameters.GetConstColumnView(k_index),
                     state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
@@ -342,6 +347,8 @@ namespace miam
             {
               auto d_rate_d_ind = jacobian_values.GetBlockVariable();
               auto jac_id = jacobian_indices.indices_.AsVector().begin();
+              const double eps = solvent_damping_epsilon_;
+              const std::size_t n_r = reactants_.size();
 
               // For each phase instance, calculate the partial derivatives for the Jacobian entries
               for (std::size_t i_phase = 0; i_phase < variable_indices.number_of_phase_instances_; ++i_phase)
@@ -349,10 +356,10 @@ namespace miam
                 // Calculate partials for independent reactants
                 for (std::size_t i_ind = 0; i_ind < reactants_.size(); ++i_ind)
                 {
-                  // Start the rate calculation with the rate constant and solvent
+                  // dr/d[R_i] = k * [S] / ([S]+eps)^n_r * prod(R_j, j!=i)
                   jacobian_values.ForEachBlock(
                       [&](const double& rate_constant, const double& solvent, double& partial)
-                      { partial = rate_constant / std::pow(solvent, reactants_.size() - 1); },
+                      { partial = rate_constant * solvent / std::pow(solvent + eps, n_r); },
                       state_parameters.GetConstColumnView(k_index),
                       state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                       d_rate_d_ind);
@@ -384,11 +391,12 @@ namespace miam
                   }
                 }
                 // Calculate partials for independent solvent
+                // dr/d[S] = k * (eps + (1-n_r)*[S]) / ([S]+eps)^(n_r+1) * prod([R_i])
                 jacobian_values.ForEachBlock(
                     [&](const double& rate_constant, const double& solvent, double& partial)
                     {
-                      partial = rate_constant * (1 - static_cast<int>(reactants_.size())) /
-                                std::pow(solvent, reactants_.size());
+                      partial = rate_constant * (eps + (1.0 - static_cast<int>(n_r)) * solvent) /
+                                std::pow(solvent + eps, n_r + 1);
                     },
                     state_parameters.GetConstColumnView(k_index),
                     state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),

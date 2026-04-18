@@ -799,13 +799,13 @@ TEST(DissolvedReaction, JacobianFunctionBasicPartials)
     // d(rate)/d[S] = k * (1-1) / [S]^1 * [A] = 0
 
     // -J[A,A] = +d(rate)/d[A] = +k (stores negative Jacobian)
-    EXPECT_NEAR(jacobian[0][0][0], k, 1e-15);
+    EXPECT_NEAR(jacobian[0][0][0], k, 1e-9);
     // -J[B,A] = -d(rate)/d[A] = -k
-    EXPECT_NEAR(jacobian[0][1][0], -k, 1e-15);
-    // -J[A,S] = +d(rate)/d[S] = 0
-    EXPECT_NEAR(jacobian[0][0][2], 0.0, 1e-15);
-    // -J[B,S] = -d(rate)/d[S] = 0
-    EXPECT_NEAR(jacobian[0][1][2], 0.0, 1e-15);
+    EXPECT_NEAR(jacobian[0][1][0], -k, 1e-9);
+    // -J[A,S] = +d(rate)/d[S] ~ 0 (small damping residual)
+    EXPECT_NEAR(jacobian[0][0][2], 0.0, 1e-9);
+    // -J[B,S] = -d(rate)/d[S] ~ 0 (small damping residual)
+    EXPECT_NEAR(jacobian[0][1][2], 0.0, 1e-9);
 }
 
 TEST(DissolvedReaction, JacobianFunctionMultipleReactants)

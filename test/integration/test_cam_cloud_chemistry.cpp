@@ -1354,7 +1354,7 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
       .Build();
 
   auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
-  model.AddProcesses({ rxn1a, rxn1b, rxn2, rxn3 });
+  model.AddProcesses(rxn1a, rxn1b, rxn2, rxn3);
   model.AddConstraints(hl_so2, hl_h2o2, hl_o3,
                        eq_kw, eq_ka1, eq_ka2,
                        mass_S, mass_H2O2, mass_O3, charge);
@@ -1675,7 +1675,7 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
       .Build();
 
   auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
-  model.AddProcesses({ rxn1a, rxn1b, rxn2, rxn3 });
+  model.AddProcesses(rxn1a, rxn1b, rxn2, rxn3);
   model.AddConstraints(hl_so2, hl_h2o2, hl_o3,
                        eq_kw, eq_ka1, eq_ka2,
                        mass_S, mass_H2O2, mass_O3, charge);
@@ -1935,7 +1935,7 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
       }).Build();
 
   auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
-  model.AddProcesses({ rxn1a, rxn1b, rxn2, rxn3 });
+  model.AddProcesses(rxn1a, rxn1b, rxn2, rxn3);
   model.AddConstraints(hl_so2, hl_h2o2, hl_o3,
                        eq_kw, eq_ka1, eq_ka2,
                        mass_S, mass_H2O2, mass_O3, charge);

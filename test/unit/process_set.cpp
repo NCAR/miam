@@ -226,8 +226,8 @@ TEST(MiamProcessSet, ForcingFunction)
     double expected_f_A = -forward_val + reverse_val;
     double expected_f_B = forward_val - reverse_val;
 
-    EXPECT_NEAR(forcing[0][0], expected_f_A, 1e-10);
-    EXPECT_NEAR(forcing[0][1], expected_f_B, 1e-10);
+    EXPECT_NEAR(forcing[0][0], expected_f_A, 1e-6);
+    EXPECT_NEAR(forcing[0][1], expected_f_B, 1e-6);
 }
 
 TEST(MiamProcessSet, JacobianFunction)

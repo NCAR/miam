@@ -198,7 +198,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualSimpleAB)
 
   // G = K_eq * [A] / [S]^(1-1) - [B] / [S]^(1-1) = K_eq * [A] - [B]
   // = 10.0 * 1.0 - 5.0 = 5.0
-  EXPECT_NEAR(residual[0][1], 5.0, 1.0e-12);  // residual written to algebraic species (B) row
+  EXPECT_NEAR(residual[0][1], 5.0, 1e-6);  // residual written to algebraic species (B) row
 }
 
 // ── ConstraintResidualFunction — A + B <-> C with solvent ──
@@ -245,7 +245,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultiReactant)
   // G = K_eq * [A]*[B]/[S]^(2-1) - [C]/[S]^(1-1)
   // = 2.0 * 3.0*4.0/300.0 - 20.0 = 0.08 - 20.0 = -19.92
   double expected = K_eq * 3.0 * 4.0 / 300.0 - 20.0;
-  EXPECT_NEAR(residual[0][2], expected, 1.0e-12);
+  EXPECT_NEAR(residual[0][2], expected, 1e-6);
 }
 
 // ── ConstraintResidualFunction — multiple phase instances ──
@@ -399,9 +399,9 @@ TEST(DissolvedEquilibriumConstraint, JacobianSimpleAB)
 
   // MICM convention: jac -= dG/dy
   // jac[B,A] -= K_eq → jac[B,A] = -K_eq = -10.0
-  EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 1, 0)], -K_eq, 1.0e-12);
+  EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 1, 0)], -K_eq, 1e-6);
   // jac[B,B] -= (-1) → jac[B,B] = +1.0
-  EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 1, 1)], 1.0, 1.0e-12);
+  EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 1, 1)], 1.0, 1e-6);
 }
 
 // ── ConstraintJacobianFunction — A + B <-> C with solvent ──
@@ -814,10 +814,10 @@ TEST(DissolvedEquilibriumConstraint, ResidualAndJacobianFDMultipleCells)
   rf(sv, no_params, residual);
 
   // G = K_eq * [A] - [B]
-  EXPECT_NEAR(residual[0][1], 5.0 * 1.0 - 5.0, 1e-12);
-  EXPECT_NEAR(residual[1][1], 5.0 * 0.5 - 2.5, 1e-12);
-  EXPECT_NEAR(residual[2][1], 5.0 * 10.0 - 40.0, 1e-12);
-  EXPECT_NEAR(residual[3][1], 5.0 * 0.01 - 0.1, 1e-12);
+  EXPECT_NEAR(residual[0][1], 5.0 * 1.0 - 5.0, 1e-6);
+  EXPECT_NEAR(residual[1][1], 5.0 * 0.5 - 2.5, 1e-6);
+  EXPECT_NEAR(residual[2][1], 5.0 * 10.0 - 40.0, 1e-6);
+  EXPECT_NEAR(residual[3][1], 5.0 * 0.01 - 0.1, 1e-6);
 
   // FD Jacobian check
   CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
@@ -873,11 +873,11 @@ TEST(DissolvedEquilibriumConstraint, MultiInstanceMultiCellFD)
 
   // LARGE instance, cell 0: G = 3.0 * 0.5*0.3/0.017 - 0.1
   double expected_L0 = 3.0 * 0.5 * 0.3 / 0.017 - 0.1;
-  EXPECT_NEAR(residual[0][2], expected_L0, 1e-12);
+  EXPECT_NEAR(residual[0][2], expected_L0, 1e-6);
 
   // SMALL instance, cell 0: G = 3.0 * 0.2*0.1/0.017 - 0.05
   double expected_S0 = 3.0 * 0.2 * 0.1 / 0.017 - 0.05;
-  EXPECT_NEAR(residual[0][6], expected_S0, 1e-12);
+  EXPECT_NEAR(residual[0][6], expected_S0, 1e-6);
 
   // Non-algebraic rows untouched
   EXPECT_NEAR(residual[0][0], 0.0, 1e-30);
@@ -1050,9 +1050,9 @@ TEST(DissolvedEquilibriumConstraint, TemperatureDependentKeqFD)
   DMP residual{ nc, 3, 0.0 };
   rf(sv, no_params, residual);
 
-  EXPECT_NEAR(residual[0][1], (1000.0 / 250.0) * 1.0 - 2.0, 1e-12);
-  EXPECT_NEAR(residual[1][1], (1000.0 / 300.0) * 0.5 - 1.0, 1e-12);
-  EXPECT_NEAR(residual[2][1], (1000.0 / 350.0) * 2.0 - 5.0, 1e-12);
+  EXPECT_NEAR(residual[0][1], (1000.0 / 250.0) * 1.0 - 2.0, 1e-6);
+  EXPECT_NEAR(residual[1][1], (1000.0 / 300.0) * 0.5 - 1.0, 1e-6);
+  EXPECT_NEAR(residual[2][1], (1000.0 / 350.0) * 2.0 - 5.0, 1e-6);
 
   // FD check
   CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);

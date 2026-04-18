@@ -53,6 +53,7 @@ namespace miam
       micm::Species solvent_;                                                            ///< Solvent species
       micm::Phase phase_;  ///< Phase in which the reaction occurs
       std::string uuid_;   ///< Unique identifier for the reaction
+      double solvent_damping_epsilon_{ 1.0e-10 };  ///< Regularization parameter to prevent singularity as solvent → 0
 
       DissolvedReversibleReaction() = delete;
 
@@ -63,14 +64,16 @@ namespace miam
           const std::vector<micm::Species>& reactants,
           const std::vector<micm::Species>& products,
           micm::Species solvent,
-          micm::Phase phase)
+          micm::Phase phase,
+          double solvent_damping_epsilon = 1.0e-10)
           : forward_rate_constant_(forward_rate_constant),
             reverse_rate_constant_(reverse_rate_constant),
             reactants_(reactants),
             products_(products),
             solvent_(solvent),
             phase_(phase),
-            uuid_(miam::util::generate_uuid_v4())
+            uuid_(miam::util::generate_uuid_v4()),
+            solvent_damping_epsilon_(solvent_damping_epsilon)
       {
       }
 
@@ -79,7 +82,7 @@ namespace miam
       DissolvedReversibleReaction CopyWithNewUuid() const
       {
         return DissolvedReversibleReaction(
-            forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_);
+            forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_damping_epsilon_);
       }
 
       /// @brief Returns a set of unique parameter names for this process
@@ -305,11 +308,14 @@ namespace miam
             {
               auto forward_rate = forcing_terms.GetRowVariable();
               auto reverse_rate = forcing_terms.GetRowVariable();
+              const double eps = solvent_damping_epsilon_;
+              const std::size_t n_r = reactants_.size();
+              const std::size_t n_p = products_.size();
 
               // For each phase instance, calculate the reaction rate and update the forcing terms for reactants and products
               for (std::size_t i_phase = 0; i_phase < variable_indices.number_of_phase_instances_; ++i_phase)
               {
-                // Calculate the forward and reverse rates
+                // Calculate the damped forward and reverse rates
                 state_parameters.ForEachRow(
                     [&](const double& forward_rate_constant,
                         const double& reverse_rate_constant,
@@ -317,9 +323,8 @@ namespace miam
                         double& forward_rate,
                         double& reverse_rate)
                     {
-                      // We want to end up with rates in units of mol m-3 s-1 (same as state variable units per second)
-                      forward_rate = forward_rate_constant / std::pow(solvent, reactants_.size() - 1);
-                      reverse_rate = reverse_rate_constant / std::pow(solvent, products_.size() - 1);
+                      forward_rate = forward_rate_constant * solvent / std::pow(solvent + eps, n_r);
+                      reverse_rate = reverse_rate_constant * solvent / std::pow(solvent + eps, n_p);
                     },
                     state_parameters.GetConstColumnView(forward_index),
                     state_parameters.GetConstColumnView(reverse_index),
@@ -406,18 +411,20 @@ namespace miam
               auto d_forward_rate_d_ind = jacobian_values.GetBlockVariable();
               auto d_reverse_rate_d_ind = jacobian_values.GetBlockVariable();
               auto jac_id = jacobian_indices.indices_.AsVector().begin();
+              const double eps = solvent_damping_epsilon_;
+              const std::size_t n_r = reactants_.size();
+              const std::size_t n_p = products_.size();
 
               // For each phase instance, calculate the partial derivatives for the Jacobian entries
               for (std::size_t i_phase = 0; i_phase < variable_indices.number_of_phase_instances_; ++i_phase)
               {
-                // Calculate the partial derivatives of the forward and reverse rates with respect to the independent
-                // variable Calculate partials for independent reactants
+                // Calculate partials for independent reactants
                 for (std::size_t i_ind = 0; i_ind < reactants_.size(); ++i_ind)
                 {
-                  // Start the rate calculation with the rate constant and solvent
+                  // dr_fwd/d[R_i] = k_f * [S] / ([S]+eps)^n_r * prod(R_j, j!=i)
                   jacobian_values.ForEachBlock(
                       [&](const double& forward_rate_constant, const double& solvent, double& partial)
-                      { partial = forward_rate_constant / std::pow(solvent, reactants_.size() - 1); },
+                      { partial = forward_rate_constant * solvent / std::pow(solvent + eps, n_r); },
                       state_parameters.GetConstColumnView(forward_index),
                       state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                       d_forward_rate_d_ind);
@@ -451,10 +458,10 @@ namespace miam
                 // Calculate partials for independent products
                 for (std::size_t i_ind = 0; i_ind < products_.size(); ++i_ind)
                 {
-                  // Start the rate calculation with the rate constant and solvent
+                  // dr_rev/d[P_i] = k_r * [S] / ([S]+eps)^n_p * prod(P_j, j!=i)
                   jacobian_values.ForEachBlock(
                       [&](const double& reverse_rate_constant, const double& solvent, double& partial)
-                      { partial = reverse_rate_constant / std::pow(solvent, products_.size() - 1); },
+                      { partial = reverse_rate_constant * solvent / std::pow(solvent + eps, n_p); },
                       state_parameters.GetConstColumnView(reverse_index),
                       state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                       d_reverse_rate_d_ind);
@@ -486,6 +493,7 @@ namespace miam
                   }
                 }
                 // Calculate partials for independent solvent
+                // dr/d[S] = k * (eps + (1-n)*[S]) / ([S]+eps)^(n+1) * prod([species])
                 jacobian_values.ForEachBlock(
                     [&](const double& forward_rate_constant,
                         const double& reverse_rate_constant,
@@ -493,10 +501,10 @@ namespace miam
                         double& forward_partial,
                         double& reverse_partial)
                     {
-                      forward_partial = forward_rate_constant * (1 - static_cast<int>(reactants_.size())) /
-                                        std::pow(solvent, reactants_.size());
-                      reverse_partial = reverse_rate_constant * (1 - static_cast<int>(products_.size())) /
-                                        std::pow(solvent, products_.size());
+                      forward_partial = forward_rate_constant * (eps + (1.0 - static_cast<int>(n_r)) * solvent) /
+                                        std::pow(solvent + eps, n_r + 1);
+                      reverse_partial = reverse_rate_constant * (eps + (1.0 - static_cast<int>(n_p)) * solvent) /
+                                        std::pow(solvent + eps, n_p + 1);
                     },
                     state_parameters.GetConstColumnView(forward_index),
                     state_parameters.GetConstColumnView(reverse_index),

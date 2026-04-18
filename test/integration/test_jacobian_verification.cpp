@@ -697,3 +697,348 @@ TEST(JacobianVerification, HenryLawEquilibriumWithConservation)
 
   VerifyConstraintJacobian(model, maps, variables, parameters, conditions);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Solvent Damping Range Tests
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// @brief Verify DissolvedReaction Jacobian across the damping range (solvent from 1e-4 down to 0)
+TEST(JacobianVerification, DissolvedReactionDampingRange)
+{
+  auto A = Species{ "A" };
+  auto B = Species{ "B" };
+  auto C = Species{ "C" };
+
+  auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
+  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+
+  double k = 0.1;
+  auto rate = [k](const Conditions&) { return k; };
+  auto reaction = process::DissolvedReaction{ rate, { A }, { B }, C, aqueous_phase };
+
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
+  model.AddProcesses({ reaction });
+
+  auto maps = BuildIndexMaps(model);
+
+  // FD verification at solvent levels well above eps (1e-10) where central differences are accurate
+  for (double sol : { 55.0, 1.0, 1.0e-2, 1.0e-4 })
+  {
+    SCOPED_TRACE("solvent = " + std::to_string(sol));
+
+    DenseMatrix variables(1, maps.num_variables, 0.0);
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = 0.5;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.B")] = 0.3;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = sol;
+
+    DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
+    std::vector<Conditions> conditions(1);
+    conditions[0].temperature_ = 298.15;
+    conditions[0].pressure_ = 101325.0;
+
+    VerifyProcessJacobian(model, maps, variables, parameters, conditions);
+  }
+
+  // At extreme low solvent (near/below eps), FD can't resolve the steep damping gradient.
+  // Verify finiteness instead.
+  auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+  auto jac_nz = model.NonZeroJacobianElements(maps.variable_indices);
+  auto jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
+  for (const auto& elem : jac_nz)
+    jac_builder = jac_builder.WithElement(elem.first, elem.second);
+  SparseMatrixFD jac(jac_builder);
+  auto jac_fn = model.JacobianFunction<DenseMatrix, SparseMatrixFD>(
+      maps.parameter_indices, maps.variable_indices, jac);
+
+  for (double sol : { 1.0e-10, 1.0e-15, 0.0 })
+  {
+    SCOPED_TRACE("solvent (finiteness) = " + std::to_string(sol));
+
+    DenseMatrix variables(1, maps.num_variables, 0.0);
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = 0.5;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.B")] = 0.3;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = sol;
+
+    DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
+    std::vector<Conditions> conditions(1);
+    conditions[0].temperature_ = 298.15;
+    conditions[0].pressure_ = 101325.0;
+
+    auto update_fn = model.UpdateStateParametersFunction<DenseMatrix>(maps.parameter_indices);
+    update_fn(conditions, parameters);
+
+    DenseMatrix forcing(1, maps.num_variables, 0.0);
+    forcing_fn(parameters, variables, forcing);
+    for (std::size_t j = 0; j < maps.num_variables; ++j)
+      EXPECT_TRUE(std::isfinite(forcing[0][j])) << "forcing[" << j << "] is not finite at sol=" << sol;
+
+    jac.Fill(0.0);
+    jac_fn(parameters, variables, jac);
+    for (const auto& v : jac.AsVector())
+      EXPECT_TRUE(std::isfinite(v)) << "Jacobian element is not finite at sol=" << sol;
+  }
+}
+
+/// @brief Verify DissolvedReversibleReaction Jacobian across the damping range
+TEST(JacobianVerification, DissolvedReversibleReactionDampingRange)
+{
+  auto A = Species{ "A" };
+  auto B = Species{ "B" };
+  auto C = Species{ "C" };
+
+  auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
+  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+
+  double k_f = 0.1, k_r = 0.05;
+  auto forward_rate = [k_f](const Conditions&) { return k_f; };
+  auto reverse_rate = [k_r](const Conditions&) { return k_r; };
+  auto reaction = process::DissolvedReversibleReaction{
+    forward_rate, reverse_rate, { A }, { B }, C, aqueous_phase
+  };
+
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
+  model.AddProcesses({ reaction });
+
+  auto maps = BuildIndexMaps(model);
+
+  // FD verification at solvent levels well above eps (1e-10)
+  for (double sol : { 55.0, 1.0, 1.0e-2, 1.0e-4 })
+  {
+    SCOPED_TRACE("solvent = " + std::to_string(sol));
+
+    DenseMatrix variables(1, maps.num_variables, 0.0);
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = 0.6;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.B")] = 0.3;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = sol;
+
+    DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
+    std::vector<Conditions> conditions(1);
+    conditions[0].temperature_ = 298.15;
+    conditions[0].pressure_ = 101325.0;
+
+    VerifyProcessJacobian(model, maps, variables, parameters, conditions);
+  }
+
+  // At extreme low solvent, verify finiteness only
+  auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+  auto jac_nz = model.NonZeroJacobianElements(maps.variable_indices);
+  auto jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
+  for (const auto& elem : jac_nz)
+    jac_builder = jac_builder.WithElement(elem.first, elem.second);
+  SparseMatrixFD jac(jac_builder);
+  auto jac_fn = model.JacobianFunction<DenseMatrix, SparseMatrixFD>(
+      maps.parameter_indices, maps.variable_indices, jac);
+
+  for (double sol : { 1.0e-10, 1.0e-15, 0.0 })
+  {
+    SCOPED_TRACE("solvent (finiteness) = " + std::to_string(sol));
+
+    DenseMatrix variables(1, maps.num_variables, 0.0);
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = 0.6;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.B")] = 0.3;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = sol;
+
+    DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
+    std::vector<Conditions> conditions(1);
+    conditions[0].temperature_ = 298.15;
+    conditions[0].pressure_ = 101325.0;
+
+    auto update_fn = model.UpdateStateParametersFunction<DenseMatrix>(maps.parameter_indices);
+    update_fn(conditions, parameters);
+
+    DenseMatrix forcing(1, maps.num_variables, 0.0);
+    forcing_fn(parameters, variables, forcing);
+    for (std::size_t j = 0; j < maps.num_variables; ++j)
+      EXPECT_TRUE(std::isfinite(forcing[0][j])) << "forcing[" << j << "] is not finite at sol=" << sol;
+
+    jac.Fill(0.0);
+    jac_fn(parameters, variables, jac);
+    for (const auto& v : jac.AsVector())
+      EXPECT_TRUE(std::isfinite(v)) << "Jacobian element is not finite at sol=" << sol;
+  }
+}
+
+/// @brief Verify DissolvedEquilibriumConstraint Jacobian across the damping range
+TEST(JacobianVerification, DissolvedEquilibriumConstraintDampingRange)
+{
+  auto A = Species{ "A" };
+  auto B = Species{ "B" };
+  auto C = Species{ "C" };
+  auto S = Species{ "S" };
+
+  auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
+  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+
+  double K_eq = 2.0;
+  auto equil = constraint::DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ B })
+      .SetProducts({ C })
+      .SetAlgebraicSpecies(C)
+      .SetSolvent(S)
+      .SetEquilibriumConstant(process::constant::EquilibriumConstant(
+          process::constant::EquilibriumConstantParameters{ .A_ = K_eq }))
+      .Build();
+
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
+  model.AddConstraints({ equil });
+
+  auto maps = BuildIndexMaps(model);
+
+  // FD verification at solvent levels well above eps (1e-10)
+  for (double sol : { 55.0, 1.0, 1.0e-2, 1.0e-4 })
+  {
+    SCOPED_TRACE("solvent = " + std::to_string(sol));
+
+    DenseMatrix variables(1, maps.num_variables, 0.0);
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = 0.3;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.B")] = 0.4;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = 0.2;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.S")] = sol;
+
+    DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
+    std::vector<Conditions> conditions(1);
+    conditions[0].temperature_ = 298.15;
+    conditions[0].pressure_ = 101325.0;
+
+    VerifyConstraintJacobian(model, maps, variables, parameters, conditions);
+  }
+
+  // At extreme low solvent, verify finiteness only
+  auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+  auto jac_nz = model.NonZeroConstraintJacobianElements(maps.variable_indices);
+  auto jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
+  for (const auto& elem : jac_nz)
+    jac_builder = jac_builder.WithElement(elem.first, elem.second);
+  SparseMatrixFD jac(jac_builder);
+  auto jac_fn = model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(
+      maps.parameter_indices, maps.variable_indices, jac);
+
+  for (double sol : { 1.0e-10, 1.0e-15, 0.0 })
+  {
+    SCOPED_TRACE("solvent (finiteness) = " + std::to_string(sol));
+
+    DenseMatrix variables(1, maps.num_variables, 0.0);
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = 0.3;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.B")] = 0.4;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = 0.2;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.S")] = sol;
+
+    DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
+    std::vector<Conditions> conditions(1);
+    conditions[0].temperature_ = 298.15;
+    conditions[0].pressure_ = 101325.0;
+
+    auto update_fn = model.ConstraintUpdateStateParametersFunction<DenseMatrix>(maps.parameter_indices);
+    update_fn(conditions, parameters);
+
+    DenseMatrix residual(1, maps.num_variables, 0.0);
+    residual_fn(variables, parameters, residual);
+    for (std::size_t j = 0; j < maps.num_variables; ++j)
+      EXPECT_TRUE(std::isfinite(residual[0][j])) << "residual[" << j << "] is not finite at sol=" << sol;
+
+    jac.Fill(0.0);
+    jac_fn(variables, parameters, jac);
+    for (const auto& v : jac.AsVector())
+      EXPECT_TRUE(std::isfinite(v)) << "Constraint Jacobian element is not finite at sol=" << sol;
+  }
+}
+
+/// @brief Verify combined process+constraint Jacobian at zero solvent
+TEST(JacobianVerification, CombinedProcessAndConstraintZeroSolvent)
+{
+  auto A = Species{ "A" };
+  auto B = Species{ "B" };
+  auto C = Species{ "C" };
+  auto S = Species{ "S" };
+
+  auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
+  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+
+  double k = 0.1;
+  double K_eq = 2.0;
+  double total = 1.0;
+
+  auto reaction = process::DissolvedReaction{
+    [k](const Conditions&) { return k; }, { A }, { B }, S, aqueous_phase
+  };
+
+  auto equil = constraint::DissolvedEquilibriumConstraintBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ B })
+      .SetProducts({ C })
+      .SetAlgebraicSpecies(C)
+      .SetSolvent(S)
+      .SetEquilibriumConstant(process::constant::EquilibriumConstant(
+          process::constant::EquilibriumConstantParameters{ .A_ = K_eq }))
+      .Build();
+
+  auto mass_cons = constraint::LinearConstraintBuilder()
+      .SetAlgebraicSpecies(aqueous_phase, B)
+      .AddTerm(aqueous_phase, A, 1.0)
+      .AddTerm(aqueous_phase, B, 1.0)
+      .AddTerm(aqueous_phase, C, 1.0)
+      .SetConstant(total)
+      .Build();
+
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
+  model.AddProcesses({ reaction });
+  model.AddConstraints(equil, mass_cons);
+
+  auto maps = BuildIndexMaps(model);
+
+  // Test at zero solvent — should NOT produce NaN anymore
+  DenseMatrix variables(1, maps.num_variables, 0.0);
+  variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = 0.5;
+  variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.B")] = 0.3;
+  variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = 0.2;
+  variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.S")] = 0.0;
+
+  DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
+  std::vector<Conditions> conditions(1);
+  conditions[0].temperature_ = 298.15;
+  conditions[0].pressure_ = 101325.0;
+
+  // At zero solvent, FD can't resolve the steep damping gradient.
+  // Verify finiteness of forcing/Jacobian instead of FD accuracy.
+  auto update_fn = model.UpdateStateParametersFunction<DenseMatrix>(maps.parameter_indices);
+  update_fn(conditions, parameters);
+  auto cons_update_fn = model.ConstraintUpdateStateParametersFunction<DenseMatrix>(maps.parameter_indices);
+  cons_update_fn(conditions, parameters);
+
+  // Process forcing/Jacobian finiteness
+  auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+  DenseMatrix forcing(1, maps.num_variables, 0.0);
+  forcing_fn(parameters, variables, forcing);
+  for (std::size_t j = 0; j < maps.num_variables; ++j)
+    EXPECT_TRUE(std::isfinite(forcing[0][j])) << "Process forcing[" << j << "] is not finite at sol=0";
+
+  auto proc_nz = model.NonZeroJacobianElements(maps.variable_indices);
+  auto proc_jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
+  for (const auto& elem : proc_nz)
+    proc_jac_builder = proc_jac_builder.WithElement(elem.first, elem.second);
+  SparseMatrixFD proc_jac(proc_jac_builder);
+  auto proc_jac_fn = model.JacobianFunction<DenseMatrix, SparseMatrixFD>(
+      maps.parameter_indices, maps.variable_indices, proc_jac);
+  proc_jac_fn(parameters, variables, proc_jac);
+  for (const auto& v : proc_jac.AsVector())
+    EXPECT_TRUE(std::isfinite(v)) << "Process Jacobian element is not finite at sol=0";
+
+  // Constraint residual/Jacobian finiteness
+  auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+  DenseMatrix residual(1, maps.num_variables, 0.0);
+  residual_fn(variables, parameters, residual);
+  for (std::size_t j = 0; j < maps.num_variables; ++j)
+    EXPECT_TRUE(std::isfinite(residual[0][j])) << "Constraint residual[" << j << "] is not finite at sol=0";
+
+  auto cons_nz = model.NonZeroConstraintJacobianElements(maps.variable_indices);
+  auto cons_jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
+  for (const auto& elem : cons_nz)
+    cons_jac_builder = cons_jac_builder.WithElement(elem.first, elem.second);
+  SparseMatrixFD cons_jac(cons_jac_builder);
+  auto cons_jac_fn = model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(
+      maps.parameter_indices, maps.variable_indices, cons_jac);
+  cons_jac_fn(variables, parameters, cons_jac);
+  for (const auto& v : cons_jac.AsVector())
+    EXPECT_TRUE(std::isfinite(v)) << "Constraint Jacobian element is not finite at sol=0";
+}

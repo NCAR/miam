@@ -50,6 +50,13 @@ namespace miam
         return *this;
       }
 
+      /// @brief Sets the solvent damping epsilon for regularization near zero solvent
+      DissolvedReversibleReactionBuilder& SetSolventDampingEpsilon(double epsilon)
+      {
+        solvent_damping_epsilon_ = epsilon;
+        return *this;
+      }
+
       /// @brief Sets the forward rate constant function
       DissolvedReversibleReactionBuilder& SetForwardRateConstant(const auto& forward_rate_constant)
       {
@@ -136,7 +143,7 @@ namespace miam
           }
         }
         return process::DissolvedReversibleReaction(
-            forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_);
+            forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_damping_epsilon_);
       }
 
      private:
@@ -152,6 +159,7 @@ namespace miam
           reverse_rate_constant_;  ///< Reverse rate constant function
       mutable std::function<double(const micm::Conditions& conditions)>
           equilibrium_constant_;  ///< Equilibrium constant function
+      double solvent_damping_epsilon_{ 1.0e-10 };  ///< Regularization parameter for solvent damping
     };
   }  // namespace process
 }  // namespace miam

@@ -50,6 +50,13 @@ namespace miam
         return *this;
       }
 
+      /// @brief Sets the solvent damping epsilon for regularization near zero solvent
+      DissolvedReactionBuilder& SetSolventDampingEpsilon(double epsilon)
+      {
+        solvent_damping_epsilon_ = epsilon;
+        return *this;
+      }
+
       /// @brief Sets the rate constant from an object with a Calculate method
       template<typename T>
           requires requires(const T& t, const micm::Conditions& c) { { t.Calculate(c) }; }
@@ -90,7 +97,7 @@ namespace miam
         {
           throw std::runtime_error("DissolvedReactionBuilder requires the solvent to be set.");
         }
-        return process::DissolvedReaction(rate_constant_, reactants_, products_, solvent_, phase_);
+        return process::DissolvedReaction(rate_constant_, reactants_, products_, solvent_, phase_, solvent_damping_epsilon_);
       }
 
      private:
@@ -101,6 +108,7 @@ namespace miam
       micm::Species solvent_;                 ///< Solvent species
       bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
       std::function<double(const micm::Conditions& conditions)> rate_constant_;  ///< Rate constant function
+      double solvent_damping_epsilon_{ 1.0e-10 };  ///< Regularization parameter for solvent damping
     };
   }  // namespace process
 }  // namespace miam
