@@ -691,7 +691,7 @@ auto system = System(gas_phase, cloud_model);
 auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                   RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
-                  .AddExternalModelProcesses(cloud_model)
+                  .AddExternalModel(cloud_model)
                   .SetIgnoreUnusedSpecies(true)
                   .Build();
 

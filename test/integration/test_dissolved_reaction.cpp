@@ -53,7 +53,7 @@ TEST(DissolvedReactionIntegration, SimpleFirstOrderDecay)
   auto system = System(gas_phase, model);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
-                  .AddExternalModelProcesses(model)
+                  .AddExternalModel(model)
                   .SetIgnoreUnusedSpecies(true)
                   .Build();
 
@@ -165,7 +165,7 @@ TEST(DissolvedReactionIntegration, SolventAsReactant)
   auto system = System(gas_phase, model);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
-                  .AddExternalModelProcesses(model)
+                  .AddExternalModel(model)
                   .SetIgnoreUnusedSpecies(true)
                   .Build();
 
@@ -273,7 +273,7 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
   auto system = System(gas_phase, model);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
-                  .AddExternalModelProcesses(model)
+                  .AddExternalModel(model)
                   .SetIgnoreUnusedSpecies(true)
                   .Build();
 
@@ -396,7 +396,7 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
   auto system = System(gas_phase, model);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
-                  .AddExternalModelProcesses(model)
+                  .AddExternalModel(model)
                   .SetIgnoreUnusedSpecies(true)
                   .Build();
 
@@ -534,7 +534,7 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
   auto system = System(gas_phase, model);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
-                  .AddExternalModelProcesses(model)
+                  .AddExternalModel(model)
                   .SetIgnoreUnusedSpecies(true)
                   .Build();
 

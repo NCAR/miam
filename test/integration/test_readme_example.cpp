@@ -61,7 +61,7 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                     .SetSystem(system)
-                    .AddExternalModelProcesses(cloud_model)
+                    .AddExternalModel(cloud_model)
                     .SetIgnoreUnusedSpecies(true)
                     .Build();
 

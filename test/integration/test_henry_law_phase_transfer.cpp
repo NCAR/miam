@@ -102,7 +102,7 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                     .SetSystem(system)
-                    .AddExternalModelProcesses(model)
+                    .AddExternalModel(model)
                     .SetIgnoreUnusedSpecies(true)
                     .Build();
 
@@ -271,7 +271,7 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                     .SetSystem(system)
-                    .AddExternalModelProcesses(model)
+                    .AddExternalModel(model)
                     .SetIgnoreUnusedSpecies(true)
                     .Build();
 
@@ -405,7 +405,7 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
     auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                       RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                       .SetSystem(system)
-                      .AddExternalModelProcesses(model)
+                      .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
                       .Build();
 
@@ -523,7 +523,7 @@ TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
     auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                       RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                       .SetSystem(system)
-                      .AddExternalModelProcesses(model)
+                      .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
                       .Build();
 

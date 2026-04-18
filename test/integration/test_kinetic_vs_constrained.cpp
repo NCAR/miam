@@ -58,7 +58,7 @@ namespace
     auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                       RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                       .SetSystem(system)
-                      .AddExternalModelProcesses(model)
+                      .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
                       .Build();
 
@@ -157,7 +157,7 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
     auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                       RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                       .SetSystem(system)
-                      .AddExternalModelProcesses(model)
+                      .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
                       .Build();
 
@@ -371,7 +371,7 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
     auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                       RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                       .SetSystem(system)
-                      .AddExternalModelProcesses(model)
+                      .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
                       .Build();
 

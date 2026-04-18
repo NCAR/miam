@@ -89,7 +89,7 @@ TEST(DissolvedReversibleReactionIntegration, SimpleAtoB)
   auto system = System(gas_phase, model);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
-                  .AddExternalModelProcesses(model)
+                  .AddExternalModel(model)
                   .SetIgnoreUnusedSpecies(true)
                   .Build();
   
@@ -229,7 +229,7 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsReactant)
   auto system = System(gas_phase, model);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
-                  .AddExternalModelProcesses(model)
+                  .AddExternalModel(model)
                   .SetIgnoreUnusedSpecies(true)
                   .Build();
   
@@ -379,7 +379,7 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsProduct) {
   auto system = System(gas_phase, model);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
-                  .AddExternalModelProcesses(model)
+                  .AddExternalModel(model)
                   .SetIgnoreUnusedSpecies(true)
                   .Build();
   
@@ -548,7 +548,7 @@ TEST(DissolvedReversibleReactionIntegration, MultiPhaseInstances) {
   auto system = System(gas_phase, model);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
-                  .AddExternalModelProcesses(model)
+                  .AddExternalModel(model)
                   .SetIgnoreUnusedSpecies(true)
                   .Build();
   
