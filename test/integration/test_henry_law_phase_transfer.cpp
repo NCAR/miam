@@ -123,7 +123,7 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   double T = 298.15;
   double gas_0 = 1.0e-3;       // mol m⁻³ air
   double aq_0 = 0.0;           // mol m⁻³ air
-  double solvent_conc = 55.5;   // mol m⁻³ air (liquid water content)
+  double solvent_conc = 0.017;   // mol m⁻³ air (cloud LWC ~ 0.3 g m⁻³)
 
   state.variables_[0][i_gas] = gas_0;
   state.variables_[0][i_aq] = aq_0;
@@ -290,7 +290,7 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
   std::size_t i_h2o_large = find_idx("LARGE.AQ_LARGE.H2O");
 
   double gas_0 = 1.0e-2;
-  double solvent = 55.5;
+  double solvent = 0.017;
 
   state.variables_[0][i_gas] = gas_0;
   state.variables_[0][i_aq_small] = 0.0;
@@ -390,7 +390,7 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
 
   // Run at two temperatures and compare equilibrium
   double gas_0 = 1.0e-3;
-  double solvent = 55.5;
+  double solvent = 0.017;
 
   auto run_to_equilibrium = [&](double T) -> std::pair<double, double>
   {
@@ -490,7 +490,7 @@ TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
   Phase gas_phase{ "GAS", { { A_g } } };
 
   double gas_0 = 1.0e-3;
-  double solvent = 55.5;
+  double solvent = 0.017;
 
   // Run HLPT for a given particle radius, return (gas, aq) after fixed time
   auto run_with_radius = [&](double r_mean, const std::string& prefix,

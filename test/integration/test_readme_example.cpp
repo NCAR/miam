@@ -73,7 +73,7 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   state.conditions_[0].CalculateIdealAirDensity();
 
   state[co2] = 1.0e-3;                                  // mol m-3 air
-  state[cloud.Species(aqueous_phase, h2o)] = 300.0;      // mol m-3 (liquid water content)
+  state[cloud.Species(aqueous_phase, h2o)] = 0.017;      // mol m-3 air (cloud LWC ~ 0.3 g m-3)
   cloud.SetDefaultParameters(state);
 
   // Capture output
@@ -123,5 +123,5 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
 
   // 5. Water (solvent) should be essentially unchanged
   double h2o_final = state.variables_[0][state.variable_map_["CLOUD.AQUEOUS.H2O"]];
-  EXPECT_NEAR(h2o_final, 300.0, 1.0e-3) << "Solvent should be approximately conserved";
+  EXPECT_NEAR(h2o_final, 0.017, 1.0e-6) << "Solvent should be approximately conserved";
 }

@@ -45,8 +45,8 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
   double HLC = 4.0e-4;            // mol m⁻³ Pa⁻¹ (constant, no T dependence)
   double Mw_solvent = 0.018;      // kg mol⁻¹ (water)
   double rho_solvent = 1000.0;    // kg m⁻³ (water)
-  double H2O_conc = rho_solvent / Mw_solvent;  // 55555.6 mol/m³ → f_v ≈ 1.0
-  double f_v = H2O_conc * Mw_solvent / rho_solvent;  // = 1.0
+  double H2O_conc = 0.017;  // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
+  double f_v = H2O_conc * Mw_solvent / rho_solvent;  // ~ 3.06e-7
   double alpha = HLC * R_gas * T * f_v;               // dimensionless
 
   // Species
@@ -208,7 +208,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
   double HLC = 4.0e-4;
   double Mw_solvent = 0.018;
   double rho_solvent = 1000.0;
-  double H2O_conc = rho_solvent / Mw_solvent;
+  double H2O_conc = 0.017;  // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
   double f_v = H2O_conc * Mw_solvent / rho_solvent;
   double alpha = HLC * R_gas * T * f_v;
 

@@ -628,7 +628,7 @@ TEST(HenryLawEquilibriumConstraint, ResidualMultipleCells)
   DMP sv{ nc, 3, 0.0 };
   sv[0][0] = 1.0e-6;  sv[0][1] = 0.5;  sv[0][2] = 300.0;
   sv[1][0] = 2.0e-5;  sv[1][1] = 1.0;  sv[1][2] = 200.0;
-  sv[2][0] = 5.0e-7;  sv[2][1] = 0.01; sv[2][2] = 55.5;
+  sv[2][0] = 5.0e-7;  sv[2][1] = 0.01; sv[2][2] = 0.017;
 
   auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ nc, 3, 0.0 };
@@ -679,7 +679,7 @@ TEST(HenryLawEquilibriumConstraint, MultiInstanceMultiCellFD)
   DMP sv{ nc, 5, 0.0 };
   sv[0][0] = 1e-6;   sv[0][1] = 0.3;   sv[0][2] = 300.0;  sv[0][3] = 0.05;  sv[0][4] = 100.0;
   sv[1][0] = 5e-5;   sv[1][1] = 2.0;   sv[1][2] = 400.0;  sv[1][3] = 0.8;   sv[1][4] = 250.0;
-  sv[2][0] = 1e-7;   sv[2][1] = 0.01;  sv[2][2] = 55.5;   sv[2][3] = 0.005; sv[2][4] = 55.5;
+  sv[2][0] = 1e-7;   sv[2][1] = 0.01;  sv[2][2] = 0.017;   sv[2][3] = 0.005; sv[2][4] = 0.017;
   sv[3][0] = 1e-4;   sv[3][1] = 10.0;  sv[3][2] = 500.0;  sv[3][3] = 5.0;   sv[3][4] = 350.0;
 
   CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
@@ -850,7 +850,7 @@ TEST(HenryLawEquilibriumConstraint, TemperatureDependentHlcMultiCell)
   DMP sv{ nc, 3, 0.0 };
   sv[0][0] = 1e-6;  sv[0][1] = 0.5;  sv[0][2] = 300.0;
   sv[1][0] = 2e-6;  sv[1][1] = 1.0;  sv[1][2] = 250.0;
-  sv[2][0] = 5e-7;  sv[2][1] = 0.1;  sv[2][2] = 55.5;
+  sv[2][0] = 5e-7;  sv[2][1] = 0.1;  sv[2][2] = 0.017;
 
   // Check residuals with per-cell HLC*R*T
   auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
@@ -1018,14 +1018,14 @@ TEST(HenryLawEquilibriumConstraint, LargeHLC)
   DMP sv{ 1, 3, 0.0 };
   sv[0][0] = 1.0e-9;
   sv[0][1] = 0.1;
-  sv[0][2] = 55.5;
+  sv[0][2] = 0.017;
 
   auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ 1, 3, 0.0 };
   rf(sv, no_params, residual);
 
   double hlc_rt = HLC * miam::util::R_gas * T;
-  double fv = 55.5 * Mw_water / rho_water;
+  double fv = 0.017 * Mw_water / rho_water;
   double expected = hlc_rt * fv * 1.0e-9 - 0.1;
   EXPECT_NEAR(residual[0][1], expected, std::abs(expected) * 1e-10);
 
@@ -1105,7 +1105,7 @@ TEST(HenryLawEquilibriumConstraint, ResidualZeroAtEquilibrium)
   InitHlcRt(constraint, 1, T);
 
   double hlc_rt = HLC * miam::util::R_gas * T;
-  double solvent_conc = 55.5;
+  double solvent_conc = 0.017;
   double fv = solvent_conc * Mw_water / rho_water;
   double gas_conc = 1.0e-6;
   double aq_conc_eq = hlc_rt * fv * gas_conc;  // equilibrium: G = 0
@@ -1166,12 +1166,12 @@ TEST(HenryLawEquilibriumConstraint, KitchenSinkFD)
   sv[1][0] = 5e-5;
   sv[1][1] = 5.0;  sv[1][2] = 400.0;
   sv[1][3] = 2.0;  sv[1][4] = 350.0;
-  sv[1][5] = 0.5;  sv[1][6] = 55.5;
+  sv[1][5] = 0.5;  sv[1][6] = 0.017;
   // Cell 2
   sv[2][0] = 1e-7;
-  sv[2][1] = 0.01; sv[2][2] = 55.5;
-  sv[2][3] = 0.005; sv[2][4] = 55.5;
-  sv[2][5] = 0.001; sv[2][6] = 55.5;
+  sv[2][1] = 0.01; sv[2][2] = 0.017;
+  sv[2][3] = 0.005; sv[2][4] = 0.017;
+  sv[2][5] = 0.001; sv[2][6] = 0.017;
 
   CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
 }

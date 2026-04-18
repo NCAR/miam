@@ -323,7 +323,7 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
   double rho_solvent = 1000.0;
   double D_g = 1.5e-5;         // m² s⁻¹
   double accommodation = 0.05;
-  double H2O_conc = rho_solvent / Mw_solvent;  // 55555.6 mol/m³
+  double H2O_conc = 0.017;  // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
   double f_v = H2O_conc * Mw_solvent / rho_solvent;
   double alpha = HLC * R_gas * T * f_v;
 

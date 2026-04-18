@@ -296,10 +296,10 @@ TEST(JacobianVerification, HenryLawPhaseTransferProcess)
   DenseMatrix variables(2, maps.num_variables, 0.0);
   variables[0][maps.variable_indices.at("A_g")] = 1.0e-3;
   variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A_aq")] = 1.0e-5;
-  variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 55.5;
+  variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 0.017;  // mol/m³ air
   variables[1][maps.variable_indices.at("A_g")] = 5.0e-4;
   variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.A_aq")] = 2.0e-4;
-  variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 55.5;
+  variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 0.017;  // mol/m³ air
 
   DenseMatrix parameters(2, std::max(maps.num_parameters, std::size_t(1)), 0.0);
   std::vector<Conditions> conditions(2);
@@ -352,7 +352,7 @@ TEST(JacobianVerification, HenryLawPhaseTransferTwoMomentMode)
   DenseMatrix variables(1, maps.num_variables, 0.0);
   variables[0][maps.variable_indices.at("A_g")] = 1.0e-3;
   variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A_aq")] = 1.0e-5;
-  variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 55.5;
+  variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 0.017;  // mol/m³ air
   // TwoMomentMode also has a number concentration variable
   for (const auto& [name, idx] : maps.variable_indices)
   {
@@ -549,10 +549,10 @@ TEST(JacobianVerification, HenryLawEquilibriumConstraint)
   DenseMatrix variables(2, maps.num_variables, 0.0);
   variables[0][maps.variable_indices.at("A_g")] = 1.0e-3;
   variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A_aq")] = 5.0e-4;
-  variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 55555.0;
+  variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 0.017;  // mol/m³ air
   variables[1][maps.variable_indices.at("A_g")] = 2.0e-3;
   variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.A_aq")] = 1.0e-3;
-  variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 55555.0;
+  variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 0.017;  // mol/m³ air
 
   DenseMatrix parameters(2, std::max(maps.num_parameters, std::size_t(1)), 0.0);
   std::vector<Conditions> conditions(2);
@@ -682,11 +682,11 @@ TEST(JacobianVerification, HenryLawEquilibriumWithConservation)
   variables[0][maps.variable_indices.at("Precursor")] = 0.8;
   variables[0][maps.variable_indices.at("A_g")] = 0.1;
   variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A_aq")] = 0.1;
-  variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 55555.0;
+  variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 0.017;  // mol/m³ air
   variables[1][maps.variable_indices.at("Precursor")] = 0.3;
   variables[1][maps.variable_indices.at("A_g")] = 0.4;
   variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.A_aq")] = 0.3;
-  variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 55555.0;
+  variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 0.017;  // mol/m³ air
 
   DenseMatrix parameters(2, std::max(maps.num_parameters, std::size_t(1)), 0.0);
   std::vector<Conditions> conditions(2);

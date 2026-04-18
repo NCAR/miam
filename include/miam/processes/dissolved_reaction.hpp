@@ -31,6 +31,17 @@ namespace miam
     ///          \f$ \mathrm{Reactants} \rightarrow \mathrm{Products} \f$
     ///
     ///          with rate constant \f$ k \f$.
+    ///
+    ///          The rate expression is:
+    ///          \f$ r = \frac{k}{[S]^{n_r - 1}} \prod [R_i] \f$
+    ///
+    ///          where [S] is the solvent concentration (mol m⁻³ air) and
+    ///          \f$ n_r \f$ is the number of reactants. The solvent-normalization
+    ///          factor absorbs concentration dimensions, so \f$ k \f$ always has
+    ///          units of s⁻¹. To convert from a literature rate constant
+    ///          \f$ k_{lit} \f$ in molar units:
+    ///          \f$ k = k_{lit} \times c_{H_2O}^{n_r - 1} \f$
+    ///          where \f$ c_{H_2O} = 55.556 \f$ mol/L.
     class DissolvedReaction
     {
      public:

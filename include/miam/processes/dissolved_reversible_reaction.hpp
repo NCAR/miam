@@ -35,6 +35,14 @@ namespace miam
     ///          with forward rate constant \f$ k_f \f$ and reverse rate constant \f$ k_r \f$. The
     ///          relationship between the rate constants and the equilibrium constant \f$ K_{eq} \f$ is:
     ///          \f$ K_{eq} = \frac{k_f}{k_r} = \frac{\prod[\mathrm{Products}]}{\prod[\mathrm{Reactants}]} \f$.
+    ///
+    ///          Both \f$ k_f \f$ and \f$ k_r \f$ are in units of s⁻¹ after the
+    ///          solvent-normalization conversion from literature molar units:
+    ///          \f$ k_f = k_{f,lit} \times c_{H_2O}^{n_r - 1} \f$,
+    ///          \f$ k_r = k_{r,lit} \times c_{H_2O}^{n_p - 1} \f$
+    ///          where \f$ c_{H_2O} = 55.556 \f$ mol/L.
+    ///          \f$ K_{eq} \f$ is dimensionless:
+    ///          \f$ K_{eq} = K_{lit} / c_{H_2O}^{n_p - n_r} \f$.
     class DissolvedReversibleReaction
     {
      public:

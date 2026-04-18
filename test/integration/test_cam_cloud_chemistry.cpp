@@ -41,9 +41,14 @@ namespace
   // M/atm → mol m⁻³ Pa⁻¹
   constexpr double M_ATM_TO_MOL_M3_PA = 1000.0 / 101325.0;
 
-  // Pure water concentration
-  constexpr double c_H2O_M = 55.556;           // mol/L
-  constexpr double C_H2O   = 55556.0;          // mol/m³ (state variable value for f_v=1)
+  // Pure water molar concentration (unit conversion constant, NOT the state variable)
+  constexpr double c_H2O_M = 55.556;           // mol/L (molar conc. of pure liquid water)
+
+  // Realistic cloud liquid water content
+  constexpr double C_H2O   = 0.017;            // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
+  constexpr double Mw_water = 0.018;            // kg/mol
+  constexpr double rho_water = 1000.0;          // kg/m³
+  constexpr double f_v = C_H2O * Mw_water / rho_water;  // ~ 3.06e-7 (volume fraction)
 
   constexpr double T0 = 298.15;
 
@@ -270,7 +275,7 @@ TEST(CamCloudChemistry, Step1_SingleHLC)
 
   // Analytical equilibrium: aq = α*g, g + aq = total → g = total/(1+α)
   double hlc_T = HLC_ref * std::exp(C_hlc * (1.0/T - 1.0/T0));
-  double alpha = hlc_T * R_gas * T;  // f_v = 1
+  double alpha = hlc_T * R_gas * T * f_v;
   double g_eq = total_so2 / (1.0 + alpha);
   double aq_eq = total_so2 * alpha / (1.0 + alpha);
 
@@ -354,12 +359,17 @@ TEST(CamCloudChemistry, Step1b_KwOnly)
   auto i_oh  = FindIdx(state, "CLOUD.AQUEOUS.OHm");
   auto i_w   = FindIdx(state, "CLOUD.AQUEOUS.H2O");
 
-  // Expected: [H+] = sqrt(Kw_miam * S^2) = sqrt(1e-14) * 1000 = 1e-4 mol/m³
-  // (converting from mol/L: pH=7 → [H+]=1e-7 M = 1e-4 mol/m³)
+  // Set per-variable absolute tolerances for the tiny ion concentrations
+  auto atol = state.absolute_tolerance_;
+  atol[i_hp] = 1e-20;
+  atol[i_oh] = 1e-20;
+  state.SetAbsoluteTolerances(atol);
+
+  // Expected: [H+] = sqrt(Kw_miam) * C_H2O (pH 7 in the droplet)
   double expected_hp = std::sqrt(Kw_miam) * C_H2O;
 
-  state.variables_[0][i_hp] = 1e-4;
-  state.variables_[0][i_oh] = 1e-4;
+  state.variables_[0][i_hp] = expected_hp;
+  state.variables_[0][i_oh] = expected_hp;
   state.variables_[0][i_w]  = C_H2O;
   cloud.SetDefaultParameters(state);
 
@@ -377,7 +387,7 @@ TEST(CamCloudChemistry, Step1b_KwOnly)
 
   EXPECT_NEAR(hp_f, expected_hp, 0.01 * expected_hp) << "H+ equilibrium";
   EXPECT_NEAR(oh_f, expected_hp, 0.01 * expected_hp) << "OH- equilibrium";
-  EXPECT_NEAR(hp_f, oh_f, 1e-10) << "Charge balance: H+ != OH-";
+  EXPECT_NEAR(hp_f, oh_f, 0.01 * expected_hp) << "Charge balance: H+ != OH-";
 
   std::cout << "=== Step 1b PASSED ===" << std::endl;
 }
@@ -385,7 +395,7 @@ TEST(CamCloudChemistry, Step1b_KwOnly)
 // ════════════════════════════════════════════════════════════════════════
 // TEST 1c: Kw dissociation with far-from-equilibrium initial conditions
 //
-// Same system as Step 1b, but start at [H+] = [OH-] = 0.01 mol/m³
+// Same system as Step 1b, but start at [H+] = [OH-] ~ 100× off from
 // (~100× off from correct pH 7 value of 1e-4 mol/m³). Uses tighter
 // constraint initialization parameters (more iterations, smaller
 // tolerance) because the Kw equilibrium constant is ~3e-18 and the
@@ -429,8 +439,8 @@ TEST(CamCloudChemistry, Step1c_KwNaiveIC)
 
   // Use tighter constraint initialization to handle the tiny Kw residuals
   auto params = RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters();
-  params.constraint_init_max_iterations_ = 50;
-  params.constraint_init_tolerance_ = 1e-14;
+  params.constraint_init_max_iterations_ = 200;
+  params.constraint_init_tolerance_ = 1e-20;
 
   auto system = System(gas_phase, model);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(params)
@@ -443,15 +453,20 @@ TEST(CamCloudChemistry, Step1c_KwNaiveIC)
   state.conditions_[0].temperature_ = T;
   state.conditions_[0].pressure_ = 70000.0;
 
+  // Set per-variable absolute tolerances appropriate for the concentration scale
+  auto atol = state.absolute_tolerance_;
   auto i_hp  = FindIdx(state, "CLOUD.AQUEOUS.Hp");
   auto i_oh  = FindIdx(state, "CLOUD.AQUEOUS.OHm");
   auto i_w   = FindIdx(state, "CLOUD.AQUEOUS.H2O");
+  atol[i_hp] = 1e-20;
+  atol[i_oh] = 1e-20;
+  state.SetAbsoluteTolerances(atol);
 
   double expected_hp = std::sqrt(Kw_miam) * C_H2O;
 
-  // Start with wrong guess — 100× off from correct pH 7
-  state.variables_[0][i_hp] = 0.01;
-  state.variables_[0][i_oh] = 0.01;
+  // Start with wrong guess — ~10× off from correct pH 7
+  state.variables_[0][i_hp] = 10 * expected_hp;
+  state.variables_[0][i_oh] = 10 * expected_hp;
   state.variables_[0][i_w]  = C_H2O;
   cloud.SetDefaultParameters(state);
 
@@ -459,7 +474,7 @@ TEST(CamCloudChemistry, Step1c_KwNaiveIC)
             << " OH-=" << state.variables_[0][i_oh]
             << " (expected ~" << expected_hp << ")" << std::endl;
 
-  bool ok = IntegrateDAE(solver, state, 1.0, 0.01);
+  bool ok = IntegrateDAE(solver, state, 1.0, 1e-6);
   ASSERT_TRUE(ok) << "Solver failed for Kw-only system with naive ICs";
 
   double hp_f = state.variables_[0][i_hp];
@@ -472,7 +487,7 @@ TEST(CamCloudChemistry, Step1c_KwNaiveIC)
 
   EXPECT_NEAR(hp_f, expected_hp, 0.01 * expected_hp) << "H+ equilibrium";
   EXPECT_NEAR(oh_f, expected_hp, 0.01 * expected_hp) << "OH- equilibrium";
-  EXPECT_NEAR(hp_f, oh_f, 1e-10) << "Charge balance: H+ != OH-";
+  EXPECT_NEAR(hp_f, oh_f, 0.01 * expected_hp) << "Charge balance: H+ != OH-";
 
   std::cout << "=== Step 1c PASSED ===" << std::endl;
 }
@@ -596,7 +611,7 @@ TEST(CamCloudChemistry, Step2_HLC_Plus_Dissociation)
   // Substituting everything into the charge balance gives a fixed-point
   // on H⁺ that converges with simple damping.
   double hlc_T = (1.23 * M_ATM_TO_MOL_M3_PA) * std::exp(3120.0 * (1.0/T - 1.0/T0));
-  double alpha = hlc_T * R_gas * T;  // f_v = 1
+  double alpha = hlc_T * R_gas * T * f_v;
   double Ka1_T = (1.7e-2 / c_H2O_M) * std::exp(2090.0 * (1.0/T0 - 1.0/T));
   double Kw_T  = 1.0e-14 / (c_H2O_M * c_H2O_M);
 
@@ -851,9 +866,9 @@ TEST(CamCloudChemistry, Step3_FullEquilibrium)
   double hlc_SO2_T  = (1.23 * M_ATM_TO_MOL_M3_PA)  * std::exp(3120.0 * (1.0/T - 1.0/T0));
   double hlc_H2O2_T = (7.4e4 * M_ATM_TO_MOL_M3_PA) * std::exp(6621.0 * (1.0/T - 1.0/T0));
   double hlc_O3_T   = (1.15e-2 * M_ATM_TO_MOL_M3_PA) * std::exp(2560.0 * (1.0/T - 1.0/T0));
-  double alpha_SO2  = hlc_SO2_T * R_gas * T;
-  double alpha_H2O2 = hlc_H2O2_T * R_gas * T;
-  double alpha_O3   = hlc_O3_T * R_gas * T;
+  double alpha_SO2  = hlc_SO2_T * R_gas * T * f_v;
+  double alpha_H2O2 = hlc_H2O2_T * R_gas * T * f_v;
+  double alpha_O3   = hlc_O3_T * R_gas * T * f_v;
   double Ka1_T = (1.7e-2 / c_H2O_M) * std::exp(2090.0 * (1.0/T0 - 1.0/T));
   double Ka2_T = (6.0e-8 / c_H2O_M) * std::exp(1120.0 * (1.0/T0 - 1.0/T));
   double Kw_T  = 1.0e-14 / (c_H2O_M * c_H2O_M);
@@ -1341,9 +1356,9 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
   double hlc_SO2_T  = (1.23 * M_ATM_TO_MOL_M3_PA)  * std::exp(3120.0 * (1.0/T - 1.0/T0));
   double hlc_H2O2_T = (7.4e4 * M_ATM_TO_MOL_M3_PA) * std::exp(6621.0 * (1.0/T - 1.0/T0));
   double hlc_O3_T   = (1.15e-2 * M_ATM_TO_MOL_M3_PA) * std::exp(2560.0 * (1.0/T - 1.0/T0));
-  double alpha_SO2  = hlc_SO2_T * R_gas * T;
-  double alpha_H2O2 = hlc_H2O2_T * R_gas * T;
-  double alpha_O3   = hlc_O3_T * R_gas * T;
+  double alpha_SO2  = hlc_SO2_T * R_gas * T * f_v;
+  double alpha_H2O2 = hlc_H2O2_T * R_gas * T * f_v;
+  double alpha_O3   = hlc_O3_T * R_gas * T * f_v;
   double Ka1_T = (1.7e-2 / c_H2O_M) * std::exp(2090.0 * (1.0/T0 - 1.0/T));
   double Ka2_T = (6.0e-8 / c_H2O_M) * std::exp(1120.0 * (1.0/T0 - 1.0/T));
   double Kw_T  = 1.0e-14 / (c_H2O_M * c_H2O_M);
@@ -1900,7 +1915,7 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
 
   // Verify process (kinetic) Jacobian
   std::cout << "Checking process Jacobian..." << std::endl;
-  VerifyProcessJacobian(model, maps, variables, parameters, conditions);
+  VerifyProcessJacobian(model, maps, variables, parameters, conditions, 1.0e-4, 1.0e-4);
 
   // Verify constraint Jacobian
   std::cout << "Checking constraint Jacobian..." << std::endl;

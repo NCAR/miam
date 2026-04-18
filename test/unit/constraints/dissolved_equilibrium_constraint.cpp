@@ -734,7 +734,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDMultiProduct)
   sv[0][0] = 0.1;
   sv[0][1] = 0.01;
   sv[0][2] = 1.0e-4;
-  sv[0][3] = 55.5;
+  sv[0][3] = 0.017;
 
   CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
 }
@@ -771,7 +771,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDMultiReactantMultiProduct)
   sv[0][1] = 0.3;
   sv[0][2] = 0.1;
   sv[0][3] = 1.0e-3;
-  sv[0][4] = 55.5;
+  sv[0][4] = 0.017;
 
   CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
 }
@@ -804,9 +804,9 @@ TEST(DissolvedEquilibriumConstraint, ResidualAndJacobianFDMultipleCells)
 
   DMP sv{ nc, 3, 0.0 };
   sv[0][0] = 1.0;   sv[0][1] = 5.0;   sv[0][2] = 300.0;
-  sv[1][0] = 0.5;   sv[1][1] = 2.5;   sv[1][2] = 55.5;
+  sv[1][0] = 0.5;   sv[1][1] = 2.5;   sv[1][2] = 0.017;
   sv[2][0] = 10.0;  sv[2][1] = 40.0;  sv[2][2] = 100.0;
-  sv[3][0] = 0.01;  sv[3][1] = 0.1;   sv[3][2] = 55.5;
+  sv[3][0] = 0.01;  sv[3][1] = 0.1;   sv[3][2] = 0.017;
 
   // Check residuals
   auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
@@ -857,26 +857,26 @@ TEST(DissolvedEquilibriumConstraint, MultiInstanceMultiCellFD)
 
   DMP sv{ nc, 8, 0.0 };
   // Cell 0
-  sv[0][0] = 0.5;  sv[0][1] = 0.3;  sv[0][2] = 0.1;  sv[0][3] = 55.5;
-  sv[0][4] = 0.2;  sv[0][5] = 0.1;  sv[0][6] = 0.05; sv[0][7] = 55.5;
+  sv[0][0] = 0.5;  sv[0][1] = 0.3;  sv[0][2] = 0.1;  sv[0][3] = 0.017;
+  sv[0][4] = 0.2;  sv[0][5] = 0.1;  sv[0][6] = 0.05; sv[0][7] = 0.017;
   // Cell 1
   sv[1][0] = 1.0;  sv[1][1] = 2.0;  sv[1][2] = 3.0;  sv[1][3] = 100.0;
   sv[1][4] = 0.5;  sv[1][5] = 1.0;  sv[1][6] = 1.5;  sv[1][7] = 80.0;
   // Cell 2
-  sv[2][0] = 5.0;  sv[2][1] = 3.0;  sv[2][2] = 10.0; sv[2][3] = 55.5;
-  sv[2][4] = 2.0;  sv[2][5] = 1.5;  sv[2][6] = 4.0;  sv[2][7] = 55.5;
+  sv[2][0] = 5.0;  sv[2][1] = 3.0;  sv[2][2] = 10.0; sv[2][3] = 0.017;
+  sv[2][4] = 2.0;  sv[2][5] = 1.5;  sv[2][6] = 4.0;  sv[2][7] = 0.017;
 
   // Residuals: G = K_eq * [A]*[B]/[S] - [C]
   auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ nc, 8, 0.0 };
   rf(sv, no_params, residual);
 
-  // LARGE instance, cell 0: G = 3.0 * 0.5*0.3/55.5 - 0.1
-  double expected_L0 = 3.0 * 0.5 * 0.3 / 55.5 - 0.1;
+  // LARGE instance, cell 0: G = 3.0 * 0.5*0.3/0.017 - 0.1
+  double expected_L0 = 3.0 * 0.5 * 0.3 / 0.017 - 0.1;
   EXPECT_NEAR(residual[0][2], expected_L0, 1e-12);
 
-  // SMALL instance, cell 0: G = 3.0 * 0.2*0.1/55.5 - 0.05
-  double expected_S0 = 3.0 * 0.2 * 0.1 / 55.5 - 0.05;
+  // SMALL instance, cell 0: G = 3.0 * 0.2*0.1/0.017 - 0.05
+  double expected_S0 = 3.0 * 0.2 * 0.1 / 0.017 - 0.05;
   EXPECT_NEAR(residual[0][6], expected_S0, 1e-12);
 
   // Non-algebraic rows untouched
@@ -918,9 +918,9 @@ TEST(DissolvedEquilibriumConstraint, ThreeInstancesFD)
 
   DMP sv{ nc, 12, 0.0 };
   // Cell 0
-  sv[0][0] = 0.5;  sv[0][1] = 0.1;  sv[0][2] = 1e-4;  sv[0][3] = 55.5;
-  sv[0][4] = 1.0;  sv[0][5] = 0.2;  sv[0][6] = 2e-4;  sv[0][7] = 55.5;
-  sv[0][8] = 2.0;  sv[0][9] = 0.5;  sv[0][10] = 5e-4; sv[0][11] = 55.5;
+  sv[0][0] = 0.5;  sv[0][1] = 0.1;  sv[0][2] = 1e-4;  sv[0][3] = 0.017;
+  sv[0][4] = 1.0;  sv[0][5] = 0.2;  sv[0][6] = 2e-4;  sv[0][7] = 0.017;
+  sv[0][8] = 2.0;  sv[0][9] = 0.5;  sv[0][10] = 5e-4; sv[0][11] = 0.017;
   // Cell 1
   sv[1][0] = 3.0;  sv[1][1] = 1.0;  sv[1][2] = 1e-3;  sv[1][3] = 40.0;
   sv[1][4] = 4.0;  sv[1][5] = 2.0;  sv[1][6] = 2e-3;  sv[1][7] = 50.0;
@@ -1041,9 +1041,9 @@ TEST(DissolvedEquilibriumConstraint, TemperatureDependentKeqFD)
   update_fn(conditions);
 
   DMP sv{ nc, 3, 0.0 };
-  sv[0][0] = 1.0;  sv[0][1] = 2.0;  sv[0][2] = 55.5;
-  sv[1][0] = 0.5;  sv[1][1] = 1.0;  sv[1][2] = 55.5;
-  sv[2][0] = 2.0;  sv[2][1] = 5.0;  sv[2][2] = 55.5;
+  sv[0][0] = 1.0;  sv[0][1] = 2.0;  sv[0][2] = 0.017;
+  sv[1][0] = 0.5;  sv[1][1] = 1.0;  sv[1][2] = 0.017;
+  sv[2][0] = 2.0;  sv[2][1] = 5.0;  sv[2][2] = 0.017;
 
   // Check residuals with different K_eq per cell
   auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
@@ -1087,7 +1087,7 @@ TEST(DissolvedEquilibriumConstraint, LargeKeqRange)
   DMP sv{ 1, 3, 0.0 };
   sv[0][0] = 1.0e-6;   // small [A]
   sv[0][1] = 100.0;    // [B] = K_eq * A
-  sv[0][2] = 55.5;
+  sv[0][2] = 0.017;
 
   auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ 1, 3, 0.0 };
@@ -1228,14 +1228,14 @@ TEST(DissolvedEquilibriumConstraint, KitchenSinkFD)
 
   DMP sv{ nc, 10, 0.0 };
   // Cell 0
-  sv[0][0] = 0.5;  sv[0][1] = 0.3;  sv[0][2] = 0.1;  sv[0][3] = 1e-4;  sv[0][4] = 55.5;
+  sv[0][0] = 0.5;  sv[0][1] = 0.3;  sv[0][2] = 0.1;  sv[0][3] = 1e-4;  sv[0][4] = 0.017;
   sv[0][5] = 0.2;  sv[0][6] = 0.4;  sv[0][7] = 0.05; sv[0][8] = 2e-4;  sv[0][9] = 40.0;
   // Cell 1
-  sv[1][0] = 1.0;  sv[1][1] = 2.0;  sv[1][2] = 0.5;  sv[1][3] = 5e-3;  sv[1][4] = 55.5;
-  sv[1][5] = 3.0;  sv[1][6] = 1.0;  sv[1][7] = 1.0;  sv[1][8] = 1e-3;  sv[1][9] = 55.5;
+  sv[1][0] = 1.0;  sv[1][1] = 2.0;  sv[1][2] = 0.5;  sv[1][3] = 5e-3;  sv[1][4] = 0.017;
+  sv[1][5] = 3.0;  sv[1][6] = 1.0;  sv[1][7] = 1.0;  sv[1][8] = 1e-3;  sv[1][9] = 0.017;
   // Cell 2
-  sv[2][0] = 0.1;  sv[2][1] = 0.1;  sv[2][2] = 0.01; sv[2][3] = 1e-5;  sv[2][4] = 55.5;
-  sv[2][5] = 5.0;  sv[2][6] = 2.0;  sv[2][7] = 3.0;  sv[2][8] = 5e-3;  sv[2][9] = 55.5;
+  sv[2][0] = 0.1;  sv[2][1] = 0.1;  sv[2][2] = 0.01; sv[2][3] = 1e-5;  sv[2][4] = 0.017;
+  sv[2][5] = 5.0;  sv[2][6] = 2.0;  sv[2][7] = 3.0;  sv[2][8] = 5e-3;  sv[2][9] = 0.017;
 
   CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
 }

@@ -210,10 +210,10 @@ TEST(MiamProcessSet, ForcingFunction)
     conditions[0].temperature_ = 298.15;
     update_fn(conditions, state_parameters);
 
-    // Set concentration: A=1.0, B=0.0, SOLVENT=55.5
+    // Set concentration: A=1.0, B=0.0, SOLVENT=0.017
     state_variables[0][0] = 1.0;
     state_variables[0][1] = 0.0;
-    state_variables[0][2] = 55.5;
+    state_variables[0][2] = 0.017;
 
     forcing_fn(state_parameters, state_variables, forcing);
 
@@ -275,7 +275,7 @@ TEST(MiamProcessSet, JacobianFunction)
 
     state_variables[0][0] = 1.0;   // A
     state_variables[0][1] = 0.5;   // B
-    state_variables[0][2] = 55.5;  // SOLVENT
+    state_variables[0][2] = 0.017;  // SOLVENT
 
     jacobian_fn(state_parameters, state_variables, jacobian);
 
