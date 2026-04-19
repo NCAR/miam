@@ -468,13 +468,16 @@ TEST(CamCloudChemistry, Step1c_KwNaiveIC)
   state.conditions_[0].temperature_ = T;
   state.conditions_[0].pressure_ = 70000.0;
 
-  // Set per-variable absolute tolerances appropriate for the concentration scale
+  // Set per-variable absolute tolerances appropriate for the concentration scale.
+  // Use a moderate tolerance for the solver's step-size error control; the tight
+  // constraint initialisation tolerance (1e-20 above) already ensures algebraic
+  // variables are resolved to high precision before each step.
   auto atol = state.absolute_tolerance_;
   auto i_hp  = FindIdx(state, "CLOUD.AQUEOUS.Hp");
   auto i_oh  = FindIdx(state, "CLOUD.AQUEOUS.OHm");
   auto i_w   = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-  atol[i_hp] = 1e-20;
-  atol[i_oh] = 1e-20;
+  atol[i_hp] = 1e-12;
+  atol[i_oh] = 1e-12;
   state.SetAbsoluteTolerances(atol);
 
   double Kw_at_T = Kw_miam * std::exp(6710.0 * (1.0/T0 - 1.0/T));
