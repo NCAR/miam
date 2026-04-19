@@ -108,7 +108,7 @@ namespace miam
       micm::Species solvent_;                 ///< Solvent species
       bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
       std::function<double(const micm::Conditions& conditions)> rate_constant_;  ///< Rate constant function
-      double solvent_damping_epsilon_{ 1.0e-10 };  ///< Regularization parameter for solvent damping
+      double solvent_damping_epsilon_{ 1.0e-20 };  ///< Regularization parameter for solvent damping
     };
   }  // namespace process
 }  // namespace miam

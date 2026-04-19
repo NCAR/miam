@@ -51,7 +51,7 @@ namespace miam
       micm::Species solvent_;                                                    ///< Solvent species
       micm::Phase phase_;  ///< Phase in which the reaction occurs
       std::string uuid_;   ///< Unique identifier for the reaction
-      double solvent_damping_epsilon_{ 1.0e-10 };  ///< Regularization parameter to prevent singularity as solvent → 0
+      double solvent_damping_epsilon_{ 1.0e-20 };  ///< Regularization parameter to prevent singularity as solvent → 0
 
       DissolvedReaction() = delete;
 
@@ -62,7 +62,7 @@ namespace miam
           const std::vector<micm::Species>& products,
           micm::Species solvent,
           micm::Phase phase,
-          double solvent_damping_epsilon = 1.0e-10)
+          double solvent_damping_epsilon = 1.0e-20)
           : rate_constant_(rate_constant),
             reactants_(reactants),
             products_(products),

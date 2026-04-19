@@ -159,7 +159,7 @@ namespace miam
           reverse_rate_constant_;  ///< Reverse rate constant function
       mutable std::function<double(const micm::Conditions& conditions)>
           equilibrium_constant_;  ///< Equilibrium constant function
-      double solvent_damping_epsilon_{ 1.0e-10 };  ///< Regularization parameter for solvent damping
+      double solvent_damping_epsilon_{ 1.0e-20 };  ///< Regularization parameter for solvent damping
     };
   }  // namespace process
 }  // namespace miam

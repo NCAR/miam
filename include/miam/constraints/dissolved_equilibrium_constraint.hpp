@@ -43,7 +43,7 @@ namespace miam
       micm::Species solvent_;            ///< Solvent species
       micm::Phase phase_;                ///< Phase in which the reaction occurs
       std::string uuid_;                 ///< Unique identifier
-      double solvent_damping_epsilon_{ 1.0e-10 };  ///< Regularization parameter to prevent singularity as solvent → 0
+      double solvent_damping_epsilon_{ 1.0e-20 };  ///< Regularization parameter to prevent singularity as solvent → 0
 
       /// @brief Shared mutable K_eq values, bridging UpdateStateParametersFunction → constraint functions.
       ///        One value per grid cell.
@@ -59,7 +59,7 @@ namespace miam
           const micm::Species& algebraic_species,
           micm::Species solvent,
           micm::Phase phase,
-          double solvent_damping_epsilon = 1.0e-10)
+          double solvent_damping_epsilon = 1.0e-20)
           : equilibrium_constant_(equilibrium_constant),
             reactants_(reactants),
             products_(products),
