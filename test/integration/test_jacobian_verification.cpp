@@ -1042,3 +1042,430 @@ TEST(JacobianVerification, CombinedProcessAndConstraintZeroSolvent)
   for (const auto& v : cons_jac.AsVector())
     EXPECT_TRUE(std::isfinite(v)) << "Constraint Jacobian element is not finite at sol=0";
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Rate-Capped Dissolved Reaction Jacobian Tests
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// @brief DissolvedReaction with max_halflife: single reactant, sweep rate regimes
+TEST(JacobianVerification, DissolvedReactionCappedSingleReactant)
+{
+  auto A = Species{ "A" };
+  auto B = Species{ "B" };
+  auto C = Species{ "C" };
+
+  auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
+  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+
+  double t_half = 1.0;
+  auto reaction = process::DissolvedReactionBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetSolvent(C)
+      .SetRateConstant([](const Conditions&) { return 0.5; })
+      .SetMaxHalflife(t_half)
+      .Build();
+
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
+  model.AddProcesses({ reaction });
+
+  auto maps = BuildIndexMaps(model);
+
+  // Test across rate regimes:
+  //   Low  k[A]: r << r_max  (uncapped, tanh(x)≈x)
+  //   Mid  k[A]: r ≈  r_max  (transition region)
+  //   High k[A]: r >> r_max  (heavily capped, tanh(x)≈1)
+  for (double conc_A : { 0.01, 0.5, 1.0, 5.0, 100.0 })
+  {
+    SCOPED_TRACE("A = " + std::to_string(conc_A));
+
+    DenseMatrix variables(1, maps.num_variables, 0.0);
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = conc_A;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.B")] = 0.1;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = 1.0;
+
+    DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
+    std::vector<Conditions> conditions(1);
+    conditions[0].temperature_ = 298.15;
+    conditions[0].pressure_ = 101325.0;
+
+    VerifyProcessJacobian(model, maps, variables, parameters, conditions);
+  }
+}
+
+/// @brief DissolvedReaction with max_halflife: two reactants, sweep rate regimes
+TEST(JacobianVerification, DissolvedReactionCappedTwoReactants)
+{
+  auto A = Species{ "A" };
+  auto B = Species{ "B" };
+  auto P = Species{ "P" };
+  auto S = Species{ "S" };
+
+  auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { P }, { S } } };
+  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+
+  double t_half = 0.5;
+  auto reaction = process::DissolvedReactionBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A, B })
+      .SetProducts({ P })
+      .SetSolvent(S)
+      .SetRateConstant([](const Conditions&) { return 1.0; })
+      .SetMaxHalflife(t_half)
+      .Build();
+
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
+  model.AddProcesses({ reaction });
+
+  auto maps = BuildIndexMaps(model);
+
+  // Sweep both reactant concentrations to test soft-min transitions
+  struct TestPoint { double A; double B; };
+  for (auto [cA, cB] : std::vector<TestPoint>{{ 0.01, 0.01 }, { 0.5, 0.5 }, { 10.0, 0.01 }, { 0.01, 10.0 }, { 5.0, 5.0 }})
+  {
+    SCOPED_TRACE("A=" + std::to_string(cA) + " B=" + std::to_string(cB));
+
+    DenseMatrix variables(1, maps.num_variables, 0.0);
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = cA;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.B")] = cB;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.P")] = 0.1;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.S")] = 1.0;
+
+    DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
+    std::vector<Conditions> conditions(1);
+    conditions[0].temperature_ = 298.15;
+    conditions[0].pressure_ = 101325.0;
+
+    VerifyProcessJacobian(model, maps, variables, parameters, conditions);
+  }
+}
+
+/// @brief DissolvedReaction with max_halflife: vary solvent across damping range
+TEST(JacobianVerification, DissolvedReactionCappedSolventRange)
+{
+  auto A = Species{ "A" };
+  auto B = Species{ "B" };
+  auto C = Species{ "C" };
+
+  auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
+  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+
+  auto reaction = process::DissolvedReactionBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetSolvent(C)
+      .SetRateConstant([](const Conditions&) { return 1.0; })
+      .SetMaxHalflife(1.0)
+      .Build();
+
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
+  model.AddProcesses({ reaction });
+
+  auto maps = BuildIndexMaps(model);
+
+  // FD verification at solvent levels above eps where central differences work
+  for (double sol : { 55.0, 1.0, 1.0e-2, 1.0e-4 })
+  {
+    SCOPED_TRACE("solvent = " + std::to_string(sol));
+
+    DenseMatrix variables(1, maps.num_variables, 0.0);
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = 0.5;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.B")] = 0.3;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = sol;
+
+    DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
+    std::vector<Conditions> conditions(1);
+    conditions[0].temperature_ = 298.15;
+    conditions[0].pressure_ = 101325.0;
+
+    VerifyProcessJacobian(model, maps, variables, parameters, conditions);
+  }
+
+  // At extreme low solvent, verify finiteness
+  auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+  auto jac_nz = model.NonZeroJacobianElements(maps.variable_indices);
+  auto jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
+  for (const auto& elem : jac_nz)
+    jac_builder = jac_builder.WithElement(elem.first, elem.second);
+  SparseMatrixFD jac(jac_builder);
+  auto jac_fn = model.JacobianFunction<DenseMatrix, SparseMatrixFD>(
+      maps.parameter_indices, maps.variable_indices, jac);
+
+  for (double sol : { 1.0e-10, 1.0e-15, 0.0 })
+  {
+    SCOPED_TRACE("solvent (finiteness) = " + std::to_string(sol));
+
+    DenseMatrix variables(1, maps.num_variables, 0.0);
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = 0.5;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.B")] = 0.3;
+    variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = sol;
+
+    DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
+    std::vector<Conditions> conditions(1);
+    conditions[0].temperature_ = 298.15;
+    conditions[0].pressure_ = 101325.0;
+
+    auto update_fn = model.UpdateStateParametersFunction<DenseMatrix>(maps.parameter_indices);
+    update_fn(conditions, parameters);
+
+    DenseMatrix forcing(1, maps.num_variables, 0.0);
+    forcing_fn(parameters, variables, forcing);
+    for (std::size_t j = 0; j < maps.num_variables; ++j)
+      EXPECT_TRUE(std::isfinite(forcing[0][j])) << "forcing[" << j << "] is not finite at sol=" << sol;
+
+    jac.Fill(0.0);
+    jac_fn(parameters, variables, jac);
+    for (const auto& v : jac.AsVector())
+      EXPECT_TRUE(std::isfinite(v)) << "Jacobian element is not finite at sol=" << sol;
+  }
+}
+
+/// @brief DissolvedReaction with max_halflife: multi-block (2 grid cells)
+TEST(JacobianVerification, DissolvedReactionCappedMultiBlock)
+{
+  auto A = Species{ "A" };
+  auto B = Species{ "B" };
+  auto C = Species{ "C" };
+
+  auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
+  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+
+  auto reaction = process::DissolvedReactionBuilder()
+      .SetPhase(aqueous_phase)
+      .SetReactants({ A })
+      .SetProducts({ B })
+      .SetSolvent(C)
+      .SetRateConstant([](const Conditions&) { return 2.0; })
+      .SetMaxHalflife(0.1)
+      .Build();
+
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
+  model.AddProcesses({ reaction });
+
+  auto maps = BuildIndexMaps(model);
+
+  // Two blocks: one uncapped regime, one heavily capped
+  DenseMatrix variables(2, maps.num_variables, 0.0);
+  variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = 0.001;  // low rate, uncapped
+  variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.B")] = 0.1;
+  variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = 1.0;
+  variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = 50.0;   // high rate, capped
+  variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.B")] = 0.1;
+  variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = 1.0;
+
+  DenseMatrix parameters(2, std::max(maps.num_parameters, std::size_t(1)), 0.0);
+  std::vector<Conditions> conditions(2);
+  conditions[0].temperature_ = 298.15;
+  conditions[0].pressure_ = 101325.0;
+  conditions[1].temperature_ = 298.15;
+  conditions[1].pressure_ = 101325.0;
+
+  VerifyProcessJacobian(model, maps, variables, parameters, conditions);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Rate-Capped → Uncapped Convergence Tests
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// @brief Helper: build a capped and uncapped model from the same reaction definition,
+///        evaluate forcing and Jacobian at the same state, and verify convergence.
+///
+///        When the natural half-life t_nat = C_min / r  >>  max_halflife, the argument
+///        u = r / r_max  is small and tanh(u) ≈ u − u³/3. The relative difference
+///        between capped and uncapped rates is therefore ≈ u²/3.
+///
+///        For the Jacobian, the same Taylor argument gives sech²(u) ≈ 1 − 2u²/3 and
+///        the correction term scales as u³, so element-wise relative error is also O(u²).
+namespace
+{
+  struct ConvergenceResult
+  {
+    double max_forcing_rel_error;
+    double max_jacobian_rel_error;
+  };
+
+  ConvergenceResult CompareCappedToUncapped(
+      double k,
+      double max_halflife,
+      const std::vector<micm::Species>& reactants,
+      const std::vector<micm::Species>& products,
+      const micm::Species& solvent,
+      const micm::Phase& phase,
+      const representation::UniformSection& droplet,
+      const std::unordered_map<std::string, double>& concentrations)
+  {
+    auto rate_fn = [k](const Conditions&) { return k; };
+
+    // Build uncapped model
+    auto rxn_uncapped = process::DissolvedReactionBuilder()
+        .SetPhase(phase)
+        .SetReactants(reactants)
+        .SetProducts(products)
+        .SetSolvent(solvent)
+        .SetRateConstant(rate_fn)
+        .Build();
+    auto model_uncapped = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
+    model_uncapped.AddProcesses({ rxn_uncapped });
+
+    // Build capped model
+    auto rxn_capped = process::DissolvedReactionBuilder()
+        .SetPhase(phase)
+        .SetReactants(reactants)
+        .SetProducts(products)
+        .SetSolvent(solvent)
+        .SetRateConstant(rate_fn)
+        .SetMaxHalflife(max_halflife)
+        .Build();
+    auto model_capped = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
+    model_capped.AddProcesses({ rxn_capped });
+
+    auto maps_u = BuildIndexMaps(model_uncapped);
+    auto maps_c = BuildIndexMaps(model_capped);
+
+    // Verify index maps are identical (same species, same ordering)
+    EXPECT_EQ(maps_u.num_variables, maps_c.num_variables);
+    EXPECT_EQ(maps_u.variable_indices, maps_c.variable_indices);
+
+    const std::size_t n = maps_u.num_variables;
+
+    DenseMatrix variables(1, n, 0.0);
+    for (const auto& [name, val] : concentrations)
+      variables[0][maps_u.variable_indices.at(name)] = val;
+
+    DenseMatrix params_u(1, std::max(maps_u.num_parameters, std::size_t(1)), 0.0);
+    DenseMatrix params_c(1, std::max(maps_c.num_parameters, std::size_t(1)), 0.0);
+    std::vector<Conditions> conditions(1);
+    conditions[0].temperature_ = 298.15;
+    conditions[0].pressure_ = 101325.0;
+
+    model_uncapped.UpdateStateParametersFunction<DenseMatrix>(maps_u.parameter_indices)(conditions, params_u);
+    model_capped.UpdateStateParametersFunction<DenseMatrix>(maps_c.parameter_indices)(conditions, params_c);
+
+    // Compare forcing
+    DenseMatrix forcing_u(1, n, 0.0), forcing_c(1, n, 0.0);
+    model_uncapped.ForcingFunction<DenseMatrix>(maps_u.parameter_indices, maps_u.variable_indices)(params_u, variables, forcing_u);
+    model_capped.ForcingFunction<DenseMatrix>(maps_c.parameter_indices, maps_c.variable_indices)(params_c, variables, forcing_c);
+
+    double max_forcing_rel = 0.0;
+    for (std::size_t j = 0; j < n; ++j)
+    {
+      double ref = std::abs(forcing_u[0][j]);
+      if (ref > 0.0)
+        max_forcing_rel = std::max(max_forcing_rel, std::abs(forcing_c[0][j] - forcing_u[0][j]) / ref);
+    }
+
+    // Compare Jacobian
+    auto nz = model_uncapped.NonZeroJacobianElements(maps_u.variable_indices);
+    auto builder = SparseMatrixFD::Create(n).SetNumberOfBlocks(1).InitialValue(0.0);
+    for (const auto& elem : nz)
+      builder = builder.WithElement(elem.first, elem.second);
+    SparseMatrixFD jac_u(builder), jac_c(builder);
+
+    model_uncapped.JacobianFunction<DenseMatrix, SparseMatrixFD>(
+        maps_u.parameter_indices, maps_u.variable_indices, jac_u)(params_u, variables, jac_u);
+    model_capped.JacobianFunction<DenseMatrix, SparseMatrixFD>(
+        maps_c.parameter_indices, maps_c.variable_indices, jac_c)(params_c, variables, jac_c);
+
+    double max_jac_rel = 0.0;
+    const auto& vec_u = jac_u.AsVector();
+    const auto& vec_c = jac_c.AsVector();
+    for (std::size_t i = 0; i < vec_u.size(); ++i)
+    {
+      double ref = std::abs(vec_u[i]);
+      if (ref > 0.0)
+        max_jac_rel = std::max(max_jac_rel, std::abs(vec_c[i] - vec_u[i]) / ref);
+    }
+
+    return { max_forcing_rel, max_jac_rel };
+  }
+}  // namespace
+
+/// @brief Single-reactant convergence: verify O(u²) approach to uncapped as u = r/r_max → 0.
+///        k=0.1, [A]=0.5, [C]=1.0  →  r = 0.05.  r_max = [A]/t_half = 0.5/t_half.
+///        u = r/r_max = 0.05 * t_half / 0.5 = 0.1 * t_half.
+///        For small u, relative error ≈ u²/3.
+///        We decrease t_half so that u shrinks and verify monotonic convergence.
+TEST(JacobianVerification, CappedConvergesToUncappedSingleReactant)
+{
+  auto A = Species{ "A" };
+  auto B = Species{ "B" };
+  auto C = Species{ "C" };
+  auto phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
+  auto droplet = representation::UniformSection{ "DROPLET", { phase } };
+
+  // u = 0.1 * t_half, so t_half ∈ {1, 0.1, 0.01} gives u ∈ {0.1, 0.01, 0.001}
+  double prev_forcing_err = 1.0;
+  double prev_jac_err = 1.0;
+  for (double t_half : { 1.0, 0.1, 0.01 })
+  {
+    SCOPED_TRACE("max_halflife = " + std::to_string(t_half));
+    double u = 0.1 * t_half;
+    // Forcing: r_c = r_max*tanh(u) ≈ r*(1 − u²/3), so rel error ≈ u²/3
+    double expected_forcing_rel = u * u / 3.0;
+    // Jacobian: worst element is ∂r_c/∂S = sech²(u)*∂r/∂S, where |sech²(u)−1| ≈ u²
+    double expected_jac_rel = u * u;
+
+    auto result = CompareCappedToUncapped(
+        0.1, t_half, { A }, { B }, C, phase, droplet,
+        { { "DROPLET.AQUEOUS.A", 0.5 }, { "DROPLET.AQUEOUS.B", 0.1 }, { "DROPLET.AQUEOUS.C", 1.0 } });
+
+    // Verify the error is bounded by the Taylor prediction (with 2x margin for higher-order terms)
+    EXPECT_LT(result.max_forcing_rel_error, 2.0 * expected_forcing_rel)
+        << "Forcing error " << result.max_forcing_rel_error << " exceeds 2*u^2/3 = " << 2.0 * expected_forcing_rel;
+    EXPECT_LT(result.max_jacobian_rel_error, 2.0 * expected_jac_rel)
+        << "Jacobian error " << result.max_jacobian_rel_error << " exceeds 2*u^2 = " << 2.0 * expected_jac_rel;
+
+    // Verify monotonic convergence (errors shrink as t_half shrinks → u shrinks)
+    EXPECT_LT(result.max_forcing_rel_error, prev_forcing_err);
+    EXPECT_LT(result.max_jacobian_rel_error, prev_jac_err);
+    prev_forcing_err = result.max_forcing_rel_error;
+    prev_jac_err = result.max_jacobian_rel_error;
+  }
+
+  // At the smallest t_half (0.01), u = 0.001, expected rel ≈ u² = 1e-6
+  EXPECT_LT(prev_forcing_err, 1.0e-6);
+  EXPECT_LT(prev_jac_err, 1.0e-5);
+}
+
+/// @brief Two-reactant convergence with asymmetric concentrations.
+///        [A]=10.0, [B]=0.01  →  C_min ≈ 0.01 (limited by B).
+///        k=0.001  →  r = 0.001 * 10.0 * 0.01 = 1e-4.
+///        u = r * t_half / C_min = 1e-4 * t_half / 0.01 = 0.01 * t_half.
+///        Decrease t_half to verify convergence and final precision.
+TEST(JacobianVerification, CappedConvergesToUncappedTwoReactants)
+{
+  auto A = Species{ "A" };
+  auto B = Species{ "B" };
+  auto P = Species{ "P" };
+  auto S = Species{ "S" };
+  auto phase = Phase{ "AQUEOUS", { { A }, { B }, { P }, { S } } };
+  auto droplet = representation::UniformSection{ "DROPLET", { phase } };
+
+  double k = 0.001;
+  // u = 0.01 * t_half
+  double prev_forcing_err = 1.0;
+  double prev_jac_err = 1.0;
+  for (double t_half : { 10.0, 1.0, 0.1, 0.01 })
+  {
+    SCOPED_TRACE("max_halflife = " + std::to_string(t_half));
+
+    auto result = CompareCappedToUncapped(
+        k, t_half, { A, B }, { P }, S, phase, droplet,
+        { { "DROPLET.AQUEOUS.A", 10.0 },
+          { "DROPLET.AQUEOUS.B", 0.01 },
+          { "DROPLET.AQUEOUS.P", 0.1 },
+          { "DROPLET.AQUEOUS.S", 1.0 } });
+
+    // Verify monotonic convergence as t_half shrinks
+    EXPECT_LT(result.max_forcing_rel_error, prev_forcing_err);
+    EXPECT_LT(result.max_jacobian_rel_error, prev_jac_err);
+    prev_forcing_err = result.max_forcing_rel_error;
+    prev_jac_err = result.max_jacobian_rel_error;
+  }
+
+  // At t_half=0.01, u ≈ 1e-4, so relative error ≈ u²/3 ≈ 3e-9
+  EXPECT_LT(prev_forcing_err, 1.0e-6);
+  EXPECT_LT(prev_jac_err, 1.0e-6);
+}
