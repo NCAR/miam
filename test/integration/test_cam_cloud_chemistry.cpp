@@ -373,10 +373,12 @@ TEST(CamCloudChemistry, Step1b_KwOnly)
   auto i_oh  = FindIdx(state, "CLOUD.AQUEOUS.OHm");
   auto i_w   = FindIdx(state, "CLOUD.AQUEOUS.H2O");
 
-  // Set per-variable absolute tolerances for the tiny ion concentrations
+  // Set per-variable absolute tolerances for the algebraic ion concentrations.
+  // Use moderate values — the step-change error estimate for algebraic variables
+  // means tolerances now control step acceptance.
   auto atol = state.absolute_tolerance_;
-  atol[i_hp] = 1e-20;
-  atol[i_oh] = 1e-20;
+  atol[i_hp] = 1e-10;
+  atol[i_oh] = 1e-10;
   state.SetAbsoluteTolerances(atol);
 
   // Expected: [H+] = sqrt(Kw(T)) * C_H2O (neutral pH at T)
@@ -456,6 +458,7 @@ TEST(CamCloudChemistry, Step1c_KwNaiveIC)
   auto params = RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters();
   params.constraint_init_max_iterations_ = 200;
   params.constraint_init_tolerance_ = 1e-20;
+  params.max_number_of_steps_ = 1500;
 
   auto system = System(gas_phase, model);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(params)
@@ -476,8 +479,8 @@ TEST(CamCloudChemistry, Step1c_KwNaiveIC)
   auto i_hp  = FindIdx(state, "CLOUD.AQUEOUS.Hp");
   auto i_oh  = FindIdx(state, "CLOUD.AQUEOUS.OHm");
   auto i_w   = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-  atol[i_hp] = 1e-12;
-  atol[i_oh] = 1e-12;
+  atol[i_hp] = 1e-8;
+  atol[i_oh] = 1e-8;
   state.SetAbsoluteTolerances(atol);
 
   double Kw_at_T = Kw_miam * std::exp(6710.0 * (1.0/T0 - 1.0/T));
