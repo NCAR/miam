@@ -610,3 +610,146 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
       << "Mass conservation violated at t = " << time << " s";
   }
 }
+
+// ============================================================================
+// Test: max_halflife cap with zero-concentration reactant
+// Verifies that the tanh rate cap doesn't produce NaN when a reactant is zero.
+// Regression test for 0/0 NaN in ForcingFunctionCapped and JacobianFunctionCapped.
+// ============================================================================
+TEST(DissolvedReactionIntegration, MaxHalflifeZeroReactant)
+{
+  auto A = Species{ "A" };
+  auto B = Species{ "B" };
+  auto C = Species{ "C" };  // product
+  auto S = Species{ "S" };  // solvent
+
+  auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
+
+  auto droplet = representation::UniformSection{
+    "DROPLET",
+    { aqueous_phase }
+  };
+
+  double k = 1.0;  // s^-1
+  auto rate = [k](const Conditions& conditions) { return k; };
+
+  double t_half = 10.0;  // seconds
+
+  // A + B -> C with max_halflife cap
+  auto reaction = process::DissolvedReaction{
+    rate,
+    { A, B },  // reactants: two species so soft-min is tested
+    { C },     // products
+    S,         // solvent
+    aqueous_phase,
+    1.0e-20,   // solvent_damping_epsilon (default)
+    t_half     // max_halflife — triggers the capped code path
+  };
+
+  auto model = Model{
+    .name_ = "AEROSOL",
+    .representations_ = { droplet }
+  };
+  model.AddProcesses({ reaction });
+
+  Phase gas_phase{ "GAS", {} };
+
+  auto system = System(gas_phase, model);
+  auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
+                  .SetSystem(system)
+                  .AddExternalModel(model)
+                  .SetIgnoreUnusedSpecies(true)
+                  .Build();
+
+  // --- Sub-test 1: One reactant exactly zero ---
+  {
+    State state = solver.GetState();
+
+    std::size_t i_A = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.A") - state.variable_names_.begin();
+    std::size_t i_B = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.B") - state.variable_names_.begin();
+    std::size_t i_C = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.C") - state.variable_names_.begin();
+    std::size_t i_S = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.S") - state.variable_names_.begin();
+    ASSERT_LT(i_A, state.variable_names_.size());
+    ASSERT_LT(i_B, state.variable_names_.size());
+    ASSERT_LT(i_C, state.variable_names_.size());
+    ASSERT_LT(i_S, state.variable_names_.size());
+
+    state.variables_[0][i_A] = 1.0;    // nonzero
+    state.variables_[0][i_B] = 0.0;    // exactly zero — triggers the NaN bug
+    state.variables_[0][i_C] = 0.0;
+    state.variables_[0][i_S] = 1.0e-4; // solvent
+
+    state.conditions_[0].temperature_ = 298.15;
+    state.conditions_[0].pressure_ = 101325.0;
+
+    droplet.SetDefaultParameters(state);
+    solver.UpdateStateParameters(state);
+
+    auto result = solver.Solve(1.0, state);
+    EXPECT_EQ(result.state_, SolverState::Converged)
+      << "Solver should converge when one reactant is exactly zero";
+
+    // With B=0, no reaction should occur — concentrations should be unchanged
+    EXPECT_NEAR(state.variables_[0][i_A], 1.0, 1.0e-10)
+      << "A should remain unchanged when B=0";
+    EXPECT_NEAR(state.variables_[0][i_B], 0.0, 1.0e-10)
+      << "B should remain zero";
+    EXPECT_NEAR(state.variables_[0][i_C], 0.0, 1.0e-10)
+      << "C should remain zero when no reaction occurs";
+  }
+
+  // --- Sub-test 2: Both reactants zero ---
+  {
+    State state = solver.GetState();
+
+    std::size_t i_A = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.A") - state.variable_names_.begin();
+    std::size_t i_B = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.B") - state.variable_names_.begin();
+    std::size_t i_C = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.C") - state.variable_names_.begin();
+    std::size_t i_S = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.S") - state.variable_names_.begin();
+
+    state.variables_[0][i_A] = 0.0;    // both zero
+    state.variables_[0][i_B] = 0.0;
+    state.variables_[0][i_C] = 0.0;
+    state.variables_[0][i_S] = 1.0e-4;
+
+    state.conditions_[0].temperature_ = 298.15;
+    state.conditions_[0].pressure_ = 101325.0;
+
+    droplet.SetDefaultParameters(state);
+    solver.UpdateStateParameters(state);
+
+    auto result = solver.Solve(1.0, state);
+    EXPECT_EQ(result.state_, SolverState::Converged)
+      << "Solver should converge when both reactants are zero";
+  }
+
+  // --- Sub-test 3: Near-zero reactant (1e-30) — should converge smoothly ---
+  {
+    State state = solver.GetState();
+
+    std::size_t i_A = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.A") - state.variable_names_.begin();
+    std::size_t i_B = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.B") - state.variable_names_.begin();
+    std::size_t i_C = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.C") - state.variable_names_.begin();
+    std::size_t i_S = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.S") - state.variable_names_.begin();
+
+    state.variables_[0][i_A] = 1.0;
+    state.variables_[0][i_B] = 1.0e-30;  // near-zero
+    state.variables_[0][i_C] = 0.0;
+    state.variables_[0][i_S] = 1.0e-4;
+
+    state.conditions_[0].temperature_ = 298.15;
+    state.conditions_[0].pressure_ = 101325.0;
+
+    droplet.SetDefaultParameters(state);
+    solver.UpdateStateParameters(state);
+
+    auto result = solver.Solve(1.0, state);
+    EXPECT_EQ(result.state_, SolverState::Converged)
+      << "Solver should converge with near-zero reactant concentration";
+
+    // Concentrations should remain non-negative
+    EXPECT_GE(state.variables_[0][i_A], 0.0) << "A should be non-negative";
+    EXPECT_GE(state.variables_[0][i_B], 0.0) << "B should be non-negative";
+    EXPECT_GE(state.variables_[0][i_C], 0.0) << "C should be non-negative";
+  }
+}

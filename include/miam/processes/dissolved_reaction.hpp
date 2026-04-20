@@ -530,7 +530,8 @@ namespace miam
                     {
                       double c_min = std::pow(acc, -1.0 / kSoftMinP);
                       double r_max = c_min / t_half;
-                      rate = r_max * std::tanh(rate / r_max);
+                      if (r_max > kSoftMinFloor)
+                        rate = r_max * std::tanh(rate / r_max);
                     },
                     rate,
                     accum);
@@ -625,10 +626,18 @@ namespace miam
                     {
                       cm = std::pow(cm, -1.0 / kSoftMinP);
                       double r_max = cm / t_half;
-                      double u = rr / r_max;
-                      double th = std::tanh(u);
-                      s2 = 1.0 - th * th;  // sech^2(u)
-                      cr = (th - u * s2) / t_half;
+                      if (r_max > kSoftMinFloor)
+                      {
+                        double u = rr / r_max;
+                        double th = std::tanh(u);
+                        s2 = 1.0 - th * th;  // sech^2(u)
+                        cr = (th - u * s2) / t_half;
+                      }
+                      else
+                      {
+                        s2 = 1.0;  // sech^2(0) = 1: uncapped Jacobian
+                        cr = 0.0;  // no cap correction when r_max ≈ 0
+                      }
                     },
                     raw_rate,
                     c_min_var,
