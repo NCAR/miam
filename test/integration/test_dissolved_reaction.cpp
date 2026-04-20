@@ -612,11 +612,11 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
 }
 
 // ============================================================================
-// Test: max_halflife cap with zero-concentration reactant
+// Test: min_halflife cap with zero-concentration reactant
 // Verifies that the tanh rate cap doesn't produce NaN when a reactant is zero.
 // Regression test for 0/0 NaN in ForcingFunctionCapped and JacobianFunctionCapped.
 // ============================================================================
-TEST(DissolvedReactionIntegration, MaxHalflifeZeroReactant)
+TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
 {
   auto A = Species{ "A" };
   auto B = Species{ "B" };
@@ -635,7 +635,7 @@ TEST(DissolvedReactionIntegration, MaxHalflifeZeroReactant)
 
   double t_half = 10.0;  // seconds
 
-  // A + B -> C with max_halflife cap
+  // A + B -> C with min_halflife cap
   auto reaction = process::DissolvedReaction{
     rate,
     { A, B },  // reactants: two species so soft-min is tested
@@ -643,7 +643,7 @@ TEST(DissolvedReactionIntegration, MaxHalflifeZeroReactant)
     S,         // solvent
     aqueous_phase,
     1.0e-20,   // solvent_damping_epsilon (default)
-    t_half     // max_halflife — triggers the capped code path
+    t_half     // min_halflife — triggers the capped code path
   };
 
   auto model = Model{

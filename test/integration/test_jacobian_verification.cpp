@@ -1047,7 +1047,7 @@ TEST(JacobianVerification, CombinedProcessAndConstraintZeroSolvent)
 // Rate-Capped Dissolved Reaction Jacobian Tests
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/// @brief DissolvedReaction with max_halflife: single reactant, sweep rate regimes
+/// @brief DissolvedReaction with min_halflife: single reactant, sweep rate regimes
 TEST(JacobianVerification, DissolvedReactionCappedSingleReactant)
 {
   auto A = Species{ "A" };
@@ -1064,7 +1064,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSingleReactant)
       .SetProducts({ B })
       .SetSolvent(C)
       .SetRateConstant([](const Conditions&) { return 0.5; })
-      .SetMaxHalflife(t_half)
+      .SetMinHalflife(t_half)
       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -1094,7 +1094,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSingleReactant)
   }
 }
 
-/// @brief DissolvedReaction with max_halflife: two reactants, sweep rate regimes
+/// @brief DissolvedReaction with min_halflife: two reactants, sweep rate regimes
 TEST(JacobianVerification, DissolvedReactionCappedTwoReactants)
 {
   auto A = Species{ "A" };
@@ -1112,7 +1112,7 @@ TEST(JacobianVerification, DissolvedReactionCappedTwoReactants)
       .SetProducts({ P })
       .SetSolvent(S)
       .SetRateConstant([](const Conditions&) { return 1.0; })
-      .SetMaxHalflife(t_half)
+      .SetMinHalflife(t_half)
       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -1141,7 +1141,7 @@ TEST(JacobianVerification, DissolvedReactionCappedTwoReactants)
   }
 }
 
-/// @brief DissolvedReaction with max_halflife: vary solvent across damping range
+/// @brief DissolvedReaction with min_halflife: vary solvent across damping range
 TEST(JacobianVerification, DissolvedReactionCappedSolventRange)
 {
   auto A = Species{ "A" };
@@ -1157,7 +1157,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSolventRange)
       .SetProducts({ B })
       .SetSolvent(C)
       .SetRateConstant([](const Conditions&) { return 1.0; })
-      .SetMaxHalflife(1.0)
+      .SetMinHalflife(1.0)
       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -1222,7 +1222,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSolventRange)
   }
 }
 
-/// @brief DissolvedReaction with max_halflife: multi-block (2 grid cells)
+/// @brief DissolvedReaction with min_halflife: multi-block (2 grid cells)
 TEST(JacobianVerification, DissolvedReactionCappedMultiBlock)
 {
   auto A = Species{ "A" };
@@ -1238,7 +1238,7 @@ TEST(JacobianVerification, DissolvedReactionCappedMultiBlock)
       .SetProducts({ B })
       .SetSolvent(C)
       .SetRateConstant([](const Conditions&) { return 2.0; })
-      .SetMaxHalflife(0.1)
+      .SetMinHalflife(0.1)
       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -1272,7 +1272,7 @@ TEST(JacobianVerification, DissolvedReactionCappedMultiBlock)
 /// @brief Helper: build a capped and uncapped model from the same reaction definition,
 ///        evaluate forcing and Jacobian at the same state, and verify convergence.
 ///
-///        When the natural half-life t_nat = C_min / r  >>  max_halflife, the argument
+///        When the natural half-life t_nat = C_min / r  >>  min_halflife, the argument
 ///        u = r / r_max  is small and tanh(u) ≈ u − u³/3. The relative difference
 ///        between capped and uncapped rates is therefore ≈ u²/3.
 ///
@@ -1288,7 +1288,7 @@ namespace
 
   ConvergenceResult CompareCappedToUncapped(
       double k,
-      double max_halflife,
+      double min_halflife,
       const std::vector<micm::Species>& reactants,
       const std::vector<micm::Species>& products,
       const micm::Species& solvent,
@@ -1316,7 +1316,7 @@ namespace
         .SetProducts(products)
         .SetSolvent(solvent)
         .SetRateConstant(rate_fn)
-        .SetMaxHalflife(max_halflife)
+        .SetMinHalflife(min_halflife)
         .Build();
     auto model_capped = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model_capped.AddProcesses({ rxn_capped });
@@ -1400,7 +1400,7 @@ TEST(JacobianVerification, CappedConvergesToUncappedSingleReactant)
   double prev_jac_err = 1.0;
   for (double t_half : { 1.0, 0.1, 0.01 })
   {
-    SCOPED_TRACE("max_halflife = " + std::to_string(t_half));
+    SCOPED_TRACE("min_halflife = " + std::to_string(t_half));
     double u = 0.1 * t_half;
     // Forcing: r_c = r_max*tanh(u) ≈ r*(1 − u²/3), so rel error ≈ u²/3
     double expected_forcing_rel = u * u / 3.0;
@@ -1449,7 +1449,7 @@ TEST(JacobianVerification, CappedConvergesToUncappedTwoReactants)
   double prev_jac_err = 1.0;
   for (double t_half : { 10.0, 1.0, 0.1, 0.01 })
   {
-    SCOPED_TRACE("max_halflife = " + std::to_string(t_half));
+    SCOPED_TRACE("min_halflife = " + std::to_string(t_half));
 
     auto result = CompareCappedToUncapped(
         k, t_half, { A, B }, { P }, S, phase, droplet,

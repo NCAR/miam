@@ -57,13 +57,13 @@ namespace miam
         return *this;
       }
 
-      /// @brief Sets the maximum half-life for rate capping [s]
+      /// @brief Sets the minimum half-life for rate capping [s]
       /// @details When positive, the reaction rate is smoothly capped so that no
       ///          reactant is consumed faster than the specified half-life. When zero
       ///          (default), rate capping is disabled with zero runtime overhead.
-      DissolvedReactionBuilder& SetMaxHalflife(double max_halflife)
+      DissolvedReactionBuilder& SetMinHalflife(double min_halflife)
       {
-        max_halflife_ = max_halflife;
+        min_halflife_ = min_halflife;
         return *this;
       }
 
@@ -108,7 +108,7 @@ namespace miam
           throw std::runtime_error("DissolvedReactionBuilder requires the solvent to be set.");
         }
         return process::DissolvedReaction(
-            rate_constant_, reactants_, products_, solvent_, phase_, solvent_damping_epsilon_, max_halflife_);
+            rate_constant_, reactants_, products_, solvent_, phase_, solvent_damping_epsilon_, min_halflife_);
       }
 
      private:
@@ -120,7 +120,7 @@ namespace miam
       bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
       std::function<double(const micm::Conditions& conditions)> rate_constant_;  ///< Rate constant function
       double solvent_damping_epsilon_{ 1.0e-20 };  ///< Regularization parameter for solvent damping
-      double max_halflife_{ 0.0 };                    ///< Maximum half-life for rate capping [s]
+      double min_halflife_{ 0.0 };                    ///< Minimum half-life for rate capping [s]
     };
   }  // namespace process
 }  // namespace miam

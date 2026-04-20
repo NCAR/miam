@@ -52,7 +52,7 @@ namespace miam
       micm::Phase phase_;  ///< Phase in which the reaction occurs
       std::string uuid_;   ///< Unique identifier for the reaction
       double solvent_damping_epsilon_{ 1.0e-20 };  ///< Regularization parameter to prevent singularity as solvent → 0
-      double max_halflife_{ 0.0 };  ///< When > 0, caps the reaction rate so no reactant is depleted faster than this half-life [s]
+      double min_halflife_{ 0.0 };  ///< When > 0, caps the reaction rate so no reactant is depleted faster than this half-life [s]
 
       DissolvedReaction() = delete;
 
@@ -64,7 +64,7 @@ namespace miam
           micm::Species solvent,
           micm::Phase phase,
           double solvent_damping_epsilon = 1.0e-20,
-          double max_halflife = 0.0)
+          double min_halflife = 0.0)
           : rate_constant_(rate_constant),
             reactants_(reactants),
             products_(products),
@@ -72,7 +72,7 @@ namespace miam
             phase_(phase),
             uuid_(miam::util::generate_uuid_v4()),
             solvent_damping_epsilon_(solvent_damping_epsilon),
-            max_halflife_(max_halflife)
+            min_halflife_(min_halflife)
       {
       }
 
@@ -81,7 +81,7 @@ namespace miam
       DissolvedReaction CopyWithNewUuid() const
       {
         return DissolvedReaction(
-            rate_constant_, reactants_, products_, solvent_, phase_, solvent_damping_epsilon_, max_halflife_);
+            rate_constant_, reactants_, products_, solvent_, phase_, solvent_damping_epsilon_, min_halflife_);
       }
 
       /// @brief Returns a set of unique parameter names for this process
@@ -271,7 +271,7 @@ namespace miam
         DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
         DenseMatrixPolicy dummy_state_variables{ 1, state_variable_indices.size(), 0.0 };
 
-        if (max_halflife_ > 0.0)
+        if (min_halflife_ > 0.0)
         {
           return ForcingFunctionCapped<DenseMatrixPolicy>(
               variable_indices, k_index, dummy_state_parameters, dummy_state_variables);
@@ -353,7 +353,7 @@ namespace miam
         DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
         DenseMatrixPolicy dummy_state_variables{ 1, state_variable_indices.size(), 0.0 };
 
-        if (max_halflife_ > 0.0)
+        if (min_halflife_ > 0.0)
         {
           return JacobianFunctionCapped<DenseMatrixPolicy, SparseMatrixPolicy>(
               variable_indices, jacobian_indices, k_index, dummy_state_parameters, dummy_state_variables, jacobian);
@@ -477,7 +477,7 @@ namespace miam
             indices_;  // Index in sparse matrix for each dependent/independent pair (num_pairs x num_prefixes)
       };
 
-      /// @brief Returns the capped forcing function (called only when max_halflife_ > 0)
+      /// @brief Returns the capped forcing function (called only when min_halflife_ > 0)
       template<typename DenseMatrixPolicy>
       auto ForcingFunctionCapped(
           const StateVariableIndices& variable_indices,
@@ -492,7 +492,7 @@ namespace miam
               auto accum = forcing_terms.GetRowVariable();
               const double eps = solvent_damping_epsilon_;
               const std::size_t n_r = reactants_.size();
-              const double t_half = max_halflife_;
+              const double t_half = min_halflife_;
 
               for (std::size_t i_phase = 0; i_phase < variable_indices.number_of_phase_instances_; ++i_phase)
               {
@@ -558,7 +558,7 @@ namespace miam
             dummy_state_variables);
       }
 
-      /// @brief Returns the capped Jacobian function (called only when max_halflife_ > 0)
+      /// @brief Returns the capped Jacobian function (called only when min_halflife_ > 0)
       /// @details The capped rate is r_c = r_max * tanh(r / r_max), where r_max = C_min / t_half
       ///          and C_min = (sum R_i^{-p})^{-1/p} is a smooth approximation to min(R_i).
       ///
@@ -588,7 +588,7 @@ namespace miam
               auto jac_id = jacobian_indices.indices_.AsVector().begin();
               const double eps = solvent_damping_epsilon_;
               const std::size_t n_r = reactants_.size();
-              const double t_half = max_halflife_;
+              const double t_half = min_halflife_;
 
               for (std::size_t i_phase = 0; i_phase < variable_indices.number_of_phase_instances_; ++i_phase)
               {
