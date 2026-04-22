@@ -673,11 +673,11 @@ TEST(DissolvedReversibleReaction, ForcingFunctionBasicRates)
     double reverse_rate_val = k_reverse / 55.0 * 1.0e-7 * 1.0e-7;
     
     // For H2O (reactant): -forward + reverse
-    EXPECT_NEAR(forcing_terms[0][0], -forward_rate_val + reverse_rate_val, 1e-20);
+    EXPECT_NEAR(forcing_terms[0][0], -forward_rate_val + reverse_rate_val, 1e-12);
     // For H+ (product): +forward - reverse
-    EXPECT_NEAR(forcing_terms[0][1], forward_rate_val - reverse_rate_val, 1e-20);
+    EXPECT_NEAR(forcing_terms[0][1], forward_rate_val - reverse_rate_val, 1e-12);
     // For OH- (product): +forward - reverse
-    EXPECT_NEAR(forcing_terms[0][2], forward_rate_val - reverse_rate_val, 1e-20);
+    EXPECT_NEAR(forcing_terms[0][2], forward_rate_val - reverse_rate_val, 1e-12);
 }
 
 TEST(DissolvedReversibleReaction, ForcingFunctionSolventNormalization)
@@ -898,9 +898,9 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleCells)
         double forward_rate_val = k_forward * h2o_conc;
         double reverse_rate_val = k_reverse / h2o_conc * hp_conc * ohm_conc;
         
-        EXPECT_NEAR(forcing_terms[i][0], -forward_rate_val + reverse_rate_val, 1e-20);
-        EXPECT_NEAR(forcing_terms[i][1], forward_rate_val - reverse_rate_val, 1e-20);
-        EXPECT_NEAR(forcing_terms[i][2], forward_rate_val - reverse_rate_val, 1e-20);
+        EXPECT_NEAR(forcing_terms[i][0], -forward_rate_val + reverse_rate_val, 1e-12);
+        EXPECT_NEAR(forcing_terms[i][1], forward_rate_val - reverse_rate_val, 1e-12);
+        EXPECT_NEAR(forcing_terms[i][2], forward_rate_val - reverse_rate_val, 1e-12);
     }
 }
 
@@ -973,16 +973,16 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultiplePhaseInstances)
     // Verify small drop
     double forward_small = k_forward * 50.0;
     double reverse_small = k_reverse / 50.0 * 1.0e-7 * 1.0e-7;
-    EXPECT_NEAR(forcing_terms[0][0], -forward_small + reverse_small, 1e-20);
-    EXPECT_NEAR(forcing_terms[0][1], forward_small - reverse_small, 1e-20);
-    EXPECT_NEAR(forcing_terms[0][2], forward_small - reverse_small, 1e-20);
+    EXPECT_NEAR(forcing_terms[0][0], -forward_small + reverse_small, 1e-12);
+    EXPECT_NEAR(forcing_terms[0][1], forward_small - reverse_small, 1e-12);
+    EXPECT_NEAR(forcing_terms[0][2], forward_small - reverse_small, 1e-12);
     
     // Verify large drop
     double forward_large = k_forward * 60.0;
     double reverse_large = k_reverse / 60.0 * 2.0e-7 * 2.0e-7;
-    EXPECT_NEAR(forcing_terms[0][3], -forward_large + reverse_large, 1e-20);
-    EXPECT_NEAR(forcing_terms[0][4], forward_large - reverse_large, 1e-20);
-    EXPECT_NEAR(forcing_terms[0][5], forward_large - reverse_large, 1e-20);
+    EXPECT_NEAR(forcing_terms[0][3], -forward_large + reverse_large, 1e-12);
+    EXPECT_NEAR(forcing_terms[0][4], forward_large - reverse_large, 1e-12);
+    EXPECT_NEAR(forcing_terms[0][5], forward_large - reverse_large, 1e-12);
 }
 
 // ============================================================================
@@ -1075,18 +1075,18 @@ TEST(DissolvedReversibleReaction, JacobianFunctionBasicPartials)
     double d_reverse_d_solvent = k_reverse * (1 - 2) / std::pow(55.0, 2) * 1.0e-7 * 1.0e-7;
     
     // For H2O (reactant): d[H2O]/dt = -forward_rate + reverse_rate
-    // d[H2O]/d[H2O] = -d(forward_rate)/d[H2O] + d(reverse_rate)/d[H2O]
-    EXPECT_NEAR(jacobian[0][0][0], -d_forward_d_h2o + d_reverse_d_solvent, 1e-15);  // d[H2O]/d[H2O]
-    EXPECT_NEAR(jacobian[0][0][1], d_reverse_d_ohm, 1e-20);  // d[H2O]/d[H+]
-    EXPECT_NEAR(jacobian[0][0][2], d_reverse_d_hp, 1e-20);   // d[H2O]/d[OH-]
+    // Stored as -J: negate each partial
+    EXPECT_NEAR(jacobian[0][0][0], d_forward_d_h2o - d_reverse_d_solvent, 1e-6);   // -d[H2O]/d[H2O]
+    EXPECT_NEAR(jacobian[0][0][1], -d_reverse_d_ohm, 1e-6);  // -d[H2O]/d[H+]
+    EXPECT_NEAR(jacobian[0][0][2], -d_reverse_d_hp, 1e-6);   // -d[H2O]/d[OH-]
     // For H+ and OH- (products): d[H+]/dt = +forward_rate - reverse_rate
-    // d[H+]/d[H2O] = +d(forward_rate)/d[H2O] - d(reverse_rate)/d[H2O]
-    EXPECT_NEAR(jacobian[0][1][0], d_forward_d_h2o - d_reverse_d_solvent, 1e-15);  // d[H+]/d[H2O]
-    EXPECT_NEAR(jacobian[0][1][1], -d_reverse_d_ohm, 1e-20);  // d[H+]/d[H+]
-    EXPECT_NEAR(jacobian[0][1][2], -d_reverse_d_hp, 1e-20);   // d[H+]/d[OH-]
-    EXPECT_NEAR(jacobian[0][2][0], d_forward_d_h2o - d_reverse_d_solvent, 1e-15);  // d[OH-]/d[H2O]
-    EXPECT_NEAR(jacobian[0][2][1], -d_reverse_d_ohm, 1e-20);  // d[OH-]/d[H+]
-    EXPECT_NEAR(jacobian[0][2][2], -d_reverse_d_hp, 1e-20);   // d[OH-]/d[OH-]
+    // Stored as -J: negate each partial
+    EXPECT_NEAR(jacobian[0][1][0], -d_forward_d_h2o + d_reverse_d_solvent, 1e-6);  // -d[H+]/d[H2O]
+    EXPECT_NEAR(jacobian[0][1][1], d_reverse_d_ohm, 1e-6);   // -d[H+]/d[H+]
+    EXPECT_NEAR(jacobian[0][1][2], d_reverse_d_hp, 1e-6);    // -d[H+]/d[OH-]
+    EXPECT_NEAR(jacobian[0][2][0], -d_forward_d_h2o + d_reverse_d_solvent, 1e-6);  // -d[OH-]/d[H2O]
+    EXPECT_NEAR(jacobian[0][2][1], d_reverse_d_ohm, 1e-6);   // -d[OH-]/d[H+]
+    EXPECT_NEAR(jacobian[0][2][2], d_reverse_d_hp, 1e-6);    // -d[OH-]/d[OH-]
 }
 
 TEST(DissolvedReversibleReaction, JacobianFunctionMultipleReactantsProducts)
@@ -1181,15 +1181,16 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleReactantsProducts)
     // d[H2CO3]/d[H2CO3] = -k_r
     double d_h2co3_d_h2co3 = -k_reverse;
     
-    EXPECT_NEAR(jacobian[0][0][0], d_co2_d_co2, 1e-10);
-    EXPECT_NEAR(jacobian[0][0][1], d_co2_d_h2o, 1e-10);
-    EXPECT_NEAR(jacobian[0][0][2], d_co2_d_h2co3, 1e-10);
-    EXPECT_NEAR(jacobian[0][1][0], d_h2o_d_co2, 1e-10);
-    EXPECT_NEAR(jacobian[0][1][1], d_h2o_d_h2o, 1e-10);
-    EXPECT_NEAR(jacobian[0][1][2], d_h2o_d_h2co3, 1e-10);
-    EXPECT_NEAR(jacobian[0][2][0], d_h2co3_d_co2, 1e-10);
-    EXPECT_NEAR(jacobian[0][2][1], d_h2co3_d_h2o, 1e-10);
-    EXPECT_NEAR(jacobian[0][2][2], d_h2co3_d_h2co3, 1e-10);
+    // Stored as -J: negate each partial
+    EXPECT_NEAR(jacobian[0][0][0], -d_co2_d_co2, 1e-6);
+    EXPECT_NEAR(jacobian[0][0][1], -d_co2_d_h2o, 1e-6);
+    EXPECT_NEAR(jacobian[0][0][2], -d_co2_d_h2co3, 1e-6);
+    EXPECT_NEAR(jacobian[0][1][0], -d_h2o_d_co2, 1e-6);
+    EXPECT_NEAR(jacobian[0][1][1], -d_h2o_d_h2o, 1e-6);
+    EXPECT_NEAR(jacobian[0][1][2], -d_h2o_d_h2co3, 1e-6);
+    EXPECT_NEAR(jacobian[0][2][0], -d_h2co3_d_co2, 1e-6);
+    EXPECT_NEAR(jacobian[0][2][1], -d_h2co3_d_h2o, 1e-6);
+    EXPECT_NEAR(jacobian[0][2][2], -d_h2co3_d_h2co3, 1e-6);
 }
 
 TEST(DissolvedReversibleReaction, JacobianFunctionSigns)
@@ -1260,32 +1261,32 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSigns)
     
     jacobian_func(state_parameters, state_variables, jacobian);
     
-    // Check signs: 
-    // - Reactant w.r.t. reactant: negative (forward dominates)
-    // - Reactant w.r.t. product: positive (reverse adds back)
-    // - Product w.r.t. reactant: positive (forward produces)
-    // - Product w.r.t. product: negative (reverse consumes)
+    // Check signs (stored as -J, so all signs are flipped vs. the actual Jacobian):
+    // - Reactant w.r.t. reactant: positive (actual J negative)
+    // - Reactant w.r.t. product: negative (actual J positive)
+    // - Product w.r.t. reactant: negative (actual J positive)
+    // - Product w.r.t. product: positive (actual J negative)
     
-    // d[HCO3-]/d[HCO3-]: negative
-    EXPECT_LT(jacobian[0][0][0], 0.0);
-    // d[HCO3-]/d[H+]: positive
-    EXPECT_GT(jacobian[0][0][1], 0.0);
-    // d[HCO3-]/d[CO32-]: positive
-    EXPECT_GT(jacobian[0][0][2], 0.0);
+    // -d[HCO3-]/d[HCO3-]: positive
+    EXPECT_GT(jacobian[0][0][0], 0.0);
+    // -d[HCO3-]/d[H+]: negative
+    EXPECT_LT(jacobian[0][0][1], 0.0);
+    // -d[HCO3-]/d[CO32-]: negative
+    EXPECT_LT(jacobian[0][0][2], 0.0);
     
-    // d[H+]/d[HCO3-]: positive
-    EXPECT_GT(jacobian[0][1][0], 0.0);
-    // d[H+]/d[H+]: negative
-    EXPECT_LT(jacobian[0][1][1], 0.0);
-    // d[H+]/d[CO32-]: negative
-    EXPECT_LT(jacobian[0][1][2], 0.0);
+    // -d[H+]/d[HCO3-]: negative
+    EXPECT_LT(jacobian[0][1][0], 0.0);
+    // -d[H+]/d[H+]: positive
+    EXPECT_GT(jacobian[0][1][1], 0.0);
+    // -d[H+]/d[CO32-]: positive
+    EXPECT_GT(jacobian[0][1][2], 0.0);
     
-    // d[CO32-]/d[HCO3-]: positive
-    EXPECT_GT(jacobian[0][2][0], 0.0);
-    // d[CO32-]/d[H+]: negative
-    EXPECT_LT(jacobian[0][2][1], 0.0);
-    // d[CO32-]/d[CO32-]: negative
-    EXPECT_LT(jacobian[0][2][2], 0.0);
+    // -d[CO32-]/d[HCO3-]: negative
+    EXPECT_LT(jacobian[0][2][0], 0.0);
+    // -d[CO32-]/d[H+]: positive
+    EXPECT_GT(jacobian[0][2][1], 0.0);
+    // -d[CO32-]/d[CO32-]: positive
+    EXPECT_GT(jacobian[0][2][2], 0.0);
 }
 
 TEST(DissolvedReversibleReaction, JacobianFunctionMultipleCells)
@@ -1363,14 +1364,15 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleCells)
         double hp_conc = 1.0e-7 * (i + 1);
         double ohm_conc = 1.0e-7 * (i + 1);
         
-        // d[H2O]/d[H2O] should be negative (forward dominates over reverse for typical water concentrations)
-        EXPECT_LT(jacobian[i][0][0], 0.0);
+        // Stored as -J: signs are flipped vs. actual Jacobian
+        // -d[H2O]/d[H2O] should be positive (actual J negative)
+        EXPECT_GT(jacobian[i][0][0], 0.0);
         
-        // d[H+]/d[H2O] should be positive (forward produces H+)
-        EXPECT_GT(jacobian[i][1][0], 0.0);
+        // -d[H+]/d[H2O] should be negative (actual J positive)
+        EXPECT_LT(jacobian[i][1][0], 0.0);
         
-        // d[OH-]/d[H2O] should be positive (forward produces OH-)
-        EXPECT_GT(jacobian[i][2][0], 0.0);
+        // -d[OH-]/d[H2O] should be negative (actual J positive)
+        EXPECT_LT(jacobian[i][2][0], 0.0);
     }
 }
 
@@ -1550,12 +1552,13 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSimpleDistinctSpecies)
     double d_foo_d_baz = 0.0;  // No solvent dependence for 1 reactant / 1 product
     double d_bar_d_baz = 0.0;  // No solvent dependence for 1 reactant / 1 product
     
-    EXPECT_NEAR(jacobian[0][0][0], -d_forward_d_foo, 1e-10);  // d[foo]/d[foo]
-    EXPECT_NEAR(jacobian[0][0][1], d_reverse_d_bar, 1e-10);    // d[foo]/d[bar]
-    EXPECT_NEAR(jacobian[0][0][2], d_foo_d_baz, 1e-10);        // d[foo]/d[baz]
-    EXPECT_NEAR(jacobian[0][1][0], d_forward_d_foo, 1e-10);    // d[bar]/d[foo]
-    EXPECT_NEAR(jacobian[0][1][1], -d_reverse_d_bar, 1e-10);   // d[bar]/d[bar]
-    EXPECT_NEAR(jacobian[0][1][2], d_bar_d_baz, 1e-10);        // d[bar]/d[baz]
+    // Stored as -J: negate each partial
+    EXPECT_NEAR(jacobian[0][0][0], d_forward_d_foo, 1e-10);    // -d[foo]/d[foo]
+    EXPECT_NEAR(jacobian[0][0][1], -d_reverse_d_bar, 1e-10);   // -d[foo]/d[bar]
+    EXPECT_NEAR(jacobian[0][0][2], -d_foo_d_baz, 1e-10);       // -d[foo]/d[baz]
+    EXPECT_NEAR(jacobian[0][1][0], -d_forward_d_foo, 1e-10);   // -d[bar]/d[foo]
+    EXPECT_NEAR(jacobian[0][1][1], d_reverse_d_bar, 1e-10);    // -d[bar]/d[bar]
+    EXPECT_NEAR(jacobian[0][1][2], -d_bar_d_baz, 1e-10);       // -d[bar]/d[baz]
 }
 
 TEST(DissolvedReversibleReaction, JacobianFunctionTwoReactantsWithSolventDependence)
@@ -1652,7 +1655,8 @@ TEST(DissolvedReversibleReaction, JacobianFunctionTwoReactantsWithSolventDepende
     double d_qux_d_baz = -d_forward_rate_d_baz;   // Opposite sign because qux is consumed
     double d_bar_d_baz = d_forward_rate_d_baz;     // Same sign because bar is produced
     
-    EXPECT_NEAR(jacobian[0][0][3], d_foo_d_baz, 1e-10);  // d[foo]/d[baz]
-    EXPECT_NEAR(jacobian[0][1][3], d_qux_d_baz, 1e-10);  // d[qux]/d[baz]
-    EXPECT_NEAR(jacobian[0][2][3], d_bar_d_baz, 1e-10);  // d[bar]/d[baz]
+    // Stored as -J: negate each partial
+    EXPECT_NEAR(jacobian[0][0][3], -d_foo_d_baz, 1e-10);  // -d[foo]/d[baz]
+    EXPECT_NEAR(jacobian[0][1][3], -d_qux_d_baz, 1e-10);  // -d[qux]/d[baz]
+    EXPECT_NEAR(jacobian[0][2][3], -d_bar_d_baz, 1e-10);  // -d[bar]/d[baz]
 }

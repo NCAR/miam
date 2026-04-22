@@ -14,9 +14,16 @@ namespace miam
     namespace constant
     {
       /// @brief Parameters for an equilibrium constant
+      /// @details The pre-exponential factor A_ is the equilibrium constant at the
+      ///          reference temperature T0_ in MIAM's solvent-normalized units.
+      ///          To convert from a literature value K_lit in molar units:
+      ///          A_ = K_lit / c_H2O^(n_p - n_r), where c_H2O = 55.556 mol/L.
+      ///          After this conversion, A_ is always dimensionless.
       struct EquilibriumConstantParameters
       {
-        /// @brief Pre-exponential factor (dimensionless)
+        /// @brief Pre-exponential factor [dimensionless]
+        /// @details K_eq at T0_ in MIAM's solvent-normalized units.
+        ///          Conversion from literature: A_ = K_lit / c_H2O^(n_p - n_r)
         double A_{ 1.0 };
         /// @brief Temperature dependence parameter [K]
         double C_{ 0.0 };

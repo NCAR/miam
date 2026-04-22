@@ -4,6 +4,9 @@
 #pragma once
 
 #include <miam/aerosol_property.hpp>
+#include <miam/constraints/dissolved_equilibrium_constraint.hpp>
+#include <miam/constraints/henry_law_equilibrium_constraint.hpp>
+#include <miam/constraints/linear_constraint.hpp>
 #include <miam/process.hpp>
 #include <miam/representation.hpp>
 
@@ -11,6 +14,7 @@
 
 #include <algorithm>
 #include <any>
+#include <concepts>
 #include <functional>
 #include <memory>
 #include <set>
@@ -32,11 +36,16 @@ namespace miam
    public:
     using RepresentationVariant =
         std::variant<representation::SingleMomentMode, representation::TwoMomentMode, representation::UniformSection>;
-    using ProcessVariant = std::variant<process::DissolvedReversibleReaction, process::HenryLawPhaseTransfer>;
+    using ProcessVariant = std::variant<process::DissolvedReaction, process::DissolvedReversibleReaction, process::HenryLawPhaseTransfer>;
+    using ConstraintVariant = std::variant<
+        constraint::DissolvedEquilibriumConstraint,
+        constraint::HenryLawEquilibriumConstraint,
+        constraint::LinearConstraint>;
 
     std::string name_;
     std::vector<RepresentationVariant> representations_;
     std::vector<ProcessVariant> processes_{};
+    std::vector<ConstraintVariant> constraints_{};
 
     /// @brief Returns the total state size (number of variables, number of parameters)
     std::tuple<std::size_t, std::size_t> StateSize() const
@@ -108,7 +117,7 @@ namespace miam
       return names;
     }
 
-    /// @brief Returns names of all species used in the model's processes
+    /// @brief Returns names of all species used in the model's processes and constraints
     std::set<std::string> SpeciesUsed() const
     {
       auto phase_prefixes = CollectPhaseStatePrefixes();
@@ -119,6 +128,13 @@ namespace miam
           {
             auto process_species = process.SpeciesUsed(phase_prefixes);
             species_names.insert(process_species.begin(), process_species.end());
+          });
+      // Collect species from constraints
+      ForEachConstraint(
+          [&](const auto& c)
+          {
+            auto deps = c.ConstraintSpeciesDependencies(phase_prefixes);
+            species_names.insert(deps.begin(), deps.end());
           });
       return species_names;
     }
@@ -143,6 +159,44 @@ namespace miam
       {
         processes_.push_back(ProcessVariant{ process.CopyWithNewUuid() });
       }
+    }
+
+    /// @brief Add processes to the model (variadic form for mixed types)
+    template<typename... ProcessTypes>
+      requires(sizeof...(ProcessTypes) >= 1 &&
+               (std::constructible_from<ProcessVariant, std::decay_t<ProcessTypes>> && ...))
+    void AddProcesses(ProcessTypes&&... processes)
+    {
+      (processes_.push_back(ProcessVariant{ processes.CopyWithNewUuid() }), ...);
+    }
+
+    /// @brief Add constraints to the model
+    template<typename ConstraintType>
+    void AddConstraints(const std::vector<ConstraintType>& new_constraints)
+    {
+      for (const auto& c : new_constraints)
+      {
+        constraints_.push_back(ConstraintVariant{ c.CopyWithNewUuid() });
+      }
+    }
+
+    /// @brief Add constraints to the model from an initializer list
+    template<typename ConstraintType>
+    void AddConstraints(std::initializer_list<ConstraintType> new_constraints)
+    {
+      for (const auto& c : new_constraints)
+      {
+        constraints_.push_back(ConstraintVariant{ c.CopyWithNewUuid() });
+      }
+    }
+
+    /// @brief Add constraints to the model (variadic form for mixed types)
+    template<typename... ConstraintTypes>
+      requires(sizeof...(ConstraintTypes) >= 1 &&
+               (std::constructible_from<ConstraintVariant, std::decay_t<ConstraintTypes>> && ...))
+    void AddConstraints(ConstraintTypes&&... constraints)
+    {
+      (constraints_.push_back(ConstraintVariant{ constraints.CopyWithNewUuid() }), ...);
     }
 
     /// @brief Returns non-zero Jacobian element positions
@@ -176,7 +230,8 @@ namespace miam
                 process.template UpdateStateParametersFunction<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices);
             update_functions.push_back(update_fn);
           });
-      return [update_functions](const std::vector<micm::Conditions>& conditions, DenseMatrixPolicy& state_parameters)
+      return [update_functions](
+                 const std::vector<micm::Conditions>& conditions, DenseMatrixPolicy& state_parameters)
       {
         for (const auto& fn : update_functions)
         {
@@ -246,6 +301,184 @@ namespace miam
       };
     }
 
+    // ── HasConstraints concept methods ──
+
+    /// @brief Returns unique names for constraint-specific state parameters
+    ///        Includes parameters for diagnosed constants (mass conservation totals)
+    std::set<std::string> ConstraintStateParameterNames() const
+    {
+      auto phase_prefixes = CollectPhaseStatePrefixes();
+      std::set<std::string> names;
+      ForEachConstraint(
+          [&](const auto& c)
+          {
+            if constexpr (requires { c.ConstraintStateParameterNames(phase_prefixes); })
+            {
+              auto c_names = c.ConstraintStateParameterNames(phase_prefixes);
+              names.insert(c_names.begin(), c_names.end());
+            }
+          });
+      return names;
+    }
+
+    // ── HasInitializeConstraintParameters concept methods ──
+
+    /// @brief Returns parameter names that need initialization from state variables
+    std::set<std::string> InitializeConstraintParameterNames() const
+    {
+      auto phase_prefixes = CollectPhaseStatePrefixes();
+      std::set<std::string> names;
+      ForEachConstraint(
+          [&](const auto& c)
+          {
+            if constexpr (requires { c.InitializeConstraintParameterNames(phase_prefixes); })
+            {
+              auto c_names = c.InitializeConstraintParameterNames(phase_prefixes);
+              names.insert(c_names.begin(), c_names.end());
+            }
+          });
+      return names;
+    }
+
+    /// @brief Returns a function that diagnoses constraint parameters from current state
+    template<typename DenseMatrixPolicy>
+    std::function<void(const DenseMatrixPolicy&, DenseMatrixPolicy&)>
+    InitializeConstraintParametersFunction(
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
+    {
+      auto phase_prefixes = CollectPhaseStatePrefixes();
+      std::vector<std::function<void(const DenseMatrixPolicy&, DenseMatrixPolicy&)>> init_fns;
+      ForEachConstraint(
+          [&](const auto& c)
+          {
+            if constexpr (requires {
+              c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
+                  phase_prefixes, state_parameter_indices, state_variable_indices);
+            })
+            {
+              init_fns.push_back(
+                  c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
+                      phase_prefixes, state_parameter_indices, state_variable_indices));
+            }
+          });
+      return [init_fns](const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters)
+      {
+        for (const auto& fn : init_fns)
+          fn(state_variables, state_parameters);
+      };
+    }
+
+    /// @brief Returns a function that updates constraint parameters based on conditions
+    template<typename DenseMatrixPolicy>
+    std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)>
+    ConstraintUpdateStateParametersFunction(
+        const std::unordered_map<std::string, std::size_t>& /*state_parameter_indices*/) const
+    {
+      std::vector<std::function<void(const std::vector<micm::Conditions>&)>> update_fns;
+      ForEachConstraint(
+          [&](const auto& c)
+          {
+            update_fns.push_back(c.template UpdateConstraintParametersFunction<DenseMatrixPolicy>());
+          });
+      return [update_fns](const std::vector<micm::Conditions>& conditions, DenseMatrixPolicy&)
+      {
+        for (const auto& fn : update_fns)
+          fn(conditions);
+      };
+    }
+
+    /// @brief Returns names of all algebraic variables across all constraints
+    std::set<std::string> ConstraintAlgebraicVariableNames() const
+    {
+      auto phase_prefixes = CollectPhaseStatePrefixes();
+      std::set<std::string> names;
+      ForEachConstraint(
+          [&](const auto& c)
+          {
+            auto c_names = c.ConstraintAlgebraicVariableNames(phase_prefixes);
+            names.insert(c_names.begin(), c_names.end());
+          });
+      return names;
+    }
+
+    /// @brief Returns all species that constraints depend on
+    std::set<std::string> ConstraintSpeciesDependencies() const
+    {
+      auto phase_prefixes = CollectPhaseStatePrefixes();
+      std::set<std::string> species_names;
+      ForEachConstraint(
+          [&](const auto& c)
+          {
+            auto deps = c.ConstraintSpeciesDependencies(phase_prefixes);
+            species_names.insert(deps.begin(), deps.end());
+          });
+      return species_names;
+    }
+
+    /// @brief Returns non-zero constraint Jacobian element positions
+    std::set<std::pair<std::size_t, std::size_t>> NonZeroConstraintJacobianElements(
+        const std::unordered_map<std::string, std::size_t>& state_indices) const
+    {
+      auto phase_prefixes = CollectPhaseStatePrefixes();
+      std::set<std::pair<std::size_t, std::size_t>> elements;
+      ForEachConstraint(
+          [&](const auto& c)
+          {
+            auto c_elements = c.NonZeroConstraintJacobianElements(phase_prefixes, state_indices);
+            elements.insert(c_elements.begin(), c_elements.end());
+          });
+      return elements;
+    }
+
+    /// @brief Returns combined constraint residual function G(y) = 0
+    template<typename DenseMatrixPolicy>
+    std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ConstraintResidualFunction(
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
+    {
+      auto phase_prefixes = CollectPhaseStatePrefixes();
+      std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>> residual_fns;
+      ForEachConstraint(
+          [&](const auto& c)
+          {
+            residual_fns.push_back(
+                c.template ConstraintResidualFunction<DenseMatrixPolicy>(
+                    phase_prefixes, state_parameter_indices, state_variable_indices));
+          });
+      return [residual_fns](
+                 const DenseMatrixPolicy& state_variables,
+                 const DenseMatrixPolicy& state_parameters,
+                 DenseMatrixPolicy& residual)
+      {
+        for (const auto& fn : residual_fns)
+          fn(state_variables, state_parameters, residual);
+      };
+    }
+
+    /// @brief Returns combined constraint Jacobian function (subtracts dG/dy)
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> ConstraintJacobianFunction(
+        const std::unordered_map<std::string, std::size_t>& /*state_parameter_indices*/,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices,
+        const SparseMatrixPolicy& jacobian) const
+    {
+      auto phase_prefixes = CollectPhaseStatePrefixes();
+      std::vector<std::function<void(const DenseMatrixPolicy&, SparseMatrixPolicy&)>> jac_fns;
+      ForEachConstraint(
+          [&](const auto& c)
+          {
+            jac_fns.push_back(
+                c.template ConstraintJacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
+                    phase_prefixes, state_variable_indices, jacobian));
+          });
+      return [jac_fns](const DenseMatrixPolicy& state_variables, const DenseMatrixPolicy&, SparseMatrixPolicy& jacobian_values)
+      {
+        for (const auto& fn : jac_fns)
+          fn(state_variables, jacobian_values);
+      };
+    }
+
    private:
     /// @brief Iterate over all registered processes with a generic callable
     template<typename Func>
@@ -254,6 +487,16 @@ namespace miam
       for (const auto& process : processes_)
       {
         std::visit([&](const auto& p) { fn(p); }, process);
+      }
+    }
+
+    /// @brief Iterate over all registered constraints with a generic callable
+    template<typename Func>
+    void ForEachConstraint(Func&& fn) const
+    {
+      for (const auto& c : constraints_)
+      {
+        std::visit([&](const auto& cv) { fn(cv); }, c);
       }
     }
 

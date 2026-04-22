@@ -197,8 +197,8 @@ TEST(MIAM, ApiExample)
 
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
-                  .AddExternalModelProcesses(aerosol_model)
-                  .AddExternalModelProcesses(cloud_model)
+                  .AddExternalModel(aerosol_model)
+                  .AddExternalModel(cloud_model)
                   .SetIgnoreUnusedSpecies(true)
                   .Build();
   
@@ -244,7 +244,7 @@ TEST(MIAM, ApiExample)
   // state.PrintHeader();
   for (int i = 0; i < 10; ++i)
   {
-    solver.CalculateRateConstants(state);
+    solver.UpdateStateParameters(state);
     auto result = solver.Solve(500.0, state);
     // state.PrintState(i * 500);
   }
