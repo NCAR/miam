@@ -72,7 +72,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
   Process gas_rxn = ChemicalReactionBuilder()
       .SetReactants({ Precursor })
       .SetProducts({ StoichSpecies(A_g, 1.0) })
-      .SetRateConstant(ArrheniusRateConstant({ .A_ = k }))
+      .SetRateConstant(process::constant::ArrheniusRateConstantParameters{ .A_ = k })
       .SetPhase(gas_phase)
       .Build();
 
@@ -229,7 +229,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
   Process gas_rxn = ChemicalReactionBuilder()
       .SetReactants({ Precursor })
       .SetProducts({ StoichSpecies(A_g, 1.0) })
-      .SetRateConstant(ArrheniusRateConstant({ .A_ = k }))
+      .SetRateConstant(process::constant::ArrheniusRateConstantParameters{ .A_ = k })
       .SetPhase(gas_phase)
       .Build();
 

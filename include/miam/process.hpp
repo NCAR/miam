@@ -5,6 +5,7 @@
 
 #include <miam/aerosol_property.hpp>
 #include <miam/process_set.hpp>
+#include <miam/processes/constants/arrhenius_rate_constant.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
 #include <miam/processes/dissolved_reaction.hpp>

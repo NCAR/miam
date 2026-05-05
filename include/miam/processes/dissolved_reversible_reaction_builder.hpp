@@ -5,6 +5,8 @@
 
 #include <miam/processes/dissolved_reversible_reaction.hpp>
 
+#include <micm/process/rate_constant/arrhenius_rate_constant.hpp>
+#include <micm/process/rate_constant/rate_constant_functions.hpp>
 #include <micm/system/conditions.hpp>
 
 #include <functional>
@@ -70,6 +72,14 @@ namespace miam
       {
         reverse_rate_constant_ = [reverse_rate_constant](const micm::Conditions& conditions)
         { return reverse_rate_constant.Calculate(conditions); };
+        return *this;
+      }
+
+      /// @brief Sets the reverse rate constant from Arrhenius parameters
+      DissolvedReversibleReactionBuilder& SetReverseRateConstant(const micm::ArrheniusRateConstantParameters& params)
+      {
+        reverse_rate_constant_ = [params](const micm::Conditions& conditions)
+        { return micm::CalculateArrhenius(params, conditions.temperature_, conditions.pressure_); };
         return *this;
       }
 
