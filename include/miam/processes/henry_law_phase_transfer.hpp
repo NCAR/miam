@@ -42,8 +42,8 @@ namespace miam
       micm::Species condensed_species_;                                               ///< Condensed-phase solute species
       micm::Species solvent_;                                                         ///< Condensed-phase solvent species
       micm::Phase condensed_phase_;                                                   ///< The condensed phase
-      double D_g_;          ///< Gas-phase diffusion coefficient [m² s⁻¹]
-      double alpha_;        ///< Mass accommodation coefficient [dimensionless]
+      double diffusion_coefficient_;          ///< Gas-phase diffusion coefficient [m² s⁻¹]
+      double accommodation_coefficient_;        ///< Mass accommodation coefficient [dimensionless]
       double gas_molecular_weight_;       ///< Gas-phase molecular weight [kg mol⁻¹]
       double solvent_molecular_weight_;   ///< Solvent molecular weight [kg mol⁻¹]
       double solvent_density_;  ///< Solvent density [kg m⁻³]
@@ -58,8 +58,8 @@ namespace miam
           const micm::Species& condensed_species,
           const micm::Species& solvent,
           const micm::Phase& condensed_phase,
-          double D_g,
-          double alpha,
+          double diffusion_coefficient,
+          double accommodation_coefficient,
           double gas_molecular_weight,
           double solvent_molecular_weight,
           double solvent_density)
@@ -68,8 +68,8 @@ namespace miam
             condensed_species_(condensed_species),
             solvent_(solvent),
             condensed_phase_(condensed_phase),
-            D_g_(D_g),
-            alpha_(alpha),
+            diffusion_coefficient_(diffusion_coefficient),
+            accommodation_coefficient_(accommodation_coefficient),
             gas_molecular_weight_(gas_molecular_weight),
             solvent_molecular_weight_(solvent_molecular_weight),
             solvent_density_(solvent_density),
@@ -86,8 +86,8 @@ namespace miam
             condensed_species_,
             solvent_,
             condensed_phase_,
-            D_g_,
-            alpha_,
+            diffusion_coefficient_,
+            accommodation_coefficient_,
             gas_molecular_weight_,
             solvent_molecular_weight_,
             solvent_density_);
@@ -310,7 +310,7 @@ namespace miam
             inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
             inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
             inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
-            inst.cond_rate_provider = util::MakeCondensationRateProvider(D_g_, alpha_, gas_molecular_weight_);
+            inst.cond_rate_provider = util::MakeCondensationRateProvider(diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
             instances.push_back(std::move(inst));
           }
         }
@@ -459,7 +459,7 @@ namespace miam
             inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
             inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
             inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
-            inst.cond_rate_provider = util::MakeCondensationRateProvider(D_g_, alpha_, gas_molecular_weight_);
+            inst.cond_rate_provider = util::MakeCondensationRateProvider(diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
             inst.n_r_eff_deps = prov_map.at(AerosolProperty::EffectiveRadius).dependent_variable_indices.size();
             inst.n_N_deps = prov_map.at(AerosolProperty::NumberConcentration).dependent_variable_indices.size();
             inst.n_phi_deps = prov_map.at(AerosolProperty::PhaseVolumeFraction).dependent_variable_indices.size();

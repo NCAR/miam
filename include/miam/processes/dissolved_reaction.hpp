@@ -90,7 +90,9 @@ namespace miam
       /// @return Set of unique parameter names for this process
       std::set<std::string> ProcessParameterNames(const std::map<std::string, std::set<std::string>>& phase_prefixes) const
       {
+        // The conditions are shared by the whole system, so we just need one value for the rate
         std::set<std::string> parameter_names;
+        // constant. We can use the phase name and uuid to create a unique parameter name.
         parameter_names.insert(phase_.name_ + "." + uuid_ + ".k");
         return parameter_names;
       }

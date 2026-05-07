@@ -64,22 +64,22 @@ namespace miam
       }
 
       /// @brief Sets the gas-phase diffusion coefficient [m² s⁻¹]
-      HenryLawPhaseTransferBuilder& SetDiffusionCoefficient(double D_g)
+      HenryLawPhaseTransferBuilder& SetDiffusionCoefficient(double diffusion_coefficient)
       {
-        if (D_g <= 0)
+        if (diffusion_coefficient <= 0)
           throw std::invalid_argument("Diffusion coefficient must be positive.");
-        D_g_ = D_g;
-        D_g_is_set_ = true;
+        diffusion_coefficient_ = diffusion_coefficient;
+        diffusion_coefficient_is_set_ = true;
         return *this;
       }
 
-      /// @brief Sets the mass accommodation coefficient [dimensionless, 0-1]
-      HenryLawPhaseTransferBuilder& SetAccommodationCoefficient(double alpha)
+      /// @brief Sets the mass accommodation coefficient [dimensionless, 0–1]
+      HenryLawPhaseTransferBuilder& SetAccommodationCoefficient(double accommodation_coefficient)
       {
-        if (alpha <= 0)
+        if (accommodation_coefficient <= 0)
           throw std::invalid_argument("Accommodation coefficient must be positive.");
-        alpha_ = alpha;
-        alpha_is_set_ = true;
+        accommodation_coefficient_ = accommodation_coefficient;
+        accommodation_coefficient_is_set_ = true;
         return *this;
       }
 
@@ -96,9 +96,9 @@ namespace miam
           throw std::runtime_error("HenryLawPhaseTransferBuilder requires the solvent to be set.");
         if (!henry_law_constant_)
           throw std::runtime_error("HenryLawPhaseTransferBuilder requires the Henry's Law constant to be set.");
-        if (!D_g_is_set_)
+        if (!diffusion_coefficient_is_set_)
           throw std::runtime_error("HenryLawPhaseTransferBuilder requires the diffusion coefficient to be set.");
-        if (!alpha_is_set_)
+        if (!accommodation_coefficient_is_set_)
           throw std::runtime_error("HenryLawPhaseTransferBuilder requires the accommodation coefficient to be set.");
 
         double gas_molecular_weight = gas_species_.GetProperty<double>("molecular weight [kg mol-1]");
@@ -111,8 +111,8 @@ namespace miam
             condensed_species_,
             solvent_,
             condensed_phase_,
-            D_g_,
-            alpha_,
+            diffusion_coefficient_,
+            accommodation_coefficient_,
             gas_molecular_weight,
             solvent_molecular_weight,
             solvent_density);
@@ -128,10 +128,10 @@ namespace miam
       micm::Species solvent_;
       bool solvent_is_set_ = false;
       std::function<double(const micm::Conditions& conditions)> henry_law_constant_;
-      double D_g_ = 0.0;
-      bool D_g_is_set_ = false;
-      double alpha_ = 0.0;
-      bool alpha_is_set_ = false;
+      double diffusion_coefficient_ = 0.0;  ///< Gas-phase diffusion coefficient [m² s⁻¹]
+      bool diffusion_coefficient_is_set_ = false;
+      double accommodation_coefficient_ = 0.0;  ///< Mass accommodation coefficient [dimensionless, 0–1]
+      bool accommodation_coefficient_is_set_ = false;
     };
   }  // namespace process
 }  // namespace miam

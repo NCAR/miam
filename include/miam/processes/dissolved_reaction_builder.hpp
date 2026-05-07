@@ -120,8 +120,8 @@ namespace miam
       micm::Species solvent_;                 ///< Solvent species
       bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
       std::function<double(const micm::Conditions& conditions)> rate_constant_;  ///< Rate constant function
-      double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
-      double min_halflife_{ 0.0 };                    ///< Minimum half-life for rate capping [s]
+      double solvent_floor_{ 1.0e-20 };       ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
+      double min_halflife_{ 0.0 };            ///< Minimum half-life for rate capping [s]
     };
   }  // namespace process
 }  // namespace miam

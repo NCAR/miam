@@ -345,8 +345,8 @@ TEST(HenryLawPhaseTransfer, CopyWithNewUuid)
 
   EXPECT_NE(process.uuid_, copy.uuid_);
   EXPECT_EQ(process.gas_species_.name_, copy.gas_species_.name_);
-  EXPECT_DOUBLE_EQ(process.D_g_, copy.D_g_);
-  EXPECT_DOUBLE_EQ(process.alpha_, copy.alpha_);
+  EXPECT_DOUBLE_EQ(process.diffusion_coefficient_, copy.diffusion_coefficient_);
+  EXPECT_DOUBLE_EQ(process.accommodation_coefficient_, copy.accommodation_coefficient_);
   EXPECT_DOUBLE_EQ(process.gas_molecular_weight_, copy.gas_molecular_weight_);
 }
 
@@ -1833,8 +1833,8 @@ TEST(HenryLawPhaseTransferBuilder, BuildSuccess)
       .SetAccommodationCoefficient(alpha)
       .Build();
 
-  EXPECT_DOUBLE_EQ(process.D_g_, D_g);
-  EXPECT_DOUBLE_EQ(process.alpha_, alpha);
+  EXPECT_DOUBLE_EQ(process.diffusion_coefficient_, D_g);
+  EXPECT_DOUBLE_EQ(process.accommodation_coefficient_, alpha);
   EXPECT_DOUBLE_EQ(process.gas_molecular_weight_, gas_molecular_weight);
   EXPECT_DOUBLE_EQ(process.solvent_molecular_weight_, solvent_molecular_weight);
   EXPECT_DOUBLE_EQ(process.solvent_density_, solvent_density);
