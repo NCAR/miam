@@ -79,8 +79,8 @@ Newton correction that overshoots wildly due to nonlinearity.  Symptoms:
 
       auto params = RosenbrockSolverParameters::
           FourStageDifferentialAlgebraicRosenbrockParameters();
-      params.constraint_init_max_iterations_ = 50;
-      params.constraint_init_tolerance_ = 1e-14;
+      params.constraint_init_max_iterations_ = 200;
+      params.constraint_init_tolerance_ = 1e-20;
 
    See the :ref:`case study <case-study-inconsistent-ics>` below for
    the full story.
@@ -246,9 +246,10 @@ satisfied:
 .. code-block:: c++
 
    auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(
-       maps.variable_indices);
+       maps.parameter_indices, maps.variable_indices);
+   DenseMatrix params(1, maps.num_parameters, 0.0);
    DenseMatrix forcing(1, maps.num_variables, 0.0);
-   residual_fn(variables, forcing);
+   residual_fn(variables, params, forcing);
    // forcing[0][i_algebraic] should be near zero
 
 If the residuals are large at your initial state, the solver will
