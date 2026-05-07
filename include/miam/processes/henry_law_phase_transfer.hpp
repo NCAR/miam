@@ -32,7 +32,7 @@ namespace miam
     ///          d[A]_gas/dt  = -φ_p · k_cond · [A]_gas + φ_p · k_evap · [A]_aq / f_v
     ///          d[A]_aq/dt   = +φ_p · k_cond · [A]_gas - φ_p · k_evap · [A]_aq / f_v
     ///
-    ///          where k_evap = k_cond / (HLC · R · T), f_v = [solvent] · Mw/ρ,
+    ///          where k_evap = k_cond / (HLC · R · T), f_v = [solvent] · solvent_molecular_weight / solvent_density  [m³ mol⁻¹],
     ///          and φ_p is the phase volume fraction.
     class HenryLawPhaseTransfer
     {
@@ -44,9 +44,9 @@ namespace miam
       micm::Phase condensed_phase_;                                                   ///< The condensed phase
       double D_g_;          ///< Gas-phase diffusion coefficient [m² s⁻¹]
       double alpha_;        ///< Mass accommodation coefficient [dimensionless]
-      double Mw_gas_;       ///< Gas-phase molecular weight [kg mol⁻¹]
-      double Mw_solvent_;   ///< Solvent molecular weight [kg mol⁻¹]
-      double rho_solvent_;  ///< Solvent density [kg m⁻³]
+      double gas_molecular_weight_;       ///< Gas-phase molecular weight [kg mol⁻¹]
+      double solvent_molecular_weight_;   ///< Solvent molecular weight [kg mol⁻¹]
+      double solvent_density_;  ///< Solvent density [kg m⁻³]
       std::string uuid_;    ///< Unique identifier
 
       HenryLawPhaseTransfer() = delete;
@@ -60,9 +60,9 @@ namespace miam
           const micm::Phase& condensed_phase,
           double D_g,
           double alpha,
-          double Mw_gas,
-          double Mw_solvent,
-          double rho_solvent)
+          double gas_molecular_weight,
+          double solvent_molecular_weight,
+          double solvent_density)
           : henry_law_constant_(henry_law_constant),
             gas_species_(gas_species),
             condensed_species_(condensed_species),
@@ -70,9 +70,9 @@ namespace miam
             condensed_phase_(condensed_phase),
             D_g_(D_g),
             alpha_(alpha),
-            Mw_gas_(Mw_gas),
-            Mw_solvent_(Mw_solvent),
-            rho_solvent_(rho_solvent),
+            gas_molecular_weight_(gas_molecular_weight),
+            solvent_molecular_weight_(solvent_molecular_weight),
+            solvent_density_(solvent_density),
             uuid_(miam::util::generate_uuid_v4())
       {
       }
@@ -88,9 +88,9 @@ namespace miam
             condensed_phase_,
             D_g_,
             alpha_,
-            Mw_gas_,
-            Mw_solvent_,
-            rho_solvent_);
+            gas_molecular_weight_,
+            solvent_molecular_weight_,
+            solvent_density_);
       }
 
       /// @brief Returns unique parameter names for this process
@@ -281,7 +281,7 @@ namespace miam
           std::size_t solvent_species_idx;
           std::size_t hlc_param_idx;
           std::size_t temperature_param_idx;
-          double Mw_rho;
+          double molar_volume;  ///< Solvent molar volume [m³ mol⁻¹] = solvent_molecular_weight / solvent_density
           AerosolPropertyProvider<DenseMatrixPolicy> r_eff_provider;
           AerosolPropertyProvider<DenseMatrixPolicy> N_provider;
           AerosolPropertyProvider<DenseMatrixPolicy> phi_provider;
@@ -306,11 +306,11 @@ namespace miam
             inst.hlc_param_idx = state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc");
             inst.temperature_param_idx =
                 state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
-            inst.Mw_rho = Mw_solvent_ / rho_solvent_;
+            inst.molar_volume = solvent_molecular_weight_ / solvent_density_;
             inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
             inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
             inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
-            inst.cond_rate_provider = util::MakeCondensationRateProvider(D_g_, alpha_, Mw_gas_);
+            inst.cond_rate_provider = util::MakeCondensationRateProvider(D_g_, alpha_, gas_molecular_weight_);
             instances.push_back(std::move(inst));
           }
         }
@@ -347,7 +347,7 @@ namespace miam
                       double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
                       double kc_eff = phi * kc;
                       double ke_eff = kc_eff / (hlc * util::R_gas * T);
-                      double fv = solvent * inst.Mw_rho;
+                      double fv = solvent * inst.molar_volume;
                       net_val = kc_eff * gas - ke_eff * aq / fv;
                     },
                     r_eff_view.GetConstColumnView(0),
@@ -423,7 +423,7 @@ namespace miam
           std::size_t solvent_species_idx;
           std::size_t hlc_param_idx;
           std::size_t temperature_param_idx;
-          double Mw_rho;
+          double molar_volume;  ///< Solvent molar volume [m³ mol⁻¹] = solvent_molecular_weight / solvent_density
           AerosolPropertyProvider<DenseMatrixPolicy> r_eff_provider;
           AerosolPropertyProvider<DenseMatrixPolicy> N_provider;
           AerosolPropertyProvider<DenseMatrixPolicy> phi_provider;
@@ -455,11 +455,11 @@ namespace miam
                 state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc");
             inst.temperature_param_idx =
                 state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
-            inst.Mw_rho = Mw_solvent_ / rho_solvent_;
+            inst.molar_volume = solvent_molecular_weight_ / solvent_density_;
             inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
             inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
             inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
-            inst.cond_rate_provider = util::MakeCondensationRateProvider(D_g_, alpha_, Mw_gas_);
+            inst.cond_rate_provider = util::MakeCondensationRateProvider(D_g_, alpha_, gas_molecular_weight_);
             inst.n_r_eff_deps = prov_map.at(AerosolProperty::EffectiveRadius).dependent_variable_indices.size();
             inst.n_N_deps = prov_map.at(AerosolProperty::NumberConcentration).dependent_variable_indices.size();
             inst.n_phi_deps = prov_map.at(AerosolProperty::PhaseVolumeFraction).dependent_variable_indices.size();
@@ -548,7 +548,7 @@ namespace miam
                     {
                       double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
                       double ke = kc / (hlc * util::R_gas * T);
-                      double fv = solvent * inst.Mw_rho;
+                      double fv = solvent * inst.molar_volume;
                       // -J[gas, gas] = +φ · k_cond
                       j_gg += phi * kc;
                       // -J[gas, aq] = -φ · k_evap / f_v
@@ -587,7 +587,7 @@ namespace miam
                         double kc_dummy, dk_dr, dk_dN_unused;
                         inst.cond_rate_provider.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr, dk_dN_unused);
                         double dke_dr = dk_dr / (hlc * util::R_gas * T);
-                        double fv = solvent * inst.Mw_rho;
+                        double fv = solvent * inst.molar_volume;
                         double eff = phi * (dk_dr * dr_dvar * gas - dke_dr * dr_dvar * aq / fv);
                         j_gas += eff;
                         j_aq -= eff;
@@ -619,7 +619,7 @@ namespace miam
                         double kc_dummy, dk_dr_unused, dk_dN;
                         inst.cond_rate_provider.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr_unused, dk_dN);
                         double dke_dN = dk_dN / (hlc * util::R_gas * T);
-                        double fv = solvent * inst.Mw_rho;
+                        double fv = solvent * inst.molar_volume;
                         double eff = phi * (dk_dN * dN_dvar * gas - dke_dN * dN_dvar * aq / fv);
                         j_gas += eff;
                         j_aq -= eff;
@@ -650,7 +650,7 @@ namespace miam
                       {
                         double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
                         double ke = kc / (hlc * util::R_gas * T);
-                        double fv = solvent * inst.Mw_rho;
+                        double fv = solvent * inst.molar_volume;
                         double R = kc * gas - ke * aq / fv;
                         j_gas += R * dphi_dvar;
                         j_aq -= R * dphi_dvar;

@@ -318,23 +318,23 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
 {
   double T = 298.15;
   double HLC = 3.4e-2;         // mol m⁻³ Pa⁻¹
-  double Mw_gas = 0.044;       // kg mol⁻¹
-  double Mw_solvent = 0.018;
-  double rho_solvent = 1000.0;
+  double gas_molecular_weight = 0.044;       // kg mol⁻¹
+  double solvent_molecular_weight = 0.018;
+  double solvent_density = 1000.0;
   double D_g = 1.5e-5;         // m² s⁻¹
   double accommodation = 0.05;
   double H2O_conc = 0.017;  // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
-  double f_v = H2O_conc * Mw_solvent / rho_solvent;
+  double f_v = H2O_conc * solvent_molecular_weight / solvent_density;
   double alpha = HLC * R_gas * T * f_v;
 
   auto A_g = Species{ "A_g",
-      { { "molecular weight [kg mol-1]", Mw_gas } } };
+      { { "molecular weight [kg mol-1]", gas_molecular_weight } } };
   auto A_aq = Species{ "A_aq",
-      { { "molecular weight [kg mol-1]", Mw_gas },
+      { { "molecular weight [kg mol-1]", gas_molecular_weight },
         { "density [kg m-3]", 1800.0 } } };
   auto H2O = Species{ "H2O",
-      { { "molecular weight [kg mol-1]", Mw_solvent },
-        { "density [kg m-3]", rho_solvent } } };
+      { { "molecular weight [kg mol-1]", solvent_molecular_weight },
+        { "density [kg m-3]", solvent_density } } };
 
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
@@ -420,8 +420,8 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
         .SetCondensedPhase(aqueous_phase)
         .SetHenryLawConstant(process::constant::HenrysLawConstant(
             process::constant::HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
-        .SetMwSolvent(Mw_solvent)
-        .SetRhoSolvent(rho_solvent)
+        .SetSolventMolecularWeight(solvent_molecular_weight)
+        .SetSolventDensity(solvent_density)
         .Build();
 
     auto mass_cons = constraint::LinearConstraintBuilder()

@@ -57,16 +57,16 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
 {
   // Gas species A_g partitioning into aqueous phase as A_aq
   // Solvent is H2O
-  double Mw_gas = 0.044;       // kg mol⁻¹ (like CO₂)
-  double Mw_solvent = 0.018;   // kg mol⁻¹ (water)
-  double rho_solvent = 1000.0; // kg m⁻³ (water)
+  double gas_molecular_weight = 0.044;       // kg mol⁻¹ (like CO₂)
+  double solvent_molecular_weight = 0.018;   // kg mol⁻¹ (water)
+  double solvent_density = 1000.0; // kg m⁻³ (water)
   double D_g = 1.5e-5;         // m² s⁻¹
   double alpha = 0.05;         // accommodation coefficient
   double HLC_val = 3.4e-2;     // mol m⁻³ Pa⁻¹ (constant, no T dependence)
 
-  auto A_g = MakeGasSpecies("A_g", Mw_gas);
-  auto A_aq = MakeCondensedSpecies("A_aq", Mw_gas, 1800.0);
-  auto H2O = MakeCondensedSpecies("H2O", Mw_solvent, rho_solvent);
+  auto A_g = MakeGasSpecies("A_g", gas_molecular_weight);
+  auto A_aq = MakeCondensedSpecies("A_aq", gas_molecular_weight, 1800.0);
+  auto H2O = MakeCondensedSpecies("H2O", solvent_molecular_weight, solvent_density);
 
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
@@ -142,8 +142,8 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   double r_eff = GMD * std::exp(2.5 * ln_gsd * ln_gsd);
 
   // N = V_total / V_single where V_total from species, V_single from GMD/GSD
-  double V_aq = aq_0 * Mw_gas / 1800.0;       // initial aq volume
-  double V_h2o = solvent_conc * Mw_solvent / rho_solvent;  // water volume
+  double V_aq = aq_0 * gas_molecular_weight / 1800.0;       // initial aq volume
+  double V_h2o = solvent_conc * solvent_molecular_weight / solvent_density;  // water volume
   double V_total = V_aq + V_h2o;
   double V_single = (4.0 / 3.0) * M_PI * std::pow(GMD, 3) * std::exp(4.5 * ln_gsd * ln_gsd);
   double N = V_total / V_single;
@@ -152,11 +152,11 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   double phi = 1.0;
 
   // k_cond from condensation rate utility
-  auto cond_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, Mw_gas);
+  auto cond_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double k_cond = cond_provider.ComputeValue(r_eff, N, T);
   double k_evap = k_cond / (HLC_val * R_gas * T);
 
-  double f_v = solvent_conc * Mw_solvent / rho_solvent;
+  double f_v = solvent_conc * solvent_molecular_weight / solvent_density;
   double a = phi * k_cond;
   double b = phi * k_evap / f_v;
 
@@ -215,16 +215,16 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
 TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
 {
   // Same gas species partitions into two different droplet populations
-  double Mw_gas = 0.030;       // kg mol⁻¹ (like HCHO)
-  double Mw_solvent = 0.018;
-  double rho_solvent = 1000.0;
+  double gas_molecular_weight = 0.030;       // kg mol⁻¹ (like HCHO)
+  double solvent_molecular_weight = 0.018;
+  double solvent_density = 1000.0;
   double D_g = 1.8e-5;
   double alpha = 0.1;
   double HLC_val = 3.2e3;  // mol m⁻³ Pa⁻¹ (large, like HCHO)
 
-  auto A_g = MakeGasSpecies("A_g", Mw_gas);
-  auto A_aq = MakeCondensedSpecies("A_aq", Mw_gas, 1200.0);
-  auto H2O = MakeCondensedSpecies("H2O", Mw_solvent, rho_solvent);
+  auto A_g = MakeGasSpecies("A_g", gas_molecular_weight);
+  auto A_aq = MakeCondensedSpecies("A_aq", gas_molecular_weight, 1200.0);
+  auto H2O = MakeCondensedSpecies("H2O", solvent_molecular_weight, solvent_density);
 
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_small{ "AQ_SMALL", { { A_aq }, { H2O } } };
@@ -352,18 +352,18 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
   // Higher C implies stronger T dependence. At lower T (with positive C),
   // HLC increases → more dissolution → more aq at equilibrium.
 
-  double Mw_gas = 0.044;
-  double Mw_solvent = 0.018;
-  double rho_solvent = 1000.0;
+  double gas_molecular_weight = 0.044;
+  double solvent_molecular_weight = 0.018;
+  double solvent_density = 1000.0;
   double D_g = 1.5e-5;
   double alpha = 0.05;
   double HLC_ref = 3.4e-2;  // at T0 = 298.15
   double C = 2400.0;         // K (enthalpy parameter)
   double T0 = 298.15;
 
-  auto A_g = MakeGasSpecies("A_g", Mw_gas);
-  auto A_aq = MakeCondensedSpecies("A_aq", Mw_gas, 1800.0);
-  auto H2O = MakeCondensedSpecies("H2O", Mw_solvent, rho_solvent);
+  auto A_g = MakeGasSpecies("A_g", gas_molecular_weight);
+  auto A_aq = MakeCondensedSpecies("A_aq", gas_molecular_weight, 1800.0);
+  auto H2O = MakeCondensedSpecies("H2O", solvent_molecular_weight, solvent_density);
 
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
@@ -476,16 +476,16 @@ TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
   // For sufficiently different sizes but same N, the larger particles should
   // achieve equilibrium faster (higher k_cond in continuum regime).
 
-  double Mw_gas = 0.044;
-  double Mw_solvent = 0.018;
-  double rho_solvent = 1000.0;
+  double gas_molecular_weight = 0.044;
+  double solvent_molecular_weight = 0.018;
+  double solvent_density = 1000.0;
   double D_g = 1.5e-5;
   double alpha = 0.05;
   double HLC_val = 3.4e-2;
 
-  auto A_g = MakeGasSpecies("A_g", Mw_gas);
-  auto A_aq = MakeCondensedSpecies("A_aq", Mw_gas, 1800.0);
-  auto H2O = MakeCondensedSpecies("H2O", Mw_solvent, rho_solvent);
+  auto A_g = MakeGasSpecies("A_g", gas_molecular_weight);
+  auto A_aq = MakeCondensedSpecies("A_aq", gas_molecular_weight, 1800.0);
+  auto H2O = MakeCondensedSpecies("H2O", solvent_molecular_weight, solvent_density);
 
   Phase gas_phase{ "GAS", { { A_g } } };
 

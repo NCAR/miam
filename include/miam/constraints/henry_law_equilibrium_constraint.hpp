@@ -13,10 +13,10 @@
 
 #include <functional>
 #include <map>
-#include <memory>
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace miam
@@ -41,13 +41,9 @@ namespace miam
       micm::Species condensed_species_;                                               ///< Condensed-phase solute species
       micm::Species solvent_;                                                         ///< Condensed-phase solvent species
       micm::Phase condensed_phase_;                                                   ///< The condensed phase
-      double Mw_solvent_;   ///< Solvent molecular weight [kg mol⁻¹]
-      double rho_solvent_;  ///< Solvent density [kg m⁻³]
+      double solvent_molecular_weight_;   ///< Solvent molecular weight [kg mol⁻¹]
+      double solvent_density_;  ///< Solvent density [kg m⁻³]
       std::string uuid_;    ///< Unique identifier
-
-      /// @brief Shared mutable HLC*R*T values, bridging UpdateConstraintParametersFunction → constraint functions.
-      ///        One value per grid cell.
-      std::shared_ptr<std::vector<double>> hlc_rt_values_;
 
       HenryLawEquilibriumConstraint() = delete;
 
@@ -58,17 +54,16 @@ namespace miam
           const micm::Species& condensed_species,
           const micm::Species& solvent,
           const micm::Phase& condensed_phase,
-          double Mw_solvent,
-          double rho_solvent)
+          double solvent_molecular_weight,
+          double solvent_density)
           : henry_law_constant_(henry_law_constant),
             gas_species_(gas_species),
             condensed_species_(condensed_species),
             solvent_(solvent),
             condensed_phase_(condensed_phase),
-            Mw_solvent_(Mw_solvent),
-            rho_solvent_(rho_solvent),
-            uuid_(miam::util::generate_uuid_v4()),
-            hlc_rt_values_(std::make_shared<std::vector<double>>())
+            solvent_molecular_weight_(solvent_molecular_weight),
+            solvent_density_(solvent_density),
+            uuid_(miam::util::generate_uuid_v4())
       {
       }
 
@@ -76,7 +71,7 @@ namespace miam
       HenryLawEquilibriumConstraint CopyWithNewUuid() const
       {
         return HenryLawEquilibriumConstraint(
-            henry_law_constant_, gas_species_, condensed_species_, solvent_, condensed_phase_, Mw_solvent_, rho_solvent_);
+            henry_law_constant_, gas_species_, condensed_species_, solvent_, condensed_phase_, solvent_molecular_weight_, solvent_density_);
       }
 
       /// @brief Returns the names of algebraic variables (one per phase instance)
@@ -148,77 +143,122 @@ namespace miam
         return elements;
       }
 
-      /// @brief Returns a function that updates HLC*R*T for each grid cell (called during UpdateStateParameters)
-      template<typename DenseMatrixPolicy>
-      std::function<void(const std::vector<micm::Conditions>&)> UpdateConstraintParametersFunction() const
+      /// @brief Returns the names of state parameters owned by this constraint (one per phase instance).
+      /// @details Each phase instance writes \f$ \text{HLC}(T) \cdot R \cdot T \f$ to a dedicated
+      ///          column of the state parameter matrix every time conditions change.
+      std::set<std::string> ConstraintStateParameterNames(
+          const std::map<std::string, std::set<std::string>>& phase_prefixes) const
       {
-        auto hlc_rt_values = hlc_rt_values_;
-        auto hlc_fn = henry_law_constant_;
-        return [hlc_rt_values, hlc_fn](const std::vector<micm::Conditions>& conditions)
+        std::set<std::string> names;
+        auto phase_it = phase_prefixes.find(condensed_phase_.name_);
+        if (phase_it != phase_prefixes.end())
         {
-          hlc_rt_values->resize(conditions.size());
-          for (std::size_t i = 0; i < conditions.size(); ++i)
-          {
-            (*hlc_rt_values)[i] = hlc_fn(conditions[i]) * util::R_gas * conditions[i].temperature_;
-          }
-        };
+          for (const auto& prefix : phase_it->second)
+            names.insert(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc_rt");
+        }
+        return names;
+      }
+
+      /// @brief Returns a function that writes \f$ \text{HLC}(T) \cdot R \cdot T \f$ per grid cell
+      ///        into the state parameter matrix.
+      template<typename DenseMatrixPolicy>
+      std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)>
+      UpdateConstraintParametersFunction(
+          const std::map<std::string, std::set<std::string>>& phase_prefixes,
+          const std::unordered_map<std::string, std::size_t>& state_parameter_indices) const
+      {
+        std::vector<std::size_t> hlc_rt_indices;
+        auto phase_it = phase_prefixes.find(condensed_phase_.name_);
+        if (phase_it != phase_prefixes.end())
+        {
+          for (const auto& prefix : phase_it->second)
+            hlc_rt_indices.push_back(
+                state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc_rt"));
+        }
+        auto hlc_fn = henry_law_constant_;
+
+        DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
+        std::vector<micm::Conditions> conditions_vector;
+
+        return DenseMatrixPolicy::Function(
+            [hlc_rt_indices, hlc_fn](auto&& conditions, auto&& params)
+            {
+              for (const auto& hlc_rt_idx : hlc_rt_indices)
+                params.ForEachRow(
+                    [hlc_fn](const micm::Conditions& cond, double& hlc_rt)
+                    { hlc_rt = hlc_fn(cond) * util::R_gas * cond.temperature_; },
+                    conditions,
+                    params.GetColumnView(hlc_rt_idx));
+            },
+            conditions_vector, state_parameters);
       }
 
       /// @brief Returns a function that computes constraint residuals G(y) = 0
       /// @details G = HLC * R * T * f_v * [A_g] - [A_aq]
-      ///          where f_v = [S] * Mw_solvent / rho_solvent
+      ///          where f_v = [S] * solvent_molecular_weight / solvent_density
       template<typename DenseMatrixPolicy>
       std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ConstraintResidualFunction(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
-          const std::unordered_map<std::string, std::size_t>& /*state_parameter_indices*/,
+          const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
           const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
       {
         auto indices = GetStateVariableIndices(phase_prefixes, state_variable_indices);
-        auto hlc_rt_values = hlc_rt_values_;
-        double Mw_rho = Mw_solvent_ / rho_solvent_;
+        double molar_volume = solvent_molecular_weight_ / solvent_density_;  // [m³ mol⁻¹]
+
+        std::vector<std::size_t> hlc_rt_indices;
+        auto phase_it = phase_prefixes.find(condensed_phase_.name_);
+        if (phase_it != phase_prefixes.end())
+        {
+          for (const auto& prefix : phase_it->second)
+            hlc_rt_indices.push_back(
+                state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc_rt"));
+        }
 
         DenseMatrixPolicy dummy_state{ 1, state_variable_indices.size(), 0.0 };
-        std::vector<double> dummy_hlc;
+        DenseMatrixPolicy dummy_params{ 1, std::max(state_parameter_indices.size(), std::size_t{ 1 }), 0.0 };
 
-        auto inner = DenseMatrixPolicy::Function(
-            [indices, Mw_rho](auto&& hlc_rt_vec, auto&& state_variables, auto&& residual)
+        return DenseMatrixPolicy::Function(
+            [indices, hlc_rt_indices, molar_volume](auto&& state_variables, auto&& state_parameters, auto&& residual)
             {
               for (std::size_t i_phase = 0; i_phase < indices.number_of_phase_instances_; ++i_phase)
               {
-                // G = HLC*R*T * f_v * [A_g] - [A_aq],  where f_v = [S] * Mw/rho
+                // G = HLC*R*T * f_v * [A_g] - [A_aq],  where f_v = [S] * solvent_molecular_weight / solvent_density [m³ mol⁻¹]
                 residual.ForEachRow(
-                    [Mw_rho](const double& hlc_rt, const double& gas, const double& aq, const double& sol, double& res)
-                    { res = hlc_rt * (sol * Mw_rho) * gas - aq; },
-                    hlc_rt_vec,
+                    [molar_volume](const double& hlc_rt, const double& gas, const double& aq, const double& sol, double& res)
+                    { res = hlc_rt * (sol * molar_volume) * gas - aq; },
+                    state_parameters.GetConstColumnView(hlc_rt_indices[i_phase]),
                     state_variables.GetConstColumnView(indices.gas_idx_),
                     state_variables.GetConstColumnView(indices.aq_indices_[i_phase]),
                     state_variables.GetConstColumnView(indices.solvent_indices_[i_phase]),
                     residual.GetColumnView(indices.aq_indices_[i_phase]));
               }
             },
-            dummy_hlc, dummy_state, dummy_state);
-
-        return [inner = std::move(inner), hlc_rt_values](
-                   const DenseMatrixPolicy& state_variables,
-                   const DenseMatrixPolicy& /*state_parameters*/,
-                   DenseMatrixPolicy& residual) mutable
-        { inner(*hlc_rt_values, state_variables, residual); };
+            dummy_state, dummy_params, dummy_state);
       }
 
       /// @brief Returns a function that computes constraint Jacobian entries (subtracts dG/dy)
       /// @details Follows MICM convention: jac[row][col] -= dG/dy
       ///          dG/d[A_g] = HLC * R * T * f_v
       ///          dG/d[A_aq] = -1
-      ///          dG/d[S] = HLC * R * T * Mw/rho * [A_g]
+      ///          dG/d[S] = HLC * R * T * (solvent_molecular_weight / solvent_density) [m³ mol⁻¹] * [A_g]
       template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
-      std::function<void(const DenseMatrixPolicy&, SparseMatrixPolicy&)> ConstraintJacobianFunction(
+      std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> ConstraintJacobianFunction(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
+          const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
           const std::unordered_map<std::string, std::size_t>& state_variable_indices,
           const SparseMatrixPolicy& jacobian) const
       {
         auto indices = GetStateVariableIndices(phase_prefixes, state_variable_indices);
-        auto hlc_rt_values = hlc_rt_values_;
-        double Mw_rho = Mw_solvent_ / rho_solvent_;
+        double molar_volume = solvent_molecular_weight_ / solvent_density_;  // [m³ mol⁻¹]
+
+        std::vector<std::size_t> hlc_rt_indices;
+        auto phase_it = phase_prefixes.find(condensed_phase_.name_);
+        if (phase_it != phase_prefixes.end())
+        {
+          for (const auto& prefix : phase_it->second)
+            hlc_rt_indices.push_back(
+                state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc_rt"));
+        }
 
         // Pre-compute block-0 VectorIndex offsets per instance
         struct PerInstanceJacData
@@ -237,10 +277,11 @@ namespace miam
         }
 
         DenseMatrixPolicy dummy_state{ 1, state_variable_indices.size(), 0.0 };
-        std::vector<double> dummy_hlc;
+        DenseMatrixPolicy dummy_params{ 1, std::max(state_parameter_indices.size(), std::size_t{ 1 }), 0.0 };
 
-        auto inner = SparseMatrixPolicy::Function(
-            [indices, jac_data, Mw_rho](auto&& hlc_rt_vec, auto&& state_variables, auto&& jacobian_values)
+        return SparseMatrixPolicy::Function(
+            [indices, hlc_rt_indices, jac_data, molar_volume](
+                auto&& state_variables, auto&& state_parameters, auto&& jacobian_values)
             {
               for (std::size_t i_phase = 0; i_phase < indices.number_of_phase_instances_; ++i_phase)
               {
@@ -252,27 +293,23 @@ namespace miam
 
                 // jac -= dG/d[A_g] = HLC*R*T * f_v
                 // jac -= dG/d[A_aq] = -1
-                // jac -= dG/d[S] = HLC*R*T * Mw/rho * [A_g]
+                // jac -= dG/d[S] = HLC*R*T * molar_volume [m³ mol⁻¹] * [A_g]
                 jacobian_values.ForEachBlock(
-                    [Mw_rho](const double& hlc_rt, const double& gas, const double& sol,
+                    [molar_volume](const double& hlc_rt, const double& gas, const double& sol,
                              double& j_gas, double& j_aq, double& j_sol)
                     {
-                      double f_v = sol * Mw_rho;
+                      double f_v = sol * molar_volume;
                       j_gas -= hlc_rt * f_v;
                       j_aq -= (-1.0);
-                      j_sol -= hlc_rt * Mw_rho * gas;
+                      j_sol -= hlc_rt * molar_volume * gas;
                     },
-                    hlc_rt_vec,
+                    state_parameters.GetConstColumnView(hlc_rt_indices[i_phase]),
                     state_variables.GetConstColumnView(indices.gas_idx_),
                     state_variables.GetConstColumnView(indices.solvent_indices_[i_phase]),
                     bv_gas, bv_aq, bv_sol);
               }
             },
-            dummy_hlc, dummy_state, jacobian);
-
-        return [inner = std::move(inner), hlc_rt_values](
-                   const DenseMatrixPolicy& state_variables, SparseMatrixPolicy& jacobian_values) mutable
-        { inner(*hlc_rt_values, state_variables, jacobian_values); };
+            dummy_state, dummy_params, jacobian);
       }
 
      private:

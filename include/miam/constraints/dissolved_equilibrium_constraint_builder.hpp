@@ -53,10 +53,12 @@ namespace miam
         return *this;
       }
 
-      /// @brief Sets the solvent damping epsilon for regularization near zero solvent
-      DissolvedEquilibriumConstraintBuilder& SetSolventDampingEpsilon(double epsilon)
+      /// @brief Sets the floor \f$\delta\f$ [mol m⁻³] added to the solvent in the denominator
+      ///        to prevent singularity as \f$[S] \to 0\f$. The constraint residual
+      ///        evaluates \f$([S]+\delta)^n\f$ rather than \f$[S]^{n-1}\f$. Default: 1e-20.
+      DissolvedEquilibriumConstraintBuilder& SetSolventFloor(double solvent_floor)
       {
-        solvent_damping_epsilon_ = epsilon;
+        solvent_floor_ = solvent_floor;
         return *this;
       }
 
@@ -92,7 +94,7 @@ namespace miam
           throw std::runtime_error("DissolvedEquilibriumConstraintBuilder requires the equilibrium constant to be set.");
 
         return DissolvedEquilibriumConstraint(
-            equilibrium_constant_, reactants_, products_, algebraic_species_, solvent_, phase_, solvent_damping_epsilon_);
+            equilibrium_constant_, reactants_, products_, algebraic_species_, solvent_, phase_, solvent_floor_);
       }
 
      private:
@@ -105,7 +107,7 @@ namespace miam
       micm::Species solvent_;
       bool solvent_is_set_ = false;
       std::function<double(const micm::Conditions& conditions)> equilibrium_constant_;
-      double solvent_damping_epsilon_{ 1.0e-10 };  ///< Regularization parameter for solvent damping
+      double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
     };
   }  // namespace constraint
 }  // namespace miam

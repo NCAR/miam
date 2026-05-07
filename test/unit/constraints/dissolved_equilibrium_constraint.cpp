@@ -9,6 +9,8 @@
 #include <micm/util/matrix.hpp>
 #include <micm/util/sparse_matrix.hpp>
 #include <micm/util/sparse_matrix_standard_ordering.hpp>
+#include <micm/util/sparse_matrix_vector_ordering.hpp>
+#include <micm/util/vector_matrix.hpp>
 
 #include <gtest/gtest.h>
 
@@ -24,8 +26,6 @@ using namespace miam::constraint;
 namespace
 {
   using DMP = micm::Matrix<double>;
-  std::unordered_map<std::string, std::size_t> param_indices;
-  const DMP no_params{};
 
   auto h2o = micm::Species{ "H2O" };
   auto A = micm::Species{ "A" };
@@ -33,6 +33,19 @@ namespace
   auto C = micm::Species{ "C" };
   auto hp = micm::Species{ "H+" };
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { A }, { B }, { C }, { hp } } };
+
+  /// @brief Build state parameter index map from a constraint's ConstraintStateParameterNames
+  template<typename ConstraintT>
+  std::unordered_map<std::string, std::size_t> BuildParamIndices(
+      const ConstraintT& constraint,
+      const std::map<std::string, std::set<std::string>>& phase_prefixes)
+  {
+    std::unordered_map<std::string, std::size_t> indices;
+    std::size_t idx = 0;
+    for (const auto& name : constraint.ConstraintStateParameterNames(phase_prefixes))
+      indices[name] = idx++;
+    return indices;
+  }
 }  // namespace
 
 // ── ConstraintAlgebraicVariableNames ──
@@ -180,13 +193,15 @@ TEST(DissolvedEquilibriumConstraint, ResidualSimpleAB)
   state_indices["SMALL.AQUEOUS.B"] = 1;
   state_indices["SMALL.AQUEOUS.H2O"] = 2;
 
-  // Initialize K_eq values (simulating UpdateConstraintParameters)
-  std::vector<micm::Conditions> conditions(1);
-  auto update_fn = constraint.UpdateConstraintParametersFunction<micm::Matrix<double>>();
-  update_fn(conditions);
-
+  // Initialize K_eq values into state parameters
   using DMP = micm::Matrix<double>;
-  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
+  std::vector<micm::Conditions> conditions(1);
+  auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
+  update_fn(conditions, state_params);
+
+  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, pi, state_indices);
 
   DMP state_variables{ 1, 3, 0.0 };
   state_variables[0][0] = 1.0;    // [A]
@@ -194,7 +209,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualSimpleAB)
   state_variables[0][2] = 300.0;  // [H2O]
 
   DMP residual{ 1, 3, 0.0 };
-  residual_fn(state_variables, no_params, residual);
+  residual_fn(state_variables, state_params, residual);
 
   // G = K_eq * [A] / [S]^(1-1) - [B] / [S]^(1-1) = K_eq * [A] - [B]
   // = 10.0 * 1.0 - 5.0 = 5.0
@@ -226,12 +241,14 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultiReactant)
   state_indices["SMALL.AQUEOUS.C"] = 2;
   state_indices["SMALL.AQUEOUS.H2O"] = 3;
 
-  std::vector<micm::Conditions> conditions(1);
-  auto update_fn = constraint.UpdateConstraintParametersFunction<micm::Matrix<double>>();
-  update_fn(conditions);
-
   using DMP = micm::Matrix<double>;
-  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
+  std::vector<micm::Conditions> conditions(1);
+  auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
+  update_fn(conditions, state_params);
+
+  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, pi, state_indices);
 
   DMP state_variables{ 1, 4, 0.0 };
   state_variables[0][0] = 3.0;    // [A]
@@ -240,7 +257,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultiReactant)
   state_variables[0][3] = 300.0;  // [H2O]
 
   DMP residual{ 1, 4, 0.0 };
-  residual_fn(state_variables, no_params, residual);
+  residual_fn(state_variables, state_params, residual);
 
   // G = K_eq * [A]*[B]/[S]^(2-1) - [C]/[S]^(1-1)
   // = 2.0 * 3.0*4.0/300.0 - 20.0 = 0.08 - 20.0 = -19.92
@@ -275,12 +292,14 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleInstances)
   state_indices["SMALL.AQUEOUS.B"] = 4;
   state_indices["SMALL.AQUEOUS.H2O"] = 5;
 
-  std::vector<micm::Conditions> conditions(1);
-  auto update_fn = constraint.UpdateConstraintParametersFunction<micm::Matrix<double>>();
-  update_fn(conditions);
-
   using DMP = micm::Matrix<double>;
-  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
+  std::vector<micm::Conditions> conditions(1);
+  auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
+  update_fn(conditions, state_params);
+
+  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, pi, state_indices);
 
   DMP state_variables{ 1, 6, 0.0 };
   state_variables[0][0] = 2.0;    // LARGE [A]
@@ -291,7 +310,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleInstances)
   state_variables[0][5] = 300.0;  // SMALL [H2O]
 
   DMP residual{ 1, 6, 0.0 };
-  residual_fn(state_variables, no_params, residual);
+  residual_fn(state_variables, state_params, residual);
 
   // LARGE: G = 5.0 * 2.0 - 8.0 = 2.0
   EXPECT_NEAR(residual[0][1], 2.0, 1.0e-12);
@@ -322,12 +341,14 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleCells)
   state_indices["DROP.AQUEOUS.B"] = 1;
   state_indices["DROP.AQUEOUS.H2O"] = 2;
 
-  std::vector<micm::Conditions> conditions(2);
-  auto update_fn = constraint.UpdateConstraintParametersFunction<micm::Matrix<double>>();
-  update_fn(conditions);
-
   using DMP = micm::Matrix<double>;
-  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  DMP state_params{ 2, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
+  std::vector<micm::Conditions> conditions(2);
+  auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
+  update_fn(conditions, state_params);
+
+  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, pi, state_indices);
 
   DMP state_variables{ 2, 3, 0.0 };
   state_variables[0][0] = 1.0;    // cell 0 [A]
@@ -338,7 +359,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleCells)
   state_variables[1][2] = 300.0;  // cell 1 [H2O]
 
   DMP residual{ 2, 3, 0.0 };
-  residual_fn(state_variables, no_params, residual);
+  residual_fn(state_variables, state_params, residual);
 
   // cell 0: G = 4*1 - 2 = 2
   EXPECT_NEAR(residual[0][1], 2.0, 1.0e-12);
@@ -371,20 +392,22 @@ TEST(DissolvedEquilibriumConstraint, JacobianSimpleAB)
   state_indices["SMALL.AQUEOUS.B"] = 1;
   state_indices["SMALL.AQUEOUS.H2O"] = 2;
 
-  std::vector<micm::Conditions> conditions(1);
-  auto update_fn = constraint.UpdateConstraintParametersFunction<micm::Matrix<double>>();
-  update_fn(conditions);
-
-  // Build sparse Jacobian with the right sparsity
   using DMP = micm::Matrix<double>;
   using SMP = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
+  std::vector<micm::Conditions> conditions(1);
+  auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
+  update_fn(conditions, state_params);
+
+  // Build sparse Jacobian with the right sparsity
   auto nz_elements = constraint.NonZeroConstraintJacobianElements(phase_prefixes, state_indices);
   auto builder = SMP::Create(3).SetNumberOfBlocks(1);
   for (const auto& [row, col] : nz_elements)
     builder.WithElement(row, col);
   SMP jacobian(builder);
 
-  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, state_indices, jacobian);
+  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, pi, state_indices, jacobian);
 
   DMP state_variables{ 1, 3, 0.0 };
   state_variables[0][0] = 1.0;    // [A]
@@ -395,7 +418,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianSimpleAB)
   for (auto& v : jacobian.AsVector())
     v = 0.0;
 
-  jac_fn(state_variables, jacobian);
+  jac_fn(state_variables, state_params, jacobian);
 
   // MICM convention: jac -= dG/dy
   // jac[B,A] -= K_eq → jac[B,A] = -K_eq = -10.0
@@ -429,19 +452,21 @@ TEST(DissolvedEquilibriumConstraint, JacobianMultiReactant)
   state_indices["SMALL.AQUEOUS.C"] = 2;
   state_indices["SMALL.AQUEOUS.H2O"] = 3;
 
-  std::vector<micm::Conditions> conditions(1);
-  auto update_fn = constraint.UpdateConstraintParametersFunction<micm::Matrix<double>>();
-  update_fn(conditions);
-
   using DMP = micm::Matrix<double>;
   using SMP = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
+  std::vector<micm::Conditions> conditions(1);
+  auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
+  update_fn(conditions, state_params);
+
   auto nz_elements = constraint.NonZeroConstraintJacobianElements(phase_prefixes, state_indices);
   auto builder = SMP::Create(4).SetNumberOfBlocks(1);
   for (const auto& [row, col] : nz_elements)
     builder.WithElement(row, col);
   SMP jacobian(builder);
 
-  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, state_indices, jacobian);
+  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, pi, state_indices, jacobian);
 
   DMP state_variables{ 1, 4, 0.0 };
   state_variables[0][0] = 3.0;    // [A]
@@ -451,7 +476,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianMultiReactant)
 
   for (auto& v : jacobian.AsVector())
     v = 0.0;
-  jac_fn(state_variables, jacobian);
+  jac_fn(state_variables, state_params, jacobian);
 
   // dG/dA = K_eq * [B] / [S] = 2.0 * 4.0 / 300.0
   double dG_dA = K_eq * 4.0 / 300.0;
@@ -485,18 +510,26 @@ TEST(DissolvedEquilibriumConstraint, UpdateConstraintParametersTemperatureDep)
       .SetEquilibriumConstant(keq)
       .Build();
 
-  auto update_fn = constraint.UpdateConstraintParametersFunction<micm::Matrix<double>>();
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+
+  using DMP = micm::Matrix<double>;
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  ASSERT_EQ(pi.size(), 1u);
 
   std::vector<micm::Conditions> conditions(3);
   conditions[0].temperature_ = 250.0;
   conditions[1].temperature_ = 300.0;
   conditions[2].temperature_ = 350.0;
-  update_fn(conditions);
 
-  EXPECT_EQ(constraint.k_eq_values_->size(), 3);
-  EXPECT_NEAR((*constraint.k_eq_values_)[0], 4.0, 1.0e-12);
-  EXPECT_NEAR((*constraint.k_eq_values_)[1], 1000.0 / 300.0, 1.0e-12);
-  EXPECT_NEAR((*constraint.k_eq_values_)[2], 1000.0 / 350.0, 1.0e-12);
+  DMP state_params{ 3, 1, 0.0 };
+  auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
+  update_fn(conditions, state_params);
+
+  std::size_t keq_col = pi.begin()->second;
+  EXPECT_NEAR(state_params[0][keq_col], 1000.0 / 250.0, 1.0e-12);
+  EXPECT_NEAR(state_params[1][keq_col], 1000.0 / 300.0, 1.0e-12);
+  EXPECT_NEAR(state_params[2][keq_col], 1000.0 / 350.0, 1.0e-12);
 }
 
 // ── Builder ──
@@ -559,12 +592,40 @@ namespace
     return SMP(builder);
   }
 
+  /// @brief Initialize K_eq values into a state parameter matrix; returns the matrix
+  DMP InitKeq(
+      const DissolvedEquilibriumConstraint& constraint,
+      const std::map<std::string, std::set<std::string>>& phase_prefixes,
+      const std::unordered_map<std::string, std::size_t>& param_idx,
+      std::size_t num_cells)
+  {
+    std::vector<micm::Conditions> conditions(num_cells);
+    DMP state_params{ num_cells, std::max(param_idx.size(), std::size_t{ 1 }), 0.0 };
+    auto fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, param_idx);
+    fn(conditions, state_params);
+    return state_params;
+  }
+
+  DMP InitKeq(
+      const DissolvedEquilibriumConstraint& constraint,
+      const std::map<std::string, std::set<std::string>>& phase_prefixes,
+      const std::unordered_map<std::string, std::size_t>& param_idx,
+      const std::vector<micm::Conditions>& conditions)
+  {
+    DMP state_params{ conditions.size(), std::max(param_idx.size(), std::size_t{ 1 }), 0.0 };
+    auto fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, param_idx);
+    fn(conditions, state_params);
+    return state_params;
+  }
+
   /// @brief Finite-difference check for the constraint Jacobian
   void CheckConstraintFDJacobian(
-      DissolvedEquilibriumConstraint& constraint,
+      const DissolvedEquilibriumConstraint& constraint,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
+      const std::unordered_map<std::string, std::size_t>& param_idx,
       const std::unordered_map<std::string, std::size_t>& state_indices,
       const DMP& state_variables,
+      const DMP& state_params,
       double rel_tol = 1e-5,
       double abs_tol = 1e-8)
   {
@@ -573,8 +634,8 @@ namespace
 
     // Analytical Jacobian
     auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, state_indices, num_blocks);
-    auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, state_indices, jacobian);
-    jac_fn(state_variables, jacobian);
+    auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_idx, state_indices, jacobian);
+    jac_fn(state_variables, state_params, jacobian);
 
     // Central-difference FD
     double eps = 1e-7;
@@ -591,10 +652,10 @@ namespace
 
       DMP res_plus(num_blocks, num_vars, 0.0);
       DMP res_minus(num_blocks, num_vars, 0.0);
-      auto rf_plus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
-      auto rf_minus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
-      rf_plus(vars_plus, no_params, res_plus);
-      rf_minus(vars_minus, no_params, res_minus);
+      auto rf_plus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_idx, state_indices);
+      auto rf_minus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_idx, state_indices);
+      rf_plus(vars_plus, state_params, res_plus);
+      rf_minus(vars_minus, state_params, res_minus);
 
       for (std::size_t b = 0; b < num_blocks; ++b)
       {
@@ -627,13 +688,6 @@ namespace
     }
   }
 
-  /// @brief Helper to initialize K_eq values for a constraint
-  void InitKeq(DissolvedEquilibriumConstraint& constraint, std::size_t num_cells)
-  {
-    std::vector<micm::Conditions> conditions(num_cells);
-    auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>();
-    update_fn(conditions);
-  }
 }  // namespace
 
 // ── FD Jacobian: simple A <-> B ──
@@ -659,14 +713,15 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDSimpleAB)
   si["SMALL.AQUEOUS.B"] = 1;
   si["SMALL.AQUEOUS.H2O"] = 2;
 
-  InitKeq(constraint, 1);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitKeq(constraint, phase_prefixes, pi, 1);
 
   DMP sv{ 1, 3, 0.0 };
   sv[0][0] = 1.0;
   sv[0][1] = 5.0;
   sv[0][2] = 300.0;
 
-  CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
+  CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
 }
 
 // ── FD Jacobian: multi-reactant A + B <-> C ──
@@ -693,7 +748,8 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDMultiReactant)
   si["SMALL.AQUEOUS.C"] = 2;
   si["SMALL.AQUEOUS.H2O"] = 3;
 
-  InitKeq(constraint, 1);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitKeq(constraint, phase_prefixes, pi, 1);
 
   DMP sv{ 1, 4, 0.0 };
   sv[0][0] = 3.0;
@@ -701,7 +757,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDMultiReactant)
   sv[0][2] = 20.0;
   sv[0][3] = 300.0;
 
-  CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
+  CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
 }
 
 // ── FD Jacobian: multi-product A <-> B + H+ ──
@@ -728,7 +784,8 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDMultiProduct)
   si["DROP.AQUEOUS.H+"] = 2;
   si["DROP.AQUEOUS.H2O"] = 3;
 
-  InitKeq(constraint, 1);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitKeq(constraint, phase_prefixes, pi, 1);
 
   DMP sv{ 1, 4, 0.0 };
   sv[0][0] = 0.1;
@@ -736,7 +793,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDMultiProduct)
   sv[0][2] = 1.0e-4;
   sv[0][3] = 0.017;
 
-  CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
+  CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
 }
 
 // ── FD Jacobian: multi-reactant + multi-product  A + B <-> C + H+ ──
@@ -764,7 +821,8 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDMultiReactantMultiProduct)
   si["M1.AQUEOUS.H+"] = 3;
   si["M1.AQUEOUS.H2O"] = 4;
 
-  InitKeq(constraint, 1);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitKeq(constraint, phase_prefixes, pi, 1);
 
   DMP sv{ 1, 5, 0.0 };
   sv[0][0] = 0.5;
@@ -773,7 +831,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDMultiReactantMultiProduct)
   sv[0][3] = 1.0e-3;
   sv[0][4] = 0.017;
 
-  CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
+  CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
 }
 
 // ── Multiple cells: residual + FD ──
@@ -800,7 +858,8 @@ TEST(DissolvedEquilibriumConstraint, ResidualAndJacobianFDMultipleCells)
   si["DROP.AQUEOUS.H2O"] = 2;
 
   std::size_t nc = 4;
-  InitKeq(constraint, nc);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitKeq(constraint, phase_prefixes, pi, nc);
 
   DMP sv{ nc, 3, 0.0 };
   sv[0][0] = 1.0;   sv[0][1] = 5.0;   sv[0][2] = 300.0;
@@ -809,9 +868,9 @@ TEST(DissolvedEquilibriumConstraint, ResidualAndJacobianFDMultipleCells)
   sv[3][0] = 0.01;  sv[3][1] = 0.1;   sv[3][2] = 0.017;
 
   // Check residuals
-  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, pi, si);
   DMP residual{ nc, 3, 0.0 };
-  rf(sv, no_params, residual);
+  rf(sv, sp, residual);
 
   // G = K_eq * [A] - [B]
   EXPECT_NEAR(residual[0][1], 5.0 * 1.0 - 5.0, 1e-6);
@@ -820,7 +879,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualAndJacobianFDMultipleCells)
   EXPECT_NEAR(residual[3][1], 5.0 * 0.01 - 0.1, 1e-6);
 
   // FD Jacobian check
-  CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
+  CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
 }
 
 // ── Multiple instances + multiple cells + FD ──
@@ -853,7 +912,8 @@ TEST(DissolvedEquilibriumConstraint, MultiInstanceMultiCellFD)
   si["SMALL.AQUEOUS.H2O"] = 7;
 
   std::size_t nc = 3;
-  InitKeq(constraint, nc);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitKeq(constraint, phase_prefixes, pi, nc);
 
   DMP sv{ nc, 8, 0.0 };
   // Cell 0
@@ -867,9 +927,9 @@ TEST(DissolvedEquilibriumConstraint, MultiInstanceMultiCellFD)
   sv[2][4] = 2.0;  sv[2][5] = 1.5;  sv[2][6] = 4.0;  sv[2][7] = 0.017;
 
   // Residuals: G = K_eq * [A]*[B]/[S] - [C]
-  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, pi, si);
   DMP residual{ nc, 8, 0.0 };
-  rf(sv, no_params, residual);
+  rf(sv, sp, residual);
 
   // LARGE instance, cell 0: G = 3.0 * 0.5*0.3/0.017 - 0.1
   double expected_L0 = 3.0 * 0.5 * 0.3 / 0.017 - 0.1;
@@ -885,7 +945,7 @@ TEST(DissolvedEquilibriumConstraint, MultiInstanceMultiCellFD)
   EXPECT_NEAR(residual[0][3], 0.0, 1e-30);
 
   // FD check
-  CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
+  CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
 }
 
 // ── Three instances + FD ──
@@ -914,7 +974,8 @@ TEST(DissolvedEquilibriumConstraint, ThreeInstancesFD)
   si["C.AQUEOUS.A"] = 8;   si["C.AQUEOUS.B"] = 9;   si["C.AQUEOUS.H+"] = 10;  si["C.AQUEOUS.H2O"] = 11;
 
   std::size_t nc = 2;
-  InitKeq(constraint, nc);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitKeq(constraint, phase_prefixes, pi, nc);
 
   DMP sv{ nc, 12, 0.0 };
   // Cell 0
@@ -926,7 +987,7 @@ TEST(DissolvedEquilibriumConstraint, ThreeInstancesFD)
   sv[1][4] = 4.0;  sv[1][5] = 2.0;  sv[1][6] = 2e-3;  sv[1][7] = 50.0;
   sv[1][8] = 5.0;  sv[1][9] = 3.0;  sv[1][10] = 3e-3; sv[1][11] = 60.0;
 
-  CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
+  CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
 }
 
 // ── Jacobian accumulates (subtracts) ──
@@ -952,21 +1013,22 @@ TEST(DissolvedEquilibriumConstraint, JacobianAccumulates)
   si["DROP.AQUEOUS.B"] = 1;
   si["DROP.AQUEOUS.H2O"] = 2;
 
-  InitKeq(constraint, 1);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitKeq(constraint, phase_prefixes, pi, 1);
 
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, si, jacobian);
+  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, pi, si, jacobian);
 
   DMP sv{ 1, 3, 0.0 };
   sv[0][0] = 1.0;  sv[0][1] = 5.0;  sv[0][2] = 300.0;
 
   // First call
-  jac_fn(sv, jacobian);
+  jac_fn(sv, sp, jacobian);
   double j_BA_once = jacobian.AsVector()[jacobian.VectorIndex(0, 1, 0)];
   double j_BB_once = jacobian.AsVector()[jacobian.VectorIndex(0, 1, 1)];
 
   // Second call should accumulate
-  jac_fn(sv, jacobian);
+  jac_fn(sv, sp, jacobian);
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 1, 0)], 2.0 * j_BA_once, 1e-12);
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 1, 1)], 2.0 * j_BB_once, 1e-12);
 }
@@ -994,18 +1056,19 @@ TEST(DissolvedEquilibriumConstraint, ResidualSetsNotAccumulates)
   si["DROP.AQUEOUS.B"] = 1;
   si["DROP.AQUEOUS.H2O"] = 2;
 
-  InitKeq(constraint, 1);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitKeq(constraint, phase_prefixes, pi, 1);
 
-  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, pi, si);
 
   DMP sv{ 1, 3, 0.0 };
   sv[0][0] = 1.0;  sv[0][1] = 5.0;  sv[0][2] = 300.0;
 
   DMP residual{ 1, 3, 999.0 };
-  rf(sv, no_params, residual);
+  rf(sv, sp, residual);
   double val1 = residual[0][1];
 
-  rf(sv, no_params, residual);
+  rf(sv, sp, residual);
   EXPECT_NEAR(residual[0][1], val1, 1e-15);
 }
 
@@ -1037,8 +1100,8 @@ TEST(DissolvedEquilibriumConstraint, TemperatureDependentKeqFD)
   conditions[0].temperature_ = 250.0;
   conditions[1].temperature_ = 300.0;
   conditions[2].temperature_ = 350.0;
-  auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>();
-  update_fn(conditions);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitKeq(constraint, phase_prefixes, pi, conditions);
 
   DMP sv{ nc, 3, 0.0 };
   sv[0][0] = 1.0;  sv[0][1] = 2.0;  sv[0][2] = 0.017;
@@ -1046,16 +1109,16 @@ TEST(DissolvedEquilibriumConstraint, TemperatureDependentKeqFD)
   sv[2][0] = 2.0;  sv[2][1] = 5.0;  sv[2][2] = 0.017;
 
   // Check residuals with different K_eq per cell
-  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, pi, si);
   DMP residual{ nc, 3, 0.0 };
-  rf(sv, no_params, residual);
+  rf(sv, sp, residual);
 
   EXPECT_NEAR(residual[0][1], (1000.0 / 250.0) * 1.0 - 2.0, 1e-6);
   EXPECT_NEAR(residual[1][1], (1000.0 / 300.0) * 0.5 - 1.0, 1e-6);
   EXPECT_NEAR(residual[2][1], (1000.0 / 350.0) * 2.0 - 5.0, 1e-6);
 
   // FD check
-  CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
+  CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
 }
 
 // ── Large K_eq range ──
@@ -1082,21 +1145,22 @@ TEST(DissolvedEquilibriumConstraint, LargeKeqRange)
   si["DROP.AQUEOUS.B"] = 1;
   si["DROP.AQUEOUS.H2O"] = 2;
 
-  InitKeq(constraint, 1);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitKeq(constraint, phase_prefixes, pi, 1);
 
   DMP sv{ 1, 3, 0.0 };
   sv[0][0] = 1.0e-6;   // small [A]
   sv[0][1] = 100.0;    // [B] = K_eq * A
   sv[0][2] = 0.017;
 
-  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, pi, si);
   DMP residual{ 1, 3, 0.0 };
-  rf(sv, no_params, residual);
+  rf(sv, sp, residual);
 
   // G = 1e8 * 1e-6 - 100 = 100 - 100 = 0
   EXPECT_NEAR(residual[0][1], 0.0, 1e-6);
 
-  CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
+  CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
 }
 
 // ── CopyWithNewUuid preserves behavior ──
@@ -1126,20 +1190,22 @@ TEST(DissolvedEquilibriumConstraint, CopiedConstraintProducesSameResults)
   si["MODE1.AQUEOUS.C"] = 2;
   si["MODE1.AQUEOUS.H2O"] = 3;
 
-  // Initialize both k_eq_values
-  InitKeq(original, 1);
-  InitKeq(copy, 1);
+  // Initialize both k_eq state params (different UUIDs, so different param names)
+  auto pi_orig = BuildParamIndices(original, phase_prefixes);
+  auto pi_copy = BuildParamIndices(copy, phase_prefixes);
+  auto sp_orig = InitKeq(original, phase_prefixes, pi_orig, 1);
+  auto sp_copy = InitKeq(copy, phase_prefixes, pi_copy, 1);
 
   DMP sv{ 1, 4, 0.0 };
   sv[0][0] = 3.0;  sv[0][1] = 4.0;  sv[0][2] = 20.0;  sv[0][3] = 300.0;
 
-  auto rf_orig = original.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
-  auto rf_copy = copy.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
+  auto rf_orig = original.ConstraintResidualFunction<DMP>(phase_prefixes, pi_orig, si);
+  auto rf_copy = copy.ConstraintResidualFunction<DMP>(phase_prefixes, pi_copy, si);
 
   DMP res_orig{ 1, 4, 0.0 };
   DMP res_copy{ 1, 4, 0.0 };
-  rf_orig(sv, no_params, res_orig);
-  rf_copy(sv, no_params, res_copy);
+  rf_orig(sv, sp_orig, res_orig);
+  rf_copy(sv, sp_copy, res_copy);
 
   EXPECT_NEAR(res_orig[0][2], res_copy[0][2], 1e-15);
 }
@@ -1170,10 +1236,11 @@ TEST(DissolvedEquilibriumConstraint, SolventJacobianMultiReactant)
   si["DROP.AQUEOUS.C"] = 2;
   si["DROP.AQUEOUS.H2O"] = 3;
 
-  InitKeq(constraint, 1);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitKeq(constraint, phase_prefixes, pi, 1);
 
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, si, jacobian);
+  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, pi, si, jacobian);
 
   DMP sv{ 1, 4, 0.0 };
   sv[0][0] = 3.0;
@@ -1181,7 +1248,7 @@ TEST(DissolvedEquilibriumConstraint, SolventJacobianMultiReactant)
   sv[0][2] = 20.0;
   sv[0][3] = 300.0;
 
-  jac_fn(sv, jacobian);
+  jac_fn(sv, sp, jacobian);
 
   // dG/dS = K_eq * [A]*[B] * (1-2)/[S]^2 - [C] * (1-1)/[S]^1
   //       = -K_eq * [A]*[B] / [S]^2 - 0
@@ -1190,7 +1257,7 @@ TEST(DissolvedEquilibriumConstraint, SolventJacobianMultiReactant)
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 2, 3)], -dG_dS, 1e-12);
 
   // Also FD check
-  CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
+  CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
 }
 
 // ── Kitchen-sink: multi-reactant, multi-product, multi-instance, multi-cell, FD ──
@@ -1223,8 +1290,8 @@ TEST(DissolvedEquilibriumConstraint, KitchenSinkFD)
   conditions[0].temperature_ = 280.0;
   conditions[1].temperature_ = 300.0;
   conditions[2].temperature_ = 320.0;
-  auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>();
-  update_fn(conditions);
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitKeq(constraint, phase_prefixes, pi, conditions);
 
   DMP sv{ nc, 10, 0.0 };
   // Cell 0
@@ -1237,7 +1304,7 @@ TEST(DissolvedEquilibriumConstraint, KitchenSinkFD)
   sv[2][0] = 0.1;  sv[2][1] = 0.1;  sv[2][2] = 0.01; sv[2][3] = 1e-5;  sv[2][4] = 0.017;
   sv[2][5] = 5.0;  sv[2][6] = 2.0;  sv[2][7] = 3.0;  sv[2][8] = 5e-3;  sv[2][9] = 0.017;
 
-  CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
+  CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
 }
 
 // ── Cross-instance isolation: Jacobian entries only in own instance block ──
@@ -1280,4 +1347,152 @@ TEST(DissolvedEquilibriumConstraint, CrossInstanceIsolation)
       EXPECT_GE(col, 3u) << "MODE2 algebraic row depends on MODE1 variable " << col;
     }
   }
+}
+
+// ── VectorMatrix typed tests ──
+// These tests verify the fix for the per-cell state-parameter bug with L>1.
+// DissolvedEquilibriumConstraint K_eq is temperature-independent in this test,
+// but the important check is that state_params indexing is correct across blocks.
+
+namespace
+{
+  template<typename VDM, typename VSM>
+  void TestDissolvedConstraintVectorMatrix(std::size_t num_cells, double K_eq_val)
+  {
+    auto keq_fn = [K_eq_val](const micm::Conditions&) { return K_eq_val; };
+    auto constraint = DissolvedEquilibriumConstraintBuilder()
+        .SetPhase(aqueous_phase)
+        .SetReactants({ A })
+        .SetProducts({ B })
+        .SetAlgebraicSpecies(B)
+        .SetSolvent(h2o)
+        .SetEquilibriumConstant(keq_fn)
+        .Build();
+
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQUEOUS"].insert("DROP");
+
+    std::unordered_map<std::string, std::size_t> si;
+    si["DROP.AQUEOUS.A"] = 0;
+    si["DROP.AQUEOUS.B"] = 1;
+    si["DROP.AQUEOUS.H2O"] = 2;
+
+    // Build param indices
+    std::unordered_map<std::string, std::size_t> pi;
+    std::size_t idx = 0;
+    for (const auto& name : constraint.ConstraintStateParameterNames(phase_prefixes))
+      pi[name] = idx++;
+    ASSERT_EQ(pi.size(), 1u);
+    std::size_t keq_col = pi.begin()->second;
+
+    // Update state parameters with distinct per-cell conditions
+    std::vector<micm::Conditions> conditions(num_cells);
+    for (std::size_t c = 0; c < num_cells; ++c)
+      conditions[c].temperature_ = 298.15 + static_cast<double>(c) * 10.0;
+
+    VDM state_params{ num_cells, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
+    auto update_fn = constraint.template UpdateConstraintParametersFunction<VDM>(phase_prefixes, pi);
+    update_fn(conditions, state_params);
+
+    // K_eq is temperature-independent in this test, so all cells have same value
+    for (std::size_t c = 0; c < num_cells; ++c)
+    {
+      EXPECT_NEAR(state_params[c][keq_col], K_eq_val, K_eq_val * 1e-12)
+          << "Cell " << c;
+    }
+
+    // Build state variables with per-cell values
+    VDM state_variables{ num_cells, 3, 0.0 };
+    for (std::size_t c = 0; c < num_cells; ++c)
+    {
+      state_variables[c][0] = 1.0 * static_cast<double>(c + 1);   // [A]
+      state_variables[c][1] = 3.0 * static_cast<double>(c + 1);   // [B]
+      state_variables[c][2] = 300.0;                               // [H2O]
+    }
+
+    // Residual check: G = K_eq * [A] - [B]
+    VDM residual{ num_cells, 3, 0.0 };
+    auto rf = constraint.template ConstraintResidualFunction<VDM>(phase_prefixes, pi, si);
+    rf(state_variables, state_params, residual);
+
+    for (std::size_t c = 0; c < num_cells; ++c)
+    {
+      double A_val = state_variables[c][0];
+      double B_val = state_variables[c][1];
+      double expected = K_eq_val * A_val - B_val;
+      EXPECT_NEAR(residual[c][1], expected, std::max(std::abs(expected) * 1e-10, 1e-20))
+          << "Residual mismatch cell " << c;
+    }
+
+    // Jacobian FD check
+    auto nz = constraint.NonZeroConstraintJacobianElements(phase_prefixes, si);
+    auto jac_builder = VSM::Create(si.size()).SetNumberOfBlocks(num_cells).InitialValue(0.0);
+    for (const auto& [row, col] : nz)
+      jac_builder = jac_builder.WithElement(row, col);
+    VSM jacobian(jac_builder);
+
+    auto jac_fn = constraint.template ConstraintJacobianFunction<VDM, VSM>(phase_prefixes, pi, si, jacobian);
+    jac_fn(state_variables, state_params, jacobian);
+
+    double eps = 1e-7;
+    for (std::size_t c = 0; c < num_cells; ++c)
+    {
+      for (std::size_t j = 0; j < si.size(); ++j)
+      {
+        VDM vp(state_variables);
+        VDM vm(state_variables);
+        double h = std::max(std::abs(state_variables[c][j]) * eps, eps);
+        vp[c][j] += h;
+        vm[c][j] -= h;
+
+        VDM rp(num_cells, 3, 0.0);
+        VDM rm(num_cells, 3, 0.0);
+        rf(vp, state_params, rp);
+        rf(vm, state_params, rm);
+
+        for (std::size_t i = 0; i < si.size(); ++i)
+        {
+          double fd = (rp[c][i] - rm[c][i]) / (2.0 * h);
+          double analytical;
+          try
+          {
+            analytical = jacobian[c][i][j];
+          }
+          catch (...)
+          {
+            if (std::abs(fd) > 1e-10)
+              ADD_FAILURE() << "Missing Jacobian cell=" << c << " row=" << i << " col=" << j << " fd=" << fd;
+            continue;
+          }
+          double scale = std::max(std::abs(analytical), std::abs(fd));
+          if (scale > 1e-15)
+          {
+            EXPECT_NEAR(analytical + fd, 0.0, scale * 1e-5)
+                << "FD Jac mismatch cell=" << c << " row=" << i << " col=" << j;
+          }
+        }
+      }
+    }
+  }
+}  // namespace
+
+TEST(DissolvedEquilibriumConstraint, VectorMatrix_L1_4cells)
+{
+  using VDM = micm::VectorMatrix<double, 1>;
+  using VSM = micm::SparseMatrix<double, micm::SparseMatrixVectorOrderingCompressedSparseRow<1>>;
+  TestDissolvedConstraintVectorMatrix<VDM, VSM>(4, 10.0);
+}
+
+TEST(DissolvedEquilibriumConstraint, VectorMatrix_L2_4cells)
+{
+  using VDM = micm::VectorMatrix<double, 2>;
+  using VSM = micm::SparseMatrix<double, micm::SparseMatrixVectorOrderingCompressedSparseRow<2>>;
+  TestDissolvedConstraintVectorMatrix<VDM, VSM>(4, 10.0);
+}
+
+TEST(DissolvedEquilibriumConstraint, VectorMatrix_L4_4cells)
+{
+  using VDM = micm::VectorMatrix<double, 4>;
+  using VSM = micm::SparseMatrix<double, micm::SparseMatrixVectorOrderingCompressedSparseRow<4>>;
+  TestDissolvedConstraintVectorMatrix<VDM, VSM>(4, 10.0);
 }

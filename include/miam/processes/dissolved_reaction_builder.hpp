@@ -50,10 +50,11 @@ namespace miam
         return *this;
       }
 
-      /// @brief Sets the solvent damping epsilon for regularization near zero solvent
-      DissolvedReactionBuilder& SetSolventDampingEpsilon(double epsilon)
+      /// @brief Sets the floor \f$\delta\f$ [mol m⁻³] added to the solvent in the denominator
+      ///        to prevent singularity as \f$[S] \to 0\f$. Default: 1e-20.
+      DissolvedReactionBuilder& SetSolventFloor(double solvent_floor)
       {
-        solvent_damping_epsilon_ = epsilon;
+        solvent_floor_ = solvent_floor;
         return *this;
       }
 
@@ -108,7 +109,7 @@ namespace miam
           throw std::runtime_error("DissolvedReactionBuilder requires the solvent to be set.");
         }
         return process::DissolvedReaction(
-            rate_constant_, reactants_, products_, solvent_, phase_, solvent_damping_epsilon_, min_halflife_);
+            rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_, min_halflife_);
       }
 
      private:
@@ -119,7 +120,7 @@ namespace miam
       micm::Species solvent_;                 ///< Solvent species
       bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
       std::function<double(const micm::Conditions& conditions)> rate_constant_;  ///< Rate constant function
-      double solvent_damping_epsilon_{ 1.0e-20 };  ///< Regularization parameter for solvent damping
+      double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
       double min_halflife_{ 0.0 };                    ///< Minimum half-life for rate capping [s]
     };
   }  // namespace process

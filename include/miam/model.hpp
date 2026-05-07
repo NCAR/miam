@@ -373,18 +373,20 @@ namespace miam
     template<typename DenseMatrixPolicy>
     std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)>
     ConstraintUpdateStateParametersFunction(
-        const std::unordered_map<std::string, std::size_t>& /*state_parameter_indices*/) const
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices) const
     {
-      std::vector<std::function<void(const std::vector<micm::Conditions>&)>> update_fns;
+      auto phase_prefixes = CollectPhaseStatePrefixes();
+      std::vector<std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)>> update_fns;
       ForEachConstraint(
           [&](const auto& c)
           {
-            update_fns.push_back(c.template UpdateConstraintParametersFunction<DenseMatrixPolicy>());
+            update_fns.push_back(
+                c.template UpdateConstraintParametersFunction<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices));
           });
-      return [update_fns](const std::vector<micm::Conditions>& conditions, DenseMatrixPolicy&)
+      return [update_fns](const std::vector<micm::Conditions>& conditions, DenseMatrixPolicy& state_parameters) mutable
       {
-        for (const auto& fn : update_fns)
-          fn(conditions);
+        for (auto& fn : update_fns)
+          fn(conditions, state_parameters);
       };
     }
 
@@ -459,23 +461,26 @@ namespace miam
     /// @brief Returns combined constraint Jacobian function (subtracts dG/dy)
     template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
     std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> ConstraintJacobianFunction(
-        const std::unordered_map<std::string, std::size_t>& /*state_parameter_indices*/,
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices,
         const SparseMatrixPolicy& jacobian) const
     {
       auto phase_prefixes = CollectPhaseStatePrefixes();
-      std::vector<std::function<void(const DenseMatrixPolicy&, SparseMatrixPolicy&)>> jac_fns;
+      std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>> jac_fns;
       ForEachConstraint(
           [&](const auto& c)
           {
             jac_fns.push_back(
                 c.template ConstraintJacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
-                    phase_prefixes, state_variable_indices, jacobian));
+                    phase_prefixes, state_parameter_indices, state_variable_indices, jacobian));
           });
-      return [jac_fns](const DenseMatrixPolicy& state_variables, const DenseMatrixPolicy&, SparseMatrixPolicy& jacobian_values)
+      return [jac_fns](
+                 const DenseMatrixPolicy& state_variables,
+                 const DenseMatrixPolicy& state_parameters,
+                 SparseMatrixPolicy& jacobian_values) mutable
       {
-        for (const auto& fn : jac_fns)
-          fn(state_variables, jacobian_values);
+        for (auto& fn : jac_fns)
+          fn(state_variables, state_parameters, jacobian_values);
       };
     }
 

@@ -25,26 +25,26 @@ namespace
   // Test constants
   constexpr double D_g = 1.5e-5;     // m^2 s^-1
   constexpr double alpha = 0.05;     // accommodation coefficient
-  constexpr double Mw_gas = 0.044;   // kg mol^-1 (CO2)
-  constexpr double Mw_solvent = 0.018;  // kg mol^-1 (H2O)
-  constexpr double rho_solvent = 1000.0;  // kg m^-3 (H2O)
+  constexpr double gas_molecular_weight = 0.044;   // kg mol^-1 (CO2)
+  constexpr double solvent_molecular_weight = 0.018;  // kg mol^-1 (H2O)
+  constexpr double solvent_density = 1000.0;  // kg m^-3 (H2O)
   constexpr double HLC_ref = 3.4e-2;  // mol m^-3 Pa^-1
 
   micm::Species MakeGasSpecies()
   {
-    return micm::Species{ "CO2_g", { { "molecular weight [kg mol-1]", Mw_gas } } };
+    return micm::Species{ "CO2_g", { { "molecular weight [kg mol-1]", gas_molecular_weight } } };
   }
 
   micm::Species MakeCondensedSpecies()
   {
-    return micm::Species{ "CO2_aq", { { "molecular weight [kg mol-1]", Mw_gas },
+    return micm::Species{ "CO2_aq", { { "molecular weight [kg mol-1]", gas_molecular_weight },
                                        { "density [kg m-3]", 1800.0 } } };
   }
 
   micm::Species MakeSolvent()
   {
-    return micm::Species{ "H2O", { { "molecular weight [kg mol-1]", Mw_solvent },
-                                    { "density [kg m-3]", rho_solvent } } };
+    return micm::Species{ "H2O", { { "molecular weight [kg mol-1]", solvent_molecular_weight },
+                                    { "density [kg m-3]", solvent_density } } };
   }
 
   micm::Phase MakeAqueousPhase()
@@ -69,9 +69,9 @@ namespace
         MakeAqueousPhase(),
         D_g,
         alpha,
-        Mw_gas,
-        Mw_solvent,
-        rho_solvent);
+        gas_molecular_weight,
+        solvent_molecular_weight,
+        solvent_density);
   }
 
   /// Create a simple AerosolPropertyProvider that returns a constant value
@@ -347,7 +347,7 @@ TEST(HenryLawPhaseTransfer, CopyWithNewUuid)
   EXPECT_EQ(process.gas_species_.name_, copy.gas_species_.name_);
   EXPECT_DOUBLE_EQ(process.D_g_, copy.D_g_);
   EXPECT_DOUBLE_EQ(process.alpha_, copy.alpha_);
-  EXPECT_DOUBLE_EQ(process.Mw_gas_, copy.Mw_gas_);
+  EXPECT_DOUBLE_EQ(process.gas_molecular_weight_, copy.gas_molecular_weight_);
 }
 
 // ======================== ForcingFunction ========================
@@ -400,11 +400,11 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionBasicRates)
   forcing_func(state_parameters, state_variables, forcing_terms);
 
   // Compute expected net rate
-  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, Mw_gas);
+  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
   double kc_eff = phi_val * kc;
   double ke_eff = kc_eff / (hlc * miam::util::R_gas * T);
-  double f_v = solvent_conc * Mw_solvent / rho_solvent;
+  double f_v = solvent_conc * solvent_molecular_weight / solvent_density;
   double expected_net = kc_eff * gas_conc - ke_eff * aq_conc / f_v;
 
   EXPECT_NEAR(forcing_terms[0][0], -expected_net, std::abs(expected_net) * 1e-10);
@@ -460,11 +460,11 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionMultipleCells)
 
   forcing_func(state_parameters, state_variables, forcing_terms);
 
-  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, Mw_gas);
+  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
   double kc_eff = phi_val * kc;
   double ke_eff = kc_eff / (hlc * miam::util::R_gas * T);
-  double f_v = solvent * Mw_solvent / rho_solvent;
+  double f_v = solvent * solvent_molecular_weight / solvent_density;
 
   for (std::size_t i = 0; i < num_cells; ++i)
   {
@@ -572,10 +572,10 @@ TEST(HenryLawPhaseTransfer, JacobianFunctionDirectEntries)
 
   jac_func(state_parameters, state_variables, jacobian);
 
-  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, Mw_gas);
+  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
   double ke = kc / (hlc * miam::util::R_gas * T);
-  double fv = solvent_conc * Mw_solvent / rho_solvent;
+  double fv = solvent_conc * solvent_molecular_weight / solvent_density;
 
   // Stored as -J (MICM convention). -J[gas,gas] = +φ · k_cond
   EXPECT_NEAR(jacobian[0][0][0], phi_val * kc, std::abs(phi_val * kc) * 1e-10);
@@ -791,7 +791,7 @@ TEST(HenryLawPhaseTransfer, JacobianFunctionMultipleCells)
 
   jac_func(state_parameters, state_variables, jacobian);
 
-  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, Mw_gas);
+  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
 
   // Both cells should have same -J[gas,gas] = +φ · k_cond (MICM convention)
@@ -1024,16 +1024,16 @@ TEST(HenryLawPhaseTransfer, ForcingMultiplePhaseInstances)
   MatrixPolicy forcing(1, 5, 0.0);
   forcing_func(params, vars, forcing);
 
-  auto crp = miam::util::MakeCondensationRateProvider(D_g, alpha, Mw_gas);
+  auto crp = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
 
   double kc1 = crp.ComputeValue(r1, N1, T);
   double ke1 = kc1 / (hlc * miam::util::R_gas * T);
-  double fv1 = solvent1 * Mw_solvent / rho_solvent;
+  double fv1 = solvent1 * solvent_molecular_weight / solvent_density;
   double net1 = phi1 * kc1 * gas - phi1 * ke1 * aq1 / fv1;
 
   double kc2 = crp.ComputeValue(r2, N2, T);
   double ke2 = kc2 / (hlc * miam::util::R_gas * T);
-  double fv2 = solvent2 * Mw_solvent / rho_solvent;
+  double fv2 = solvent2 * solvent_molecular_weight / solvent_density;
   double net2 = phi2 * kc2 * gas - phi2 * ke2 * aq2 / fv2;
 
   // Gas forcing is sum of both instances (negative)
@@ -1101,15 +1101,15 @@ TEST(HenryLawPhaseTransfer, JacobianMultiplePhaseInstances)
 
   jac_func(params, vars, jacobian);
 
-  auto crp = miam::util::MakeCondensationRateProvider(D_g, alpha, Mw_gas);
+  auto crp = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
 
   double kc1 = crp.ComputeValue(r1, N1, T);
   double ke1 = kc1 / (hlc * miam::util::R_gas * T);
-  double fv1 = solvent1 * Mw_solvent / rho_solvent;
+  double fv1 = solvent1 * solvent_molecular_weight / solvent_density;
 
   double kc2 = crp.ComputeValue(r2, N2, T);
   double ke2 = kc2 / (hlc * miam::util::R_gas * T);
-  double fv2 = solvent2 * Mw_solvent / rho_solvent;
+  double fv2 = solvent2 * solvent_molecular_weight / solvent_density;
 
   // -J[gas,gas] = phi1*kc1 + phi2*kc2  (both instances contribute)
   double j_gg = phi1 * kc1 + phi2 * kc2;
@@ -1282,13 +1282,13 @@ TEST(HenryLawPhaseTransfer, ForcingMultiCellsMultiInstances)
   MatrixPolicy forcing(num_cells, 5, 0.0);
   forcing_func(params, vars, forcing);
 
-  auto crp = miam::util::MakeCondensationRateProvider(D_g, alpha, Mw_gas);
+  auto crp = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc1 = crp.ComputeValue(r1, N1, T);
   double ke1 = kc1 / (hlc * miam::util::R_gas * T);
-  double fv1 = 55000.0 * Mw_solvent / rho_solvent;
+  double fv1 = 55000.0 * solvent_molecular_weight / solvent_density;
   double kc2 = crp.ComputeValue(r2, N2, T);
   double ke2 = kc2 / (hlc * miam::util::R_gas * T);
-  double fv2 = 45000.0 * Mw_solvent / rho_solvent;
+  double fv2 = 45000.0 * solvent_molecular_weight / solvent_density;
 
   for (std::size_t c = 0; c < num_cells; ++c)
   {
@@ -1364,7 +1364,7 @@ TEST(HenryLawPhaseTransfer, ForcingMultipleTransferProcesses)
   auto gas_SO2 = micm::Species{ "SO2_g", { { "molecular weight [kg mol-1]", 0.064 } } };
   auto aq_CO2 = micm::Species{ "CO2_aq", { { "molecular weight [kg mol-1]", 0.044 }, { "density [kg m-3]", 1800.0 } } };
   auto aq_SO2 = micm::Species{ "SO2_aq", { { "molecular weight [kg mol-1]", 0.064 }, { "density [kg m-3]", 1400.0 } } };
-  auto solvent = micm::Species{ "H2O", { { "molecular weight [kg mol-1]", Mw_solvent }, { "density [kg m-3]", rho_solvent } } };
+  auto solvent = micm::Species{ "H2O", { { "molecular weight [kg mol-1]", solvent_molecular_weight }, { "density [kg m-3]", solvent_density } } };
   auto aq_phase = micm::Phase{ "AQUEOUS", { { aq_CO2 }, { aq_SO2 }, { solvent } } };
 
   double HLC_CO2 = 3.4e-2, HLC_SO2 = 1.2;
@@ -1372,10 +1372,10 @@ TEST(HenryLawPhaseTransfer, ForcingMultipleTransferProcesses)
 
   auto proc_CO2 = HenryLawPhaseTransfer(
       [HLC_CO2](const micm::Conditions&) { return HLC_CO2; },
-      gas_CO2, aq_CO2, solvent, aq_phase, D_CO2, alpha, 0.044, Mw_solvent, rho_solvent);
+      gas_CO2, aq_CO2, solvent, aq_phase, D_CO2, alpha, 0.044, solvent_molecular_weight, solvent_density);
   auto proc_SO2 = HenryLawPhaseTransfer(
       [HLC_SO2](const micm::Conditions&) { return HLC_SO2; },
-      gas_SO2, aq_SO2, solvent, aq_phase, D_SO2, alpha, 0.064, Mw_solvent, rho_solvent);
+      gas_SO2, aq_SO2, solvent, aq_phase, D_SO2, alpha, 0.064, solvent_molecular_weight, solvent_density);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -1418,7 +1418,7 @@ TEST(HenryLawPhaseTransfer, ForcingMultipleTransferProcesses)
 
   auto crp_CO2 = miam::util::MakeCondensationRateProvider(D_CO2, alpha, 0.044);
   auto crp_SO2 = miam::util::MakeCondensationRateProvider(D_SO2, alpha, 0.064);
-  double fv = h2o * Mw_solvent / rho_solvent;
+  double fv = h2o * solvent_molecular_weight / solvent_density;
 
   double kc_co2 = crp_CO2.ComputeValue(r, N, T);
   double ke_co2 = kc_co2 / (HLC_CO2 * miam::util::R_gas * T);
@@ -1447,7 +1447,7 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
   auto gas_SO2 = micm::Species{ "SO2_g", { { "molecular weight [kg mol-1]", 0.064 } } };
   auto aq_CO2 = micm::Species{ "CO2_aq", { { "molecular weight [kg mol-1]", 0.044 }, { "density [kg m-3]", 1800.0 } } };
   auto aq_SO2 = micm::Species{ "SO2_aq", { { "molecular weight [kg mol-1]", 0.064 }, { "density [kg m-3]", 1400.0 } } };
-  auto solvent = micm::Species{ "H2O", { { "molecular weight [kg mol-1]", Mw_solvent }, { "density [kg m-3]", rho_solvent } } };
+  auto solvent = micm::Species{ "H2O", { { "molecular weight [kg mol-1]", solvent_molecular_weight }, { "density [kg m-3]", solvent_density } } };
   auto aq_phase = micm::Phase{ "AQUEOUS", { { aq_CO2 }, { aq_SO2 }, { solvent } } };
 
   double HLC_CO2 = 3.4e-2, HLC_SO2 = 1.2;
@@ -1455,10 +1455,10 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
 
   auto proc_CO2 = HenryLawPhaseTransfer(
       [HLC_CO2](const micm::Conditions&) { return HLC_CO2; },
-      gas_CO2, aq_CO2, solvent, aq_phase, D_CO2, alpha, 0.044, Mw_solvent, rho_solvent);
+      gas_CO2, aq_CO2, solvent, aq_phase, D_CO2, alpha, 0.044, solvent_molecular_weight, solvent_density);
   auto proc_SO2 = HenryLawPhaseTransfer(
       [HLC_SO2](const micm::Conditions&) { return HLC_SO2; },
-      gas_SO2, aq_SO2, solvent, aq_phase, D_SO2, alpha, 0.064, Mw_solvent, rho_solvent);
+      gas_SO2, aq_SO2, solvent, aq_phase, D_SO2, alpha, 0.064, solvent_molecular_weight, solvent_density);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -1835,9 +1835,9 @@ TEST(HenryLawPhaseTransferBuilder, BuildSuccess)
 
   EXPECT_DOUBLE_EQ(process.D_g_, D_g);
   EXPECT_DOUBLE_EQ(process.alpha_, alpha);
-  EXPECT_DOUBLE_EQ(process.Mw_gas_, Mw_gas);
-  EXPECT_DOUBLE_EQ(process.Mw_solvent_, Mw_solvent);
-  EXPECT_DOUBLE_EQ(process.rho_solvent_, rho_solvent);
+  EXPECT_DOUBLE_EQ(process.gas_molecular_weight_, gas_molecular_weight);
+  EXPECT_DOUBLE_EQ(process.solvent_molecular_weight_, solvent_molecular_weight);
+  EXPECT_DOUBLE_EQ(process.solvent_density_, solvent_density);
   EXPECT_EQ(process.gas_species_.name_, "CO2_g");
   EXPECT_FALSE(process.uuid_.empty());
 }

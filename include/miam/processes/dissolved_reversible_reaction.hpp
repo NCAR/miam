@@ -53,7 +53,7 @@ namespace miam
       micm::Species solvent_;                                                            ///< Solvent species
       micm::Phase phase_;  ///< Phase in which the reaction occurs
       std::string uuid_;   ///< Unique identifier for the reaction
-      double solvent_damping_epsilon_{ 1.0e-20 };  ///< Regularization parameter to prevent singularity as solvent → 0
+      double solvent_floor_{ 1.0e-20 };  ///< Floor [mol m⁻³] added to [S] in ([S]+δ)^n denominator to prevent singularity as [S] → 0
 
       DissolvedReversibleReaction() = delete;
 
@@ -65,7 +65,7 @@ namespace miam
           const std::vector<micm::Species>& products,
           micm::Species solvent,
           micm::Phase phase,
-          double solvent_damping_epsilon = 1.0e-20)
+          double solvent_floor = 1.0e-20)
           : forward_rate_constant_(forward_rate_constant),
             reverse_rate_constant_(reverse_rate_constant),
             reactants_(reactants),
@@ -73,7 +73,7 @@ namespace miam
             solvent_(solvent),
             phase_(phase),
             uuid_(miam::util::generate_uuid_v4()),
-            solvent_damping_epsilon_(solvent_damping_epsilon)
+            solvent_floor_(solvent_floor)
       {
       }
 
@@ -82,7 +82,7 @@ namespace miam
       DissolvedReversibleReaction CopyWithNewUuid() const
       {
         return DissolvedReversibleReaction(
-            forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_damping_epsilon_);
+            forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_);
       }
 
       /// @brief Returns a set of unique parameter names for this process
@@ -308,7 +308,7 @@ namespace miam
             {
               auto forward_rate = forcing_terms.GetRowVariable();
               auto reverse_rate = forcing_terms.GetRowVariable();
-              const double eps = solvent_damping_epsilon_;
+              const double eps = solvent_floor_;
               const std::size_t n_r = reactants_.size();
               const std::size_t n_p = products_.size();
 
@@ -411,7 +411,7 @@ namespace miam
               auto d_forward_rate_d_ind = jacobian_values.GetBlockVariable();
               auto d_reverse_rate_d_ind = jacobian_values.GetBlockVariable();
               auto jac_id = jacobian_indices.indices_.AsVector().begin();
-              const double eps = solvent_damping_epsilon_;
+              const double eps = solvent_floor_;
               const std::size_t n_r = reactants_.size();
               const std::size_t n_p = products_.size();
 

@@ -43,10 +43,10 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
   // Physical parameters
   double T = 298.15;              // K
   double HLC = 4.0e-4;            // mol m⁻³ Pa⁻¹ (constant, no T dependence)
-  double Mw_solvent = 0.018;      // kg mol⁻¹ (water)
-  double rho_solvent = 1000.0;    // kg m⁻³ (water)
+  double solvent_molecular_weight = 0.018;      // kg mol⁻¹ (water)
+  double solvent_density = 1000.0;    // kg m⁻³ (water)
   double H2O_conc = 0.017;  // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
-  double f_v = H2O_conc * Mw_solvent / rho_solvent;  // ~ 3.06e-7
+  double f_v = H2O_conc * solvent_molecular_weight / solvent_density;  // ~ 3.06e-7
   double alpha = HLC * R_gas * T * f_v;               // dimensionless
 
   // Species
@@ -54,8 +54,8 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
   auto A_g = Species{ "A_g" };
   auto A_aq = Species{ "A_aq" };
   auto H2O = Species{ "H2O",
-      { { "molecular weight [kg mol-1]", Mw_solvent },
-        { "density [kg m-3]", rho_solvent } } };
+      { { "molecular weight [kg mol-1]", solvent_molecular_weight },
+        { "density [kg m-3]", solvent_density } } };
 
   // Phases
   Phase gas_phase{ "GAS", { { Precursor }, { A_g } } };
@@ -84,8 +84,8 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(process::constant::HenrysLawConstant(
           process::constant::HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
-      .SetMwSolvent(Mw_solvent)
-      .SetRhoSolvent(rho_solvent)
+      .SetSolventMolecularWeight(solvent_molecular_weight)
+      .SetSolventDensity(solvent_density)
       .Build();
 
   // Mass conservation: [Precursor] + [A_g] + [A_aq] = total, A_g algebraic (global)
@@ -206,18 +206,18 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
 {
   double T = 298.15;
   double HLC = 4.0e-4;
-  double Mw_solvent = 0.018;
-  double rho_solvent = 1000.0;
+  double solvent_molecular_weight = 0.018;
+  double solvent_density = 1000.0;
   double H2O_conc = 0.017;  // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
-  double f_v = H2O_conc * Mw_solvent / rho_solvent;
+  double f_v = H2O_conc * solvent_molecular_weight / solvent_density;
   double alpha = HLC * R_gas * T * f_v;
 
   auto Precursor = Species{ "Precursor" };
   auto A_g = Species{ "A_g" };
   auto A_aq = Species{ "A_aq" };
   auto H2O = Species{ "H2O",
-      { { "molecular weight [kg mol-1]", Mw_solvent },
-        { "density [kg m-3]", rho_solvent } } };
+      { { "molecular weight [kg mol-1]", solvent_molecular_weight },
+        { "density [kg m-3]", solvent_density } } };
 
   Phase gas_phase{ "GAS", { { Precursor }, { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
@@ -240,8 +240,8 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(process::constant::HenrysLawConstant(
           process::constant::HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
-      .SetMwSolvent(Mw_solvent)
-      .SetRhoSolvent(rho_solvent)
+      .SetSolventMolecularWeight(solvent_molecular_weight)
+      .SetSolventDensity(solvent_density)
       .Build();
 
   double P0 = 1.0;

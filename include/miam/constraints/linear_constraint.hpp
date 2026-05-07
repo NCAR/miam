@@ -187,9 +187,12 @@ namespace miam
 
       /// @brief Returns a no-op constraint parameter update function (linear constraints have no parameters)
       template<typename DenseMatrixPolicy>
-      std::function<void(const std::vector<micm::Conditions>&)> UpdateConstraintParametersFunction() const
+      std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)>
+      UpdateConstraintParametersFunction(
+          const std::map<std::string, std::set<std::string>>& /*phase_prefixes*/,
+          const std::unordered_map<std::string, std::size_t>& /*state_parameter_indices*/) const
       {
-        return [](const std::vector<micm::Conditions>&) {};
+        return [](const std::vector<micm::Conditions>&, DenseMatrixPolicy&) {};
       }
 
       /// @brief Returns state parameter names for constraints that update via conditions
@@ -456,8 +459,10 @@ namespace miam
       /// @brief Returns a function that computes constraint Jacobian entries (subtracts dG/dy)
       /// @details dG/d[species_i] = coeff_i. Follows MICM convention: jac -= dG/dy
       template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
-      std::function<void(const DenseMatrixPolicy&, SparseMatrixPolicy&)> ConstraintJacobianFunction(
+      std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>
+      ConstraintJacobianFunction(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
+          const std::unordered_map<std::string, std::size_t>& /*state_parameter_indices*/,
           const std::unordered_map<std::string, std::size_t>& state_variable_indices,
           const SparseMatrixPolicy& jacobian) const
       {
@@ -478,7 +483,7 @@ namespace miam
           }
 
           auto inner = SparseMatrixPolicy::Function(
-              [jac_entries](auto&& state_variables, auto&& jacobian_values)
+              [jac_entries](auto&& /*state_variables*/, auto&& jacobian_values)
               {
                 for (const auto& [vec_idx, coeff] : jac_entries)
                 {
@@ -490,7 +495,10 @@ namespace miam
               },
               dummy_state, jacobian);
 
-          return [inner = std::move(inner)](const DenseMatrixPolicy& state_variables, SparseMatrixPolicy& jacobian_values) mutable
+          return [inner = std::move(inner)](
+                     const DenseMatrixPolicy& state_variables,
+                     const DenseMatrixPolicy& /*state_parameters*/,
+                     SparseMatrixPolicy& jacobian_values) mutable
           { inner(state_variables, jacobian_values); };
         }
         else
@@ -516,7 +524,7 @@ namespace miam
           }
 
           auto inner = SparseMatrixPolicy::Function(
-              [jac_entries_per_instance](auto&& state_variables, auto&& jacobian_values)
+              [jac_entries_per_instance](auto&& /*state_variables*/, auto&& jacobian_values)
               {
                 for (const auto& inst_entries : jac_entries_per_instance)
                 {
@@ -531,7 +539,10 @@ namespace miam
               },
               dummy_state, jacobian);
 
-          return [inner = std::move(inner)](const DenseMatrixPolicy& state_variables, SparseMatrixPolicy& jacobian_values) mutable
+          return [inner = std::move(inner)](
+                     const DenseMatrixPolicy& state_variables,
+                     const DenseMatrixPolicy& /*state_parameters*/,
+                     SparseMatrixPolicy& jacobian_values) mutable
           { inner(state_variables, jacobian_values); };
         }
       }

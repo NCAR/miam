@@ -45,6 +45,11 @@ namespace
     for (const auto& name : species_used)
       var_names.insert(name);
     auto param_names = model.StateParameterNames();
+    // Also include constraint-specific state parameters (e.g. HLC*R*T, K_eq)
+    // These are not included in StateParameterNames() (to avoid duplication when
+    // registered via MICM solver), but are needed for standalone Jacobian tests.
+    auto constraint_param_names = model.ConstraintStateParameterNames();
+    param_names.insert(constraint_param_names.begin(), constraint_param_names.end());
 
     std::size_t idx = 0;
     for (const auto& name : var_names)
@@ -146,12 +151,12 @@ namespace
     // Compute analytical Jacobian
     auto jac_fn =
         model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, analytical_jac);
-    jac_fn(variables, DenseMatrix(variables.NumRows(), std::max(maps.num_parameters, std::size_t(1)), 0.0), analytical_jac);
+    jac_fn(variables, params_copy, analytical_jac);
 
     // Compute finite-difference Jacobian from residual function
     auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
     auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing)
-    { residual_fn(vars, DenseMatrix(vars.NumRows(), std::max(maps.num_parameters, std::size_t(1)), 0.0), forcing); };
+    { residual_fn(vars, params_copy, forcing); };
 
     auto fd_jac = micm::FiniteDifferenceJacobian<DenseMatrix>(fd_wrapper, variables, num_species);
 
@@ -261,16 +266,16 @@ TEST(JacobianVerification, DissolvedReversibleReactionProcess)
 /// @brief HenryLawPhaseTransfer process Jacobian with SingleMomentMode
 TEST(JacobianVerification, HenryLawPhaseTransferProcess)
 {
-  double Mw_gas = 0.044;
-  double Mw_solvent = 0.018;
-  double rho_solvent = 1000.0;
+  double gas_molecular_weight = 0.044;
+  double solvent_molecular_weight = 0.018;
+  double solvent_density = 1000.0;
   double D_g = 1.5e-5;
   double alpha = 0.05;
   double HLC_val = 3.4e-2;
 
-  auto A_g = Species{ "A_g", { { "molecular weight [kg mol-1]", Mw_gas } } };
-  auto A_aq = Species{ "A_aq", { { "molecular weight [kg mol-1]", Mw_gas }, { "density [kg m-3]", 1800.0 } } };
-  auto H2O = Species{ "H2O", { { "molecular weight [kg mol-1]", Mw_solvent }, { "density [kg m-3]", rho_solvent } } };
+  auto A_g = Species{ "A_g", { { "molecular weight [kg mol-1]", gas_molecular_weight } } };
+  auto A_aq = Species{ "A_aq", { { "molecular weight [kg mol-1]", gas_molecular_weight }, { "density [kg m-3]", 1800.0 } } };
+  auto H2O = Species{ "H2O", { { "molecular weight [kg mol-1]", solvent_molecular_weight }, { "density [kg m-3]", solvent_density } } };
 
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
@@ -315,16 +320,16 @@ TEST(JacobianVerification, HenryLawPhaseTransferProcess)
 /// @brief HenryLawPhaseTransfer with TwoMomentMode (multi-instance)
 TEST(JacobianVerification, HenryLawPhaseTransferTwoMomentMode)
 {
-  double Mw_gas = 0.044;
-  double Mw_solvent = 0.018;
-  double rho_solvent = 1000.0;
+  double gas_molecular_weight = 0.044;
+  double solvent_molecular_weight = 0.018;
+  double solvent_density = 1000.0;
   double D_g = 1.5e-5;
   double alpha = 0.05;
   double HLC_val = 3.4e-2;
 
-  auto A_g = Species{ "A_g", { { "molecular weight [kg mol-1]", Mw_gas } } };
-  auto A_aq = Species{ "A_aq", { { "molecular weight [kg mol-1]", Mw_gas }, { "density [kg m-3]", 1800.0 } } };
-  auto H2O = Species{ "H2O", { { "molecular weight [kg mol-1]", Mw_solvent }, { "density [kg m-3]", rho_solvent } } };
+  auto A_g = Species{ "A_g", { { "molecular weight [kg mol-1]", gas_molecular_weight } } };
+  auto A_aq = Species{ "A_aq", { { "molecular weight [kg mol-1]", gas_molecular_weight }, { "density [kg m-3]", 1800.0 } } };
+  auto H2O = Species{ "H2O", { { "molecular weight [kg mol-1]", solvent_molecular_weight }, { "density [kg m-3]", solvent_density } } };
 
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
@@ -515,15 +520,15 @@ TEST(JacobianVerification, LinearConstraint)
 /// @brief HenryLawEquilibriumConstraint: A_g ⇌ A_aq, A_aq algebraic
 TEST(JacobianVerification, HenryLawEquilibriumConstraint)
 {
-  double Mw_solvent = 0.018;
-  double rho_solvent = 1000.0;
+  double solvent_molecular_weight = 0.018;
+  double solvent_density = 1000.0;
   double HLC = 4.0e-4;
 
   auto A_g = Species{ "A_g" };
   auto A_aq = Species{ "A_aq" };
   auto H2O = Species{ "H2O",
-      { { "molecular weight [kg mol-1]", Mw_solvent },
-        { "density [kg m-3]", rho_solvent } } };
+      { { "molecular weight [kg mol-1]", solvent_molecular_weight },
+        { "density [kg m-3]", solvent_density } } };
 
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
@@ -537,8 +542,8 @@ TEST(JacobianVerification, HenryLawEquilibriumConstraint)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(process::constant::HenrysLawConstant(
           process::constant::HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
-      .SetMwSolvent(Mw_solvent)
-      .SetRhoSolvent(rho_solvent)
+      .SetSolventMolecularWeight(solvent_molecular_weight)
+      .SetSolventDensity(solvent_density)
       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -637,16 +642,16 @@ TEST(JacobianVerification, ProcessAndConstraintsCombined)
 /// @brief HenryLawEquilibriumConstraint + LinearConstraint with gas-phase species
 TEST(JacobianVerification, HenryLawEquilibriumWithConservation)
 {
-  double Mw_solvent = 0.018;
-  double rho_solvent = 1000.0;
+  double solvent_molecular_weight = 0.018;
+  double solvent_density = 1000.0;
   double HLC = 4.0e-4;
 
   auto Precursor = Species{ "Precursor" };
   auto A_g = Species{ "A_g" };
   auto A_aq = Species{ "A_aq" };
   auto H2O = Species{ "H2O",
-      { { "molecular weight [kg mol-1]", Mw_solvent },
-        { "density [kg m-3]", rho_solvent } } };
+      { { "molecular weight [kg mol-1]", solvent_molecular_weight },
+        { "density [kg m-3]", solvent_density } } };
 
   Phase gas_phase{ "GAS", { { Precursor }, { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
@@ -660,8 +665,8 @@ TEST(JacobianVerification, HenryLawEquilibriumWithConservation)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(process::constant::HenrysLawConstant(
           process::constant::HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
-      .SetMwSolvent(Mw_solvent)
-      .SetRhoSolvent(rho_solvent)
+      .SetSolventMolecularWeight(solvent_molecular_weight)
+      .SetSolventDensity(solvent_density)
       .Build();
 
   double total = 1.0;

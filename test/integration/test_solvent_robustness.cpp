@@ -38,8 +38,8 @@ namespace
   constexpr double R_gas = miam::util::R_gas;
   constexpr double M_ATM_TO_MOL_M3_PA = 1000.0 / 101325.0;
   constexpr double c_H2O_M = 55.556;
-  constexpr double Mw_water = 0.018;
-  constexpr double rho_water = 1000.0;
+  constexpr double water_molecular_weight = 0.018;
+  constexpr double water_density = 1000.0;
   constexpr double T0 = 298.15;
 
   // Normal cloud water content
@@ -189,21 +189,21 @@ namespace
         .SetCondensedPhase(sp.aqueous_phase)
         .SetHenryLawConstant(process::constant::HenrysLawConstant({
             .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
-        .SetMwSolvent(0.018).SetRhoSolvent(1000.0).Build();
+        .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
     auto hl_h2o2 = constraint::HenryLawEquilibriumConstraintBuilder()
         .SetGasSpecies(sp.h2o2_g).SetCondensedSpecies(sp.h2o2_aq).SetSolvent(sp.h2o)
         .SetCondensedPhase(sp.aqueous_phase)
         .SetHenryLawConstant(process::constant::HenrysLawConstant({
             .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
-        .SetMwSolvent(0.018).SetRhoSolvent(1000.0).Build();
+        .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
     auto hl_o3 = constraint::HenryLawEquilibriumConstraintBuilder()
         .SetGasSpecies(sp.o3_g).SetCondensedSpecies(sp.o3_aq).SetSolvent(sp.h2o)
         .SetCondensedPhase(sp.aqueous_phase)
         .SetHenryLawConstant(process::constant::HenrysLawConstant({
             .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
-        .SetMwSolvent(0.018).SetRhoSolvent(1000.0).Build();
+        .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
     auto eq_kw = constraint::DissolvedEquilibriumConstraintBuilder()
         .SetPhase(sp.aqueous_phase).SetReactants({ sp.h2o }).SetProducts({ sp.hp, sp.ohm })
@@ -590,7 +590,7 @@ TEST(SolventRobustness, A4_HenryLawConstraint_SolventSweep)
         .SetCondensedPhase(aqueous_phase)
         .SetHenryLawConstant(process::constant::HenrysLawConstant({
             .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
-        .SetMwSolvent(0.018).SetRhoSolvent(1000.0).Build();
+        .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
     auto mass = constraint::LinearConstraintBuilder()
         .SetAlgebraicSpecies(gas_phase, so2_g)
@@ -672,7 +672,7 @@ TEST(SolventRobustness, A5_HLC_Plus_Dissociation_SolventSweep)
         .SetCondensedPhase(aqueous_phase)
         .SetHenryLawConstant(process::constant::HenrysLawConstant({
             .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
-        .SetMwSolvent(0.018).SetRhoSolvent(1000.0).Build();
+        .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
     auto eq_ka1 = constraint::DissolvedEquilibriumConstraintBuilder()
         .SetPhase(aqueous_phase).SetReactants({ so2_aq }).SetProducts({ hso3m, hp })
@@ -773,21 +773,21 @@ TEST(SolventRobustness, A6_FullEquilibrium_SolventSweep)
         .SetCondensedPhase(aqueous_phase)
         .SetHenryLawConstant(process::constant::HenrysLawConstant({
             .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
-        .SetMwSolvent(0.018).SetRhoSolvent(1000.0).Build();
+        .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
     auto hl_h2o2 = constraint::HenryLawEquilibriumConstraintBuilder()
         .SetGasSpecies(h2o2_g).SetCondensedSpecies(h2o2_aq).SetSolvent(h2o)
         .SetCondensedPhase(aqueous_phase)
         .SetHenryLawConstant(process::constant::HenrysLawConstant({
             .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
-        .SetMwSolvent(0.018).SetRhoSolvent(1000.0).Build();
+        .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
     auto hl_o3 = constraint::HenryLawEquilibriumConstraintBuilder()
         .SetGasSpecies(o3_g).SetCondensedSpecies(o3_aq).SetSolvent(h2o)
         .SetCondensedPhase(aqueous_phase)
         .SetHenryLawConstant(process::constant::HenrysLawConstant({
             .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
-        .SetMwSolvent(0.018).SetRhoSolvent(1000.0).Build();
+        .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
     auto eq_kw = constraint::DissolvedEquilibriumConstraintBuilder()
         .SetPhase(aqueous_phase).SetReactants({ h2o }).SetProducts({ hp, ohm })

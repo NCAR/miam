@@ -51,7 +51,7 @@ namespace miam
       micm::Species solvent_;                                                    ///< Solvent species
       micm::Phase phase_;  ///< Phase in which the reaction occurs
       std::string uuid_;   ///< Unique identifier for the reaction
-      double solvent_damping_epsilon_{ 1.0e-20 };  ///< Regularization parameter to prevent singularity as solvent → 0
+      double solvent_floor_{ 1.0e-20 };  ///< Floor [mol m⁻³] added to [S] in ([S]+δ)^n denominator to prevent singularity as [S] → 0
       double min_halflife_{ 0.0 };  ///< When > 0, caps the reaction rate so no reactant is depleted faster than this half-life [s]
 
       DissolvedReaction() = delete;
@@ -63,7 +63,7 @@ namespace miam
           const std::vector<micm::Species>& products,
           micm::Species solvent,
           micm::Phase phase,
-          double solvent_damping_epsilon = 1.0e-20,
+          double solvent_floor = 1.0e-20,
           double min_halflife = 0.0)
           : rate_constant_(rate_constant),
             reactants_(reactants),
@@ -71,7 +71,7 @@ namespace miam
             solvent_(solvent),
             phase_(phase),
             uuid_(miam::util::generate_uuid_v4()),
-            solvent_damping_epsilon_(solvent_damping_epsilon),
+            solvent_floor_(solvent_floor),
             min_halflife_(min_halflife)
       {
       }
@@ -81,7 +81,7 @@ namespace miam
       DissolvedReaction CopyWithNewUuid() const
       {
         return DissolvedReaction(
-            rate_constant_, reactants_, products_, solvent_, phase_, solvent_damping_epsilon_, min_halflife_);
+            rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_, min_halflife_);
       }
 
       /// @brief Returns a set of unique parameter names for this process
@@ -281,7 +281,7 @@ namespace miam
             [this, variable_indices, k_index](auto&& state_parameters, auto&& state_variables, auto&& forcing_terms)
             {
               auto rate = forcing_terms.GetRowVariable();
-              const double eps = solvent_damping_epsilon_;
+              const double eps = solvent_floor_;
               const std::size_t n_r = reactants_.size();
 
               // For each phase instance, calculate the reaction rate and update the forcing terms
@@ -365,7 +365,7 @@ namespace miam
             {
               auto d_rate_d_ind = jacobian_values.GetBlockVariable();
               auto jac_id = jacobian_indices.indices_.AsVector().begin();
-              const double eps = solvent_damping_epsilon_;
+              const double eps = solvent_floor_;
               const std::size_t n_r = reactants_.size();
 
               // For each phase instance, calculate the partial derivatives for the Jacobian entries
@@ -490,7 +490,7 @@ namespace miam
             {
               auto rate = forcing_terms.GetRowVariable();
               auto accum = forcing_terms.GetRowVariable();
-              const double eps = solvent_damping_epsilon_;
+              const double eps = solvent_floor_;
               const std::size_t n_r = reactants_.size();
               const double t_half = min_halflife_;
 
@@ -586,7 +586,7 @@ namespace miam
               auto corr_var = jacobian_values.GetBlockVariable();
               auto c_min_var = jacobian_values.GetBlockVariable();
               auto jac_id = jacobian_indices.indices_.AsVector().begin();
-              const double eps = solvent_damping_epsilon_;
+              const double eps = solvent_floor_;
               const std::size_t n_r = reactants_.size();
               const double t_half = min_halflife_;
 

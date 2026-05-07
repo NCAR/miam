@@ -52,10 +52,11 @@ namespace miam
         return *this;
       }
 
-      /// @brief Sets the solvent damping epsilon for regularization near zero solvent
-      DissolvedReversibleReactionBuilder& SetSolventDampingEpsilon(double epsilon)
+      /// @brief Sets the floor \f$\delta\f$ [mol m⁻³] added to the solvent in the denominator
+      ///        to prevent singularity as \f$[S] \to 0\f$. Default: 1e-20.
+      DissolvedReversibleReactionBuilder& SetSolventFloor(double solvent_floor)
       {
-        solvent_damping_epsilon_ = epsilon;
+        solvent_floor_ = solvent_floor;
         return *this;
       }
 
@@ -153,7 +154,7 @@ namespace miam
           }
         }
         return process::DissolvedReversibleReaction(
-            forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_damping_epsilon_);
+            forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_);
       }
 
      private:
@@ -169,7 +170,7 @@ namespace miam
           reverse_rate_constant_;  ///< Reverse rate constant function
       mutable std::function<double(const micm::Conditions& conditions)>
           equilibrium_constant_;  ///< Equilibrium constant function
-      double solvent_damping_epsilon_{ 1.0e-20 };  ///< Regularization parameter for solvent damping
+      double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
     };
   }  // namespace process
 }  // namespace miam

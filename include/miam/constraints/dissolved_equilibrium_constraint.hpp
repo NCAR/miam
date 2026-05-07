@@ -13,10 +13,10 @@
 #include <cmath>
 #include <functional>
 #include <map>
-#include <memory>
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace miam
@@ -33,6 +33,12 @@ namespace miam
     ///          where \f$ K_{eq} = k_f / k_r \f$, \f$ R_i \f$ are reactants, \f$ P_j \f$ are
     ///          products, and \f$ S \f$ is the solvent. One of the product species is designated
     ///          as the algebraic variable whose ODE row is replaced by this constraint.
+    ///
+    ///          To prevent singularity as \f$[S] \to 0\f$, the solvent denominator is
+    ///          regularized by a small floor \f$\delta\f$ (\c solvent_floor_):
+    ///
+    ///          \f$ G = K_{eq} \frac{[S]\prod[R_i]}{([S]+\delta)^{n_r}}
+    ///                       - \frac{[S]\prod[P_j]}{([S]+\delta)^{n_p}} = 0 \f$
     class DissolvedEquilibriumConstraint
     {
      public:
@@ -43,11 +49,7 @@ namespace miam
       micm::Species solvent_;            ///< Solvent species
       micm::Phase phase_;                ///< Phase in which the reaction occurs
       std::string uuid_;                 ///< Unique identifier
-      double solvent_damping_epsilon_{ 1.0e-20 };  ///< Regularization parameter to prevent singularity as solvent → 0
-
-      /// @brief Shared mutable K_eq values, bridging UpdateStateParametersFunction → constraint functions.
-      ///        One value per grid cell.
-      std::shared_ptr<std::vector<double>> k_eq_values_;
+      double solvent_floor_{ 1.0e-20 };  ///< Floor \f$\delta\f$ [mol m⁻³] added to \f$[S]\f$ in \f$([S]+\delta)^n\f$ denominator to prevent singularity as \f$[S] \to 0\f$
 
       DissolvedEquilibriumConstraint() = delete;
 
@@ -59,7 +61,7 @@ namespace miam
           const micm::Species& algebraic_species,
           micm::Species solvent,
           micm::Phase phase,
-          double solvent_damping_epsilon = 1.0e-20)
+          double solvent_floor = 1.0e-20)
           : equilibrium_constant_(equilibrium_constant),
             reactants_(reactants),
             products_(products),
@@ -67,8 +69,7 @@ namespace miam
             solvent_(solvent),
             phase_(phase),
             uuid_(miam::util::generate_uuid_v4()),
-            solvent_damping_epsilon_(solvent_damping_epsilon),
-            k_eq_values_(std::make_shared<std::vector<double>>())
+            solvent_floor_(solvent_floor)
       {
         // Validate that the algebraic species is one of the products
         bool found = false;
@@ -92,7 +93,7 @@ namespace miam
       DissolvedEquilibriumConstraint CopyWithNewUuid() const
       {
         return DissolvedEquilibriumConstraint(
-            equilibrium_constant_, reactants_, products_, algebraic_species_, solvent_, phase_, solvent_damping_epsilon_);
+            equilibrium_constant_, reactants_, products_, algebraic_species_, solvent_, phase_, solvent_floor_);
       }
 
       /// @brief Returns the names of algebraic variables (one per phase instance)
@@ -163,41 +164,82 @@ namespace miam
         return elements;
       }
 
-      /// @brief Returns a function that updates K_eq for each grid cell (called during UpdateStateParameters)
-      template<typename DenseMatrixPolicy>
-      std::function<void(const std::vector<micm::Conditions>&)> UpdateConstraintParametersFunction() const
+      /// @brief Returns the names of state parameters owned by this constraint (one per phase instance).
+      /// @details Each phase instance writes \f$ K_{eq}(T) \f$ to a dedicated column of the
+      ///          state parameter matrix every time conditions change.
+      std::set<std::string> ConstraintStateParameterNames(
+          const std::map<std::string, std::set<std::string>>& phase_prefixes) const
       {
-        auto k_eq_values = k_eq_values_;
-        auto eq_const_fn = equilibrium_constant_;
-        return [k_eq_values, eq_const_fn](const std::vector<micm::Conditions>& conditions)
+        std::set<std::string> names;
+        auto phase_it = phase_prefixes.find(phase_.name_);
+        if (phase_it != phase_prefixes.end())
         {
-          k_eq_values->resize(conditions.size());
-          for (std::size_t i = 0; i < conditions.size(); ++i)
-          {
-            (*k_eq_values)[i] = eq_const_fn(conditions[i]);
-          }
-        };
+          for (const auto& prefix : phase_it->second)
+            names.insert(prefix + "." + phase_.name_ + "." + uuid_ + ".k_eq");
+        }
+        return names;
+      }
+
+      /// @brief Returns a function that writes \f$ K_{eq}(T) \f$ per grid cell into the state parameter matrix.
+      template<typename DenseMatrixPolicy>
+      std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)>
+      UpdateConstraintParametersFunction(
+          const std::map<std::string, std::set<std::string>>& phase_prefixes,
+          const std::unordered_map<std::string, std::size_t>& state_parameter_indices) const
+      {
+        std::vector<std::size_t> k_eq_indices;
+        auto phase_it = phase_prefixes.find(phase_.name_);
+        if (phase_it != phase_prefixes.end())
+        {
+          for (const auto& prefix : phase_it->second)
+            k_eq_indices.push_back(
+                state_parameter_indices.at(prefix + "." + phase_.name_ + "." + uuid_ + ".k_eq"));
+        }
+        auto eq_const_fn = equilibrium_constant_;
+
+        DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
+        std::vector<micm::Conditions> conditions_vector;
+
+        return DenseMatrixPolicy::Function(
+            [k_eq_indices, eq_const_fn](auto&& conditions, auto&& params)
+            {
+              for (const auto& k_eq_idx : k_eq_indices)
+                params.ForEachRow(
+                    [eq_const_fn](const micm::Conditions& cond, double& k_eq)
+                    { k_eq = eq_const_fn(cond); },
+                    conditions,
+                    params.GetColumnView(k_eq_idx));
+            },
+            conditions_vector, state_parameters);
       }
 
       /// @brief Returns a function that computes constraint residuals G(y) = 0
-      /// @details G = K_eq * prod([R_i]) / [S]^(n_r-1) - prod([P_j]) / [S]^(n_p-1)
+      /// @details G = K_eq * [S] * prod([R_i]) / ([S]+δ)^n_r - [S] * prod([P_j]) / ([S]+δ)^n_p
       template<typename DenseMatrixPolicy>
       std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ConstraintResidualFunction(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
-          const std::unordered_map<std::string, std::size_t>& /*state_parameter_indices*/,
+          const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
           const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
       {
         auto indices = GetStateVariableIndices(phase_prefixes, state_variable_indices);
-        auto k_eq_values = k_eq_values_;
         std::size_t n_reactants = reactants_.size();
         std::size_t n_products = products_.size();
-        double eps = solvent_damping_epsilon_;
+        double eps = solvent_floor_;
+
+        std::vector<std::size_t> k_eq_indices;
+        auto phase_it = phase_prefixes.find(phase_.name_);
+        if (phase_it != phase_prefixes.end())
+        {
+          for (const auto& prefix : phase_it->second)
+            k_eq_indices.push_back(
+                state_parameter_indices.at(prefix + "." + phase_.name_ + "." + uuid_ + ".k_eq"));
+        }
 
         DenseMatrixPolicy dummy_state{ 1, state_variable_indices.size(), 0.0 };
-        std::vector<double> dummy_keq;
+        DenseMatrixPolicy dummy_params{ 1, std::max(state_parameter_indices.size(), std::size_t{ 1 }), 0.0 };
 
-        auto inner = DenseMatrixPolicy::Function(
-            [indices, n_reactants, n_products, eps](auto&& k_eq_vec, auto&& state_variables, auto&& residual)
+        return DenseMatrixPolicy::Function(
+            [indices, k_eq_indices, n_reactants, n_products, eps](auto&& state_variables, auto&& state_parameters, auto&& residual)
             {
               for (std::size_t i_phase = 0; i_phase < indices.number_of_phase_instances_; ++i_phase)
               {
@@ -207,7 +249,7 @@ namespace miam
                 auto forward = residual.GetRowVariable();
                 residual.ForEachRow(
                     [](const double& keq, double& fwd) { fwd = keq; },
-                    k_eq_vec, forward);
+                    state_parameters.GetConstColumnView(k_eq_indices[i_phase]), forward);
                 for (std::size_t r = 0; r < n_reactants; ++r)
                   residual.ForEachRow(
                       [](const double& conc, double& fwd) { fwd *= conc; },
@@ -240,28 +282,31 @@ namespace miam
                     residual.GetColumnView(alg_idx));
               }
             },
-            dummy_keq, dummy_state, dummy_state);
-
-        return [inner = std::move(inner), k_eq_values](
-                   const DenseMatrixPolicy& state_variables,
-                   const DenseMatrixPolicy& /*state_parameters*/,
-                   DenseMatrixPolicy& residual) mutable
-        { inner(*k_eq_values, state_variables, residual); };
+            dummy_state, dummy_params, dummy_state);
       }
 
       /// @brief Returns a function that computes constraint Jacobian entries (subtracts dG/dy)
       /// @details Follows MICM convention: jac[row][col] -= dG/dy
       template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
-      std::function<void(const DenseMatrixPolicy&, SparseMatrixPolicy&)> ConstraintJacobianFunction(
+      std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> ConstraintJacobianFunction(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
+          const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
           const std::unordered_map<std::string, std::size_t>& state_variable_indices,
           const SparseMatrixPolicy& jacobian) const
       {
         auto indices = GetStateVariableIndices(phase_prefixes, state_variable_indices);
-        auto k_eq_values = k_eq_values_;
         std::size_t n_reactants = reactants_.size();
         std::size_t n_products = products_.size();
-        double eps = solvent_damping_epsilon_;
+        double eps = solvent_floor_;
+
+        std::vector<std::size_t> k_eq_indices;
+        auto phase_it = phase_prefixes.find(phase_.name_);
+        if (phase_it != phase_prefixes.end())
+        {
+          for (const auto& prefix : phase_it->second)
+            k_eq_indices.push_back(
+                state_parameter_indices.at(prefix + "." + phase_.name_ + "." + uuid_ + ".k_eq"));
+        }
 
         // Pre-compute block-0 VectorIndex values per instance
         struct PerInstanceJacData
@@ -285,11 +330,11 @@ namespace miam
         }
 
         DenseMatrixPolicy dummy_state{ 1, state_variable_indices.size(), 0.0 };
-        std::vector<double> dummy_keq;
+        DenseMatrixPolicy dummy_params{ 1, std::max(state_parameter_indices.size(), std::size_t{ 1 }), 0.0 };
 
-        auto inner = SparseMatrixPolicy::Function(
-            [indices, jac_data, n_reactants, n_products, eps](
-                auto&& k_eq_vec, auto&& state_variables, auto&& jacobian_values)
+        return SparseMatrixPolicy::Function(
+            [indices, k_eq_indices, jac_data, n_reactants, n_products, eps](
+                auto&& state_variables, auto&& state_parameters, auto&& jacobian_values)
             {
               for (std::size_t i_phase = 0; i_phase < indices.number_of_phase_instances_; ++i_phase)
               {
@@ -301,7 +346,7 @@ namespace miam
                   auto deriv = jacobian_values.GetBlockVariable();
                   jacobian_values.ForEachBlock(
                       [](const double& keq, double& d) { d = keq; },
-                      k_eq_vec, deriv);
+                      state_parameters.GetConstColumnView(k_eq_indices[i_phase]), deriv);
                   for (std::size_t j = 0; j < n_reactants; ++j)
                     if (j != r)
                       jacobian_values.ForEachBlock(
@@ -342,15 +387,11 @@ namespace miam
                 }
 
                 // dG/d[S]: damped solvent derivative
-                // forward = K_eq * prod([R_i]) * [S] / ([S]+eps)^n_r
-                // reverse = prod([P_j]) * [S] / ([S]+eps)^n_p
-                // dG/d[S] = K_eq*prod([R_i]) * (eps+(1-n_r)*[S]) / ([S]+eps)^(n_r+1)
-                //         - prod([P_j]) * (eps+(1-n_p)*[S]) / ([S]+eps)^(n_p+1)
                 {
                   auto forward_deriv = jacobian_values.GetBlockVariable();
                   jacobian_values.ForEachBlock(
                       [](const double& keq, double& fwd) { fwd = keq; },
-                      k_eq_vec, forward_deriv);
+                      state_parameters.GetConstColumnView(k_eq_indices[i_phase]), forward_deriv);
                   for (std::size_t r = 0; r < n_reactants; ++r)
                     jacobian_values.ForEachBlock(
                         [](const double& conc, double& fwd) { fwd *= conc; },
@@ -385,11 +426,7 @@ namespace miam
                 }
               }
             },
-            dummy_keq, dummy_state, jacobian);
-
-        return [inner = std::move(inner), k_eq_values](
-                   const DenseMatrixPolicy& state_variables, SparseMatrixPolicy& jacobian_values) mutable
-        { inner(*k_eq_values, state_variables, jacobian_values); };
+            dummy_state, dummy_params, jacobian);
       }
 
      private:

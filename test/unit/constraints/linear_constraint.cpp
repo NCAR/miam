@@ -170,13 +170,13 @@ TEST(LinearConstraint, JacobianGlobal)
     builder.WithElement(row, col);
   SMP jacobian(builder);
 
-  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, state_indices, jacobian);
+  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, state_indices, jacobian);
 
   DMP state_variables{ 1, 3, 0.0 };  // values don't matter for linear Jacobian
 
   for (auto& v : jacobian.AsVector())
     v = 0.0;
-  jac_fn(state_variables, jacobian);
+  jac_fn(state_variables, no_params, jacobian);
 
   // All coefficients are 1.0; jac -= 1.0 → jac = -1.0
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 0, 0)], -1.0, 1.0e-12);
@@ -300,12 +300,12 @@ TEST(LinearConstraint, JacobianPerInstance)
     builder.WithElement(row, col);
   SMP jacobian(builder);
 
-  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, state_indices, jacobian);
+  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, state_indices, jacobian);
 
   DMP state_variables{ 1, 6, 0.0 };
   for (auto& v : jacobian.AsVector())
     v = 0.0;
-  jac_fn(state_variables, jacobian);
+  jac_fn(state_variables, no_params, jacobian);
 
   // LARGE algebraic row (0): jac -= coeff => jac[0,0] = -1, jac[0,1] = +1, jac[0,2] = +1
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 0, 0)], -1.0, 1.0e-12);
@@ -353,10 +353,12 @@ TEST(LinearConstraint, UpdateConstraintParametersNoOp)
       { { gas_phase, A_g, 1.0 } },
       0.0);
 
-  auto update_fn = constraint.UpdateConstraintParametersFunction<micm::Matrix<double>>();
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  auto update_fn = constraint.UpdateConstraintParametersFunction<micm::Matrix<double>>(phase_prefixes, param_indices);
   std::vector<micm::Conditions> conditions(3);
+  micm::Matrix<double> state_params{ 3, 1, 0.0 };
   // Should not throw
-  update_fn(conditions);
+  update_fn(conditions, state_params);
 }
 
 // ── Mixed coefficients with non-unit values ──
@@ -446,8 +448,8 @@ namespace
 
     // Build analytical Jacobian
     auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, state_indices, num_blocks);
-    auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, state_indices, jacobian);
-    jac_fn(state_variables, jacobian);
+    auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, state_indices, jacobian);
+    jac_fn(state_variables, no_params, jacobian);
 
     // Build residual function for FD
     // Use a relatively large step: for linear constraints the FD is exact
@@ -600,11 +602,11 @@ TEST(LinearConstraint, JacobianGlobalNonUnitCoefficients)
   state_indices["MODE1.AQUEOUS.B_aq"] = 2;
 
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, state_indices, 1);
-  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, state_indices, jacobian);
+  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, state_indices, jacobian);
 
   DMP state_variables{ 1, 3, 0.0 };
   state_variables[0][0] = 5.0;  state_variables[0][1] = 10.0;  state_variables[0][2] = 7.0;
-  jac_fn(state_variables, jacobian);
+  jac_fn(state_variables, no_params, jacobian);
 
   // jac -= dG/dy, so jac[0,0] = -2.0, jac[0,1] = -0.5, jac[0,2] = -3.0
   EXPECT_NEAR(jacobian[0][0][0], -2.0, 1e-12);
@@ -725,13 +727,13 @@ TEST(LinearConstraint, JacobianPerInstanceNonUnitCoefficients)
 
   // Check analytical Jacobian entries
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, si, jacobian);
+  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, si, jacobian);
 
   DMP state_variables{ 1, 6, 0.0 };
   state_variables[0][0] = 1.0;  state_variables[0][1] = 2.0;  state_variables[0][2] = 3.0;
   state_variables[0][3] = 4.0;  state_variables[0][4] = 5.0;  state_variables[0][5] = 6.0;
 
-  jac_fn(state_variables, jacobian);
+  jac_fn(state_variables, no_params, jacobian);
 
   // MODE1 algebraic row (0): jac -= {2.0, -0.5, 3.0} => {-2.0, 0.5, -3.0}
   EXPECT_NEAR(jacobian[0][0][0], -2.0, 1e-12);
@@ -835,8 +837,8 @@ TEST(LinearConstraint, GlobalWithManyInstances)
 
   // Jacobian: all columns in row 0 should have -1
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, si, jacobian);
-  jac_fn(sv, jacobian);
+  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, si, jacobian);
+  jac_fn(sv, no_params, jacobian);
   for (std::size_t j = 0; j < 5; ++j)
     EXPECT_NEAR(jacobian[0][0][j], -1.0, 1e-12);
 
@@ -862,13 +864,13 @@ TEST(LinearConstraint, JacobianAccumulates)
   si["MODE1.AQUEOUS.A_aq"] = 1;
 
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, si, jacobian);
+  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, si, jacobian);
 
   DMP sv{ 1, 2, 0.0 };
   sv[0][0] = 1.0;  sv[0][1] = 2.0;
 
   // First call
-  jac_fn(sv, jacobian);
+  jac_fn(sv, no_params, jacobian);
   double j00_once = jacobian[0][0][0];
   double j01_once = jacobian[0][0][1];
 
@@ -876,7 +878,7 @@ TEST(LinearConstraint, JacobianAccumulates)
   EXPECT_NEAR(j01_once, -0.5, 1e-12);
 
   // Second call accumulates
-  jac_fn(sv, jacobian);
+  jac_fn(sv, no_params, jacobian);
   EXPECT_NEAR(jacobian[0][0][0], 2.0 * j00_once, 1e-12);
   EXPECT_NEAR(jacobian[0][0][1], 2.0 * j01_once, 1e-12);
 }
@@ -960,10 +962,10 @@ TEST(LinearConstraint, MultipleConstraintsCombined)
   auto jacobian = BuildConstraintJacobian(
       { std::cref(mass_cons), std::cref(charge_bal) }, phase_prefixes, si, 1);
 
-  auto jf1 = mass_cons.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, si, jacobian);
-  auto jf2 = charge_bal.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, si, jacobian);
-  jf1(sv, jacobian);
-  jf2(sv, jacobian);
+  auto jf1 = mass_cons.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, si, jacobian);
+  auto jf2 = charge_bal.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, si, jacobian);
+  jf1(sv, no_params, jacobian);
+  jf2(sv, no_params, jacobian);
 
   // Mass row (0): dG/d[A_g] = 1, dG/d[A_aq] = 1 → jac = -1, -1
   EXPECT_NEAR(jacobian[0][0][0], -1.0, 1e-12);
@@ -1045,8 +1047,8 @@ TEST(LinearConstraint, PerInstanceWithGasTerms)
 
   // Jacobian: each instance row has entries for (A_g, own A_aq)
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  auto jf = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, si, jacobian);
-  jf(sv, jacobian);
+  auto jf = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, si, jacobian);
+  jf(sv, no_params, jacobian);
 
   // LARGE row (1): dG/d[A_g] = 1, dG/d[LARGE.A_aq] = 1
   EXPECT_NEAR(jacobian[0][1][0], -1.0, 1e-12);  // jac -= 1
@@ -1146,8 +1148,8 @@ TEST(LinearConstraint, SingleTerm)
 
   // Jacobian: -3.0
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  auto jf = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, si, jacobian);
-  jf(sv, jacobian);
+  auto jf = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, si, jacobian);
+  jf(sv, no_params, jacobian);
   EXPECT_NEAR(jacobian[0][0][0], -3.0, 1e-12);
 
   CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);

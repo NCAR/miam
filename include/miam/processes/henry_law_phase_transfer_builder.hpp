@@ -101,9 +101,9 @@ namespace miam
         if (!alpha_is_set_)
           throw std::runtime_error("HenryLawPhaseTransferBuilder requires the accommodation coefficient to be set.");
 
-        double Mw_gas = gas_species_.GetProperty<double>("molecular weight [kg mol-1]");
-        double Mw_solvent = solvent_.GetProperty<double>("molecular weight [kg mol-1]");
-        double rho_solvent = solvent_.GetProperty<double>("density [kg m-3]");
+        double gas_molecular_weight = gas_species_.GetProperty<double>("molecular weight [kg mol-1]");
+        double solvent_molecular_weight = solvent_.GetProperty<double>("molecular weight [kg mol-1]");
+        double solvent_density = solvent_.GetProperty<double>("density [kg m-3]");
 
         return HenryLawPhaseTransfer(
             henry_law_constant_,
@@ -113,9 +113,9 @@ namespace miam
             condensed_phase_,
             D_g_,
             alpha_,
-            Mw_gas,
-            Mw_solvent,
-            rho_solvent);
+            gas_molecular_weight,
+            solvent_molecular_weight,
+            solvent_density);
       }
 
      private:
