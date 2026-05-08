@@ -5,12 +5,74 @@
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
+#include <micm/util/jacobian_verification.hpp>
+#include <micm/util/matrix.hpp>
 #include <micm/util/vector_matrix.hpp>
 #include <micm/util/sparse_matrix.hpp>
 
 #include <gtest/gtest.h>
 
+#include <cmath>
+#include <unordered_map>
+
 using namespace miam::process;
+
+namespace
+{
+  using MatrixPolicy = micm::Matrix<double>;
+  using SparseMatrixPolicy =
+      micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
+
+  /// @brief Compare analytical Jacobian against central finite-difference approximation
+  ///        using MICM's FiniteDifferenceJacobian / CompareJacobianToFiniteDifference utilities.
+  void CheckFiniteDifferenceJacobian(
+      const DissolvedReaction& reaction,
+      const std::map<std::string, std::set<std::string>>& phase_prefixes,
+      const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+      const std::unordered_map<std::string, std::size_t>& state_variable_indices,
+      const MatrixPolicy& state_parameters,
+      const MatrixPolicy& state_variables)
+  {
+    const std::size_t num_blocks = state_parameters.NumRows();
+    const std::size_t num_vars = state_variable_indices.size();
+
+    // Build sparse Jacobian structure and compute analytical Jacobian
+    auto jac_elements = reaction.NonZeroJacobianElements(phase_prefixes, state_variable_indices);
+    auto jac_builder = SparseMatrixPolicy::Create(num_vars).SetNumberOfBlocks(num_blocks);
+    for (const auto& elem : jac_elements)
+      jac_builder.WithElement(elem.first, elem.second);
+    SparseMatrixPolicy jacobian(jac_builder);
+    jacobian.Fill(0.0);
+
+    auto jac_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
+        phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+    jac_func(state_parameters, state_variables, jacobian);
+
+    // Build FD Jacobian — bind state_parameters into the forcing callable
+    auto ff = reaction.ForcingFunction<MatrixPolicy>(
+        phase_prefixes, state_parameter_indices, state_variable_indices);
+    auto fd_jac = micm::FiniteDifferenceJacobian<MatrixPolicy>(
+        [&](const MatrixPolicy& vars, MatrixPolicy& out)
+        {
+          out.Fill(0.0);
+          ff(state_parameters, vars, out);
+        },
+        state_variables,
+        num_vars);
+
+    // Compare analytical vs FD (MICM defaults: atol=1e-7, rtol=1e-7)
+    auto cmp = micm::CompareJacobianToFiniteDifference(jacobian, fd_jac, num_vars);
+    EXPECT_TRUE(cmp.passed) << "FD mismatch: block=" << cmp.worst_block << " row=" << cmp.worst_row
+                            << " col=" << cmp.worst_col << " +J(analytical)=" << cmp.worst_analytical
+                            << " +J(fd)=" << cmp.worst_fd;
+
+    // Verify no significant FD signal outside the declared sparsity pattern
+    auto spc = micm::CheckJacobianSparsityCompleteness(jacobian, fd_jac, num_vars);
+    EXPECT_TRUE(spc.passed) << "Missing sparsity entry: block=" << spc.worst_block
+                            << " row=" << spc.worst_row << " col=" << spc.worst_col
+                            << " fd=" << spc.worst_fd;
+  }
+}  // namespace
 
 // ============================================================================
 // SpeciesUsed Tests
@@ -975,3 +1037,460 @@ TEST(DissolvedReaction, JacobianFunctionSolventPartial)
     // -J[B,C] = -d(rate)/d[C]_reactant - d(rate)/d[C]_solvent
     EXPECT_NEAR(jacobian[0][2][1], -d_rate_d_c_reactant - d_rate_d_c_solvent, 1e-10);
 }
+
+// ============================================================================
+// FD Jacobian Tests
+// ============================================================================
+
+// FD check: A -> B (unimolecular, 1 cell)
+TEST(DissolvedReaction, JacobianFDUnimolecular)
+{
+  auto a = micm::Species{ "A" };
+  auto b = micm::Species{ "B" };
+  auto s = micm::Species{ "S" };
+  auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
+
+  double k = 0.1;
+  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; }, { a }, { b }, s, phase };
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
+  std::unordered_map<std::string, std::size_t> svi{
+    { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.S", 2 }
+  };
+
+  MatrixPolicy params(1, 1);  params[0][0] = k;
+  MatrixPolicy vars(1, 3);
+  vars[0][0] = 2.0; vars[0][1] = 0.5; vars[0][2] = 55.0;
+
+  CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+
+// FD check: A + B -> C (bimolecular, solvent normalization active)
+TEST(DissolvedReaction, JacobianFDBimolecular)
+{
+  auto a = micm::Species{ "A" };
+  auto b = micm::Species{ "B" };
+  auto c = micm::Species{ "C" };
+  auto s = micm::Species{ "S" };
+  auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { s } } };
+
+  double k = 1.0;
+  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; }, { a, b }, { c }, s, phase };
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
+  std::unordered_map<std::string, std::size_t> svi{
+    { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.C", 2 }, { "DROP.AQUEOUS.S", 3 }
+  };
+
+  MatrixPolicy params(1, 1);  params[0][0] = k;
+  MatrixPolicy vars(1, 4);
+  vars[0][0] = 0.001; vars[0][1] = 0.002; vars[0][2] = 0.0; vars[0][3] = 50.0;
+
+  CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+
+// FD check: multiple grid cells
+TEST(DissolvedReaction, JacobianFDMultiCell)
+{
+  auto a = micm::Species{ "A" };
+  auto b = micm::Species{ "B" };
+  auto s = micm::Species{ "S" };
+  auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
+
+  double k = 0.5;
+  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; }, { a }, { b }, s, phase };
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
+  std::unordered_map<std::string, std::size_t> svi{
+    { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.S", 2 }
+  };
+
+  std::size_t n_cells = 4;
+  MatrixPolicy params(n_cells, 1);
+  MatrixPolicy vars(n_cells, 3);
+  double gas_concs[]    = { 1.0e-3, 5.0e-3, 1.0e-2, 5.0e-2 };
+  double solvent_concs[]= { 55.0, 50.0, 45.0, 40.0 };
+  for (std::size_t i = 0; i < n_cells; ++i)
+  {
+    params[i][0] = k;
+    vars[i][0] = gas_concs[i];
+    vars[i][1] = 0.0;
+    vars[i][2] = solvent_concs[i];
+  }
+
+  CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+
+// FD check: two phase instances (SMALL_DROP + LARGE_DROP)
+TEST(DissolvedReaction, JacobianFDMultiPhaseInstance)
+{
+  auto a = micm::Species{ "A" };
+  auto b = micm::Species{ "B" };
+  auto s = micm::Species{ "S" };
+  auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
+
+  double k = 0.2;
+  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; }, { a }, { b }, s, phase };
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("SMALL");
+  phase_prefixes["AQUEOUS"].insert("LARGE");
+
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
+  std::unordered_map<std::string, std::size_t> svi{
+    { "SMALL.AQUEOUS.A", 0 }, { "SMALL.AQUEOUS.B", 1 }, { "SMALL.AQUEOUS.S", 2 },
+    { "LARGE.AQUEOUS.A", 3 }, { "LARGE.AQUEOUS.B", 4 }, { "LARGE.AQUEOUS.S", 5 }
+  };
+
+  MatrixPolicy params(1, 1);  params[0][0] = k;
+  MatrixPolicy vars(1, 6);
+  vars[0][0] = 2.0e-3; vars[0][1] = 0.0;  vars[0][2] = 55.0;
+  vars[0][3] = 5.0e-3; vars[0][4] = 0.0;  vars[0][5] = 50.0;
+
+  CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+
+// FD check: solvent also appears as a reactant (n_r=2, [S] normalization non-trivial)
+TEST(DissolvedReaction, JacobianFDSolventIsReactant)
+{
+  auto a = micm::Species{ "A" };
+  auto c = micm::Species{ "C" };  // solvent and reactant
+  auto b = micm::Species{ "B" };
+  auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c } } };
+
+  double k = 2.0;
+  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; }, { a, c }, { b }, c, phase };
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
+  std::unordered_map<std::string, std::size_t> svi{
+    { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.C", 1 }, { "DROP.AQUEOUS.B", 2 }
+  };
+
+  MatrixPolicy params(1, 1);  params[0][0] = k;
+  MatrixPolicy vars(1, 3);
+  vars[0][0] = 0.5; vars[0][1] = 40.0; vars[0][2] = 0.0;
+
+  CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+
+// ============================================================================
+// Solvent-floor singularity-protection tests
+// ============================================================================
+
+// When [S] → 0, rate should go to zero (not infinity/NaN)
+TEST(DissolvedReaction, ForcingFunctionSolventFloorZeroSolvent)
+{
+  using VM = micm::VectorMatrix<double>;
+
+  auto a = micm::Species{ "A" };
+  auto b = micm::Species{ "B" };
+  auto c = micm::Species{ "C" };
+  auto s = micm::Species{ "S" };
+  auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { s } } };
+
+  double k = 1.0;
+  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; }, { a, b }, { c }, s, phase };
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
+  std::unordered_map<std::string, std::size_t> svi{
+    { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 },
+    { "DROP.AQUEOUS.C", 2 }, { "DROP.AQUEOUS.S", 3 }
+  };
+
+  auto ff = reaction.ForcingFunction<VM>(phase_prefixes, spi, svi);
+
+  VM params(1, 1); params[0][0] = k;
+  VM vars(1, 4);
+  vars[0][0] = 0.001; vars[0][1] = 0.002;
+  vars[0][2] = 0.0;   vars[0][3] = 0.0;   // [S] = 0
+  VM forcing(1, 4, 0.0);
+
+  ff(params, vars, forcing);
+
+  // rate = k * 0 / (0+eps)^2 * [A]*[B] → 0
+  EXPECT_NEAR(forcing[0][0], 0.0, 1e-10) << "Forcing should be zero when [S]=0";
+  EXPECT_NEAR(forcing[0][1], 0.0, 1e-10);
+  EXPECT_NEAR(forcing[0][2], 0.0, 1e-10);
+  EXPECT_FALSE(std::isnan(forcing[0][0])) << "Should not produce NaN";
+  EXPECT_FALSE(std::isinf(forcing[0][0])) << "Should not produce Inf";
+}
+
+// Jacobian should also be finite and well-defined at [S]=0
+TEST(DissolvedReaction, JacobianFunctionSolventFloorZeroSolvent)
+{
+  auto a = micm::Species{ "A" };
+  auto b = micm::Species{ "B" };
+  auto c = micm::Species{ "C" };
+  auto s = micm::Species{ "S" };
+  auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { s } } };
+
+  double k = 1.0;
+  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; }, { a, b }, { c }, s, phase };
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
+  std::unordered_map<std::string, std::size_t> svi{
+    { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 },
+    { "DROP.AQUEOUS.C", 2 }, { "DROP.AQUEOUS.S", 3 }
+  };
+
+  auto jac_elements = reaction.NonZeroJacobianElements(phase_prefixes, svi);
+  auto jac_builder = SparseMatrixPolicy::Create(4).SetNumberOfBlocks(1);
+  for (const auto& elem : jac_elements)
+    jac_builder.WithElement(elem.first, elem.second);
+  SparseMatrixPolicy jacobian(jac_builder);
+  jacobian.Fill(0.0);
+
+  auto jac_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
+      phase_prefixes, spi, svi, jacobian);
+
+  MatrixPolicy params(1, 1); params[0][0] = k;
+  MatrixPolicy vars(1, 4);
+  vars[0][0] = 0.001; vars[0][1] = 0.002;
+  vars[0][2] = 0.0;   vars[0][3] = 0.0;  // [S] = 0
+  jac_func(params, vars, jacobian);
+
+  // When [S] = 0 the rate r = k*[S]/([S]+δ)^n_r * ∏Ri = 0, so
+  // ∂r/∂[Ri] = k*[S]/([S]+δ)^n_r * ∏_{j≠i}Rj → 0 naturally (reactant/product columns).
+  // ∂r/∂[S]  = k*(δ+(1-n_r)*[S])/([S]+δ)^{n_r+1} * ∏Ri → k/δ^n_r * ∏Ri (finite, but large).
+  // Verify: no NaN/Inf anywhere; reactant/product columns near zero; solvent column finite.
+  std::size_t solvent_col = svi.at("DROP.AQUEOUS.S");
+  const double eps = 1.0e-20;
+  const std::size_t n_r = 2;  // reactants = {A, B}
+  const double expected_dr_dS = 1.0 * (eps + (1.0 - n_r) * 0.0) / std::pow(eps, n_r + 1)
+                                 * vars[0][0] * vars[0][1];  // k * (δ/δ^{n_r+1}) * [A]*[B]
+  for (std::size_t i = 0; i < 4; ++i)
+    for (std::size_t j = 0; j < 4; ++j)
+    {
+      try
+      {
+        double val = jacobian[0][i][j];
+        EXPECT_FALSE(std::isnan(val)) << "NaN at [" << i << "," << j << "]";
+        EXPECT_FALSE(std::isinf(val)) << "Inf at [" << i << "," << j << "]";
+        if (j == solvent_col)
+        {
+          // ∂r/∂[S] is large but finite; sign flips between reactant and product rows
+          double sign = (i == 2) ? -1.0 : 1.0;  // product C is row 2
+          EXPECT_NEAR(val, sign * expected_dr_dS, std::abs(expected_dr_dS) * 1e-10)
+              << "Unexpected solvent-column Jacobian at [" << i << "," << j << "]";
+        }
+        else
+        {
+          EXPECT_NEAR(val, 0.0, 1e-5)
+              << "Expected near-zero reactant/product-column Jacobian when [S]=0 at ["
+              << i << "," << j << "]";
+        }
+      }
+      catch (...) { /* sparse zero — expected */ }
+    }
+}
+
+// ============================================================================
+// Rate-cap (min_halflife_) tests
+// ============================================================================
+
+// In the uncapped regime (rate << r_max), capped == uncapped
+TEST(DissolvedReaction, ForcingFunctionCappedUncappedRegime)
+{
+  using VM = micm::VectorMatrix<double>;
+
+  auto a = micm::Species{ "A" };
+  auto b = micm::Species{ "B" };
+  auto s = micm::Species{ "S" };
+  auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
+
+  double k = 1.0e-6;  // very slow
+  double t_half = 1.0;  // short half-life → r_max = [A] / t_half = large compared to r
+
+  DissolvedReaction uncapped{ [k](const micm::Conditions&) { return k; }, { a }, { b }, s, phase };
+  DissolvedReaction capped{ [k](const micm::Conditions&) { return k; },
+                             { a }, { b }, s, phase, 1.0e-20, t_half };
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+  std::string k_param = phase.name_ + "." + uncapped.uuid_ + ".k";
+  std::string k_param_c = phase.name_ + "." + capped.uuid_ + ".k";
+  std::unordered_map<std::string, std::size_t> spi_u{ { k_param, 0 } };
+  std::unordered_map<std::string, std::size_t> spi_c{ { k_param_c, 0 } };
+  std::unordered_map<std::string, std::size_t> svi{
+    { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.S", 2 }
+  };
+
+  auto ff_u = uncapped.ForcingFunction<VM>(phase_prefixes, spi_u, svi);
+  auto ff_c = capped.ForcingFunction<VM>(phase_prefixes, spi_c, svi);
+
+  VM params(1, 1); params[0][0] = k;
+  VM vars(1, 3);
+  vars[0][0] = 1.0; vars[0][1] = 0.0; vars[0][2] = 55.0;  // [A]=1
+
+  // r = k * [A] = 1e-6; r_max = [A] / t_half = 1.0 → r << r_max
+  VM forcing_u(1, 3, 0.0);
+  VM forcing_c(1, 3, 0.0);
+  ff_u(params, vars, forcing_u);
+  ff_c(params, vars, forcing_c);
+
+  EXPECT_NEAR(forcing_c[0][0], forcing_u[0][0], std::abs(forcing_u[0][0]) * 1e-10)
+      << "Capped should equal uncapped when rate << r_max";
+  EXPECT_NEAR(forcing_c[0][1], forcing_u[0][1], std::abs(forcing_u[0][1]) * 1e-10);
+}
+
+// In the saturated regime (rate >> r_max), |forcing| ≈ r_max = [A] / t_half
+TEST(DissolvedReaction, ForcingFunctionCappedSaturatedRegime)
+{
+  using VM = micm::VectorMatrix<double>;
+
+  auto a = micm::Species{ "A" };
+  auto b = micm::Species{ "B" };
+  auto s = micm::Species{ "S" };
+  auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
+
+  double k = 1.0e6;       // very fast reaction
+  double t_half = 1000.0; // long half-life → r_max = [A] / t_half = small
+
+  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; },
+                               { a }, { b }, s, phase, 1.0e-20, t_half };
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
+  std::unordered_map<std::string, std::size_t> svi{
+    { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.S", 2 }
+  };
+
+  auto ff = reaction.ForcingFunction<VM>(phase_prefixes, spi, svi);
+
+  VM params(1, 1); params[0][0] = k;
+  VM vars(1, 3);
+  double A = 1.0;
+  vars[0][0] = A; vars[0][1] = 0.0; vars[0][2] = 55.0;
+
+  // r = k * [A] = 1e6; r_max = [A] / t_half = 1e-3 → rate >> r_max
+  // expected capped rate ≈ r_max = A / t_half (tanh(u) ≈ 1)
+  VM forcing(1, 3, 0.0);
+  ff(params, vars, forcing);
+
+  double r_max = A / t_half;
+  EXPECT_NEAR(forcing[0][0], -r_max, r_max * 1e-6)
+      << "Capped forcing should approach -r_max in saturated regime";
+  EXPECT_NEAR(forcing[0][1], r_max, r_max * 1e-6);
+}
+
+// FD check: capped Jacobian (uncapped regime) — should match uncapped analytical
+TEST(DissolvedReaction, JacobianFDCappedUncappedRegime)
+{
+  auto a = micm::Species{ "A" };
+  auto b = micm::Species{ "B" };
+  auto s = micm::Species{ "S" };
+  auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
+
+  double k = 1.0e-5;  // slow reaction, uncapped
+  double t_half = 0.1;  // r_max = [A]/t_half >> r
+
+  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; },
+                               { a }, { b }, s, phase, 1.0e-20, t_half };
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
+  std::unordered_map<std::string, std::size_t> svi{
+    { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.S", 2 }
+  };
+
+  MatrixPolicy params(1, 1); params[0][0] = k;
+  MatrixPolicy vars(1, 3);
+  vars[0][0] = 1.0; vars[0][1] = 0.0; vars[0][2] = 55.0;
+
+  CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+
+// FD check: capped Jacobian (saturated regime) — sech² ≈ 0, correction term dominates
+TEST(DissolvedReaction, JacobianFDCappedSaturatedRegime)
+{
+  auto a = micm::Species{ "A" };
+  auto b = micm::Species{ "B" };
+  auto s = micm::Species{ "S" };
+  auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
+
+  double k = 1.0e5;       // fast reaction, deeply capped
+  double t_half = 1000.0;
+
+  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; },
+                               { a }, { b }, s, phase, 1.0e-20, t_half };
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
+  std::unordered_map<std::string, std::size_t> svi{
+    { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.S", 2 }
+  };
+
+  MatrixPolicy params(1, 1); params[0][0] = k;
+  MatrixPolicy vars(1, 3);
+  vars[0][0] = 1.0; vars[0][1] = 0.0; vars[0][2] = 55.0;
+
+  // In the saturated regime the Jacobian is dominated by the correction term.
+  // FD uses h = max(|y|*1e-7, 1e-7), which is small enough that tanh is still
+  // smooth. Tolerance is relaxed slightly because tanh curvature gives 2nd-order
+  // FD errors proportional to h² * d³r/dy³.
+  CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+
+// FD check: capped bimolecular — both reactant partial derivatives exercised
+TEST(DissolvedReaction, JacobianFDCappedBimolecular)
+{
+  auto a = micm::Species{ "A" };
+  auto b = micm::Species{ "B" };
+  auto c = micm::Species{ "C" };
+  auto s = micm::Species{ "S" };
+  auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { s } } };
+
+  double k = 50.0;        // moderately fast
+  double t_half = 10.0;   // r_max = min(A,B) / t_half
+
+  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; },
+                               { a, b }, { c }, s, phase, 1.0e-20, t_half };
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
+  std::unordered_map<std::string, std::size_t> svi{
+    { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 },
+    { "DROP.AQUEOUS.C", 2 }, { "DROP.AQUEOUS.S", 3 }
+  };
+
+  MatrixPolicy params(1, 1); params[0][0] = k;
+  MatrixPolicy vars(1, 4);
+  // r = k/[S]*[A]*[B] = 50/50 * 0.01 * 0.02 = 2e-4; r_max = min(A,B)/t_half = 1e-3 → mild cap
+  vars[0][0] = 0.01; vars[0][1] = 0.02; vars[0][2] = 0.0; vars[0][3] = 50.0;
+
+  CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+

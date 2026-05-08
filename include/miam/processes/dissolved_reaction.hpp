@@ -32,16 +32,32 @@ namespace miam
     ///
     ///          with rate constant \f$ k \f$.
     ///
-    ///          The rate expression is:
-    ///          \f$ r = \frac{k}{[S]^{n_r - 1}} \prod [R_i] \f$
+    ///          The rate expression (regularized to prevent singularity as [S] → 0) is:
+    ///          \f[
+    ///            r = k \cdot \frac{[S]}{([S] + \delta)^{n_r}} \prod_i [R_i]
+    ///          \f]
     ///
-    ///          where [S] is the solvent concentration (mol m⁻³ air) and
-    ///          \f$ n_r \f$ is the number of reactants. The solvent-normalization
-    ///          factor absorbs concentration dimensions, so \f$ k \f$ always has
-    ///          units of s⁻¹. To convert from a literature rate constant
-    ///          \f$ k_{lit} \f$ in molar units:
+    ///          where [S] is the solvent concentration (mol m⁻³ air),
+    ///          \f$ n_r \f$ is the number of reactants, and \f$ \delta \f$ =
+    ///          `solvent_floor_` is a small regularization constant (default 10⁻²⁰).
+    ///          In the limit \f$ \delta \to 0 \f$ this reduces to the clean form:
+    ///          \f$ r = k / [S]^{n_r - 1} \cdot \prod_i [R_i] \f$.
+    ///
+    ///          The solvent-normalization factor absorbs concentration dimensions,
+    ///          so \f$ k \f$ always has units of s⁻¹. To convert from a literature
+    ///          rate constant \f$ k_{lit} \f$ in molar units:
     ///          \f$ k = k_{lit} \times c_{H_2O}^{n_r - 1} \f$
     ///          where \f$ c_{H_2O} = 55.556 \f$ mol/L.
+    ///
+    ///          Partial derivatives used in the Jacobian:
+    ///          \f[
+    ///            \frac{\partial r}{\partial [R_j]} = k \cdot \frac{[S]}{([S]+\delta)^{n_r}}
+    ///              \prod_{i \neq j} [R_i]
+    ///          \f]
+    ///          \f[
+    ///            \frac{\partial r}{\partial [S]} = k \cdot
+    ///              \frac{\delta + (1 - n_r)[S]}{([S]+\delta)^{n_r+1}} \prod_i [R_i]
+    ///          \f]
     class DissolvedReaction
     {
      public:
@@ -90,8 +106,8 @@ namespace miam
       /// @return Set of unique parameter names for this process
       std::set<std::string> ProcessParameterNames(const std::map<std::string, std::set<std::string>>& phase_prefixes) const
       {
-        // The conditions are shared by the whole system, so we just need one value for the rate
         std::set<std::string> parameter_names;
+        // The conditions are shared by the whole system, so we just need one value for the rate
         // constant. We can use the phase name and uuid to create a unique parameter name.
         parameter_names.insert(phase_.name_ + "." + uuid_ + ".k");
         return parameter_names;
