@@ -18,10 +18,29 @@ namespace miam
     constexpr double R_gas = micm::constants::GAS_CONSTANT;
 
     /// @brief Provider for condensation rate and its derivatives
-    /// @details Encapsulates the Fuchs-Sutugin transition regime calculation:
-    ///          k_cond = 4π · r_eff · N · D · f(Kn)
-    ///          where f(Kn) = (1 + Kn) / (1 + 2·Kn·(1 + Kn) / α)
-    ///          Kn = λ / r_eff, λ = 3·D / c̄, c̄ = √(8·R·T / (π·molecular_weight))
+    /// @details Encapsulates the Fuchs-Sutugin transition regime calculation \cite Fuchs1971, Zaveri2008:
+    ///
+    ///          k_cond = 4π · r_eff · N · D · f(Kn, α)                      [s⁻¹]
+    ///
+    ///          f(Kn, α) = 0.75α(1 + Kn) / (Kn² + (1 + 0.283α)Kn + 0.75α)   [dimensionless]
+    ///
+    ///          Kn = λ / r_eff                                              [dimensionless]
+    ///          λ  = 3·D / c̄                                                [m]
+    ///          c̄  = √(8·R·T / (π·M))                                       [m s⁻¹]
+    ///
+    ///          Variable definitions:
+    ///            k_cond  First-order condensation rate coefficient         [s⁻¹]
+    ///            r_eff   Effective radius of the aerosol particle          [m]
+    ///            N       Aerosol particle number concentration             [# m⁻³]
+    ///            D       Gas-phase diffusion coefficient                   [m² s⁻¹]
+    ///            f       Fuchs-Sutugin transition regime correction factor [dimensionless]
+    ///            Kn      Knudsen number                                    [dimensionless]
+    ///            λ       Mean free path of gas molecules                   [m]
+    ///            c̄       Mean molecular speed of gas molecules             [m s⁻¹]
+    ///            R       Ideal gas constant (8.314 J mol⁻¹ K⁻¹)            [J mol⁻¹ K⁻¹]
+    ///            T       Temperature                                       [K]
+    ///            M       Molecular weight of the gas species               [kg mol⁻¹]
+    ///            α       Mass accommodation coefficient                    [dimensionless, 0–1]
     struct CondensationRateProvider
     {
       /// @brief Compute condensation rate k_cond [s⁻¹]
@@ -65,8 +84,8 @@ namespace miam
         double c_bar = std::sqrt(8.0 * R_gas * T / (std::numbers::pi * molecular_weight));
         double lambda = 3.0 * diffusion_coefficient / c_bar;
         double Kn = lambda / r_eff;
-        double denom = 1.0 + 2.0 * Kn * (1.0 + Kn) / accommodation_coefficient;
-        double f = (1.0 + Kn) / denom;
+        double denom = Kn * Kn + (1.0 + 0.283 * accommodation_coefficient) * Kn + 0.75 * accommodation_coefficient;
+        double f = 0.75 * accommodation_coefficient * (1.0 + Kn) / denom;
         return 4.0 * std::numbers::pi * r_eff * N * diffusion_coefficient * f;
       };
 
@@ -83,13 +102,16 @@ namespace miam
         double c_bar = std::sqrt(8.0 * R_gas * T / (std::numbers::pi * molecular_weight));
         double lambda = 3.0 * diffusion_coefficient / c_bar;
         double Kn = lambda / r_eff;
-        double denom = 1.0 + 2.0 * Kn * (1.0 + Kn) / accommodation_coefficient;
-        double f = (1.0 + Kn) / denom;
+        double denom = Kn * Kn + (1.0 + 0.283 * accommodation_coefficient) * Kn + 0.75 * accommodation_coefficient;
+        double f = 0.75 * accommodation_coefficient * (1.0 + Kn) / denom;
 
         k_cond = 4.0 * std::numbers::pi * r_eff * N * diffusion_coefficient * f;
 
-        // df/dKn = (α - 2 - 4·Kn - 2·Kn²) / (α · denom²)
-        double df_dKn = (accommodation_coefficient - 2.0 - 4.0 * Kn - 2.0 * Kn * Kn) / (accommodation_coefficient * denom * denom);
+        // df/dKn = 0.75α · (-Kn² - 2Kn + (0.467α - 1)) / denom²
+        // where 0.467 = 0.75 - 0.283
+        double df_dKn = 0.75 * accommodation_coefficient *
+                        (-Kn * Kn - 2.0 * Kn + (0.75 - 0.283) * accommodation_coefficient - 1.0) /
+                        (denom * denom);
 
         // dk_cond/dr_eff = 4π·N·D · (f + r_eff · df/dKn · dKn/dr)
         // where dKn/dr = -Kn / r_eff

@@ -1183,8 +1183,12 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultiplePhaseInstances)
   vars[0][1] = 1.0e-5; vars[0][2] = 55000.0;
   vars[0][3] = 2.0e-5; vars[0][4] = 45000.0;
 
+  // Two-mode tests: the large phi2*kc2*gas term in MODE2 doesn't depend on H2O1,
+  // so it should cancel in the FD difference (f_plus - f_minus). However, floating-point
+  // rounding of this dominant term (~5e-10) introduces ~1e-3 relative error in the FD
+  // approximation of J[gas, H2O1] (~1e-20). Use rel_tol=1e-3 to account for this.
   CheckFiniteDifferenceJacobian(process, phase_prefixes, state_parameter_indices,
-                                state_variable_indices, providers, params, vars);
+                                state_variable_indices, providers, params, vars, 1e-3);
 }
 
 // ---------------------------------------------------------------------------
@@ -1351,8 +1355,12 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultiCellsMultiInstances)
     vars[c][3] = 2.0e-5;   vars[c][4] = 45000.0;
   }
 
+  // Two-mode tests: the large phi2*kc2*gas term in MODE2 doesn't depend on H2O1,
+  // so it should cancel in the FD difference (f_plus - f_minus). However, floating-point
+  // rounding of this dominant term (~5e-10) introduces ~1e-3 relative error in the FD
+  // approximation of J[gas, H2O1] (~1e-20). Use rel_tol=1e-3 to account for this.
   CheckFiniteDifferenceJacobian(process, phase_prefixes, state_parameter_indices,
-                                state_variable_indices, providers, params, vars);
+                                state_variable_indices, providers, params, vars, 1e-3);
 }
 
 // ---------------------------------------------------------------------------
