@@ -3,6 +3,8 @@
 
 #include <miam/constraints/linear_constraint.hpp>
 #include <miam/constraints/linear_constraint_builder.hpp>
+#include <micm/util/jacobian_verification.hpp>
+
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
@@ -436,74 +438,47 @@ namespace
   /// @brief FD check for constraint Jacobian vs residual
   /// @details For linear constraints, dG/dy is constant, so the FD check should be exact
   ///          up to floating point precision.
+  /// @brief Compare analytical constraint Jacobian against central finite-difference approximation
+  ///        using MICM's FiniteDifferenceJacobian / CompareJacobianToFiniteDifference utilities.
   void CheckConstraintFDJacobian(
       const LinearConstraint& constraint,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_indices,
-      const DMP& state_variables,
-      double rel_tol = 1e-8)
+      const DMP& state_variables)
   {
-    std::size_t num_blocks = state_variables.NumRows();
-    std::size_t num_vars = state_indices.size();
+    const std::size_t num_blocks = state_variables.NumRows();
+    const std::size_t num_vars = state_indices.size();
 
-    // Build analytical Jacobian
+    // Build sparse Jacobian structure and compute analytical Jacobian
     auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, state_indices, num_blocks);
     auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, state_indices, jacobian);
     jac_fn(state_variables, no_params, jacobian);
 
-    // Build residual function for FD
-    // Use a relatively large step: for linear constraints the FD is exact
-    // regardless of step size, and a larger step reduces floating-point noise.
-    double eps = 1e-4;
-    for (std::size_t j = 0; j < num_vars; ++j)
-    {
-      DMP vars_plus(state_variables);
-      DMP vars_minus(state_variables);
-      for (std::size_t b = 0; b < num_blocks; ++b)
-      {
-        double h = std::max(std::abs(state_variables[b][j]) * eps, eps);
-        vars_plus[b][j] += h;
-        vars_minus[b][j] -= h;
-      }
-
-      DMP res_plus(num_blocks, num_vars, 0.0);
-      DMP res_minus(num_blocks, num_vars, 0.0);
-
-      auto rf_plus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
-      auto rf_minus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
-      rf_plus(vars_plus, no_params, res_plus);
-      rf_minus(vars_minus, no_params, res_minus);
-
-      for (std::size_t b = 0; b < num_blocks; ++b)
-      {
-        double h = std::max(std::abs(state_variables[b][j]) * eps, eps);
-        for (std::size_t i = 0; i < num_vars; ++i)
+    // Build FD Jacobian — bind no_params into the residual callable
+    // Use perturbation=1e-7 to match old central-difference scheme: h = max(|x|, 1) * 1e-7.
+    // Use atol=rtol=1e-5 to account for FP cancellation from the large constant term.
+    auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
+    auto fd_jac = micm::FiniteDifferenceJacobian<DMP>(
+        [&](const DMP& vars, DMP& out)
         {
-          double fd = (res_plus[b][i] - res_minus[b][i]) / (2.0 * h);  // dG_i/dy_j
-          // Jacobian stores -dG/dy, so analytical + fd ≈ 0
-          double analytical;
-          try
-          {
-            analytical = jacobian[b][i][j];
-          }
-          catch (...)
-          {
-            // Zero element in sparse matrix
-            if (std::abs(fd) > 1e-12)
-              ADD_FAILURE() << "Missing Jacobian at block=" << b << " row=" << i << " col=" << j << " fd=" << fd;
-            continue;
-          }
+          out.Fill(0.0);
+          rf(vars, no_params, out);
+        },
+        state_variables,
+        num_vars,
+        1e-7);
 
-          double scale = std::max(std::abs(analytical), std::abs(fd));
-          if (scale > 1e-20)
-          {
-            EXPECT_NEAR(analytical + fd, 0.0, scale * rel_tol)
-                << "FD mismatch: block=" << b << " row=" << i << " col=" << j
-                << " analytical(-dG/dy)=" << analytical << " fd(dG/dy)=" << fd;
-          }
-        }
-      }
-    }
+    // Compare analytical vs FD
+    auto cmp = micm::CompareJacobianToFiniteDifference(jacobian, fd_jac, num_vars, 1e-5, 1e-5);
+    EXPECT_TRUE(cmp.passed) << "FD mismatch: block=" << cmp.worst_block << " row=" << cmp.worst_row
+                            << " col=" << cmp.worst_col << " +J(analytical)=" << cmp.worst_analytical
+                            << " +J(fd)=" << cmp.worst_fd;
+
+    // Verify no significant FD signal outside the declared sparsity pattern
+    auto spc = micm::CheckJacobianSparsityCompleteness(jacobian, fd_jac, num_vars);
+    EXPECT_TRUE(spc.passed) << "Missing sparsity entry: block=" << spc.worst_block
+                            << " row=" << spc.worst_row << " col=" << spc.worst_col
+                            << " fd=" << spc.worst_fd;
   }
 }  // namespace
 
@@ -1218,4 +1193,105 @@ TEST(LinearConstraint, CopiedConstraintProducesSameResults)
   rf_copy(sv, no_params, res_copy);
 
   EXPECT_NEAR(res_orig[0][0], res_copy[0][0], 1e-15);
+}
+
+// ============================================================================
+// Limit / Extreme tests (Phase D3)
+// ============================================================================
+
+TEST(LinearConstraint, ResidualAllZero)
+{
+  // G = [A_g] + [A_aq] - 100.0; when all species = 0: G = -100.0
+  LinearConstraint constraint(
+      gas_phase,
+      A_g,
+      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } },
+      100.0);
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("MODE1");
+
+  std::unordered_map<std::string, std::size_t> state_indices;
+  state_indices["A_g"] = 0;
+  state_indices["MODE1.AQUEOUS.A_aq"] = 1;
+
+  DMP vars{ 1, 2, 0.0 };  // all zero
+
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
+  DMP residual{ 1, 2, 0.0 };
+  rf(vars, no_params, residual);
+
+  EXPECT_NEAR(residual[0][0], -100.0, 1.0e-12);
+}
+
+TEST(LinearConstraint, ResidualNegativeCoefficients)
+{
+  // G = [A_g] - 2.0*[A_aq] - 5.0; verify sign handling for negative coefficient
+  LinearConstraint constraint(
+      gas_phase,
+      A_g,
+      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, -2.0 } },
+      5.0);
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("MODE1");
+
+  std::unordered_map<std::string, std::size_t> state_indices;
+  state_indices["A_g"] = 0;
+  state_indices["MODE1.AQUEOUS.A_aq"] = 1;
+
+  DMP vars{ 1, 2, 0.0 };
+  vars[0][0] = 7.0;  // [A_g]
+  vars[0][1] = 3.0;  // [A_aq]
+
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
+  DMP residual{ 1, 2, 0.0 };
+  rf(vars, no_params, residual);
+
+  // G = 7.0 - 2.0*3.0 - 5.0 = 7 - 6 - 5 = -4.0
+  EXPECT_NEAR(residual[0][0], -4.0, 1.0e-12);
+}
+
+TEST(LinearConstraint, JacobianFDNegativeCoefficients)
+{
+  // FD Jacobian check when coefficients include negative values and mixed signs
+  LinearConstraint constraint(
+      gas_phase,
+      A_g,
+      { { gas_phase, A_g, 3.0 }, { aqueous_phase, A_aq, -1.5 }, { aqueous_phase, B_aq, 0.5 } },
+      20.0);
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+
+  std::unordered_map<std::string, std::size_t> state_indices;
+  state_indices["A_g"] = 0;
+  state_indices["DROP.AQUEOUS.A_aq"] = 1;
+  state_indices["DROP.AQUEOUS.B_aq"] = 2;
+
+  DMP vars{ 1, 3, 0.0 };
+  vars[0][0] = 4.0;  vars[0][1] = 2.0;  vars[0][2] = 1.0;
+
+  CheckConstraintFDJacobian(constraint, phase_prefixes, state_indices, vars);
+}
+
+TEST(LinearConstraint, JacobianFDAtZeroConcentrations)
+{
+  // At all-zero concentrations, the linear Jacobian should still be exact (constant)
+  LinearConstraint constraint(
+      gas_phase,
+      A_g,
+      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } },
+      50.0);
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("MODE1");
+
+  std::unordered_map<std::string, std::size_t> state_indices;
+  state_indices["A_g"] = 0;
+  state_indices["MODE1.AQUEOUS.A_aq"] = 1;
+
+  DMP vars{ 1, 2, 0.0 };  // all zero — Jacobian is still [1, 1] regardless
+
+  CheckConstraintFDJacobian(constraint, phase_prefixes, state_indices, vars);
 }

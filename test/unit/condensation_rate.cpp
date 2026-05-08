@@ -292,3 +292,58 @@ TEST(CondensationRate, DerivativesFreeMolecularLimit)
   provider.ComputeValueAndDerivatives(r_small, N, T, k_cond, dk_dr, dk_dN);
   EXPECT_NEAR(dk_dr / dk_dr_fm_limit, 1.0, 1.0e-3);
 }
+
+// ============================================================================
+// Limit / Extreme tests (Phase E1)
+// ============================================================================
+
+TEST(CondensationRate, ZeroRadiusReturnsZero)
+{
+  // r_eff = 0: k_cond = 4π·r·N·D·f(Kn,α) → 0 as r → 0 (Kn → ∞, f ~ 0.75α/Kn ~ c̄r/D)
+  auto provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  double k = provider.ComputeValue(0.0, N, T);
+  EXPECT_NEAR(k, 0.0, 1.0e-30);
+  EXPECT_FALSE(std::isnan(k));
+
+  double k_cond, dk_dr, dk_dN;
+  provider.ComputeValueAndDerivatives(0.0, N, T, k_cond, dk_dr, dk_dN);
+  EXPECT_NEAR(k_cond, 0.0, 1.0e-30);
+  EXPECT_FALSE(std::isnan(k_cond));
+  EXPECT_FALSE(std::isinf(dk_dr));
+}
+
+TEST(CondensationRate, ZeroNumberConcentrationReturnsZero)
+{
+  // N = 0: k_cond = 4π·r·N·D·f(Kn,α) → 0 linearly in N
+  auto provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  double k = provider.ComputeValue(r_eff, 0.0, T);
+  EXPECT_NEAR(k, 0.0, 1.0e-30);
+  EXPECT_FALSE(std::isnan(k));
+
+  double k_cond, dk_dr, dk_dN;
+  provider.ComputeValueAndDerivatives(r_eff, 0.0, T, k_cond, dk_dr, dk_dN);
+  EXPECT_NEAR(k_cond, 0.0, 1.0e-30);
+  EXPECT_FALSE(std::isnan(k_cond));
+  EXPECT_FALSE(std::isnan(dk_dN));
+}
+
+TEST(CondensationRate, CAMPZaveri2008FormulaExact)
+{
+  // Direct formula verification: f(Kn,α) = 0.75α(1+Kn) / (Kn² + (1+0.283α)Kn + 0.75α)
+  // at specific Kn = 0.5, α = 0.1.  k_cond = 4π·r·N·D·f(Kn,α).
+  constexpr double alpha_test = 0.1;
+  auto provider = MakeCondensationRateProvider(D_g, alpha_test, gas_molecular_weight);
+
+  constexpr double r_test = 1.0e-6;  // 1 μm
+  constexpr double N_test = 1.0e9;
+  constexpr double T_test = 298.15;
+
+  double c_bar = mean_molecular_speed(T_test, gas_molecular_weight);
+  double lambda = mean_free_path(D_g, c_bar);
+  double Kn = lambda / r_test;
+  double f = fuchs_sutugin(Kn, alpha_test);
+  double k_expected = 4.0 * std::numbers::pi * r_test * N_test * D_g * f;
+
+  double k_computed = provider.ComputeValue(r_test, N_test, T_test);
+  EXPECT_NEAR(k_computed, k_expected, k_expected * 1.0e-12);
+}

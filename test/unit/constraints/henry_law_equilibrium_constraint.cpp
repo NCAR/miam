@@ -4,6 +4,8 @@
 #include <miam/constraints/henry_law_equilibrium_constraint.hpp>
 #include <miam/constraints/henry_law_equilibrium_constraint_builder.hpp>
 #include <miam/util/condensation_rate.hpp>
+#include <micm/util/jacobian_verification.hpp>
+
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
@@ -491,73 +493,49 @@ namespace
   }
 
   /// @brief Finite-difference check for the constraint Jacobian
+  /// @brief Compare analytical constraint Jacobian against central finite-difference approximation
+  ///        using MICM's FiniteDifferenceJacobian / CompareJacobianToFiniteDifference utilities.
   void CheckConstraintFDJacobian(
       const HenryLawEquilibriumConstraint& constraint,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& param_idx,
       const std::unordered_map<std::string, std::size_t>& state_indices,
       const DMP& state_variables,
-      const DMP& state_params,
-      double rel_tol = 1e-5,
-      double abs_tol = 1e-8)
+      const DMP& state_params)
   {
-    std::size_t num_blocks = state_variables.NumRows();
-    std::size_t num_vars = state_indices.size();
+    const std::size_t num_blocks = state_variables.NumRows();
+    const std::size_t num_vars = state_indices.size();
 
-    // Analytical Jacobian
+    // Build sparse Jacobian structure and compute analytical Jacobian
     auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, state_indices, num_blocks);
     auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_idx, state_indices, jacobian);
     jac_fn(state_variables, state_params, jacobian);
 
-    // Central-difference FD
-    double eps = 1e-7;
-    for (std::size_t j = 0; j < num_vars; ++j)
-    {
-      DMP vars_plus(state_variables);
-      DMP vars_minus(state_variables);
-      for (std::size_t b = 0; b < num_blocks; ++b)
-      {
-        double h = std::max(std::abs(state_variables[b][j]) * eps, eps);
-        vars_plus[b][j] += h;
-        vars_minus[b][j] -= h;
-      }
-
-      DMP res_plus(num_blocks, num_vars, 0.0);
-      DMP res_minus(num_blocks, num_vars, 0.0);
-      auto rf_plus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_idx, state_indices);
-      auto rf_minus = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_idx, state_indices);
-      rf_plus(vars_plus, state_params, res_plus);
-      rf_minus(vars_minus, state_params, res_minus);
-
-      for (std::size_t b = 0; b < num_blocks; ++b)
-      {
-        double h = std::max(std::abs(state_variables[b][j]) * eps, eps);
-        for (std::size_t i = 0; i < num_vars; ++i)
+    // Build FD Jacobian — bind state_params into the residual callable
+    // Use perturbation=1e-7 to match old central-difference scheme: h = max(|x|, 1) * 1e-7.
+    // Use atol=rtol=1e-5 to match old rel_tol tolerance.
+    auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_idx, state_indices);
+    auto fd_jac = micm::FiniteDifferenceJacobian<DMP>(
+        [&](const DMP& vars, DMP& out)
         {
-          double fd = (res_plus[b][i] - res_minus[b][i]) / (2.0 * h);
-          double analytical;
-          try
-          {
-            analytical = jacobian[b][i][j];
-          }
-          catch (...)
-          {
-            if (std::abs(fd) > 1e-10)
-              ADD_FAILURE() << "Missing Jacobian at block=" << b << " row=" << i << " col=" << j << " fd=" << fd;
-            continue;
-          }
+          out.Fill(0.0);
+          rf(vars, state_params, out);
+        },
+        state_variables,
+        num_vars,
+        1e-7);
 
-          double scale = std::max(std::abs(analytical), std::abs(fd));
-          if (scale > 1e-15)
-          {
-            double tol = std::max(scale * rel_tol, abs_tol);
-            EXPECT_NEAR(analytical + fd, 0.0, tol)
-                << "FD mismatch: block=" << b << " row=" << i << " col=" << j
-                << " analytical(-dG/dy)=" << analytical << " fd(dG/dy)=" << fd;
-          }
-        }
-      }
-    }
+    // Compare analytical vs FD
+    auto cmp = micm::CompareJacobianToFiniteDifference(jacobian, fd_jac, num_vars, 1e-5, 1e-5);
+    EXPECT_TRUE(cmp.passed) << "FD mismatch: block=" << cmp.worst_block << " row=" << cmp.worst_row
+                            << " col=" << cmp.worst_col << " +J(analytical)=" << cmp.worst_analytical
+                            << " +J(fd)=" << cmp.worst_fd;
+
+    // Verify no significant FD signal outside the declared sparsity pattern
+    auto spc = micm::CheckJacobianSparsityCompleteness(jacobian, fd_jac, num_vars);
+    EXPECT_TRUE(spc.passed) << "Missing sparsity entry: block=" << spc.worst_block
+                            << " row=" << spc.worst_row << " col=" << spc.worst_col
+                            << " fd=" << spc.worst_fd;
   }
 }  // namespace
 
@@ -1389,4 +1367,158 @@ TEST(HenryLawEquilibriumConstraint, VectorMatrix_L4_4cells)
   using VDM = micm::VectorMatrix<double, 4>;
   using VSM = micm::SparseMatrix<double, micm::SparseMatrixVectorOrderingCompressedSparseRow<4>>;
   TestHLConstraintVectorMatrix<VDM, VSM>(4, 298.15, true);
+}
+
+// ============================================================================
+// Limit / Extreme tests (Phase D2)
+// ============================================================================
+
+TEST(HenryLawEquilibriumConstraint, ResidualZeroGasConcentration)
+{
+  // G = HLC*R*T*f_v*[A_g] - [A_aq]; with [A_g]=0: G = -[A_aq]
+  double HLC = 5.0e3;
+  double T = 298.15;
+  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto constraint = HenryLawEquilibriumConstraintBuilder()
+      .SetGasSpecies(A_g)
+      .SetCondensedSpecies(A_aq)
+      .SetSolvent(h2o)
+      .SetCondensedPhase(aqueous_phase)
+      .SetHenryLawConstant(hlc)
+      .SetSolventMolecularWeight(water_molecular_weight)
+      .SetSolventDensity(water_density)
+      .Build();
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+
+  std::unordered_map<std::string, std::size_t> si;
+  si["A_g"] = 0; si["DROP.AQUEOUS.A_aq"] = 1; si["DROP.AQUEOUS.H2O"] = 2;
+
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitHlcRt(constraint, phase_prefixes, pi, 1, T);
+
+  double A_aq_conc = 0.5;
+  DMP sv{ 1, 3, 0.0 };
+  sv[0][0] = 0.0;         // [A_g] = 0
+  sv[0][1] = A_aq_conc;
+  sv[0][2] = 300.0;
+
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, pi, si);
+  DMP residual{ 1, 3, 0.0 };
+  rf(sv, sp, residual);
+
+  EXPECT_NEAR(residual[0][1], -A_aq_conc, 1.0e-12);
+}
+
+TEST(HenryLawEquilibriumConstraint, ResidualZeroAqueousConcentration)
+{
+  // G = HLC*R*T*f_v*[A_g] - [A_aq]; with [A_aq]=0: G = HLC*R*T*f_v*[A_g]
+  double HLC = 5.0e3;
+  double T = 298.15;
+  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto constraint = HenryLawEquilibriumConstraintBuilder()
+      .SetGasSpecies(A_g)
+      .SetCondensedSpecies(A_aq)
+      .SetSolvent(h2o)
+      .SetCondensedPhase(aqueous_phase)
+      .SetHenryLawConstant(hlc)
+      .SetSolventMolecularWeight(water_molecular_weight)
+      .SetSolventDensity(water_density)
+      .Build();
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+
+  std::unordered_map<std::string, std::size_t> si;
+  si["A_g"] = 0; si["DROP.AQUEOUS.A_aq"] = 1; si["DROP.AQUEOUS.H2O"] = 2;
+
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitHlcRt(constraint, phase_prefixes, pi, 1, T);
+
+  double A_g_conc = 1.0e-6;
+  double H2O_conc = 300.0;
+  DMP sv{ 1, 3, 0.0 };
+  sv[0][0] = A_g_conc;
+  sv[0][1] = 0.0;         // [A_aq] = 0
+  sv[0][2] = H2O_conc;
+
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, pi, si);
+  DMP residual{ 1, 3, 0.0 };
+  rf(sv, sp, residual);
+
+  double f_v = H2O_conc * water_molecular_weight / water_density;
+  double hlc_rt = HLC * miam::util::R_gas * T;
+  EXPECT_NEAR(residual[0][1], hlc_rt * f_v * A_g_conc, 1.0e-10);
+  EXPECT_GT(residual[0][1], 0.0);  // positive: equilibrium favors aqueous phase
+}
+
+TEST(HenryLawEquilibriumConstraint, JacobianFDZeroConcentrations)
+{
+  double HLC = 5.0e3;
+  double T = 298.15;
+  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto constraint = HenryLawEquilibriumConstraintBuilder()
+      .SetGasSpecies(A_g)
+      .SetCondensedSpecies(A_aq)
+      .SetSolvent(h2o)
+      .SetCondensedPhase(aqueous_phase)
+      .SetHenryLawConstant(hlc)
+      .SetSolventMolecularWeight(water_molecular_weight)
+      .SetSolventDensity(water_density)
+      .Build();
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+
+  std::unordered_map<std::string, std::size_t> si;
+  si["A_g"] = 0; si["DROP.AQUEOUS.A_aq"] = 1; si["DROP.AQUEOUS.H2O"] = 2;
+
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitHlcRt(constraint, phase_prefixes, pi, 1, T);
+
+  // [A_g]=0, [A_aq] non-zero
+  {
+    DMP sv{ 1, 3, 0.0 };
+    sv[0][0] = 0.0; sv[0][1] = 0.5; sv[0][2] = 300.0;
+    CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
+  }
+
+  // [A_aq]=0, [A_g] non-zero
+  {
+    DMP sv{ 1, 3, 0.0 };
+    sv[0][0] = 1.0e-6; sv[0][1] = 0.0; sv[0][2] = 300.0;
+    CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
+  }
+}
+
+TEST(HenryLawEquilibriumConstraint, JacobianFDTemperatureExtremes)
+{
+  double HLC = 5.0e3;
+  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto constraint = HenryLawEquilibriumConstraintBuilder()
+      .SetGasSpecies(A_g)
+      .SetCondensedSpecies(A_aq)
+      .SetSolvent(h2o)
+      .SetCondensedPhase(aqueous_phase)
+      .SetHenryLawConstant(hlc)
+      .SetSolventMolecularWeight(water_molecular_weight)
+      .SetSolventDensity(water_density)
+      .Build();
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+
+  std::unordered_map<std::string, std::size_t> si;
+  si["A_g"] = 0; si["DROP.AQUEOUS.A_aq"] = 1; si["DROP.AQUEOUS.H2O"] = 2;
+
+  DMP sv{ 1, 3, 0.0 };
+  sv[0][0] = 1.0e-6; sv[0][1] = 0.5; sv[0][2] = 300.0;
+
+  for (double T : { 200.0, 298.15, 350.0 })
+  {
+    auto pi = BuildParamIndices(constraint, phase_prefixes);
+    auto sp = InitHlcRt(constraint, phase_prefixes, pi, 1, T);
+    CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
+  }
 }

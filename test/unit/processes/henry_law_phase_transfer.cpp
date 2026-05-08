@@ -6,6 +6,8 @@
 #include <miam/processes/constants/henrys_law_constant.hpp>
 #include <miam/util/condensation_rate.hpp>
 
+#include <micm/util/jacobian_verification.hpp>
+
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
@@ -852,6 +854,7 @@ namespace
   }
 
   /// @brief Compare analytical Jacobian against central finite-difference approximation
+  ///        using MICM's FiniteDifferenceJacobian / CompareJacobianToFiniteDifference utilities.
   void CheckFiniteDifferenceJacobian(
       const HenryLawPhaseTransfer& process,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
@@ -859,74 +862,40 @@ namespace
       const std::unordered_map<std::string, std::size_t>& state_variable_indices,
       const std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>>& providers,
       const MatrixPolicy& state_parameters,
-      const MatrixPolicy& state_variables,
-      double rel_tol = 1e-4)
+      const MatrixPolicy& state_variables)
   {
-    std::size_t num_blocks = state_parameters.NumRows();
-    std::size_t num_vars = state_variable_indices.size();
+    const std::size_t num_blocks = state_parameters.NumRows();
+    const std::size_t num_vars = state_variable_indices.size();
 
-    // Build analytical Jacobian
+    // Build sparse Jacobian structure and compute analytical Jacobian
     auto jacobian = BuildJacobian(process, phase_prefixes, state_variable_indices, providers, num_blocks);
     auto jac_func = process.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
         phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
     jac_func(state_parameters, state_variables, jacobian);
 
-    // Build forcing function for FD
-    double eps = 1e-7;
-    for (std::size_t j = 0; j < num_vars; ++j)
-    {
-      MatrixPolicy vars_plus(state_variables);
-      MatrixPolicy vars_minus(state_variables);
-      for (std::size_t b = 0; b < num_blocks; ++b)
-      {
-        double h = std::max(std::abs(state_variables[b][j]) * eps, eps);
-        vars_plus[b][j] = state_variables[b][j] + h;
-        vars_minus[b][j] = state_variables[b][j] - h;
-      }
-
-      MatrixPolicy forcing_plus(num_blocks, num_vars, 0.0);
-      MatrixPolicy forcing_minus(num_blocks, num_vars, 0.0);
-
-      auto ff_plus = process.ForcingFunction<MatrixPolicy>(
-          phase_prefixes, state_parameter_indices, state_variable_indices, providers);
-      auto ff_minus = process.ForcingFunction<MatrixPolicy>(
-          phase_prefixes, state_parameter_indices, state_variable_indices, providers);
-
-      ff_plus(state_parameters, vars_plus, forcing_plus);
-      ff_minus(state_parameters, vars_minus, forcing_minus);
-
-      for (std::size_t b = 0; b < num_blocks; ++b)
-      {
-        double h = std::max(std::abs(state_variables[b][j]) * eps, eps);
-        for (std::size_t i = 0; i < num_vars; ++i)
+    // Build FD Jacobian — bind state_parameters into the forcing callable
+    auto ff = process.ForcingFunction<MatrixPolicy>(
+        phase_prefixes, state_parameter_indices, state_variable_indices, providers);
+    auto fd_jac = micm::FiniteDifferenceJacobian<MatrixPolicy>(
+        [&](const MatrixPolicy& vars, MatrixPolicy& out)
         {
-          double fd = (forcing_plus[b][i] - forcing_minus[b][i]) / (2.0 * h);
-          // Jacobian stores -J, so analytical should be -fd
-          double analytical;
-          try
-          {
-            analytical = jacobian[b][i][j];
-          }
-          catch (...)
-          {
-            // Zero element in sparse matrix — fd should also be ~0
-            if (std::abs(fd) > 1e-10)
-              ADD_FAILURE() << "Missing Jacobian entry at block=" << b
-                            << " row=" << i << " col=" << j << " fd=" << fd;
-            continue;
-          }
+          out.Fill(0.0);
+          ff(state_parameters, vars, out);
+        },
+        state_variables,
+        num_vars);
 
-          double scale = std::max(std::abs(analytical), std::abs(fd));
-          if (scale > 1e-20)
-          {
-            // analytical = -J[i,j], fd ≈ +J[i,j], so analytical + fd ≈ 0
-            EXPECT_NEAR(analytical + fd, 0.0, scale * rel_tol)
-                << "FD mismatch: block=" << b << " row=" << i << " col=" << j
-                << " analytical(-J)=" << analytical << " fd(+J)=" << fd;
-          }
-        }
-      }
-    }
+    // Compare analytical vs FD (MICM defaults: atol=1e-7, rtol=1e-7)
+    auto cmp = micm::CompareJacobianToFiniteDifference(jacobian, fd_jac, num_vars);
+    EXPECT_TRUE(cmp.passed) << "FD mismatch: block=" << cmp.worst_block << " row=" << cmp.worst_row
+                            << " col=" << cmp.worst_col << " +J(analytical)=" << cmp.worst_analytical
+                            << " +J(fd)=" << cmp.worst_fd;
+
+    // Verify no significant FD signal outside the declared sparsity pattern
+    auto spc = micm::CheckJacobianSparsityCompleteness(jacobian, fd_jac, num_vars);
+    EXPECT_TRUE(spc.passed) << "Missing sparsity entry: block=" << spc.worst_block
+                            << " row=" << spc.worst_row << " col=" << spc.worst_col
+                            << " fd=" << spc.worst_fd;
   }
 
   /// @brief Create a provider that varies linearly with given state variables:
@@ -1184,11 +1153,10 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultiplePhaseInstances)
   vars[0][3] = 2.0e-5; vars[0][4] = 45000.0;
 
   // Two-mode tests: the large phi2*kc2*gas term in MODE2 doesn't depend on H2O1,
-  // so it should cancel in the FD difference (f_plus - f_minus). However, floating-point
-  // rounding of this dominant term (~5e-10) introduces ~1e-3 relative error in the FD
-  // approximation of J[gas, H2O1] (~1e-20). Use rel_tol=1e-3 to account for this.
+  // so it should cancel in the FD difference (f_plus - f_minus). The resulting
+  // FD noise on J[gas, H2O1] (~1e-20) is absorbed by MICM's atol=1e-7.
   CheckFiniteDifferenceJacobian(process, phase_prefixes, state_parameter_indices,
-                                state_variable_indices, providers, params, vars, 1e-3);
+                                state_variable_indices, providers, params, vars);
 }
 
 // ---------------------------------------------------------------------------
@@ -1356,11 +1324,10 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultiCellsMultiInstances)
   }
 
   // Two-mode tests: the large phi2*kc2*gas term in MODE2 doesn't depend on H2O1,
-  // so it should cancel in the FD difference (f_plus - f_minus). However, floating-point
-  // rounding of this dominant term (~5e-10) introduces ~1e-3 relative error in the FD
-  // approximation of J[gas, H2O1] (~1e-20). Use rel_tol=1e-3 to account for this.
+  // so it should cancel in the FD difference (f_plus - f_minus). The resulting
+  // FD noise on J[gas, H2O1] (~1e-20) is absorbed by MICM's atol=1e-7.
   CheckFiniteDifferenceJacobian(process, phase_prefixes, state_parameter_indices,
-                                state_variable_indices, providers, params, vars, 1e-3);
+                                state_variable_indices, providers, params, vars);
 }
 
 // ---------------------------------------------------------------------------
@@ -1963,4 +1930,217 @@ TEST(HenryLawPhaseTransferBuilder, BuiltProcessHLCWorks)
   result = process.henry_law_constant_(cond);
   double expected = HLC_ref * std::exp(2400.0 * (1.0 / 280.0 - 1.0 / 298.15));
   EXPECT_NEAR(result, expected, expected * 1e-10);
+}
+
+// ============================================================================
+// Limit / Extreme tests (Phase C2)
+// ============================================================================
+
+TEST(HenryLawPhaseTransfer, ForcingFunctionZeroGasConcentration)
+{
+  // [A_gas]=0: condensation term = 0, only evaporation proceeds
+  auto process = MakeTestProcess();
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("MODE1");
+
+  std::unordered_map<std::string, std::size_t> spi;
+  spi["MODE1.AQUEOUS." + process.uuid_ + ".hlc"] = 0;
+  spi["MODE1.AQUEOUS." + process.uuid_ + ".temperature"] = 1;
+
+  std::unordered_map<std::string, std::size_t> svi;
+  svi["CO2_g"] = 0;
+  svi["MODE1.AQUEOUS.CO2_aq"] = 1;
+  svi["MODE1.AQUEOUS.H2O"] = 2;
+
+  double r_eff = 1.0e-6, N = 1.0e8, phi = 1.0e-6;
+  auto providers = MakeTestProviders("MODE1", r_eff, N, phi);
+  auto ff = process.ForcingFunction<MatrixPolicy>(phase_prefixes, spi, svi, providers);
+
+  double T = 298.15;
+  MatrixPolicy params(1, 2, 0.0);
+  params[0][0] = HLC_ref; params[0][1] = T;
+  MatrixPolicy vars(1, 3, 0.0);
+  vars[0][0] = 0.0;        // [CO2_g] = 0
+  vars[0][1] = 1.0e-5;     // [CO2_aq]
+  vars[0][2] = 55000.0;    // [H2O]
+
+  MatrixPolicy forcing(1, 3, 0.0);
+  ff(params, vars, forcing);
+
+  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  double kc = cond_rate_provider.ComputeValue(r_eff, N, T);
+  double kc_eff = phi * kc;
+  double ke_eff = kc_eff / (HLC_ref * miam::util::R_gas * T);
+  double f_v = 55000.0 * solvent_molecular_weight / solvent_density;
+  double expected_net = 0.0 - ke_eff * 1.0e-5 / f_v;  // condensation term = 0
+
+  EXPECT_NEAR(forcing[0][0], -expected_net, std::abs(expected_net) * 1e-10);
+  EXPECT_NEAR(forcing[0][1], expected_net, std::abs(expected_net) * 1e-10);
+  EXPECT_LT(expected_net, 0.0);  // net transfer from aqueous to gas (evaporation)
+}
+
+TEST(HenryLawPhaseTransfer, ForcingFunctionZeroAqueousConcentration)
+{
+  // [A_aq]=0: evaporation term = 0, only condensation proceeds
+  auto process = MakeTestProcess();
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("MODE1");
+
+  std::unordered_map<std::string, std::size_t> spi;
+  spi["MODE1.AQUEOUS." + process.uuid_ + ".hlc"] = 0;
+  spi["MODE1.AQUEOUS." + process.uuid_ + ".temperature"] = 1;
+
+  std::unordered_map<std::string, std::size_t> svi;
+  svi["CO2_g"] = 0;
+  svi["MODE1.AQUEOUS.CO2_aq"] = 1;
+  svi["MODE1.AQUEOUS.H2O"] = 2;
+
+  double r_eff = 1.0e-6, N = 1.0e8, phi = 1.0e-6;
+  auto providers = MakeTestProviders("MODE1", r_eff, N, phi);
+  auto ff = process.ForcingFunction<MatrixPolicy>(phase_prefixes, spi, svi, providers);
+
+  double T = 298.15;
+  MatrixPolicy params(1, 2, 0.0);
+  params[0][0] = HLC_ref; params[0][1] = T;
+  MatrixPolicy vars(1, 3, 0.0);
+  vars[0][0] = 1.0e-3;     // [CO2_g]
+  vars[0][1] = 0.0;        // [CO2_aq] = 0
+  vars[0][2] = 55000.0;    // [H2O]
+
+  MatrixPolicy forcing(1, 3, 0.0);
+  ff(params, vars, forcing);
+
+  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  double kc = cond_rate_provider.ComputeValue(r_eff, N, T);
+  double kc_eff = phi * kc;
+  double expected_net = kc_eff * 1.0e-3;  // evaporation term = 0
+
+  EXPECT_NEAR(forcing[0][0], -expected_net, std::abs(expected_net) * 1e-10);
+  EXPECT_NEAR(forcing[0][1], expected_net, std::abs(expected_net) * 1e-10);
+  EXPECT_GT(expected_net, 0.0);  // net transfer from gas to aqueous (condensation)
+}
+
+TEST(HenryLawPhaseTransfer, ForcingFunctionZeroNumberConcentration)
+{
+  // N=0: k_cond=0 → both condensation and evaporation terms are zero
+  auto process = MakeTestProcess();
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("MODE1");
+
+  std::unordered_map<std::string, std::size_t> spi;
+  spi["MODE1.AQUEOUS." + process.uuid_ + ".hlc"] = 0;
+  spi["MODE1.AQUEOUS." + process.uuid_ + ".temperature"] = 1;
+
+  std::unordered_map<std::string, std::size_t> svi;
+  svi["CO2_g"] = 0;
+  svi["MODE1.AQUEOUS.CO2_aq"] = 1;
+  svi["MODE1.AQUEOUS.H2O"] = 2;
+
+  auto providers = MakeTestProviders("MODE1", 1.0e-6, 0.0, 0.0);  // N=0, phi=0
+  auto ff = process.ForcingFunction<MatrixPolicy>(phase_prefixes, spi, svi, providers);
+
+  MatrixPolicy params(1, 2, 0.0);
+  params[0][0] = HLC_ref; params[0][1] = 298.15;
+  MatrixPolicy vars(1, 3, 0.0);
+  vars[0][0] = 1.0e-3; vars[0][1] = 1.0e-5; vars[0][2] = 55000.0;
+
+  MatrixPolicy forcing(1, 3, 0.0);
+  ff(params, vars, forcing);
+
+  // When N=0 and phi=0, k_cond_eff = phi * k_cond = 0
+  EXPECT_NEAR(forcing[0][0], 0.0, 1e-30);
+  EXPECT_NEAR(forcing[0][1], 0.0, 1e-30);
+  EXPECT_NEAR(forcing[0][2], 0.0, 1e-30);
+}
+
+TEST(HenryLawPhaseTransfer, JacobianFDZeroGasConcentration)
+{
+  // [A_gas]=0: FD Jacobian check at the boundary condition
+  auto process = MakeTestProcess();
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("MODE1");
+
+  std::unordered_map<std::string, std::size_t> spi;
+  spi["MODE1.AQUEOUS." + process.uuid_ + ".hlc"] = 0;
+  spi["MODE1.AQUEOUS." + process.uuid_ + ".temperature"] = 1;
+
+  std::unordered_map<std::string, std::size_t> svi;
+  svi["CO2_g"] = 0;
+  svi["MODE1.AQUEOUS.CO2_aq"] = 1;
+  svi["MODE1.AQUEOUS.H2O"] = 2;
+
+  auto providers = MakeTestProviders("MODE1", 1.0e-6, 1.0e8, 1.0e-6);
+
+  MatrixPolicy params(1, 2, 0.0);
+  params[0][0] = HLC_ref; params[0][1] = 298.15;
+  MatrixPolicy vars(1, 3, 0.0);
+  vars[0][0] = 0.0;     // [CO2_g] = 0
+  vars[0][1] = 1.0e-5;
+  vars[0][2] = 55000.0;
+
+  CheckFiniteDifferenceJacobian(process, phase_prefixes, spi, svi, providers, params, vars);
+}
+
+TEST(HenryLawPhaseTransfer, JacobianFDExtremeHLC)
+{
+  // Large HLC → strong evaporation; Small HLC → condensation dominated
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("MODE1");
+
+  auto make_spi = [](const HenryLawPhaseTransfer& p) {
+    std::unordered_map<std::string, std::size_t> spi;
+    spi["MODE1.AQUEOUS." + p.uuid_ + ".hlc"] = 0;
+    spi["MODE1.AQUEOUS." + p.uuid_ + ".temperature"] = 1;
+    return spi;
+  };
+
+  std::unordered_map<std::string, std::size_t> svi;
+  svi["CO2_g"] = 0;
+  svi["MODE1.AQUEOUS.CO2_aq"] = 1;
+  svi["MODE1.AQUEOUS.H2O"] = 2;
+
+  auto providers = MakeTestProviders("MODE1", 1.0e-6, 1.0e8, 1.0e-6);
+
+  MatrixPolicy params(1, 2, 0.0);
+  params[0][1] = 298.15;
+  MatrixPolicy vars(1, 3, 0.0);
+  vars[0][0] = 1.0e-3; vars[0][1] = 1.0e-5; vars[0][2] = 55000.0;
+
+  // Large HLC
+  auto process_large = MakeTestProcess(1.0e5);
+  params[0][0] = 1.0e5;
+  CheckFiniteDifferenceJacobian(process_large, phase_prefixes, make_spi(process_large), svi, providers, params, vars);
+
+  // Small HLC
+  auto process_small = MakeTestProcess(1.0e-10);
+  params[0][0] = 1.0e-10;
+  CheckFiniteDifferenceJacobian(process_small, phase_prefixes, make_spi(process_small), svi, providers, params, vars);
+}
+
+TEST(HenryLawPhaseTransfer, JacobianFDTemperatureExtremes)
+{
+  auto process = MakeTestProcess();
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("MODE1");
+
+  std::unordered_map<std::string, std::size_t> spi;
+  spi["MODE1.AQUEOUS." + process.uuid_ + ".hlc"] = 0;
+  spi["MODE1.AQUEOUS." + process.uuid_ + ".temperature"] = 1;
+
+  std::unordered_map<std::string, std::size_t> svi;
+  svi["CO2_g"] = 0;
+  svi["MODE1.AQUEOUS.CO2_aq"] = 1;
+  svi["MODE1.AQUEOUS.H2O"] = 2;
+
+  auto providers = MakeTestProviders("MODE1", 1.0e-6, 1.0e8, 1.0e-6);
+
+  MatrixPolicy vars(1, 3, 0.0);
+  vars[0][0] = 1.0e-3; vars[0][1] = 1.0e-5; vars[0][2] = 55000.0;
+
+  for (double T : { 200.0, 298.15, 350.0 })
+  {
+    MatrixPolicy params(1, 2, 0.0);
+    params[0][0] = HLC_ref; params[0][1] = T;
+    CheckFiniteDifferenceJacobian(process, phase_prefixes, spi, svi, providers, params, vars);
+  }
 }

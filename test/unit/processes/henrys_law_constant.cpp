@@ -107,3 +107,33 @@ TEST(HenrysLawConstant, KnownValues)
   EXPECT_DOUBLE_EQ(result, expected);
   EXPECT_NEAR(result, 1.9477, 0.001);
 }
+
+// ============================================================================
+// Additional tests (Phase E2)
+// ============================================================================
+
+TEST(HenrysLawConstant, TemperatureCoefficientDirectionality)
+{
+  // Positive C → HLC decreases with increasing temperature (typical for most gases)
+  HenrysLawConstantParameters params{ .HLC_ref_ = 1.0, .C_ = 1000.0, .T0_ = 298.15 };
+  HenrysLawConstant hlc(params);
+
+  EXPECT_GT(hlc.Calculate(250.0), hlc.Calculate(298.15));
+  EXPECT_GT(hlc.Calculate(298.15), hlc.Calculate(350.0));
+}
+
+TEST(HenrysLawConstant, KnownLiteratureSO2)
+{
+  // SO₂: HLC_ref = 1.23 mol m⁻³ Pa⁻¹, C = 3120 K, T0 = 298.15 K (Sander 2015)
+  // HLC(298.15 K) = 1.23  (by definition)
+  // HLC(273.15 K) = 1.23 * exp(3120 * (1/273.15 - 1/298.15))
+  HenrysLawConstantParameters params{ .HLC_ref_ = 1.23, .C_ = 3120.0, .T0_ = 298.15 };
+  HenrysLawConstant hlc(params);
+
+  EXPECT_DOUBLE_EQ(hlc.Calculate(298.15), 1.23);
+
+  double T_cold = 273.15;
+  double expected_cold = 1.23 * std::exp(3120.0 * (1.0 / T_cold - 1.0 / 298.15));
+  EXPECT_DOUBLE_EQ(hlc.Calculate(T_cold), expected_cold);
+  EXPECT_GT(hlc.Calculate(T_cold), 1.23);  // more soluble at lower T
+}
