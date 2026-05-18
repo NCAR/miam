@@ -66,7 +66,8 @@ namespace miam
     /// @param accommodation_coefficient Mass accommodation coefficient [dimensionless, 0-1]
     /// @param molecular_weight Molecular weight of the gas species [kg mol⁻¹]
     /// @return A CondensationRateProvider with the Fuchs-Sutugin regime correction
-    inline CondensationRateProvider MakeCondensationRateProvider(double diffusion_coefficient, double accommodation_coefficient, double molecular_weight)
+    inline CondensationRateProvider
+    MakeCondensationRateProvider(double diffusion_coefficient, double accommodation_coefficient, double molecular_weight)
     {
       if (diffusion_coefficient <= 0)
         throw std::invalid_argument("Diffusion coefficient must be positive.");
@@ -77,7 +78,8 @@ namespace miam
 
       CondensationRateProvider provider;
 
-      provider.ComputeValue = [diffusion_coefficient, accommodation_coefficient, molecular_weight](double r_eff, double N, double T) -> double
+      provider.ComputeValue = [diffusion_coefficient, accommodation_coefficient, molecular_weight](
+                                  double r_eff, double N, double T) -> double
       {
         if (r_eff <= 0 || N <= 0 || T <= 0)
           return 0.0;
@@ -90,7 +92,8 @@ namespace miam
       };
 
       provider.ComputeValueAndDerivatives =
-          [diffusion_coefficient, accommodation_coefficient, molecular_weight](double r_eff, double N, double T, double& k_cond, double& dk_dr, double& dk_dN)
+          [diffusion_coefficient, accommodation_coefficient, molecular_weight](
+              double r_eff, double N, double T, double& k_cond, double& dk_dr, double& dk_dN)
       {
         if (r_eff <= 0 || N <= 0 || T <= 0)
         {
@@ -110,8 +113,7 @@ namespace miam
         // df/dKn = 0.75α · (-Kn² - 2Kn + (0.467α - 1)) / denom²
         // where 0.467 = 0.75 - 0.283
         double df_dKn = 0.75 * accommodation_coefficient *
-                        (-Kn * Kn - 2.0 * Kn + (0.75 - 0.283) * accommodation_coefficient - 1.0) /
-                        (denom * denom);
+                        (-Kn * Kn - 2.0 * Kn + (0.75 - 0.283) * accommodation_coefficient - 1.0) / (denom * denom);
 
         // dk_cond/dr_eff = 4π·N·D · (f + r_eff · df/dKn · dKn/dr)
         // where dKn/dr = -Kn / r_eff

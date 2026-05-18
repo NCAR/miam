@@ -165,12 +165,12 @@ namespace miam
       micm::Species solvent_;                 ///< Solvent species
       bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
       mutable std::function<double(const micm::Conditions& conditions)>
-          forward_rate_constant_;             ///< Forward rate constant function
+          forward_rate_constant_;  ///< Forward rate constant function
       mutable std::function<double(const micm::Conditions& conditions)>
-          reverse_rate_constant_;             ///< Reverse rate constant function
+          reverse_rate_constant_;  ///< Reverse rate constant function
       mutable std::function<double(const micm::Conditions& conditions)>
-          equilibrium_constant_;              ///< Equilibrium constant function
-      double solvent_floor_{ 1.0e-20 };       ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
+          equilibrium_constant_;         ///< Equilibrium constant function
+      double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
     };
   }  // namespace process
 }  // namespace miam

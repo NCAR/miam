@@ -70,11 +70,12 @@ namespace miam
 
       /// @brief Sets the rate constant from an object with a Calculate method
       template<typename T>
-          requires requires(const T& t, const micm::Conditions& c) { { t.Calculate(c) }; }
+        requires requires(const T& t, const micm::Conditions& c) {
+          { t.Calculate(c) };
+        }
       DissolvedReactionBuilder& SetRateConstant(const T& rate_constant)
       {
-        rate_constant_ = [rate_constant](const micm::Conditions& conditions)
-        { return rate_constant.Calculate(conditions); };
+        rate_constant_ = [rate_constant](const micm::Conditions& conditions) { return rate_constant.Calculate(conditions); };
         return *this;
       }
 
@@ -120,8 +121,8 @@ namespace miam
       micm::Species solvent_;                 ///< Solvent species
       bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
       std::function<double(const micm::Conditions& conditions)> rate_constant_;  ///< Rate constant function
-      double solvent_floor_{ 1.0e-20 };       ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
-      double min_halflife_{ 0.0 };            ///< Minimum half-life for rate capping [s]
+      double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
+      double min_halflife_{ 0.0 };       ///< Minimum half-life for rate capping [s]
     };
   }  // namespace process
 }  // namespace miam

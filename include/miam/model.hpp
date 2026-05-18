@@ -36,7 +36,8 @@ namespace miam
    public:
     using RepresentationVariant =
         std::variant<representation::SingleMomentMode, representation::TwoMomentMode, representation::UniformSection>;
-    using ProcessVariant = std::variant<process::DissolvedReaction, process::DissolvedReversibleReaction, process::HenryLawPhaseTransfer>;
+    using ProcessVariant =
+        std::variant<process::DissolvedReaction, process::DissolvedReversibleReaction, process::HenryLawPhaseTransfer>;
     using ConstraintVariant = std::variant<
         constraint::DissolvedEquilibriumConstraint,
         constraint::HenryLawEquilibriumConstraint,
@@ -163,8 +164,7 @@ namespace miam
 
     /// @brief Add processes to the model (variadic form for mixed types)
     template<typename... ProcessTypes>
-      requires(sizeof...(ProcessTypes) >= 1 &&
-               (std::constructible_from<ProcessVariant, std::decay_t<ProcessTypes>> && ...))
+      requires(sizeof...(ProcessTypes) >= 1 && (std::constructible_from<ProcessVariant, std::decay_t<ProcessTypes>> && ...))
     void AddProcesses(ProcessTypes&&... processes)
     {
       (processes_.push_back(ProcessVariant{ processes.CopyWithNewUuid() }), ...);
@@ -192,8 +192,9 @@ namespace miam
 
     /// @brief Add constraints to the model (variadic form for mixed types)
     template<typename... ConstraintTypes>
-      requires(sizeof...(ConstraintTypes) >= 1 &&
-               (std::constructible_from<ConstraintVariant, std::decay_t<ConstraintTypes>> && ...))
+      requires(
+          sizeof...(ConstraintTypes) >= 1 &&
+          (std::constructible_from<ConstraintVariant, std::decay_t<ConstraintTypes>> && ...))
     void AddConstraints(ConstraintTypes&&... constraints)
     {
       (constraints_.push_back(ConstraintVariant{ constraints.CopyWithNewUuid() }), ...);
@@ -230,8 +231,7 @@ namespace miam
                 process.template UpdateStateParametersFunction<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices);
             update_functions.push_back(update_fn);
           });
-      return [update_functions](
-                 const std::vector<micm::Conditions>& conditions, DenseMatrixPolicy& state_parameters)
+      return [update_functions](const std::vector<micm::Conditions>& conditions, DenseMatrixPolicy& state_parameters)
       {
         for (const auto& fn : update_functions)
         {
@@ -342,8 +342,7 @@ namespace miam
 
     /// @brief Returns a function that diagnoses constraint parameters from current state
     template<typename DenseMatrixPolicy>
-    std::function<void(const DenseMatrixPolicy&, DenseMatrixPolicy&)>
-    InitializeConstraintParametersFunction(
+    std::function<void(const DenseMatrixPolicy&, DenseMatrixPolicy&)> InitializeConstraintParametersFunction(
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
     {
@@ -353,13 +352,12 @@ namespace miam
           [&](const auto& c)
           {
             if constexpr (requires {
-              c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
-                  phase_prefixes, state_parameter_indices, state_variable_indices);
-            })
+                            c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
+                                phase_prefixes, state_parameter_indices, state_variable_indices);
+                          })
             {
-              init_fns.push_back(
-                  c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
-                      phase_prefixes, state_parameter_indices, state_variable_indices));
+              init_fns.push_back(c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
+                  phase_prefixes, state_parameter_indices, state_variable_indices));
             }
           });
       return [init_fns](const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters)
@@ -371,8 +369,7 @@ namespace miam
 
     /// @brief Returns a function that updates constraint parameters based on conditions
     template<typename DenseMatrixPolicy>
-    std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)>
-    ConstraintUpdateStateParametersFunction(
+    std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)> ConstraintUpdateStateParametersFunction(
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices) const
     {
       auto phase_prefixes = CollectPhaseStatePrefixes();
@@ -444,9 +441,8 @@ namespace miam
       ForEachConstraint(
           [&](const auto& c)
           {
-            residual_fns.push_back(
-                c.template ConstraintResidualFunction<DenseMatrixPolicy>(
-                    phase_prefixes, state_parameter_indices, state_variable_indices));
+            residual_fns.push_back(c.template ConstraintResidualFunction<DenseMatrixPolicy>(
+                phase_prefixes, state_parameter_indices, state_variable_indices));
           });
       return [residual_fns](
                  const DenseMatrixPolicy& state_variables,
@@ -470,9 +466,8 @@ namespace miam
       ForEachConstraint(
           [&](const auto& c)
           {
-            jac_fns.push_back(
-                c.template ConstraintJacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
-                    phase_prefixes, state_parameter_indices, state_variable_indices, jacobian));
+            jac_fns.push_back(c.template ConstraintJacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
+                phase_prefixes, state_parameter_indices, state_variable_indices, jacobian));
           });
       return [jac_fns](
                  const DenseMatrixPolicy& state_variables,

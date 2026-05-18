@@ -32,8 +32,8 @@ namespace miam
     ///          d[A]_gas/dt  = -φ_p · k_cond · [A]_gas + φ_p · k_evap · [A]_aq / f_v
     ///          d[A]_aq/dt   = +φ_p · k_cond · [A]_gas - φ_p · k_evap · [A]_aq / f_v
     ///
-    ///          where k_evap = k_cond / (HLC · R · T), f_v = [solvent] · solvent_molecular_weight / solvent_density  [m³ mol⁻¹],
-    ///          and φ_p is the phase volume fraction.
+    ///          where k_evap = k_cond / (HLC · R · T), f_v = [solvent] · solvent_molecular_weight / solvent_density  [m³
+    ///          mol⁻¹], and φ_p is the phase volume fraction.
     class HenryLawPhaseTransfer
     {
      public:
@@ -42,12 +42,12 @@ namespace miam
       micm::Species condensed_species_;                                               ///< Condensed-phase solute species
       micm::Species solvent_;                                                         ///< Condensed-phase solvent species
       micm::Phase condensed_phase_;                                                   ///< The condensed phase
-      double diffusion_coefficient_;          ///< Gas-phase diffusion coefficient [m² s⁻¹]
-      double accommodation_coefficient_;        ///< Mass accommodation coefficient [dimensionless]
+      double diffusion_coefficient_;      ///< Gas-phase diffusion coefficient [m² s⁻¹]
+      double accommodation_coefficient_;  ///< Mass accommodation coefficient [dimensionless]
       double gas_molecular_weight_;       ///< Gas-phase molecular weight [kg mol⁻¹]
       double solvent_molecular_weight_;   ///< Solvent molecular weight [kg mol⁻¹]
-      double solvent_density_;  ///< Solvent density [kg m⁻³]
-      std::string uuid_;    ///< Unique identifier
+      double solvent_density_;            ///< Solvent density [kg m⁻³]
+      std::string uuid_;                  ///< Unique identifier
 
       HenryLawPhaseTransfer() = delete;
 
@@ -310,7 +310,8 @@ namespace miam
             inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
             inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
             inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
-            inst.cond_rate_provider = util::MakeCondensationRateProvider(diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
+            inst.cond_rate_provider = util::MakeCondensationRateProvider(
+                diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
             instances.push_back(std::move(inst));
           }
         }
@@ -332,17 +333,28 @@ namespace miam
         for (const auto& inst : instances)
         {
           auto inner = DenseMatrixPolicy::Function(
-              [inst, gas_idx](auto&& state_parameters, auto&& state_variables, auto&& forcing_terms,
-                              auto&& r_eff_view, auto&& N_view, auto&& phi_view)
+              [inst, gas_idx](
+                  auto&& state_parameters,
+                  auto&& state_variables,
+                  auto&& forcing_terms,
+                  auto&& r_eff_view,
+                  auto&& N_view,
+                  auto&& phi_view)
               {
                 auto net = forcing_terms.GetRowVariable();
 
                 // Compute net transfer rate
                 state_parameters.ForEachRow(
-                    [&inst](const double& r_eff, const double& N, const double& phi,
-                            const double& hlc, const double& T,
-                            const double& gas, const double& aq, const double& solvent,
-                            double& net_val)
+                    [&inst](
+                        const double& r_eff,
+                        const double& N,
+                        const double& phi,
+                        const double& hlc,
+                        const double& T,
+                        const double& gas,
+                        const double& aq,
+                        const double& solvent,
+                        double& net_val)
                     {
                       double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
                       double kc_eff = phi * kc;
@@ -451,15 +463,15 @@ namespace miam
                 state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
             inst.solvent_species_idx =
                 state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
-            inst.hlc_param_idx =
-                state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc");
+            inst.hlc_param_idx = state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc");
             inst.temperature_param_idx =
                 state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
             inst.molar_volume = solvent_molecular_weight_ / solvent_density_;
             inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
             inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
             inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
-            inst.cond_rate_provider = util::MakeCondensationRateProvider(diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
+            inst.cond_rate_provider = util::MakeCondensationRateProvider(
+                diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
             inst.n_r_eff_deps = prov_map.at(AerosolProperty::EffectiveRadius).dependent_variable_indices.size();
             inst.n_N_deps = prov_map.at(AerosolProperty::NumberConcentration).dependent_variable_indices.size();
             inst.n_phi_deps = prov_map.at(AerosolProperty::PhaseVolumeFraction).dependent_variable_indices.size();
@@ -524,9 +536,16 @@ namespace miam
         for (const auto& inst : jac_instances)
         {
           inner_jac_functions.push_back(SparseMatrixPolicy::Function(
-              [inst, gas_idx](auto&& state_parameters, auto&& state_variables, auto&& jacobian_values,
-                              auto&& r_eff_view, auto&& N_view, auto&& phi_view,
-                              auto&& r_eff_partials_view, auto&& N_partials_view, auto&& phi_partials_view)
+              [inst, gas_idx](
+                  auto&& state_parameters,
+                  auto&& state_variables,
+                  auto&& jacobian_values,
+                  auto&& r_eff_view,
+                  auto&& N_view,
+                  auto&& phi_view,
+                  auto&& r_eff_partials_view,
+                  auto&& N_partials_view,
+                  auto&& phi_partials_view)
               {
                 auto jac_id = inst.jac_indices.AsVector().begin();
 
@@ -540,11 +559,21 @@ namespace miam
 
                 // Read inputs and compute direct Jacobian entries
                 jacobian_values.ForEachBlock(
-                    [&inst](const double& r_eff, const double& N, const double& phi,
-                            const double& hlc, const double& T,
-                            const double& gas, const double& aq, const double& solvent,
-                            double& j_gg, double& j_ga, double& j_gs,
-                            double& j_ag, double& j_aa, double& j_as)
+                    [&inst](
+                        const double& r_eff,
+                        const double& N,
+                        const double& phi,
+                        const double& hlc,
+                        const double& T,
+                        const double& gas,
+                        const double& aq,
+                        const double& solvent,
+                        double& j_gg,
+                        double& j_ga,
+                        double& j_gs,
+                        double& j_ag,
+                        double& j_aa,
+                        double& j_as)
                     {
                       double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
                       double ke = kc / (hlc * util::R_gas * T);
@@ -570,7 +599,12 @@ namespace miam
                     state_variables.GetConstColumnView(gas_idx),
                     state_variables.GetConstColumnView(inst.aq_species_idx),
                     state_variables.GetConstColumnView(inst.solvent_species_idx),
-                    bv_gg, bv_ga, bv_gs, bv_ag, bv_aa, bv_as);
+                    bv_gg,
+                    bv_ga,
+                    bv_gs,
+                    bv_ag,
+                    bv_aa,
+                    bv_as);
 
                 // Indirect entries through r_eff
                 for (std::size_t k = 0; k < inst.n_r_eff_deps; ++k)
@@ -578,11 +612,18 @@ namespace miam
                   auto bv_r_gas = jacobian_values.GetBlockView(*jac_id++);
                   auto bv_r_aq = jacobian_values.GetBlockView(*jac_id++);
                   jacobian_values.ForEachBlock(
-                      [&inst](const double& r_eff, const double& N, const double& phi,
-                              const double& hlc, const double& T,
-                              const double& gas, const double& aq, const double& solvent,
-                              const double& dr_dvar,
-                              double& j_gas, double& j_aq)
+                      [&inst](
+                          const double& r_eff,
+                          const double& N,
+                          const double& phi,
+                          const double& hlc,
+                          const double& T,
+                          const double& gas,
+                          const double& aq,
+                          const double& solvent,
+                          const double& dr_dvar,
+                          double& j_gas,
+                          double& j_aq)
                       {
                         double kc_dummy, dk_dr, dk_dN_unused;
                         inst.cond_rate_provider.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr, dk_dN_unused);
@@ -601,7 +642,8 @@ namespace miam
                       state_variables.GetConstColumnView(inst.aq_species_idx),
                       state_variables.GetConstColumnView(inst.solvent_species_idx),
                       r_eff_partials_view.GetConstColumnView(k),
-                      bv_r_gas, bv_r_aq);
+                      bv_r_gas,
+                      bv_r_aq);
                 }
 
                 // Indirect entries through N
@@ -610,11 +652,18 @@ namespace miam
                   auto bv_N_gas = jacobian_values.GetBlockView(*jac_id++);
                   auto bv_N_aq = jacobian_values.GetBlockView(*jac_id++);
                   jacobian_values.ForEachBlock(
-                      [&inst](const double& r_eff, const double& N, const double& phi,
-                              const double& hlc, const double& T,
-                              const double& gas, const double& aq, const double& solvent,
-                              const double& dN_dvar,
-                              double& j_gas, double& j_aq)
+                      [&inst](
+                          const double& r_eff,
+                          const double& N,
+                          const double& phi,
+                          const double& hlc,
+                          const double& T,
+                          const double& gas,
+                          const double& aq,
+                          const double& solvent,
+                          const double& dN_dvar,
+                          double& j_gas,
+                          double& j_aq)
                       {
                         double kc_dummy, dk_dr_unused, dk_dN;
                         inst.cond_rate_provider.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr_unused, dk_dN);
@@ -633,7 +682,8 @@ namespace miam
                       state_variables.GetConstColumnView(inst.aq_species_idx),
                       state_variables.GetConstColumnView(inst.solvent_species_idx),
                       N_partials_view.GetConstColumnView(k),
-                      bv_N_gas, bv_N_aq);
+                      bv_N_gas,
+                      bv_N_aq);
                 }
 
                 // Indirect entries through φ_p (negated: MICM solver expects -J)
@@ -642,11 +692,18 @@ namespace miam
                   auto bv_phi_gas = jacobian_values.GetBlockView(*jac_id++);
                   auto bv_phi_aq = jacobian_values.GetBlockView(*jac_id++);
                   jacobian_values.ForEachBlock(
-                      [&inst](const double& r_eff, const double& N, const double& phi,
-                              const double& hlc, const double& T,
-                              const double& gas, const double& aq, const double& solvent,
-                              const double& dphi_dvar,
-                              double& j_gas, double& j_aq)
+                      [&inst](
+                          const double& r_eff,
+                          const double& N,
+                          const double& phi,
+                          const double& hlc,
+                          const double& T,
+                          const double& gas,
+                          const double& aq,
+                          const double& solvent,
+                          const double& dphi_dvar,
+                          double& j_gas,
+                          double& j_aq)
                       {
                         double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
                         double ke = kc / (hlc * util::R_gas * T);
@@ -664,7 +721,8 @@ namespace miam
                       state_variables.GetConstColumnView(inst.aq_species_idx),
                       state_variables.GetConstColumnView(inst.solvent_species_idx),
                       phi_partials_view.GetConstColumnView(k),
-                      bv_phi_gas, bv_phi_aq);
+                      bv_phi_gas,
+                      bv_phi_aq);
                 }
               },
               dummy_state_parameters,
@@ -712,9 +770,15 @@ namespace miam
 
             // Call the Function-wrapped inner loop
             inner_jac_functions[i](
-                state_parameters, state_variables, jacobian_matrix,
-                r_eff_buf, N_buf, phi_buf,
-                r_eff_partials, N_partials, phi_partials);
+                state_parameters,
+                state_variables,
+                jacobian_matrix,
+                r_eff_buf,
+                N_buf,
+                phi_buf,
+                r_eff_partials,
+                N_partials,
+                phi_partials);
           }
         };
       }

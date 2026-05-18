@@ -65,10 +65,14 @@ namespace miam
       std::vector<micm::Species> reactants_;                                     ///< Reactant species
       std::vector<micm::Species> products_;                                      ///< Product species
       micm::Species solvent_;                                                    ///< Solvent species
-      micm::Phase phase_;  ///< Phase in which the reaction occurs
-      std::string uuid_;   ///< Unique identifier for the reaction
-      double solvent_floor_{ 1.0e-20 };  ///< Floor [mol m⁻³] added to [S] in ([S]+δ)^n denominator to prevent singularity as [S] → 0
-      double min_halflife_{ 0.0 };  ///< When > 0, caps the reaction rate so no reactant is depleted faster than this half-life [s]
+      micm::Phase phase_;                                                        ///< Phase in which the reaction occurs
+      std::string uuid_;                                                         ///< Unique identifier for the reaction
+      double solvent_floor_{
+        1.0e-20
+      };  ///< Floor [mol m⁻³] added to [S] in ([S]+δ)^n denominator to prevent singularity as [S] → 0
+      double min_halflife_{
+        0.0
+      };  ///< When > 0, caps the reaction rate so no reactant is depleted faster than this half-life [s]
 
       DissolvedReaction() = delete;
 
@@ -96,8 +100,7 @@ namespace miam
       /// @return A new DissolvedReaction with the same properties but a unique UUID
       DissolvedReaction CopyWithNewUuid() const
       {
-        return DissolvedReaction(
-            rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_, min_halflife_);
+        return DissolvedReaction(rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_, min_halflife_);
       }
 
       /// @brief Returns a set of unique parameter names for this process
@@ -248,8 +251,7 @@ namespace miam
             [this, k_index](auto&& conditions, auto&& params)
             {
               params.ForEachRow(
-                  [&](const micm::Conditions& condition, double& parameter)
-                  { parameter = rate_constant_(condition); },
+                  [&](const micm::Conditions& condition, double& parameter) { parameter = rate_constant_(condition); },
                   conditions,
                   params.GetColumnView(k_index));
             },
@@ -308,9 +310,7 @@ namespace miam
                 // Calculate the damped rate: k * [S] / ([S] + eps)^n_r * prod([reactants])
                 state_parameters.ForEachRow(
                     [&](const double& rate_constant, const double& solvent, double& rate)
-                    {
-                      rate = rate_constant * solvent / std::pow(solvent + eps, n_r);
-                    },
+                    { rate = rate_constant * solvent / std::pow(solvent + eps, n_r); },
                     state_parameters.GetConstColumnView(k_index),
                     state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                     rate);
@@ -429,10 +429,9 @@ namespace miam
                 // Calculate partials for independent solvent
                 // dr/d[S] = k * (eps + (1-n_r)*[S]) / ([S]+eps)^(n_r+1) * prod([R_i])
                 jacobian_values.ForEachBlock(
-                    [&](const double& rate_constant, const double& solvent, double& partial)
-                    {
-                      partial = rate_constant * (eps + (1.0 - static_cast<int>(n_r)) * solvent) /
-                                std::pow(solvent + eps, n_r + 1);
+                    [&](const double& rate_constant, const double& solvent, double& partial) {
+                      partial =
+                          rate_constant * (eps + (1.0 - static_cast<int>(n_r)) * solvent) / std::pow(solvent + eps, n_r + 1);
                     },
                     state_parameters.GetConstColumnView(k_index),
                     state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
@@ -716,10 +715,9 @@ namespace miam
                 // Step E: Partial for independent solvent
                 // dr/dS = k * (eps + (1-n_r)*S) / (S+eps)^{n_r+1} * prod(R_i)
                 jacobian_values.ForEachBlock(
-                    [&](const double& rate_constant, const double& solvent, double& partial)
-                    {
-                      partial = rate_constant * (eps + (1.0 - static_cast<int>(n_r)) * solvent) /
-                                std::pow(solvent + eps, n_r + 1);
+                    [&](const double& rate_constant, const double& solvent, double& partial) {
+                      partial =
+                          rate_constant * (eps + (1.0 - static_cast<int>(n_r)) * solvent) / std::pow(solvent + eps, n_r + 1);
                     },
                     state_parameters.GetConstColumnView(k_index),
                     state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
@@ -734,9 +732,7 @@ namespace miam
 
                 // Solvent capping: partial *= sech^2(u) (r_max doesn't depend on S)
                 jacobian_values.ForEachBlock(
-                    [](const double& s2, double& partial) { partial *= s2; },
-                    sech2_var,
-                    d_rate_d_ind);
+                    [](const double& s2, double& partial) { partial *= s2; }, sech2_var, d_rate_d_ind);
 
                 // Apply to dependent reactants
                 for (std::size_t i_dep = 0; i_dep < n_r; ++i_dep)
@@ -840,8 +836,7 @@ namespace miam
       {
         // For a forward-only reaction, independent variables are only reactants and solvent (not products).
         // Each reactant and each product depends on all reactants and the solvent.
-        std::size_t num_pairs =
-            (reactants_.size() + products_.size()) * (reactants_.size() + 1);  // +1 for solvent
+        std::size_t num_pairs = (reactants_.size() + products_.size()) * (reactants_.size() + 1);  // +1 for solvent
         JacobianIndices jacobian_indices;
         jacobian_indices.indices_ = micm::Matrix<std::size_t>(variable_indices.number_of_phase_instances_, num_pairs);
         for (std::size_t i_phase = 0; i_phase < variable_indices.number_of_phase_instances_; ++i_phase)
