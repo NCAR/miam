@@ -63,7 +63,9 @@ namespace miam
       }
 
       template<typename T>
-          requires requires(const T& t, const micm::Conditions& c) { { t.Calculate(c) }; }
+        requires requires(const T& t, const micm::Conditions& c) {
+          { t.Calculate(c) };
+        }
       DissolvedEquilibriumConstraintBuilder& SetEquilibriumConstant(const T& equilibrium_constant)
       {
         equilibrium_constant_ = [equilibrium_constant](const micm::Conditions& conditions)

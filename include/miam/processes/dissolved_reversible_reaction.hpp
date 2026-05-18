@@ -53,7 +53,9 @@ namespace miam
       micm::Species solvent_;                                                            ///< Solvent species
       micm::Phase phase_;  ///< Phase in which the reaction occurs
       std::string uuid_;   ///< Unique identifier for the reaction
-      double solvent_floor_{ 1.0e-20 };  ///< Floor [mol m⁻³] added to [S] in ([S]+δ)^n denominator to prevent singularity as [S] → 0
+      double solvent_floor_{
+        1.0e-20
+      };  ///< Floor [mol m⁻³] added to [S] in ([S]+δ)^n denominator to prevent singularity as [S] → 0
 
       DissolvedReversibleReaction() = delete;
 

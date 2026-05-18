@@ -247,7 +247,8 @@ namespace miam
                 dummy_vars,
                 dummy_result);
             provider.ComputeValueAndDerivatives = DenseMatrixPolicy::Function(
-                [gmd_idx, gsd_idx, species_indices, molar_volumes](auto&& params, auto&& vars, auto&& result, auto&& partials)
+                [gmd_idx, gsd_idx, species_indices, molar_volumes](
+                    auto&& params, auto&& vars, auto&& result, auto&& partials)
                 {
                   auto N = result.GetColumnView(0);
                   params.ForEachRow([](double& v) { v = 0.0; }, N);

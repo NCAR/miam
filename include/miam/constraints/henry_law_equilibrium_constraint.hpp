@@ -41,9 +41,9 @@ namespace miam
       micm::Species condensed_species_;                                               ///< Condensed-phase solute species
       micm::Species solvent_;                                                         ///< Condensed-phase solvent species
       micm::Phase condensed_phase_;                                                   ///< The condensed phase
-      double solvent_molecular_weight_;   ///< Solvent molecular weight [kg mol⁻¹]
-      double solvent_density_;  ///< Solvent density [kg m⁻³]
-      std::string uuid_;    ///< Unique identifier
+      double solvent_molecular_weight_;  ///< Solvent molecular weight [kg mol⁻¹]
+      double solvent_density_;           ///< Solvent density [kg m⁻³]
+      std::string uuid_;                 ///< Unique identifier
 
       HenryLawEquilibriumConstraint() = delete;
 
@@ -71,7 +71,13 @@ namespace miam
       HenryLawEquilibriumConstraint CopyWithNewUuid() const
       {
         return HenryLawEquilibriumConstraint(
-            henry_law_constant_, gas_species_, condensed_species_, solvent_, condensed_phase_, solvent_molecular_weight_, solvent_density_);
+            henry_law_constant_,
+            gas_species_,
+            condensed_species_,
+            solvent_,
+            condensed_phase_,
+            solvent_molecular_weight_,
+            solvent_density_);
       }
 
       /// @brief Returns the names of algebraic variables (one per phase instance)
@@ -132,8 +138,7 @@ namespace miam
         {
           std::size_t aq_idx =
               state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
-          std::size_t solvent_idx =
-              state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
+          std::size_t solvent_idx = state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
 
           // dG/d[A_g], dG/d[A_aq], dG/d[S]
           elements.insert({ aq_idx, gas_idx });
@@ -162,8 +167,7 @@ namespace miam
       /// @brief Returns a function that writes \f$ \text{HLC}(T) \cdot R \cdot T \f$ per grid cell
       ///        into the state parameter matrix.
       template<typename DenseMatrixPolicy>
-      std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)>
-      UpdateConstraintParametersFunction(
+      std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)> UpdateConstraintParametersFunction(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
           const std::unordered_map<std::string, std::size_t>& state_parameter_indices) const
       {
@@ -190,7 +194,8 @@ namespace miam
                     conditions,
                     params.GetColumnView(hlc_rt_idx));
             },
-            conditions_vector, state_parameters);
+            conditions_vector,
+            state_parameters);
       }
 
       /// @brief Returns a function that computes constraint residuals G(y) = 0
@@ -222,7 +227,8 @@ namespace miam
             {
               for (std::size_t i_phase = 0; i_phase < indices.number_of_phase_instances_; ++i_phase)
               {
-                // G = HLC*R*T * f_v * [A_g] - [A_aq],  where f_v = [S] * solvent_molecular_weight / solvent_density [m³ mol⁻¹]
+                // G = HLC*R*T * f_v * [A_g] - [A_aq],  where f_v = [S] * solvent_molecular_weight / solvent_density [m³
+                // mol⁻¹]
                 residual.ForEachRow(
                     [molar_volume](const double& hlc_rt, const double& gas, const double& aq, const double& sol, double& res)
                     { res = hlc_rt * (sol * molar_volume) * gas - aq; },
@@ -233,7 +239,9 @@ namespace miam
                     residual.GetColumnView(indices.aq_indices_[i_phase]));
               }
             },
-            dummy_state, dummy_params, dummy_state);
+            dummy_state,
+            dummy_params,
+            dummy_state);
       }
 
       /// @brief Returns a function that computes constraint Jacobian entries (subtracts dG/dy)
@@ -242,7 +250,8 @@ namespace miam
       ///          dG/d[A_aq] = -1
       ///          dG/d[S] = HLC * R * T * (solvent_molecular_weight / solvent_density) [m³ mol⁻¹] * [A_g]
       template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
-      std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> ConstraintJacobianFunction(
+      std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>
+      ConstraintJacobianFunction(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
           const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
           const std::unordered_map<std::string, std::size_t>& state_variable_indices,
@@ -295,8 +304,13 @@ namespace miam
                 // jac -= dG/d[A_aq] = -1
                 // jac -= dG/d[S] = HLC*R*T * molar_volume [m³ mol⁻¹] * [A_g]
                 jacobian_values.ForEachBlock(
-                    [molar_volume](const double& hlc_rt, const double& gas, const double& sol,
-                             double& j_gas, double& j_aq, double& j_sol)
+                    [molar_volume](
+                        const double& hlc_rt,
+                        const double& gas,
+                        const double& sol,
+                        double& j_gas,
+                        double& j_aq,
+                        double& j_sol)
                     {
                       double f_v = sol * molar_volume;
                       j_gas -= hlc_rt * f_v;
@@ -306,10 +320,14 @@ namespace miam
                     state_parameters.GetConstColumnView(hlc_rt_indices[i_phase]),
                     state_variables.GetConstColumnView(indices.gas_idx_),
                     state_variables.GetConstColumnView(indices.solvent_indices_[i_phase]),
-                    bv_gas, bv_aq, bv_sol);
+                    bv_gas,
+                    bv_aq,
+                    bv_sol);
               }
             },
-            dummy_state, dummy_params, jacobian);
+            dummy_state,
+            dummy_params,
+            jacobian);
       }
 
      private:
@@ -317,8 +335,8 @@ namespace miam
       struct StateVariableIndices
       {
         std::size_t number_of_phase_instances_;
-        std::size_t gas_idx_;                      ///< Gas species index (shared across instances)
-        std::vector<std::size_t> aq_indices_;      ///< Condensed species index per instance
+        std::size_t gas_idx_;                       ///< Gas species index (shared across instances)
+        std::vector<std::size_t> aq_indices_;       ///< Condensed species index per instance
         std::vector<std::size_t> solvent_indices_;  ///< Solvent index per instance
       };
 
@@ -327,8 +345,8 @@ namespace miam
       {
         std::vector<std::size_t> gas_jac_indices_;      ///< [aq_row, gas_col] per instance (block 0)
         std::vector<std::size_t> aq_jac_indices_;       ///< [aq_row, aq_col] per instance (block 0)
-        std::vector<std::size_t> solvent_jac_indices_;   ///< [aq_row, solvent_col] per instance (block 0)
-        std::size_t block_stride_;                       ///< Flat vector stride between blocks
+        std::vector<std::size_t> solvent_jac_indices_;  ///< [aq_row, solvent_col] per instance (block 0)
+        std::size_t block_stride_;                      ///< Flat vector stride between blocks
       };
 
       /// @brief Build state variable indices for all phase instances
@@ -369,9 +387,7 @@ namespace miam
       }
 
       /// @brief Build Jacobian sparse matrix indices for all phase instances
-      JacobianIndices GetJacobianIndices(
-          const StateVariableIndices& var_indices,
-          const auto& jacobian) const
+      JacobianIndices GetJacobianIndices(const StateVariableIndices& var_indices, const auto& jacobian) const
       {
         JacobianIndices jac_indices;
         std::size_t num_blocks = jacobian.NumberOfBlocks();
@@ -386,8 +402,7 @@ namespace miam
           std::size_t aq_row = var_indices.aq_indices_[i_phase];
           jac_indices.gas_jac_indices_[i_phase] = jacobian.VectorIndex(0, aq_row, var_indices.gas_idx_);
           jac_indices.aq_jac_indices_[i_phase] = jacobian.VectorIndex(0, aq_row, aq_row);
-          jac_indices.solvent_jac_indices_[i_phase] =
-              jacobian.VectorIndex(0, aq_row, var_indices.solvent_indices_[i_phase]);
+          jac_indices.solvent_jac_indices_[i_phase] = jacobian.VectorIndex(0, aq_row, var_indices.solvent_indices_[i_phase]);
         }
         return jac_indices;
       }

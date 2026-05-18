@@ -48,12 +48,12 @@ namespace miam
         double coefficient;
       };
 
-      micm::Phase algebraic_phase_;      ///< Phase of the algebraic variable
-      micm::Species algebraic_species_;   ///< Species whose ODE row is replaced
-      std::vector<Term> terms_;           ///< Linear combination terms
-      double constant_{ 0.0 };            ///< RHS constant C (used when diagnose_from_state_ is false)
-      bool diagnose_from_state_{ false }; ///< If true, C is diagnosed from state at start of each Solve()
-      std::string uuid_;                  ///< Unique identifier
+      micm::Phase algebraic_phase_;        ///< Phase of the algebraic variable
+      micm::Species algebraic_species_;    ///< Species whose ODE row is replaced
+      std::vector<Term> terms_;            ///< Linear combination terms
+      double constant_{ 0.0 };             ///< RHS constant C (used when diagnose_from_state_ is false)
+      bool diagnose_from_state_{ false };  ///< If true, C is diagnosed from state at start of each Solve()
+      std::string uuid_;                   ///< Unique identifier
 
       LinearConstraint() = delete;
 
@@ -143,8 +143,7 @@ namespace miam
             {
               for (const auto& prefix : phase_it->second)
               {
-                std::size_t col =
-                    state_variable_indices.at(prefix + "." + term.phase.name_ + "." + term.species.name_);
+                std::size_t col = state_variable_indices.at(prefix + "." + term.phase.name_ + "." + term.species.name_);
                 elements.insert({ alg_row, col });
               }
             }
@@ -169,8 +168,7 @@ namespace miam
               if (phase_it != phase_prefixes.end())
               {
                 // Same instanced phase as algebraic: use only this instance
-                std::size_t col =
-                    state_variable_indices.at(prefix + "." + term.phase.name_ + "." + term.species.name_);
+                std::size_t col = state_variable_indices.at(prefix + "." + term.phase.name_ + "." + term.species.name_);
                 elements.insert({ alg_row, col });
               }
               else
@@ -187,8 +185,7 @@ namespace miam
 
       /// @brief Returns a no-op constraint parameter update function (linear constraints have no parameters)
       template<typename DenseMatrixPolicy>
-      std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)>
-      UpdateConstraintParametersFunction(
+      std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)> UpdateConstraintParametersFunction(
           const std::map<std::string, std::set<std::string>>& /*phase_prefixes*/,
           const std::unordered_map<std::string, std::size_t>& /*state_parameter_indices*/) const
       {
@@ -246,13 +243,13 @@ namespace miam
                       state_variables.GetConstColumnView(idx),
                       total);
                 state_parameters.ForEachRow(
-                    [](const double& t, double& param) { param = t; },
-                    total,
-                    state_parameters.GetColumnView(param_idx));
+                    [](const double& t, double& param) { param = t; }, total, state_parameters.GetColumnView(param_idx));
               },
-              dummy_state_variables, dummy_state_parameters);
+              dummy_state_variables,
+              dummy_state_parameters);
 
-          return [inner = std::move(inner)](const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters) mutable
+          return [inner = std::move(inner)](
+                     const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters) mutable
           { inner(state_variables, state_parameters); };
         }
         else
@@ -285,9 +282,11 @@ namespace miam
                       state_parameters.GetColumnView(param_indices[i_inst]));
                 }
               },
-              dummy_state_variables, dummy_state_parameters);
+              dummy_state_variables,
+              dummy_state_parameters);
 
-          return [inner = std::move(inner)](const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters) mutable
+          return [inner = std::move(inner)](
+                     const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters) mutable
           { inner(state_variables, state_parameters); };
         }
       }
@@ -332,18 +331,16 @@ namespace miam
                         [coeff](const double& val, double& s) { s += coeff * val; },
                         state_variables.GetConstColumnView(idx),
                         sum);
-                  residual.ForEachRow(
-                      [](const double& s, double& res) { res = s; },
-                      sum,
-                      residual.GetColumnView(alg_idx));
+                  residual.ForEachRow([](const double& s, double& res) { res = s; }, sum, residual.GetColumnView(alg_idx));
                 },
-                dummy_state_variables, dummy_state_parameters, dummy_state_variables);
+                dummy_state_variables,
+                dummy_state_parameters,
+                dummy_state_variables);
 
             return [inner = std::move(inner)](
                        const DenseMatrixPolicy& state_variables,
                        const DenseMatrixPolicy& state_parameters,
-                       DenseMatrixPolicy& residual) mutable
-            { inner(state_variables, state_parameters, residual); };
+                       DenseMatrixPolicy& residual) mutable { inner(state_variables, state_parameters, residual); };
           }
           else
           {
@@ -351,26 +348,21 @@ namespace miam
                 [resolved, alg_idx, constant](auto&& state_variables, auto&& residual)
                 {
                   auto sum = residual.GetRowVariable();
-                  residual.ForEachRow(
-                      [constant](double& s) { s = -constant; },
-                      sum);
+                  residual.ForEachRow([constant](double& s) { s = -constant; }, sum);
                   for (const auto& [idx, coeff] : resolved)
                     residual.ForEachRow(
                         [coeff](const double& val, double& s) { s += coeff * val; },
                         state_variables.GetConstColumnView(idx),
                         sum);
-                  residual.ForEachRow(
-                      [](const double& s, double& res) { res = s; },
-                      sum,
-                      residual.GetColumnView(alg_idx));
+                  residual.ForEachRow([](const double& s, double& res) { res = s; }, sum, residual.GetColumnView(alg_idx));
                 },
-                dummy_state_variables, dummy_state_variables);
+                dummy_state_variables,
+                dummy_state_variables);
 
             return [inner = std::move(inner)](
                        const DenseMatrixPolicy& state_variables,
                        const DenseMatrixPolicy& /*state_parameters*/,
-                       DenseMatrixPolicy& residual) mutable
-            { inner(state_variables, residual); };
+                       DenseMatrixPolicy& residual) mutable { inner(state_variables, residual); };
           }
         }
         else
@@ -394,8 +386,7 @@ namespace miam
             DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
 
             auto inner = DenseMatrixPolicy::Function(
-                [per_instance, alg_indices, param_indices](
-                    auto&& state_variables, auto&& state_parameters, auto&& residual)
+                [per_instance, alg_indices, param_indices](auto&& state_variables, auto&& state_parameters, auto&& residual)
                 {
                   for (std::size_t i_inst = 0; i_inst < alg_indices.size(); ++i_inst)
                   {
@@ -410,18 +401,17 @@ namespace miam
                           state_variables.GetConstColumnView(idx),
                           sum);
                     residual.ForEachRow(
-                        [](const double& s, double& res) { res = s; },
-                        sum,
-                        residual.GetColumnView(alg_indices[i_inst]));
+                        [](const double& s, double& res) { res = s; }, sum, residual.GetColumnView(alg_indices[i_inst]));
                   }
                 },
-                dummy_state_variables, dummy_state_parameters, dummy_state_variables);
+                dummy_state_variables,
+                dummy_state_parameters,
+                dummy_state_variables);
 
             return [inner = std::move(inner)](
                        const DenseMatrixPolicy& state_variables,
                        const DenseMatrixPolicy& state_parameters,
-                       DenseMatrixPolicy& residual) mutable
-            { inner(state_variables, state_parameters, residual); };
+                       DenseMatrixPolicy& residual) mutable { inner(state_variables, state_parameters, residual); };
           }
           else
           {
@@ -431,27 +421,23 @@ namespace miam
                   for (std::size_t i_inst = 0; i_inst < alg_indices.size(); ++i_inst)
                   {
                     auto sum = residual.GetRowVariable();
-                    residual.ForEachRow(
-                        [constant](double& s) { s = -constant; },
-                        sum);
+                    residual.ForEachRow([constant](double& s) { s = -constant; }, sum);
                     for (const auto& [idx, coeff] : per_instance[i_inst])
                       residual.ForEachRow(
                           [coeff](const double& val, double& s) { s += coeff * val; },
                           state_variables.GetConstColumnView(idx),
                           sum);
                     residual.ForEachRow(
-                        [](const double& s, double& res) { res = s; },
-                        sum,
-                        residual.GetColumnView(alg_indices[i_inst]));
+                        [](const double& s, double& res) { res = s; }, sum, residual.GetColumnView(alg_indices[i_inst]));
                   }
                 },
-                dummy_state_variables, dummy_state_variables);
+                dummy_state_variables,
+                dummy_state_variables);
 
             return [inner = std::move(inner)](
                        const DenseMatrixPolicy& state_variables,
                        const DenseMatrixPolicy& /*state_parameters*/,
-                       DenseMatrixPolicy& residual) mutable
-            { inner(state_variables, residual); };
+                       DenseMatrixPolicy& residual) mutable { inner(state_variables, residual); };
           }
         }
       }
@@ -488,18 +474,16 @@ namespace miam
                 for (const auto& [vec_idx, coeff] : jac_entries)
                 {
                   auto bv = jacobian_values.GetBlockView(vec_idx);
-                  jacobian_values.ForEachBlock(
-                      [coeff](double& j) { j -= coeff; },
-                      bv);
+                  jacobian_values.ForEachBlock([coeff](double& j) { j -= coeff; }, bv);
                 }
               },
-              dummy_state, jacobian);
+              dummy_state,
+              jacobian);
 
           return [inner = std::move(inner)](
                      const DenseMatrixPolicy& state_variables,
                      const DenseMatrixPolicy& /*state_parameters*/,
-                     SparseMatrixPolicy& jacobian_values) mutable
-          { inner(state_variables, jacobian_values); };
+                     SparseMatrixPolicy& jacobian_values) mutable { inner(state_variables, jacobian_values); };
         }
         else
         {
@@ -531,26 +515,23 @@ namespace miam
                   for (const auto& [vec_idx, coeff] : inst_entries)
                   {
                     auto bv = jacobian_values.GetBlockView(vec_idx);
-                    jacobian_values.ForEachBlock(
-                        [coeff](double& j) { j -= coeff; },
-                        bv);
+                    jacobian_values.ForEachBlock([coeff](double& j) { j -= coeff; }, bv);
                   }
                 }
               },
-              dummy_state, jacobian);
+              dummy_state,
+              jacobian);
 
           return [inner = std::move(inner)](
                      const DenseMatrixPolicy& state_variables,
                      const DenseMatrixPolicy& /*state_parameters*/,
-                     SparseMatrixPolicy& jacobian_values) mutable
-          { inner(state_variables, jacobian_values); };
+                     SparseMatrixPolicy& jacobian_values) mutable { inner(state_variables, jacobian_values); };
         }
       }
 
      private:
       /// @brief Returns parameter names for diagnosed constants
-      std::set<std::string> DiagnoseParamNames(
-          const std::map<std::string, std::set<std::string>>& phase_prefixes) const
+      std::set<std::string> DiagnoseParamNames(const std::map<std::string, std::set<std::string>>& phase_prefixes) const
       {
         std::set<std::string> names;
         bool is_global = (phase_prefixes.find(algebraic_phase_.name_) == phase_prefixes.end());
@@ -580,8 +561,7 @@ namespace miam
           {
             for (const auto& prefix : phase_it->second)
             {
-              std::size_t idx =
-                  state_variable_indices.at(prefix + "." + term.phase.name_ + "." + term.species.name_);
+              std::size_t idx = state_variable_indices.at(prefix + "." + term.phase.name_ + "." + term.species.name_);
               resolved.push_back({ idx, term.coefficient });
             }
           }
@@ -612,8 +592,7 @@ namespace miam
             if (phase_it != phase_prefixes.end())
             {
               // Match the instance prefix for this term's phase
-              std::size_t idx =
-                  state_variable_indices.at(alg_prefix + "." + term.phase.name_ + "." + term.species.name_);
+              std::size_t idx = state_variable_indices.at(alg_prefix + "." + term.phase.name_ + "." + term.species.name_);
               per_instance[i_inst].push_back({ idx, term.coefficient });
             }
             else

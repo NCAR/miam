@@ -213,7 +213,8 @@ namespace miam
                   // ∂r_eff/∂[species_k] = r_eff / (3·V_total) · molar_volume_k [m³ mol⁻¹]
                   for (std::size_t k = 0; k < species_indices.size(); ++k)
                     params.ForEachRow(
-                        [molar_vol = molar_volumes[k]](const double& gsd, const double& nc, const double& V_total, double& dr)
+                        [molar_vol = molar_volumes[k]](
+                            const double& gsd, const double& nc, const double& V_total, double& dr)
                         {
                           double ln_gsd = std::log(gsd);
                           double V_mean = V_total / nc;

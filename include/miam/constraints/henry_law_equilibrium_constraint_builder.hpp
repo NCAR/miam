@@ -49,7 +49,9 @@ namespace miam
       }
 
       template<typename T>
-          requires requires(const T& t, const micm::Conditions& c) { { t.Calculate(c) }; }
+        requires requires(const T& t, const micm::Conditions& c) {
+          { t.Calculate(c) };
+        }
       HenryLawEquilibriumConstraintBuilder& SetHenryLawConstant(const T& henry_law_constant)
       {
         henry_law_constant_ = [henry_law_constant](const micm::Conditions& conditions)
@@ -98,7 +100,13 @@ namespace miam
           throw std::runtime_error("HenryLawEquilibriumConstraintBuilder requires the solvent density to be set.");
 
         return HenryLawEquilibriumConstraint(
-            henry_law_constant_, gas_species_, condensed_species_, solvent_, condensed_phase_, solvent_molecular_weight_, solvent_density_);
+            henry_law_constant_,
+            gas_species_,
+            condensed_species_,
+            solvent_,
+            condensed_phase_,
+            solvent_molecular_weight_,
+            solvent_density_);
       }
 
      private:
@@ -113,7 +121,7 @@ namespace miam
       std::function<double(const micm::Conditions& conditions)> henry_law_constant_;
       double solvent_molecular_weight_ = 0.0;  ///< [kg mol⁻¹]
       bool solvent_molecular_weight_is_set_ = false;
-      double solvent_density_ = 0.0;             ///< [kg m⁻³]
+      double solvent_density_ = 0.0;  ///< [kg m⁻³]
       bool solvent_density_is_set_ = false;
     };
   }  // namespace constraint
