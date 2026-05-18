@@ -21,9 +21,7 @@
 
 namespace miam
 {
-  namespace constraint
-  {
-    /// @brief A dissolved equilibrium constraint
+  /// @brief A dissolved equilibrium constraint
     /// @details Replaces the ODE row for a designated algebraic species with the
     ///          steady-state equilibrium condition:
     ///
@@ -69,7 +67,7 @@ namespace miam
             algebraic_species_(algebraic_species),
             solvent_(solvent),
             phase_(phase),
-            uuid_(miam::util::generate_uuid_v4()),
+            uuid_(GenerateUuid()),
             solvent_floor_(solvent_floor)
       {
         // Validate that the algebraic species is one of the products
@@ -522,5 +520,4 @@ namespace miam
         return jac_indices;
       }
     };
-  }  // namespace constraint
 }  // namespace miam

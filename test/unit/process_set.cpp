@@ -29,9 +29,9 @@ namespace
     double k_forward = 0.1;
     double k_reverse = 0.05;
 
-    process::DissolvedReversibleReaction MakeReaction() const
+    miam::DissolvedReversibleReaction MakeReaction() const
     {
-      return process::DissolvedReversibleReaction{
+      return miam::DissolvedReversibleReaction{
         [kf = k_forward](const micm::Conditions&) { return kf; },
         [kr = k_reverse](const micm::Conditions&) { return kr; },
         { a },

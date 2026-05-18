@@ -26,7 +26,7 @@ TEST(MIAM, ApiExample)
   Phase organic_phase{ "ORGANIC", { { co2, 16.2 }, { hexane } } };
 
   // Cloud droplets modeled with 1-moment log-normal distributions
-  auto small_drop = representation::SingleMomentMode{
+  auto small_drop = miam::SingleMomentMode{
     "SMALL_DROP",
     { aqueous_phase },
     1.0e-7, // geometric mean radius (m)
@@ -34,7 +34,7 @@ TEST(MIAM, ApiExample)
   };
   
   // Larger cloud droplets modeled with 1-moment log-normal distributions
-  auto large_drop = representation::SingleMomentMode{
+  auto large_drop = miam::SingleMomentMode{
     "LARGE_DROP",
     { aqueous_phase },
     1.0e-6, // geometric mean radius (m)
@@ -42,21 +42,21 @@ TEST(MIAM, ApiExample)
   };
 
   // Aerosol model with 2-moment distribution
-  auto aitken = representation::TwoMomentMode{
+  auto aitken = miam::TwoMomentMode{
     "AITKEN",
     { aqueous_phase },
     1.2     // geometric standard deviation
   };
   
   // Another aerosol mode with 2-moment distribution
-  auto accumulation = representation::TwoMomentMode{
+  auto accumulation = miam::TwoMomentMode{
     "ACCUMULATION",
     { aqueous_phase, organic_phase },  // Multiple phases
     1.4     // geometric standard deviation
   };
 
   // Dust particle section
-  auto dust = representation::UniformSection{
+  auto dust = miam::UniformSection{
     "DUST",
     { organic_phase },
     1.0e-7, // min radius (m)
@@ -110,7 +110,7 @@ TEST(MIAM, ApiExample)
 #if 0
   Process co2_photo = ChemicalReactionBuilder()
                       .SetReactants({ co2 })
-                      .SetRateConstant(process::constant::ArrheniusRateConstantParameters{ .A_ = 1.0e-3 })
+                      .SetRateConstant(miam::ArrheniusRateConstantParameters{ .A_ = 1.0e-3 })
                       .SetPhase(gas_phase)
                       .Build();
 
@@ -133,55 +133,55 @@ TEST(MIAM, ApiExample)
   // // K_eq = A * exp( C ( 1 / T0 - 1 / T ) ) = Equilibrium constant
   // // k_r = reverse rate constant
   // // (k_f = K_eq * k_r = forward rate constant)
-  auto h2o_dissociation = process::DissolvedReversibleReactionBuilder()
+  auto h2o_dissociation = miam::DissolvedReversibleReactionBuilder()
                              .SetPhase(aqueous_phase)
                              .SetReactants({ h2o })
                              .SetProducts({ ohm, hp })
                              .SetSolvent(h2o)
-                             .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 1.14e-2, .C_ = 2300.0, .T0_ = 298.15 }))
-                             .SetReverseRateConstant(process::constant::ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
+                             .SetEquilibriumConstant(miam::EquilibriumConstant(miam::EquilibriumConstantParameters{ .A_ = 1.14e-2, .C_ = 2300.0, .T0_ = 298.15 }))
+                             .SetReverseRateConstant(miam::ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
                              .Build();
 
   // Condensed phase reversible reaction: CO2 hydration
   // K_eq = A * exp( C ( 1 / T0 - 1 / T ) ) = Equilibrium constant
   // k_r = reverse rate constant
   // (k_f = K_eq * k_r = forward rate constant)
-  auto co2_hydration = process::DissolvedReversibleReactionBuilder()
+  auto co2_hydration = miam::DissolvedReversibleReactionBuilder()
                           .SetPhase(aqueous_phase)
                           .SetReactants({ co2, h2o })
                           .SetProducts({ h2co3 })
                           .SetSolvent(h2o)
-                          .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 1.70e3, .C_ = 2400.0, .T0_ = 298.15 }))
-                          .SetReverseRateConstant(process::constant::ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
+                          .SetEquilibriumConstant(miam::EquilibriumConstant(miam::EquilibriumConstantParameters{ .A_ = 1.70e3, .C_ = 2400.0, .T0_ = 298.15 }))
+                          .SetReverseRateConstant(miam::ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
                           .Build();
 
   // Condensed phase reversible reaction: H2CO3 dissociation
   // K_eq = A * exp( C ( 1 / T0 - 1 / T ) ) = Equilibrium constant
   // k_r = reverse rate constant
   // (k_f = K_eq * k_r = forward rate constant)
-  auto h2co3_dissociation = process::DissolvedReversibleReactionBuilder()
+  auto h2co3_dissociation = miam::DissolvedReversibleReactionBuilder()
                                .SetPhase(aqueous_phase)
                                .SetReactants({ h2co3 })
                                .SetProducts({ hco3m, hp })
                                .SetSolvent(h2o)
-                               .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 4.27e2, .C_ = 2300.0, .T0_ = 298.15 }))
-                               .SetReverseRateConstant(process::constant::ArrheniusRateConstantParameters{ .A_ = 2.5e10, .C_ = 4.0e4 })
+                               .SetEquilibriumConstant(miam::EquilibriumConstant(miam::EquilibriumConstantParameters{ .A_ = 4.27e2, .C_ = 2300.0, .T0_ = 298.15 }))
+                               .SetReverseRateConstant(miam::ArrheniusRateConstantParameters{ .A_ = 2.5e10, .C_ = 4.0e4 })
                                .Build();
 
   // Condensed phase reversible reaction: HCO3- dissociation
   // K_eq = A * exp( C ( 1 / T0 - 1 / T ) ) = Equilibrium constant
   // k_r = reverse rate constant
   // (k_f = K_eq * k_r = forward rate constant)
-  auto hco3m_dissociation = process::DissolvedReversibleReactionBuilder()
+  auto hco3m_dissociation = miam::DissolvedReversibleReactionBuilder()
                                .SetPhase(aqueous_phase)
                                .SetReactants({ hco3m })
                                .SetProducts({ co32m, hp })
                                .SetSolvent(h2o)
-                               .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 1.70e1, .C_ = 2300.0, .T0_ = 298.15 }))
-                               .SetReverseRateConstant(process::constant::ArrheniusRateConstantParameters{ .A_ = 6.4e9, .C_ = 3.1e4 })
+                               .SetEquilibriumConstant(miam::EquilibriumConstant(miam::EquilibriumConstantParameters{ .A_ = 1.70e1, .C_ = 2300.0, .T0_ = 298.15 }))
+                               .SetReverseRateConstant(miam::ArrheniusRateConstantParameters{ .A_ = 6.4e9, .C_ = 3.1e4 })
                                .Build();
   
-  std::vector<process::DissolvedReversibleReaction> reactions{
+  std::vector<miam::DissolvedReversibleReaction> reactions{
 //    co2_photo,
 //    co2_phase_transfer,
     h2o_dissociation,

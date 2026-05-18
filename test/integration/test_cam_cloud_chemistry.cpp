@@ -20,6 +20,8 @@
 #include <miam/miam.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
+#include <miam/util/constants.hpp>
+
 #include <micm/CPU.hpp>
 #include <micm/util/jacobian_verification.hpp>
 
@@ -36,8 +38,6 @@ using SparseMatrixFD = micm::SparseMatrix<double, micm::SparseMatrixStandardOrde
 
 namespace
 {
-  constexpr double R_gas = miam::util::R_gas;
-
   // M/atm → mol m⁻³ Pa⁻¹
   constexpr double M_ATM_TO_MOL_M3_PA = 1000.0 / 101325.0;
 
@@ -238,14 +238,14 @@ TEST(CamCloudChemistry, Step1_SingleHLC)
 
   Phase gas_phase{ "GAS", { so2_g } };
   Phase aqueous_phase{ "AQUEOUS", { so2_aq, h2o } };
-  auto cloud = representation::UniformSection{ "CLOUD", { aqueous_phase } };
+  auto cloud = miam::UniformSection{ "CLOUD", { aqueous_phase } };
 
-  auto hl_so2 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_so2 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(so2_g)
       .SetCondensedSpecies(so2_aq)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = HLC_ref, .C_ = C_hlc }))
       .SetSolventMolecularWeight(0.018)
       .SetSolventDensity(1000.0)
@@ -255,7 +255,7 @@ TEST(CamCloudChemistry, Step1_SingleHLC)
   double gas0 = 3.01e-8;   // ~ 1 ppb
   double total_so2 = gas0;  // aq0 = 0
 
-  auto mass_so2 = constraint::LinearConstraintBuilder()
+  auto mass_so2 = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, so2_g)
       .AddTerm(gas_phase, so2_g, 1.0)
       .AddTerm(aqueous_phase, so2_aq, 1.0)
@@ -289,7 +289,7 @@ TEST(CamCloudChemistry, Step1_SingleHLC)
 
   // Analytical equilibrium: aq = α*g, g + aq = total → g = total/(1+α)
   double hlc_T = HLC_ref * std::exp(C_hlc * (1.0/T - 1.0/T0));
-  double alpha = hlc_T * R_gas * T * f_v;
+  double alpha = hlc_T * miam::GAS_CONSTANT * T * f_v;
   double g_eq = total_so2 / (1.0 + alpha);
   double aq_eq = total_so2 * alpha / (1.0 + alpha);
 
@@ -332,22 +332,22 @@ TEST(CamCloudChemistry, Step1b_KwOnly)
 
   Phase gas_phase{ "GAS", {} };
   Phase aqueous_phase{ "AQUEOUS", { hp, ohm, h2o } };
-  auto cloud = representation::UniformSection{ "CLOUD", { aqueous_phase } };
+  auto cloud = miam::UniformSection{ "CLOUD", { aqueous_phase } };
 
   double Kw_miam = 1.0e-14 / (c_H2O_M * c_H2O_M);
 
-  auto eq_kw = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_kw = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ h2o })
       .SetProducts({ hp, ohm })
       .SetAlgebraicSpecies(ohm)
       .SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = Kw_miam, .C_ = 6710.0 }))
       .Build();
 
   // Charge balance: H+ = OH-
-  auto charge = constraint::LinearConstraintBuilder()
+  auto charge = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(aqueous_phase, hp)
       .AddTerm(aqueous_phase, hp, 1.0)
       .AddTerm(aqueous_phase, ohm, -1.0)
@@ -430,21 +430,21 @@ TEST(CamCloudChemistry, Step1c_KwNaiveIC)
 
   Phase gas_phase{ "GAS", {} };
   Phase aqueous_phase{ "AQUEOUS", { hp, ohm, h2o } };
-  auto cloud = representation::UniformSection{ "CLOUD", { aqueous_phase } };
+  auto cloud = miam::UniformSection{ "CLOUD", { aqueous_phase } };
 
   double Kw_miam = 1.0e-14 / (c_H2O_M * c_H2O_M);
 
-  auto eq_kw = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_kw = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ h2o })
       .SetProducts({ hp, ohm })
       .SetAlgebraicSpecies(ohm)
       .SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = Kw_miam, .C_ = 6710.0 }))
       .Build();
 
-  auto charge = constraint::LinearConstraintBuilder()
+  auto charge = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(aqueous_phase, hp)
       .AddTerm(aqueous_phase, hp, 1.0)
       .AddTerm(aqueous_phase, ohm, -1.0)
@@ -538,41 +538,41 @@ TEST(CamCloudChemistry, Step2_HLC_Plus_Dissociation)
 
   Phase gas_phase{ "GAS", { so2_g } };
   Phase aqueous_phase{ "AQUEOUS", { so2_aq, hso3m, hp, ohm, h2o } };
-  auto cloud = representation::UniformSection{ "CLOUD", { aqueous_phase } };
+  auto cloud = miam::UniformSection{ "CLOUD", { aqueous_phase } };
 
   double HLC_ref = 1.23 * M_ATM_TO_MOL_M3_PA;
   double C_hlc = 3120.0;
 
-  auto hl_so2 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_so2 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(so2_g)
       .SetCondensedSpecies(so2_aq)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = HLC_ref, .C_ = C_hlc }))
       .SetSolventMolecularWeight(0.018)
       .SetSolventDensity(1000.0)
       .Build();
 
   // Kw: H2O ⇌ H+ + OH-
-  auto eq_kw = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_kw = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ h2o })
       .SetProducts({ hp, ohm })
       .SetAlgebraicSpecies(ohm)
       .SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
       .Build();
 
   // Ka1: SO2_aq ⇌ HSO3⁻ + H⁺
-  auto eq_ka1 = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_ka1 = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ so2_aq })
       .SetProducts({ hso3m, hp })
       .SetAlgebraicSpecies(hso3m)
       .SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
       .Build();
 
@@ -580,7 +580,7 @@ TEST(CamCloudChemistry, Step2_HLC_Plus_Dissociation)
   double gas0 = 3.01e-8;
   double total_S = gas0;
 
-  auto mass_S = constraint::LinearConstraintBuilder()
+  auto mass_S = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, so2_g)
       .AddTerm(gas_phase, so2_g, 1.0)
       .AddTerm(aqueous_phase, so2_aq, 1.0)
@@ -589,7 +589,7 @@ TEST(CamCloudChemistry, Step2_HLC_Plus_Dissociation)
       .Build();
 
   // Charge balance: [H+] = [OH-] + [HSO3-]  (H+ algebraic)
-  auto charge = constraint::LinearConstraintBuilder()
+  auto charge = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(aqueous_phase, hp)
       .AddTerm(aqueous_phase, hp,   1.0)
       .AddTerm(aqueous_phase, ohm, -1.0)
@@ -633,7 +633,7 @@ TEST(CamCloudChemistry, Step2_HLC_Plus_Dissociation)
   // Substituting everything into the charge balance gives a fixed-point
   // on H⁺ that converges with simple damping.
   double hlc_T = (1.23 * M_ATM_TO_MOL_M3_PA) * std::exp(3120.0 * (1.0/T - 1.0/T0));
-  double alpha = hlc_T * R_gas * T * f_v;
+  double alpha = hlc_T * miam::GAS_CONSTANT * T * f_v;
   double Ka1_T = (1.7e-2 / c_H2O_M) * std::exp(2090.0 * (1.0/T0 - 1.0/T));
   double Kw_T  = (1.0e-14 / (c_H2O_M * c_H2O_M)) * std::exp(6710.0 * (1.0/T0 - 1.0/T));
 
@@ -764,49 +764,49 @@ TEST(CamCloudChemistry, Step3_FullEquilibrium)
   Phase aqueous_phase{ "AQUEOUS", {
       h2o, so2_aq, h2o2_aq, o3_aq,
       hp, ohm, hso3m, so3mm, so4mm } };
-  auto cloud = representation::UniformSection{ "CLOUD", { aqueous_phase } };
+  auto cloud = miam::UniformSection{ "CLOUD", { aqueous_phase } };
 
   // --- Henry's Law constraints ---
-  auto hl_so2 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_so2 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(so2_g).SetCondensedSpecies(so2_aq).SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
       .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
-  auto hl_h2o2 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_h2o2 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(h2o2_g).SetCondensedSpecies(h2o2_aq).SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
       .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
-  auto hl_o3 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_o3 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(o3_g).SetCondensedSpecies(o3_aq).SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
       .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
   // --- Dissociation equilibria ---
-  auto eq_kw = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_kw = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase).SetReactants({ h2o }).SetProducts({ hp, ohm })
       .SetAlgebraicSpecies(ohm).SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
       .Build();
 
-  auto eq_ka1 = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_ka1 = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase).SetReactants({ so2_aq }).SetProducts({ hso3m, hp })
       .SetAlgebraicSpecies(hso3m).SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
       .Build();
 
-  auto eq_ka2 = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_ka2 = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase).SetReactants({ hso3m }).SetProducts({ so3mm, hp })
       .SetAlgebraicSpecies(so3mm).SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 6.0e-8 / c_H2O_M, .C_ = 1120.0 }))
       .Build();
 
@@ -816,7 +816,7 @@ TEST(CamCloudChemistry, Step3_FullEquilibrium)
   double gas0_h2o2 = 3.01e-8;
   double gas0_o3   = 1.50e-6;
 
-  auto mass_S = constraint::LinearConstraintBuilder()
+  auto mass_S = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, so2_g)
       .AddTerm(gas_phase, so2_g, 1.0)
       .AddTerm(aqueous_phase, so2_aq, 1.0)
@@ -825,14 +825,14 @@ TEST(CamCloudChemistry, Step3_FullEquilibrium)
       .DiagnoseConstantFromState()
       .Build();
 
-  auto mass_H2O2 = constraint::LinearConstraintBuilder()
+  auto mass_H2O2 = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, h2o2_g)
       .AddTerm(gas_phase, h2o2_g, 1.0)
       .AddTerm(aqueous_phase, h2o2_aq, 1.0)
       .DiagnoseConstantFromState()
       .Build();
 
-  auto mass_O3 = constraint::LinearConstraintBuilder()
+  auto mass_O3 = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, o3_g)
       .AddTerm(gas_phase, o3_g, 1.0)
       .AddTerm(aqueous_phase, o3_aq, 1.0)
@@ -840,7 +840,7 @@ TEST(CamCloudChemistry, Step3_FullEquilibrium)
       .Build();
 
   // --- Charge balance: [H+] = [OH-] + [HSO3-] + 2[SO3--] + 2[SO4--] ---
-  auto charge = constraint::LinearConstraintBuilder()
+  auto charge = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(aqueous_phase, hp)
       .AddTerm(aqueous_phase, hp,     1.0)
       .AddTerm(aqueous_phase, ohm,   -1.0)
@@ -888,9 +888,9 @@ TEST(CamCloudChemistry, Step3_FullEquilibrium)
   double hlc_SO2_T  = (1.23 * M_ATM_TO_MOL_M3_PA)  * std::exp(3120.0 * (1.0/T - 1.0/T0));
   double hlc_H2O2_T = (7.4e4 * M_ATM_TO_MOL_M3_PA) * std::exp(6621.0 * (1.0/T - 1.0/T0));
   double hlc_O3_T   = (1.15e-2 * M_ATM_TO_MOL_M3_PA) * std::exp(2560.0 * (1.0/T - 1.0/T0));
-  double alpha_SO2  = hlc_SO2_T * R_gas * T * f_v;
-  double alpha_H2O2 = hlc_H2O2_T * R_gas * T * f_v;
-  double alpha_O3   = hlc_O3_T * R_gas * T * f_v;
+  double alpha_SO2  = hlc_SO2_T * miam::GAS_CONSTANT * T * f_v;
+  double alpha_H2O2 = hlc_H2O2_T * miam::GAS_CONSTANT * T * f_v;
+  double alpha_O3   = hlc_O3_T * miam::GAS_CONSTANT * T * f_v;
   double Ka1_T = (1.7e-2 / c_H2O_M) * std::exp(2090.0 * (1.0/T0 - 1.0/T));
   double Ka2_T = (6.0e-8 / c_H2O_M) * std::exp(1120.0 * (1.0/T0 - 1.0/T));
   double Kw_T  = (1.0e-14 / (c_H2O_M * c_H2O_M)) * std::exp(6710.0 * (1.0/T0 - 1.0/T));
@@ -1010,47 +1010,47 @@ TEST(CamCloudChemistry, Step3b_NaiveInitialConditions)
   Phase aqueous_phase{ "AQUEOUS", {
       h2o, so2_aq, h2o2_aq, o3_aq,
       hp, ohm, hso3m, so3mm, so4mm } };
-  auto cloud = representation::UniformSection{ "CLOUD", { aqueous_phase } };
+  auto cloud = miam::UniformSection{ "CLOUD", { aqueous_phase } };
 
-  auto hl_so2 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_so2 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(so2_g).SetCondensedSpecies(so2_aq).SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
       .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
-  auto hl_h2o2 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_h2o2 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(h2o2_g).SetCondensedSpecies(h2o2_aq).SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
       .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
-  auto hl_o3 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_o3 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(o3_g).SetCondensedSpecies(o3_aq).SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
       .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
-  auto eq_kw = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_kw = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase).SetReactants({ h2o }).SetProducts({ hp, ohm })
       .SetAlgebraicSpecies(ohm).SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
       .Build();
 
-  auto eq_ka1 = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_ka1 = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase).SetReactants({ so2_aq }).SetProducts({ hso3m, hp })
       .SetAlgebraicSpecies(hso3m).SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
       .Build();
 
-  auto eq_ka2 = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_ka2 = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase).SetReactants({ hso3m }).SetProducts({ so3mm, hp })
       .SetAlgebraicSpecies(so3mm).SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 6.0e-8 / c_H2O_M, .C_ = 1120.0 }))
       .Build();
 
@@ -1058,7 +1058,7 @@ TEST(CamCloudChemistry, Step3b_NaiveInitialConditions)
   double gas0_h2o2 = 3.01e-8;
   double gas0_o3   = 1.50e-6;
 
-  auto mass_S = constraint::LinearConstraintBuilder()
+  auto mass_S = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, so2_g)
       .AddTerm(gas_phase, so2_g, 1.0)
       .AddTerm(aqueous_phase, so2_aq, 1.0)
@@ -1067,21 +1067,21 @@ TEST(CamCloudChemistry, Step3b_NaiveInitialConditions)
       .DiagnoseConstantFromState()
       .Build();
 
-  auto mass_H2O2 = constraint::LinearConstraintBuilder()
+  auto mass_H2O2 = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, h2o2_g)
       .AddTerm(gas_phase, h2o2_g, 1.0)
       .AddTerm(aqueous_phase, h2o2_aq, 1.0)
       .DiagnoseConstantFromState()
       .Build();
 
-  auto mass_O3 = constraint::LinearConstraintBuilder()
+  auto mass_O3 = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, o3_g)
       .AddTerm(gas_phase, o3_g, 1.0)
       .AddTerm(aqueous_phase, o3_aq, 1.0)
       .DiagnoseConstantFromState()
       .Build();
 
-  auto charge = constraint::LinearConstraintBuilder()
+  auto charge = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(aqueous_phase, hp)
       .AddTerm(aqueous_phase, hp,     1.0)
       .AddTerm(aqueous_phase, ohm,   -1.0)
@@ -1216,49 +1216,49 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
   Phase aqueous_phase{ "AQUEOUS", {
       h2o, so2_aq, h2o2_aq, o3_aq,
       hp, ohm, hso3m, so3mm, so4mm, so2oohm } };
-  auto cloud = representation::UniformSection{ "CLOUD", { aqueous_phase } };
+  auto cloud = miam::UniformSection{ "CLOUD", { aqueous_phase } };
 
   // --- Henry's Law constraints ---
-  auto hl_so2 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_so2 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(so2_g).SetCondensedSpecies(so2_aq).SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
       .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
-  auto hl_h2o2 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_h2o2 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(h2o2_g).SetCondensedSpecies(h2o2_aq).SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
       .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
-  auto hl_o3 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_o3 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(o3_g).SetCondensedSpecies(o3_aq).SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
       .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
   // --- Dissociation equilibria ---
-  auto eq_kw = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_kw = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase).SetReactants({ h2o }).SetProducts({ hp, ohm })
       .SetAlgebraicSpecies(ohm).SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
       .Build();
 
-  auto eq_ka1 = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_ka1 = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase).SetReactants({ so2_aq }).SetProducts({ hso3m, hp })
       .SetAlgebraicSpecies(hso3m).SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
       .Build();
 
-  auto eq_ka2 = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_ka2 = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase).SetReactants({ hso3m }).SetProducts({ so3mm, hp })
       .SetAlgebraicSpecies(so3mm).SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 6.0e-8 / c_H2O_M, .C_ = 1120.0 }))
       .Build();
 
@@ -1270,7 +1270,7 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
   double so4mm0    = 1.0;  // test value (mol/m³ air)
   double total_S   = gas0_so2 + so4mm0;
 
-  auto mass_S = constraint::LinearConstraintBuilder()
+  auto mass_S = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, so2_g)
       .AddTerm(gas_phase, so2_g, 1.0)
       .AddTerm(aqueous_phase, so2_aq, 1.0)
@@ -1280,14 +1280,14 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
       .DiagnoseConstantFromState()
       .Build();
 
-  auto mass_H2O2 = constraint::LinearConstraintBuilder()
+  auto mass_H2O2 = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, h2o2_g)
       .AddTerm(gas_phase, h2o2_g, 1.0)
       .AddTerm(aqueous_phase, h2o2_aq, 1.0)
       .DiagnoseConstantFromState()
       .Build();
 
-  auto mass_O3 = constraint::LinearConstraintBuilder()
+  auto mass_O3 = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, o3_g)
       .AddTerm(gas_phase, o3_g, 1.0)
       .AddTerm(aqueous_phase, o3_aq, 1.0)
@@ -1295,7 +1295,7 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
       .Build();
 
   // Charge balance
-  auto charge = constraint::LinearConstraintBuilder()
+  auto charge = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(aqueous_phase, hp)
       .AddTerm(aqueous_phase, hp,     1.0)
       .AddTerm(aqueous_phase, ohm,   -1.0)
@@ -1313,18 +1313,18 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
   //   R1a (reversible): HSO3⁻ + H2O2(aq) ⇌ SO2OOH⁻ + H2O
   //   R1b (irreversible): SO2OOH⁻ + H⁺ → SO4²⁻   (net: +H⁺)
   // k₁ = 7.45e7/13 = 5.731e6 M⁻¹s⁻¹; K_eq_A = 1725; k₂ = 2.4e6 M⁻¹s⁻¹
-  auto rxn1a = process::DissolvedReversibleReactionBuilder()
+  auto rxn1a = miam::DissolvedReversibleReactionBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ hso3m, h2o2_aq })
       .SetProducts({ so2oohm, h2o })
       .SetSolvent(h2o)
-      .SetForwardRateConstant(process::constant::EquilibriumConstant({
+      .SetForwardRateConstant(miam::EquilibriumConstant({
           .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 }))
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 1725.0 }))
       .Build();
 
-  auto rxn1b = process::DissolvedReactionBuilder()
+  auto rxn1b = miam::DissolvedReactionBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ so2oohm, hp })
       .SetProducts({ so4mm })
@@ -1336,7 +1336,7 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
       .Build();
 
   // R2: HSO3⁻ + O3(aq) → SO4²⁻ + H⁺
-  auto rxn2 = process::DissolvedReactionBuilder()
+  auto rxn2 = miam::DissolvedReactionBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ hso3m, o3_aq })
       .SetProducts({ so4mm, hp })
@@ -1348,7 +1348,7 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
       .Build();
 
   // R3: SO3²⁻ + O3(aq) → SO4²⁻
-  auto rxn3 = process::DissolvedReactionBuilder()
+  auto rxn3 = miam::DissolvedReactionBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ so3mm, o3_aq })
       .SetProducts({ so4mm })
@@ -1397,9 +1397,9 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
   double hlc_SO2_T  = (1.23 * M_ATM_TO_MOL_M3_PA)  * std::exp(3120.0 * (1.0/T - 1.0/T0));
   double hlc_H2O2_T = (7.4e4 * M_ATM_TO_MOL_M3_PA) * std::exp(6621.0 * (1.0/T - 1.0/T0));
   double hlc_O3_T   = (1.15e-2 * M_ATM_TO_MOL_M3_PA) * std::exp(2560.0 * (1.0/T - 1.0/T0));
-  double alpha_SO2  = hlc_SO2_T * R_gas * T * f_v;
-  double alpha_H2O2 = hlc_H2O2_T * R_gas * T * f_v;
-  double alpha_O3   = hlc_O3_T * R_gas * T * f_v;
+  double alpha_SO2  = hlc_SO2_T * miam::GAS_CONSTANT * T * f_v;
+  double alpha_H2O2 = hlc_H2O2_T * miam::GAS_CONSTANT * T * f_v;
+  double alpha_O3   = hlc_O3_T * miam::GAS_CONSTANT * T * f_v;
   double Ka1_T = (1.7e-2 / c_H2O_M) * std::exp(2090.0 * (1.0/T0 - 1.0/T));
   double Ka2_T = (6.0e-8 / c_H2O_M) * std::exp(1120.0 * (1.0/T0 - 1.0/T));
   double Kw_T  = (1.0e-14 / (c_H2O_M * c_H2O_M)) * std::exp(6710.0 * (1.0/T0 - 1.0/T));
@@ -1548,48 +1548,48 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
   Phase aqueous_phase{ "AQUEOUS", {
       h2o, so2_aq, h2o2_aq, o3_aq,
       hp, ohm, hso3m, so3mm, so4mm, so2oohm } };
-  auto cloud = representation::UniformSection{ "CLOUD", { aqueous_phase } };
+  auto cloud = miam::UniformSection{ "CLOUD", { aqueous_phase } };
 
   // Same constraints as Step 4
-  auto hl_so2 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_so2 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(so2_g).SetCondensedSpecies(so2_aq).SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
       .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
-  auto hl_h2o2 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_h2o2 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(h2o2_g).SetCondensedSpecies(h2o2_aq).SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
       .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
-  auto hl_o3 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_o3 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(o3_g).SetCondensedSpecies(o3_aq).SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
       .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
-  auto eq_kw = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_kw = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase).SetReactants({ h2o }).SetProducts({ hp, ohm })
       .SetAlgebraicSpecies(ohm).SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
       .Build();
 
-  auto eq_ka1 = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_ka1 = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase).SetReactants({ so2_aq }).SetProducts({ hso3m, hp })
       .SetAlgebraicSpecies(hso3m).SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
       .Build();
 
-  auto eq_ka2 = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_ka2 = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase).SetReactants({ hso3m }).SetProducts({ so3mm, hp })
       .SetAlgebraicSpecies(so3mm).SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 6.0e-8 / c_H2O_M, .C_ = 1120.0 }))
       .Build();
 
@@ -1599,7 +1599,7 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
   double so4mm0    = 1.0;
   double total_S   = gas0_so2 + so4mm0;
 
-  auto mass_S = constraint::LinearConstraintBuilder()
+  auto mass_S = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, so2_g)
       .AddTerm(gas_phase, so2_g, 1.0)
       .AddTerm(aqueous_phase, so2_aq, 1.0)
@@ -1610,21 +1610,21 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
       .DiagnoseConstantFromState()
       .Build();
 
-  auto mass_H2O2 = constraint::LinearConstraintBuilder()
+  auto mass_H2O2 = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, h2o2_g)
       .AddTerm(gas_phase, h2o2_g, 1.0)
       .AddTerm(aqueous_phase, h2o2_aq, 1.0)
       .DiagnoseConstantFromState()
       .Build();
 
-  auto mass_O3 = constraint::LinearConstraintBuilder()
+  auto mass_O3 = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, o3_g)
       .AddTerm(gas_phase, o3_g, 1.0)
       .AddTerm(aqueous_phase, o3_aq, 1.0)
       .DiagnoseConstantFromState()
       .Build();
 
-  auto charge = constraint::LinearConstraintBuilder()
+  auto charge = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(aqueous_phase, hp)
       .AddTerm(aqueous_phase, hp,     1.0)
       .AddTerm(aqueous_phase, ohm,   -1.0)
@@ -1636,18 +1636,18 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
       .Build();
 
   // Same kinetic reactions as Step 4
-  auto rxn1a = process::DissolvedReversibleReactionBuilder()
+  auto rxn1a = miam::DissolvedReversibleReactionBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ hso3m, h2o2_aq })
       .SetProducts({ so2oohm, h2o })
       .SetSolvent(h2o)
-      .SetForwardRateConstant(process::constant::EquilibriumConstant({
+      .SetForwardRateConstant(miam::EquilibriumConstant({
           .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 }))
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 1725.0 }))
       .Build();
 
-  auto rxn1b = process::DissolvedReactionBuilder()
+  auto rxn1b = miam::DissolvedReactionBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ so2oohm, hp })
       .SetProducts({ so4mm })
@@ -1658,7 +1658,7 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
       })
       .Build();
 
-  auto rxn2 = process::DissolvedReactionBuilder()
+  auto rxn2 = miam::DissolvedReactionBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ hso3m, o3_aq })
       .SetProducts({ so4mm, hp })
@@ -1669,7 +1669,7 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
       })
       .Build();
 
-  auto rxn3 = process::DissolvedReactionBuilder()
+  auto rxn3 = miam::DissolvedReactionBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ so3mm, o3_aq })
       .SetProducts({ so4mm })
@@ -1821,53 +1821,53 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
   Phase aqueous_phase{ "AQUEOUS", {
       h2o, so2_aq, h2o2_aq, o3_aq,
       hp, ohm, hso3m, so3mm, so4mm, so2oohm } };
-  auto cloud = representation::UniformSection{ "CLOUD", { aqueous_phase } };
+  auto cloud = miam::UniformSection{ "CLOUD", { aqueous_phase } };
 
   // Same constraints as Step 4
-  auto hl_so2 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_so2 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(so2_g).SetCondensedSpecies(so2_aq).SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
       .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
-  auto hl_h2o2 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_h2o2 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(h2o2_g).SetCondensedSpecies(h2o2_aq).SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
       .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
-  auto hl_o3 = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_o3 = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(o3_g).SetCondensedSpecies(o3_aq).SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant({
+      .SetHenryLawConstant(miam::HenrysLawConstant({
           .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
       .SetSolventMolecularWeight(0.018).SetSolventDensity(1000.0).Build();
 
-  auto eq_kw = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_kw = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase).SetReactants({ h2o }).SetProducts({ hp, ohm })
       .SetAlgebraicSpecies(ohm).SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
       .Build();
 
-  auto eq_ka1 = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_ka1 = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase).SetReactants({ so2_aq }).SetProducts({ hso3m, hp })
       .SetAlgebraicSpecies(hso3m).SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
       .Build();
 
-  auto eq_ka2 = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto eq_ka2 = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase).SetReactants({ hso3m }).SetProducts({ so3mm, hp })
       .SetAlgebraicSpecies(so3mm).SetSolvent(h2o)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 6.0e-8 / c_H2O_M, .C_ = 1120.0 }))
       .Build();
 
   double total_S = 3.01e-8 + 1.0;
-  auto mass_S = constraint::LinearConstraintBuilder()
+  auto mass_S = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, so2_g)
       .AddTerm(gas_phase, so2_g, 1.0)
       .AddTerm(aqueous_phase, so2_aq, 1.0)
@@ -1878,21 +1878,21 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
       .DiagnoseConstantFromState()
       .Build();
 
-  auto mass_H2O2 = constraint::LinearConstraintBuilder()
+  auto mass_H2O2 = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, h2o2_g)
       .AddTerm(gas_phase, h2o2_g, 1.0)
       .AddTerm(aqueous_phase, h2o2_aq, 1.0)
       .DiagnoseConstantFromState()
       .Build();
 
-  auto mass_O3 = constraint::LinearConstraintBuilder()
+  auto mass_O3 = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, o3_g)
       .AddTerm(gas_phase, o3_g, 1.0)
       .AddTerm(aqueous_phase, o3_aq, 1.0)
       .DiagnoseConstantFromState()
       .Build();
 
-  auto charge = constraint::LinearConstraintBuilder()
+  auto charge = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(aqueous_phase, hp)
       .AddTerm(aqueous_phase, hp,     1.0)
       .AddTerm(aqueous_phase, ohm,   -1.0)
@@ -1904,18 +1904,18 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
       .Build();
 
   // Kinetic reactions
-  auto rxn1a = process::DissolvedReversibleReactionBuilder()
+  auto rxn1a = miam::DissolvedReversibleReactionBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ hso3m, h2o2_aq })
       .SetProducts({ so2oohm, h2o })
       .SetSolvent(h2o)
-      .SetForwardRateConstant(process::constant::EquilibriumConstant({
+      .SetForwardRateConstant(miam::EquilibriumConstant({
           .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 }))
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant({
+      .SetEquilibriumConstant(miam::EquilibriumConstant({
           .A_ = 1725.0 }))
       .Build();
 
-  auto rxn1b = process::DissolvedReactionBuilder()
+  auto rxn1b = miam::DissolvedReactionBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ so2oohm, hp })
       .SetProducts({ so4mm })
@@ -1926,14 +1926,14 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
       })
       .Build();
 
-  auto rxn2 = process::DissolvedReactionBuilder()
+  auto rxn2 = miam::DissolvedReactionBuilder()
       .SetPhase(aqueous_phase).SetReactants({ hso3m, o3_aq })
       .SetProducts({ so4mm, hp }).SetSolvent(h2o)
       .SetRateConstant([](const Conditions& c) -> double {
           return c_H2O_M * 3.75e5 * std::exp(-5530.0 * (1.0/c.temperature_ - 1.0/298.0));
       }).Build();
 
-  auto rxn3 = process::DissolvedReactionBuilder()
+  auto rxn3 = miam::DissolvedReactionBuilder()
       .SetPhase(aqueous_phase).SetReactants({ so3mm, o3_aq })
       .SetProducts({ so4mm }).SetSolvent(h2o)
       .SetRateConstant([](const Conditions& c) -> double {

@@ -1492,7 +1492,7 @@ return DenseMatrixPolicy::Function(
                     double& k_evap, double& net)
                 {
                     double kc_eff = phi_p * kc;
-                    k_evap = kc_eff / (hlc * R_gas * T);
+                    k_evap = kc_eff / (hlc * miam::GAS_CONSTANT * T);
                     double f_v = solvent_conc * molar_volume;
                     net = kc_eff * gas_conc - k_evap * aq_conc / f_v;
                 },
@@ -1594,7 +1594,7 @@ return SparseMatrixPolicy::Function(
                     const double& gas_conc, const double& aq_conc,
                     double& ke, double& fv, double& R)
                 {
-                    ke = kc / (hlc * R_gas * T);
+                    ke = kc / (hlc * miam::GAS_CONSTANT * T);
                     fv = solvent_conc * molar_volume;
                     R = kc * gas_conc - ke * aq_conc / fv;
                 },
@@ -1683,7 +1683,7 @@ return SparseMatrixPolicy::Function(
                     [&](const double& dk_dr, const double& hlc, const double& T,
                         double& dk_evap_dr)
                     {
-                        dk_evap_dr = dk_dr / (hlc * R_gas * T);
+                        dk_evap_dr = dk_dr / (hlc * miam::GAS_CONSTANT * T);
                     },
                     dk_cond_prop,
                     state_parameters.GetConstColumnView(inst.hlc_param_idx),
@@ -1762,7 +1762,7 @@ return SparseMatrixPolicy::Function(
                     [&](const double& dk_dN, const double& hlc, const double& T,
                         double& dk_evap_dN)
                     {
-                        dk_evap_dN = dk_dN / (hlc * R_gas * T);
+                        dk_evap_dN = dk_dN / (hlc * miam::GAS_CONSTANT * T);
                     },
                     dk_evap_prop,
                     state_parameters.GetConstColumnView(inst.hlc_param_idx),
@@ -2010,7 +2010,7 @@ and the provider can short-circuit.
 
    ```cpp
    // Model now stores a single process collection:
-   //   std::vector<process::DissolvedReversibleReaction> dissolved_reactions_;
+   //   std::vector<DissolvedReversibleReaction> dissolved_reactions_;
    // is replaced by the type-erased collection built at AddProcesses() time.
 
    template<typename DenseMatrixPolicy>

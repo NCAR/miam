@@ -13,11 +13,9 @@
 
 namespace miam
 {
-  namespace process
-  {
-    /// @brief A dissolved reversible reaction builder
-    /// @details Builder class for constructing DissolvedReversibleReaction objects.
-    class DissolvedReversibleReactionBuilder
+  /// @brief A dissolved reversible reaction builder
+  /// @details Builder class for constructing DissolvedReversibleReaction objects.
+  class DissolvedReversibleReactionBuilder
     {
      public:
       DissolvedReversibleReactionBuilder() = default;
@@ -93,7 +91,7 @@ namespace miam
       }
 
       /// @brief Builds and returns the DissolvedReversibleReaction object
-      process::DissolvedReversibleReaction Build() const
+      miam::DissolvedReversibleReaction Build() const
       {
         // Check that exactly two of the three rate constant/equilibrium constant functions are set
         int num_set = 0;
@@ -153,7 +151,7 @@ namespace miam
             };
           }
         }
-        return process::DissolvedReversibleReaction(
+        return miam::DissolvedReversibleReaction(
             forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_);
       }
 
@@ -172,5 +170,4 @@ namespace miam
           equilibrium_constant_;         ///< Equilibrium constant function
       double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
     };
-  }  // namespace process
 }  // namespace miam

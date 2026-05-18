@@ -16,7 +16,7 @@ and geometric standard deviation (GSD). The number concentration is
 
 .. code-block:: c++
 
-   auto cloud = representation::SingleMomentMode{
+   auto cloud = SingleMomentMode{
      "CLOUD",                // mode name
      { aqueous_phase },      // phases
      1.0e-6,                 // geometric mean radius [m]
@@ -56,7 +56,7 @@ concentration.
 
 .. code-block:: c++
 
-   auto aitken = representation::TwoMomentMode{
+   auto aitken = TwoMomentMode{
      "AITKEN",               // mode name
      { aqueous_phase },      // phases
      1.2                     // geometric standard deviation
@@ -98,7 +98,7 @@ size.
 
 .. code-block:: c++
 
-   auto dust = representation::UniformSection{
+   auto dust = UniformSection{
      "DUST",                 // section name
      { organic_phase },      // phases
      1.0e-7,                 // min radius [m]
@@ -136,7 +136,7 @@ mode with both aqueous and organic phases:
 
 .. code-block:: c++
 
-   auto accumulation = representation::TwoMomentMode{
+   auto accumulation = TwoMomentMode{
      "ACCUMULATION",
      { aqueous_phase, organic_phase },  // two phases
      1.4

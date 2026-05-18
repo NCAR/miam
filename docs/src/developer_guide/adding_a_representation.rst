@@ -99,10 +99,10 @@ Registering the New Type
    .. code-block:: c++
 
       using RepresentationVariant = std::variant<
-          representation::SingleMomentMode,
-          representation::TwoMomentMode,
-          representation::UniformSection,
-          representation::MyNewRepresentation   // ← add here
+          SingleMomentMode,
+          TwoMomentMode,
+          UniformSection,
+          MyNewRepresentation   // ← add here
       >;
 
 Testing Providers

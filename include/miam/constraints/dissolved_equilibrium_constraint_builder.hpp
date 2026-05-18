@@ -12,10 +12,8 @@
 
 namespace miam
 {
-  namespace constraint
-  {
-    /// @brief Builder for DissolvedEquilibriumConstraint
-    class DissolvedEquilibriumConstraintBuilder
+  /// @brief Builder for DissolvedEquilibriumConstraint
+  class DissolvedEquilibriumConstraintBuilder
     {
      public:
       DissolvedEquilibriumConstraintBuilder() = default;
@@ -111,5 +109,4 @@ namespace miam
       std::function<double(const micm::Conditions& conditions)> equilibrium_constant_;
       double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
     };
-  }  // namespace constraint
 }  // namespace miam

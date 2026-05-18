@@ -5,6 +5,7 @@
 
 #include <miam/util/condensation_rate.hpp>
 #include <miam/util/uuid.hpp>
+#include <miam/util/constants.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
@@ -21,9 +22,7 @@
 
 namespace miam
 {
-  namespace constraint
-  {
-    /// @brief A Henry's Law equilibrium constraint
+  /// @brief A Henry's Law equilibrium constraint
     /// @details Replaces the ODE row for the condensed-phase species with the
     ///          steady-state Henry's Law equilibrium condition:
     ///
@@ -63,7 +62,7 @@ namespace miam
             condensed_phase_(condensed_phase),
             solvent_molecular_weight_(solvent_molecular_weight),
             solvent_density_(solvent_density),
-            uuid_(miam::util::generate_uuid_v4())
+            uuid_(GenerateUuid())
       {
       }
 
@@ -190,7 +189,7 @@ namespace miam
               for (const auto& hlc_rt_idx : hlc_rt_indices)
                 params.ForEachRow(
                     [hlc_fn](const micm::Conditions& cond, double& hlc_rt)
-                    { hlc_rt = hlc_fn(cond) * util::R_gas * cond.temperature_; },
+                    { hlc_rt = hlc_fn(cond) * miam::GAS_CONSTANT * cond.temperature_; },
                     conditions,
                     params.GetColumnView(hlc_rt_idx));
             },
@@ -407,5 +406,4 @@ namespace miam
         return jac_indices;
       }
     };
-  }  // namespace constraint
 }  // namespace miam

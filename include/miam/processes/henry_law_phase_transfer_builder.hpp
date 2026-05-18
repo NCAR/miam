@@ -15,10 +15,8 @@
 
 namespace miam
 {
-  namespace process
-  {
-    /// @brief Builder for HenryLawPhaseTransfer processes
-    class HenryLawPhaseTransferBuilder
+  /// @brief Builder for HenryLawPhaseTransfer processes
+  class HenryLawPhaseTransferBuilder
     {
      public:
       HenryLawPhaseTransferBuilder() = default;
@@ -133,5 +131,4 @@ namespace miam
       double accommodation_coefficient_ = 0.0;  ///< Mass accommodation coefficient [dimensionless, 0–1]
       bool accommodation_coefficient_is_set_ = false;
     };
-  }  // namespace process
 }  // namespace miam

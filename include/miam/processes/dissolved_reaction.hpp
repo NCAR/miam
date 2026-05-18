@@ -21,9 +21,7 @@
 
 namespace miam
 {
-  namespace process
-  {
-    /// @brief A dissolved (irreversible) reaction
+  /// @brief A dissolved (irreversible) reaction
     /// @details Dissolved reactions involve reactants and products in solution, and
     ///          are characterized by a single rate constant.
     ///
@@ -90,7 +88,7 @@ namespace miam
             products_(products),
             solvent_(solvent),
             phase_(phase),
-            uuid_(miam::util::generate_uuid_v4()),
+            uuid_(GenerateUuid()),
             solvent_floor_(solvent_floor),
             min_halflife_(min_halflife)
       {
@@ -875,5 +873,4 @@ namespace miam
         return jacobian_indices;
       }
     };
-  }  // namespace process
 }  // namespace miam

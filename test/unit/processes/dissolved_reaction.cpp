@@ -15,7 +15,7 @@
 #include <cmath>
 #include <unordered_map>
 
-using namespace miam::process;
+using namespace miam;
 
 namespace
 {

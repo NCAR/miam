@@ -5,22 +5,22 @@ Processes
 DissolvedReversibleReaction
 ===========================
 
-.. doxygenclass:: miam::process::DissolvedReversibleReaction
+.. doxygenclass:: miam::DissolvedReversibleReaction
    :members:
    :undoc-members:
 
-.. doxygenclass:: miam::process::DissolvedReversibleReactionBuilder
+.. doxygenclass:: miam::DissolvedReversibleReactionBuilder
    :members:
    :undoc-members:
 
 HenryLawPhaseTransfer
 =====================
 
-.. doxygenclass:: miam::process::HenryLawPhaseTransfer
+.. doxygenclass:: miam::HenryLawPhaseTransfer
    :members:
    :undoc-members:
 
-.. doxygenclass:: miam::process::HenryLawPhaseTransferBuilder
+.. doxygenclass:: miam::HenryLawPhaseTransferBuilder
    :members:
    :undoc-members:
 

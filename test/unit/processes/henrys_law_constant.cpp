@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace miam::process::constant;
+using namespace miam;
 
 TEST(HenrysLawConstant, DefaultParameters)
 {

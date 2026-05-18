@@ -123,9 +123,9 @@ Registering the New Type
    .. code-block:: c++
 
       using ProcessVariant = std::variant<
-          process::DissolvedReversibleReaction,
-          process::HenryLawPhaseTransfer,
-          process::MyNewProcess        // ← add here
+          DissolvedReversibleReaction,
+          HenryLawPhaseTransfer,
+          MyNewProcess        // ← add here
       >;
 
 That's it — the ``std::visit`` in ``ForEachProcess`` will automatically

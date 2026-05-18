@@ -18,9 +18,7 @@
 
 namespace miam
 {
-  namespace representation
-  {
-    /// @brief Single moment log-normal particle size distribution representation
+  /// @brief Single moment log-normal particle size distribution representation
     /// @details Represents a single moment log-normal distribution for aerosol or cloud particle size distributions.
     ///          Characterized by a geometric mean radius and geometric standard deviation.
     class SingleMomentMode
@@ -452,5 +450,4 @@ namespace miam
       double default_geometric_mean_radius_;         // Default geometric mean radius
       double default_geometric_standard_deviation_;  // Default geometric standard deviation
     };
-  }  // namespace representation
 }  // namespace miam

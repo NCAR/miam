@@ -42,7 +42,7 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
 
   // Phase and representation
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
-  auto droplet = representation::UniformSection{
+  auto droplet = miam::UniformSection{
     "DROPLET",
     { aqueous_phase }
   };
@@ -55,7 +55,7 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
 
   // Kinetic process: A → B (dissolved reaction)
   auto rate = [k](const Conditions& conditions) { return k; };
-  auto reaction = process::DissolvedReaction{
+  auto reaction = miam::DissolvedReaction{
     rate,
     { A },   // reactants
     { B },   // products
@@ -65,19 +65,19 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
 
   // Equilibrium constraint: B <-> C, K_eq, algebraic species = C
   // Residual: G = K_eq * [B] - [C] = 0
-  auto equil = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto equil = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ B })
       .SetProducts({ C })
       .SetAlgebraicSpecies(C)
       .SetSolvent(S)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant(
-          process::constant::EquilibriumConstantParameters{ .A_ = K_eq }))
+      .SetEquilibriumConstant(miam::EquilibriumConstant(
+          miam::EquilibriumConstantParameters{ .A_ = K_eq }))
       .Build();
 
   // Mass conservation constraint: [A] + [B] + [C] = total, algebraic species = B
   // Residual: G = [A] + [B] + [C] - total = 0
-  auto mass_cons = constraint::LinearConstraintBuilder()
+  auto mass_cons = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(aqueous_phase, B)
       .AddTerm(aqueous_phase, A, 1.0)
       .AddTerm(aqueous_phase, B, 1.0)
@@ -211,11 +211,11 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
 
-  auto small_drop = representation::UniformSection{
+  auto small_drop = miam::UniformSection{
     "SMALL",
     { aqueous_phase }
   };
-  auto large_drop = representation::UniformSection{
+  auto large_drop = miam::UniformSection{
     "LARGE",
     { aqueous_phase }
   };
@@ -226,7 +226,7 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
   double A0_large = 2.0;
 
   auto rate = [k](const Conditions& conditions) { return k; };
-  auto reaction = process::DissolvedReaction{
+  auto reaction = miam::DissolvedReaction{
     rate,
     { A },
     { B },
@@ -235,14 +235,14 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
   };
 
   // Equilibrium constraint: C = K_eq * B (C is algebraic)
-  auto equil = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto equil = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ B })
       .SetProducts({ C })
       .SetAlgebraicSpecies(C)
       .SetSolvent(S)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant(
-          process::constant::EquilibriumConstantParameters{ .A_ = K_eq }))
+      .SetEquilibriumConstant(miam::EquilibriumConstant(
+          miam::EquilibriumConstantParameters{ .A_ = K_eq }))
       .Build();
 
   auto model = Model{
@@ -353,7 +353,7 @@ TEST(EquilibriumConstraintsIntegration, InconsistentInitialConditions)
   auto S = Species{ "S" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
-  auto droplet = representation::UniformSection{
+  auto droplet = miam::UniformSection{
     "DROPLET",
     { aqueous_phase }
   };
@@ -364,21 +364,21 @@ TEST(EquilibriumConstraintsIntegration, InconsistentInitialConditions)
   double total = A0;
 
   auto rate = [k](const Conditions& conditions) { return k; };
-  auto reaction = process::DissolvedReaction{
+  auto reaction = miam::DissolvedReaction{
     rate, { A }, { B }, S, aqueous_phase
   };
 
-  auto equil = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto equil = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ B })
       .SetProducts({ C })
       .SetAlgebraicSpecies(C)
       .SetSolvent(S)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant(
-          process::constant::EquilibriumConstantParameters{ .A_ = K_eq }))
+      .SetEquilibriumConstant(miam::EquilibriumConstant(
+          miam::EquilibriumConstantParameters{ .A_ = K_eq }))
       .Build();
 
-  auto mass_cons = constraint::LinearConstraintBuilder()
+  auto mass_cons = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(aqueous_phase, B)
       .AddTerm(aqueous_phase, A, 1.0)
       .AddTerm(aqueous_phase, B, 1.0)

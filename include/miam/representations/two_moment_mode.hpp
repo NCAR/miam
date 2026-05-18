@@ -18,9 +18,7 @@
 
 namespace miam
 {
-  namespace representation
-  {
-    /// @brief Two moment log-normal particle size distribution representation
+  /// @brief Two moment log-normal particle size distribution representation
     /// @details Represents a two moment log-normal distribution for aerosol or cloud particle size distributions.
     ///          Characterized by number concentration, geometric mean radius, and geometric standard deviation.
     class TwoMomentMode
@@ -462,5 +460,4 @@ namespace miam
       std::vector<micm::Phase> phases_;              // Phases associated with the mode
       double default_geometric_standard_deviation_;  // Default geometric standard deviation
     };
-  }  // namespace representation
 }  // namespace miam

@@ -193,11 +193,11 @@ TEST(JacobianVerification, DissolvedReactionProcess)
   auto C = Species{ "C" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 0.1;
   auto rate = [k](const Conditions&) { return k; };
-  auto reaction = process::DissolvedReaction{ rate, { A }, { B }, C, aqueous_phase };
+  auto reaction = miam::DissolvedReaction{ rate, { A }, { B }, C, aqueous_phase };
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -231,12 +231,12 @@ TEST(JacobianVerification, DissolvedReversibleReactionProcess)
   auto C = Species{ "C" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k_f = 0.1, k_r = 0.05;
   auto forward_rate = [k_f](const Conditions&) { return k_f; };
   auto reverse_rate = [k_r](const Conditions&) { return k_r; };
-  auto reaction = process::DissolvedReversibleReaction{
+  auto reaction = miam::DissolvedReversibleReaction{
     forward_rate, reverse_rate, { A }, { B }, C, aqueous_phase
   };
 
@@ -280,15 +280,15 @@ TEST(JacobianVerification, HenryLawPhaseTransferProcess)
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
 
-  auto droplet = representation::SingleMomentMode{ "DROPLET", { aqueous_phase }, 5.0e-6, 1.2 };
+  auto droplet = miam::SingleMomentMode{ "DROPLET", { aqueous_phase }, 5.0e-6, 1.2 };
 
-  auto transfer = process::HenryLawPhaseTransferBuilder()
+  auto transfer = miam::HenryLawPhaseTransferBuilder()
       .SetCondensedPhase(aqueous_phase)
       .SetGasSpecies(A_g)
       .SetCondensedSpecies(A_aq)
       .SetSolvent(H2O)
-      .SetHenrysLawConstant(process::constant::HenrysLawConstant(
-          process::constant::HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+      .SetHenrysLawConstant(miam::HenrysLawConstant(
+          miam::HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
       .SetDiffusionCoefficient(D_g)
       .SetAccommodationCoefficient(alpha)
       .Build();
@@ -334,17 +334,17 @@ TEST(JacobianVerification, HenryLawPhaseTransferTwoMomentMode)
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
 
-  auto droplet = representation::TwoMomentMode{
+  auto droplet = miam::TwoMomentMode{
     "DROPLET", { aqueous_phase }, 1.2
   };
 
-  auto transfer = process::HenryLawPhaseTransferBuilder()
+  auto transfer = miam::HenryLawPhaseTransferBuilder()
       .SetCondensedPhase(aqueous_phase)
       .SetGasSpecies(A_g)
       .SetCondensedSpecies(A_aq)
       .SetSolvent(H2O)
-      .SetHenrysLawConstant(process::constant::HenrysLawConstant(
-          process::constant::HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+      .SetHenrysLawConstant(miam::HenrysLawConstant(
+          miam::HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
       .SetDiffusionCoefficient(D_g)
       .SetAccommodationCoefficient(alpha)
       .Build();
@@ -383,15 +383,15 @@ TEST(JacobianVerification, MultipleProcessesCombined)
   auto S = Species{ "S" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { D }, { S } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
   // A → B (irreversible)
-  auto reaction1 = process::DissolvedReaction{
+  auto reaction1 = miam::DissolvedReaction{
     [](const Conditions&) { return 0.1; }, { A }, { B }, S, aqueous_phase
   };
 
   // C ⇌ D (reversible)
-  auto reaction2 = process::DissolvedReversibleReaction{
+  auto reaction2 = miam::DissolvedReversibleReaction{
     [](const Conditions&) { return 0.2; },
     [](const Conditions&) { return 0.05; },
     { C }, { D }, S, aqueous_phase
@@ -437,17 +437,17 @@ TEST(JacobianVerification, DissolvedEquilibriumConstraint)
   auto S = Species{ "S" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
   double K_eq = 2.0;
-  auto equil = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto equil = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ B })
       .SetProducts({ C })
       .SetAlgebraicSpecies(C)
       .SetSolvent(S)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant(
-          process::constant::EquilibriumConstantParameters{ .A_ = K_eq }))
+      .SetEquilibriumConstant(miam::EquilibriumConstant(
+          miam::EquilibriumConstantParameters{ .A_ = K_eq }))
       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -483,10 +483,10 @@ TEST(JacobianVerification, LinearConstraint)
   auto C = Species{ "C" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
   double total = 1.0;
-  auto mass_cons = constraint::LinearConstraintBuilder()
+  auto mass_cons = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(aqueous_phase, B)
       .AddTerm(aqueous_phase, A, 1.0)
       .AddTerm(aqueous_phase, B, 1.0)
@@ -533,15 +533,15 @@ TEST(JacobianVerification, HenryLawEquilibriumConstraint)
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
 
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
-  auto hl_constraint = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_constraint = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(A_g)
       .SetCondensedSpecies(A_aq)
       .SetSolvent(H2O)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant(
-          process::constant::HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+      .SetHenryLawConstant(miam::HenrysLawConstant(
+          miam::HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
       .SetSolventMolecularWeight(solvent_molecular_weight)
       .SetSolventDensity(solvent_density)
       .Build();
@@ -583,27 +583,27 @@ TEST(JacobianVerification, ProcessAndConstraintsCombined)
   auto S = Species{ "S" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 0.1;
   double K_eq = 2.0;
   double total = 1.0;
 
-  auto reaction = process::DissolvedReaction{
+  auto reaction = miam::DissolvedReaction{
     [k](const Conditions&) { return k; }, { A }, { B }, S, aqueous_phase
   };
 
-  auto equil = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto equil = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ B })
       .SetProducts({ C })
       .SetAlgebraicSpecies(C)
       .SetSolvent(S)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant(
-          process::constant::EquilibriumConstantParameters{ .A_ = K_eq }))
+      .SetEquilibriumConstant(miam::EquilibriumConstant(
+          miam::EquilibriumConstantParameters{ .A_ = K_eq }))
       .Build();
 
-  auto mass_cons = constraint::LinearConstraintBuilder()
+  auto mass_cons = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(aqueous_phase, B)
       .AddTerm(aqueous_phase, A, 1.0)
       .AddTerm(aqueous_phase, B, 1.0)
@@ -656,21 +656,21 @@ TEST(JacobianVerification, HenryLawEquilibriumWithConservation)
   Phase gas_phase{ "GAS", { { Precursor }, { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
 
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
-  auto hl_constraint = constraint::HenryLawEquilibriumConstraintBuilder()
+  auto hl_constraint = miam::HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(A_g)
       .SetCondensedSpecies(A_aq)
       .SetSolvent(H2O)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(process::constant::HenrysLawConstant(
-          process::constant::HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+      .SetHenryLawConstant(miam::HenrysLawConstant(
+          miam::HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
       .SetSolventMolecularWeight(solvent_molecular_weight)
       .SetSolventDensity(solvent_density)
       .Build();
 
   double total = 1.0;
-  auto mass_cons = constraint::LinearConstraintBuilder()
+  auto mass_cons = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, A_g)
       .AddTerm(gas_phase, Precursor, 1.0)
       .AddTerm(gas_phase, A_g, 1.0)
@@ -715,11 +715,11 @@ TEST(JacobianVerification, DissolvedReactionDampingRange)
   auto C = Species{ "C" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 0.1;
   auto rate = [k](const Conditions&) { return k; };
-  auto reaction = process::DissolvedReaction{ rate, { A }, { B }, C, aqueous_phase };
+  auto reaction = miam::DissolvedReaction{ rate, { A }, { B }, C, aqueous_phase };
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -792,12 +792,12 @@ TEST(JacobianVerification, DissolvedReversibleReactionDampingRange)
   auto C = Species{ "C" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k_f = 0.1, k_r = 0.05;
   auto forward_rate = [k_f](const Conditions&) { return k_f; };
   auto reverse_rate = [k_r](const Conditions&) { return k_r; };
-  auto reaction = process::DissolvedReversibleReaction{
+  auto reaction = miam::DissolvedReversibleReaction{
     forward_rate, reverse_rate, { A }, { B }, C, aqueous_phase
   };
 
@@ -872,17 +872,17 @@ TEST(JacobianVerification, DissolvedEquilibriumConstraintDampingRange)
   auto S = Species{ "S" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
   double K_eq = 2.0;
-  auto equil = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto equil = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ B })
       .SetProducts({ C })
       .SetAlgebraicSpecies(C)
       .SetSolvent(S)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant(
-          process::constant::EquilibriumConstantParameters{ .A_ = K_eq }))
+      .SetEquilibriumConstant(miam::EquilibriumConstant(
+          miam::EquilibriumConstantParameters{ .A_ = K_eq }))
       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -958,27 +958,27 @@ TEST(JacobianVerification, CombinedProcessAndConstraintZeroSolvent)
   auto S = Species{ "S" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 0.1;
   double K_eq = 2.0;
   double total = 1.0;
 
-  auto reaction = process::DissolvedReaction{
+  auto reaction = miam::DissolvedReaction{
     [k](const Conditions&) { return k; }, { A }, { B }, S, aqueous_phase
   };
 
-  auto equil = constraint::DissolvedEquilibriumConstraintBuilder()
+  auto equil = miam::DissolvedEquilibriumConstraintBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ B })
       .SetProducts({ C })
       .SetAlgebraicSpecies(C)
       .SetSolvent(S)
-      .SetEquilibriumConstant(process::constant::EquilibriumConstant(
-          process::constant::EquilibriumConstantParameters{ .A_ = K_eq }))
+      .SetEquilibriumConstant(miam::EquilibriumConstant(
+          miam::EquilibriumConstantParameters{ .A_ = K_eq }))
       .Build();
 
-  auto mass_cons = constraint::LinearConstraintBuilder()
+  auto mass_cons = miam::LinearConstraintBuilder()
       .SetAlgebraicSpecies(aqueous_phase, B)
       .AddTerm(aqueous_phase, A, 1.0)
       .AddTerm(aqueous_phase, B, 1.0)
@@ -1060,10 +1060,10 @@ TEST(JacobianVerification, DissolvedReactionCappedSingleReactant)
   auto C = Species{ "C" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
   double t_half = 1.0;
-  auto reaction = process::DissolvedReactionBuilder()
+  auto reaction = miam::DissolvedReactionBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ A })
       .SetProducts({ B })
@@ -1108,10 +1108,10 @@ TEST(JacobianVerification, DissolvedReactionCappedTwoReactants)
   auto S = Species{ "S" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { P }, { S } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
   double t_half = 0.5;
-  auto reaction = process::DissolvedReactionBuilder()
+  auto reaction = miam::DissolvedReactionBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ A, B })
       .SetProducts({ P })
@@ -1154,9 +1154,9 @@ TEST(JacobianVerification, DissolvedReactionCappedSolventRange)
   auto C = Species{ "C" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
-  auto reaction = process::DissolvedReactionBuilder()
+  auto reaction = miam::DissolvedReactionBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ A })
       .SetProducts({ B })
@@ -1235,9 +1235,9 @@ TEST(JacobianVerification, DissolvedReactionCappedMultiBlock)
   auto C = Species{ "C" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { aqueous_phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
 
-  auto reaction = process::DissolvedReactionBuilder()
+  auto reaction = miam::DissolvedReactionBuilder()
       .SetPhase(aqueous_phase)
       .SetReactants({ A })
       .SetProducts({ B })
@@ -1298,13 +1298,13 @@ namespace
       const std::vector<micm::Species>& products,
       const micm::Species& solvent,
       const micm::Phase& phase,
-      const representation::UniformSection& droplet,
+      const miam::UniformSection& droplet,
       const std::unordered_map<std::string, double>& concentrations)
   {
     auto rate_fn = [k](const Conditions&) { return k; };
 
     // Build uncapped model
-    auto rxn_uncapped = process::DissolvedReactionBuilder()
+    auto rxn_uncapped = miam::DissolvedReactionBuilder()
         .SetPhase(phase)
         .SetReactants(reactants)
         .SetProducts(products)
@@ -1315,7 +1315,7 @@ namespace
     model_uncapped.AddProcesses({ rxn_uncapped });
 
     // Build capped model
-    auto rxn_capped = process::DissolvedReactionBuilder()
+    auto rxn_capped = miam::DissolvedReactionBuilder()
         .SetPhase(phase)
         .SetReactants(reactants)
         .SetProducts(products)
@@ -1398,7 +1398,7 @@ TEST(JacobianVerification, CappedConvergesToUncappedSingleReactant)
   auto B = Species{ "B" };
   auto C = Species{ "C" };
   auto phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { phase } };
 
   // u = 0.1 * t_half, so t_half ∈ {1, 0.1, 0.01} gives u ∈ {0.1, 0.01, 0.001}
   double prev_forcing_err = 1.0;
@@ -1446,7 +1446,7 @@ TEST(JacobianVerification, CappedConvergesToUncappedTwoReactants)
   auto P = Species{ "P" };
   auto S = Species{ "S" };
   auto phase = Phase{ "AQUEOUS", { { A }, { B }, { P }, { S } } };
-  auto droplet = representation::UniformSection{ "DROPLET", { phase } };
+  auto droplet = miam::UniformSection{ "DROPLET", { phase } };
 
   double k = 0.001;
   // u = 0.01 * t_half

@@ -35,13 +35,13 @@ namespace miam
   {
    public:
     using RepresentationVariant =
-        std::variant<representation::SingleMomentMode, representation::TwoMomentMode, representation::UniformSection>;
+        std::variant<miam::SingleMomentMode, miam::TwoMomentMode, miam::UniformSection>;
     using ProcessVariant =
-        std::variant<process::DissolvedReaction, process::DissolvedReversibleReaction, process::HenryLawPhaseTransfer>;
+        std::variant<miam::DissolvedReaction, miam::DissolvedReversibleReaction, miam::HenryLawPhaseTransfer>;
     using ConstraintVariant = std::variant<
-        constraint::DissolvedEquilibriumConstraint,
-        constraint::HenryLawEquilibriumConstraint,
-        constraint::LinearConstraint>;
+        miam::DissolvedEquilibriumConstraint,
+        miam::HenryLawEquilibriumConstraint,
+        miam::LinearConstraint>;
 
     std::string name_;
     std::vector<RepresentationVariant> representations_;

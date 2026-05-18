@@ -21,9 +21,7 @@
 
 namespace miam
 {
-  namespace process
-  {
-    /// @brief A dissolved reversible reaction
+  /// @brief A dissolved reversible reaction
     /// @details Dissolved reversible reactions involve reactants and products in solution, and
     ///          are characterized by both a forward and reverse rate constant. If an equilibrium
     ///          constant is provided, only one of the forward or reverse rate constants needs to be
@@ -74,7 +72,7 @@ namespace miam
             products_(products),
             solvent_(solvent),
             phase_(phase),
-            uuid_(miam::util::generate_uuid_v4()),
+            uuid_(GenerateUuid()),
             solvent_floor_(solvent_floor)
       {
       }
@@ -733,5 +731,4 @@ namespace miam
         return jacobian_indices;
       }
     };
-  }  // namespace process
 }  // namespace miam

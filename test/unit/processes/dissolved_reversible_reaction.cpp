@@ -13,7 +13,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace miam::process;
+using namespace miam;
 
 namespace
 {
