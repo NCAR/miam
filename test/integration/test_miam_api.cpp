@@ -110,7 +110,7 @@ TEST(MIAM, ApiExample)
 #if 0
   Process co2_photo = ChemicalReactionBuilder()
                       .SetReactants({ co2 })
-                      .SetRateConstant(ArrheniusRateConstant({ .A_ = 1.0e-3 }))
+                      .SetRateConstant(process::constant::ArrheniusRateConstantParameters{ .A_ = 1.0e-3 })
                       .SetPhase(gas_phase)
                       .Build();
 
@@ -139,7 +139,7 @@ TEST(MIAM, ApiExample)
                              .SetProducts({ ohm, hp })
                              .SetSolvent(h2o)
                              .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 1.14e-2, .C_ = 2300.0, .T0_ = 298.15 }))
-                             .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 }))
+                             .SetReverseRateConstant(process::constant::ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
                              .Build();
 
   // Condensed phase reversible reaction: CO2 hydration
@@ -152,7 +152,7 @@ TEST(MIAM, ApiExample)
                           .SetProducts({ h2co3 })
                           .SetSolvent(h2o)
                           .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 1.70e3, .C_ = 2400.0, .T0_ = 298.15 }))
-                          .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 }))
+                          .SetReverseRateConstant(process::constant::ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
                           .Build();
 
   // Condensed phase reversible reaction: H2CO3 dissociation
@@ -165,7 +165,7 @@ TEST(MIAM, ApiExample)
                                .SetProducts({ hco3m, hp })
                                .SetSolvent(h2o)
                                .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 4.27e2, .C_ = 2300.0, .T0_ = 298.15 }))
-                               .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 2.5e10, .C_ = 4.0e4 }))
+                               .SetReverseRateConstant(process::constant::ArrheniusRateConstantParameters{ .A_ = 2.5e10, .C_ = 4.0e4 })
                                .Build();
 
   // Condensed phase reversible reaction: HCO3- dissociation
@@ -178,7 +178,7 @@ TEST(MIAM, ApiExample)
                                .SetProducts({ co32m, hp })
                                .SetSolvent(h2o)
                                .SetEquilibriumConstant(process::constant::EquilibriumConstant(process::constant::EquilibriumConstantParameters{ .A_ = 1.70e1, .C_ = 2300.0, .T0_ = 298.15 }))
-                               .SetReverseRateConstant(ArrheniusRateConstant(ArrheniusRateConstantParameters{ .A_ = 6.4e9, .C_ = 3.1e4 }))
+                               .SetReverseRateConstant(process::constant::ArrheniusRateConstantParameters{ .A_ = 6.4e9, .C_ = 3.1e4 })
                                .Build();
   
   std::vector<process::DissolvedReversibleReaction> reactions{
@@ -197,8 +197,8 @@ TEST(MIAM, ApiExample)
 
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
-                  .AddExternalModelProcesses(aerosol_model)
-                  .AddExternalModelProcesses(cloud_model)
+                  .AddExternalModel(aerosol_model)
+                  .AddExternalModel(cloud_model)
                   .SetIgnoreUnusedSpecies(true)
                   .Build();
   
@@ -244,7 +244,7 @@ TEST(MIAM, ApiExample)
   // state.PrintHeader();
   for (int i = 0; i < 10; ++i)
   {
-    solver.CalculateRateConstants(state);
+    solver.UpdateStateParameters(state);
     auto result = solver.Solve(500.0, state);
     // state.PrintState(i * 500);
   }

@@ -63,13 +63,13 @@ Register Models as external model systems when building the solver:
    auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
        RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
        .SetSystem(system)
-       .AddExternalModelProcesses(cloud_model)
-       .AddExternalModelProcesses(aerosol_model)
+       .AddExternalModel(cloud_model)
+       .AddExternalModel(aerosol_model)
        .SetIgnoreUnusedSpecies(true)
        .Build();
 
 ``SetSystem`` registers all state variables (gas-phase species from MICM
-plus MIAM's species and aerosol parameters). ``AddExternalModelProcesses``
+plus MIAM's species and aerosol parameters). ``AddExternalModel``
 registers each Model's forcing and Jacobian functions with the solver.
 
 State Initialization

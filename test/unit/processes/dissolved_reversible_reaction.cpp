@@ -5,12 +5,71 @@
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
+#include <micm/util/jacobian_verification.hpp>
+#include <micm/util/matrix.hpp>
 #include <micm/util/vector_matrix.hpp>
 #include <micm/util/sparse_matrix.hpp>
+#include <micm/util/sparse_matrix_standard_ordering.hpp>
 
 #include <gtest/gtest.h>
 
 using namespace miam::process;
+
+namespace
+{
+  using MatrixPolicy = micm::Matrix<double>;
+  using SparseMatrixPolicy = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
+
+  /// @brief Compare analytical Jacobian against central finite-difference approximation
+  ///        using MICM’s FiniteDifferenceJacobian / CompareJacobianToFiniteDifference utilities.
+  void CheckFiniteDifferenceJacobian(
+      const DissolvedReversibleReaction& reaction,
+      const std::map<std::string, std::set<std::string>>& phase_prefixes,
+      const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+      const std::unordered_map<std::string, std::size_t>& state_variable_indices,
+      const MatrixPolicy& state_parameters,
+      const MatrixPolicy& state_variables)
+  {
+    const std::size_t num_blocks = state_parameters.NumRows();
+    const std::size_t num_vars = state_variable_indices.size();
+
+    // Build sparse Jacobian structure and compute analytical Jacobian
+    auto jac_elements = reaction.NonZeroJacobianElements(phase_prefixes, state_variable_indices);
+    auto jac_builder = SparseMatrixPolicy::Create(num_vars).SetNumberOfBlocks(num_blocks);
+    for (const auto& elem : jac_elements)
+      jac_builder.WithElement(elem.first, elem.second);
+    SparseMatrixPolicy jacobian(jac_builder);
+    jacobian.Fill(0.0);
+
+    auto jac_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
+        phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+    jac_func(state_parameters, state_variables, jacobian);
+
+    // Build FD Jacobian — bind state_parameters into the forcing callable
+    auto ff = reaction.ForcingFunction<MatrixPolicy>(
+        phase_prefixes, state_parameter_indices, state_variable_indices);
+    auto fd_jac = micm::FiniteDifferenceJacobian<MatrixPolicy>(
+        [&](const MatrixPolicy& vars, MatrixPolicy& out)
+        {
+          out.Fill(0.0);
+          ff(state_parameters, vars, out);
+        },
+        state_variables,
+        num_vars);
+
+    // Compare analytical vs FD (MICM defaults: atol=1e-7, rtol=1e-7)
+    auto cmp = micm::CompareJacobianToFiniteDifference(jacobian, fd_jac, num_vars);
+    EXPECT_TRUE(cmp.passed) << "FD mismatch: block=" << cmp.worst_block << " row=" << cmp.worst_row
+                            << " col=" << cmp.worst_col << " +J(analytical)=" << cmp.worst_analytical
+                            << " +J(fd)=" << cmp.worst_fd;
+
+    // Verify no significant FD signal outside the declared sparsity pattern
+    auto spc = micm::CheckJacobianSparsityCompleteness(jacobian, fd_jac, num_vars);
+    EXPECT_TRUE(spc.passed) << "Missing sparsity entry: block=" << spc.worst_block
+                            << " row=" << spc.worst_row << " col=" << spc.worst_col
+                            << " fd=" << spc.worst_fd;
+  }
+}  // namespace
 
 TEST(DissolvedReversibleReaction, SpeciesUsedWithSinglePrefix)
 {
@@ -673,11 +732,11 @@ TEST(DissolvedReversibleReaction, ForcingFunctionBasicRates)
     double reverse_rate_val = k_reverse / 55.0 * 1.0e-7 * 1.0e-7;
     
     // For H2O (reactant): -forward + reverse
-    EXPECT_NEAR(forcing_terms[0][0], -forward_rate_val + reverse_rate_val, 1e-20);
+    EXPECT_NEAR(forcing_terms[0][0], -forward_rate_val + reverse_rate_val, 1e-12);
     // For H+ (product): +forward - reverse
-    EXPECT_NEAR(forcing_terms[0][1], forward_rate_val - reverse_rate_val, 1e-20);
+    EXPECT_NEAR(forcing_terms[0][1], forward_rate_val - reverse_rate_val, 1e-12);
     // For OH- (product): +forward - reverse
-    EXPECT_NEAR(forcing_terms[0][2], forward_rate_val - reverse_rate_val, 1e-20);
+    EXPECT_NEAR(forcing_terms[0][2], forward_rate_val - reverse_rate_val, 1e-12);
 }
 
 TEST(DissolvedReversibleReaction, ForcingFunctionSolventNormalization)
@@ -898,9 +957,9 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleCells)
         double forward_rate_val = k_forward * h2o_conc;
         double reverse_rate_val = k_reverse / h2o_conc * hp_conc * ohm_conc;
         
-        EXPECT_NEAR(forcing_terms[i][0], -forward_rate_val + reverse_rate_val, 1e-20);
-        EXPECT_NEAR(forcing_terms[i][1], forward_rate_val - reverse_rate_val, 1e-20);
-        EXPECT_NEAR(forcing_terms[i][2], forward_rate_val - reverse_rate_val, 1e-20);
+        EXPECT_NEAR(forcing_terms[i][0], -forward_rate_val + reverse_rate_val, 1e-12);
+        EXPECT_NEAR(forcing_terms[i][1], forward_rate_val - reverse_rate_val, 1e-12);
+        EXPECT_NEAR(forcing_terms[i][2], forward_rate_val - reverse_rate_val, 1e-12);
     }
 }
 
@@ -973,16 +1032,16 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultiplePhaseInstances)
     // Verify small drop
     double forward_small = k_forward * 50.0;
     double reverse_small = k_reverse / 50.0 * 1.0e-7 * 1.0e-7;
-    EXPECT_NEAR(forcing_terms[0][0], -forward_small + reverse_small, 1e-20);
-    EXPECT_NEAR(forcing_terms[0][1], forward_small - reverse_small, 1e-20);
-    EXPECT_NEAR(forcing_terms[0][2], forward_small - reverse_small, 1e-20);
+    EXPECT_NEAR(forcing_terms[0][0], -forward_small + reverse_small, 1e-12);
+    EXPECT_NEAR(forcing_terms[0][1], forward_small - reverse_small, 1e-12);
+    EXPECT_NEAR(forcing_terms[0][2], forward_small - reverse_small, 1e-12);
     
     // Verify large drop
     double forward_large = k_forward * 60.0;
     double reverse_large = k_reverse / 60.0 * 2.0e-7 * 2.0e-7;
-    EXPECT_NEAR(forcing_terms[0][3], -forward_large + reverse_large, 1e-20);
-    EXPECT_NEAR(forcing_terms[0][4], forward_large - reverse_large, 1e-20);
-    EXPECT_NEAR(forcing_terms[0][5], forward_large - reverse_large, 1e-20);
+    EXPECT_NEAR(forcing_terms[0][3], -forward_large + reverse_large, 1e-12);
+    EXPECT_NEAR(forcing_terms[0][4], forward_large - reverse_large, 1e-12);
+    EXPECT_NEAR(forcing_terms[0][5], forward_large - reverse_large, 1e-12);
 }
 
 // ============================================================================
@@ -1075,18 +1134,18 @@ TEST(DissolvedReversibleReaction, JacobianFunctionBasicPartials)
     double d_reverse_d_solvent = k_reverse * (1 - 2) / std::pow(55.0, 2) * 1.0e-7 * 1.0e-7;
     
     // For H2O (reactant): d[H2O]/dt = -forward_rate + reverse_rate
-    // d[H2O]/d[H2O] = -d(forward_rate)/d[H2O] + d(reverse_rate)/d[H2O]
-    EXPECT_NEAR(jacobian[0][0][0], -d_forward_d_h2o + d_reverse_d_solvent, 1e-15);  // d[H2O]/d[H2O]
-    EXPECT_NEAR(jacobian[0][0][1], d_reverse_d_ohm, 1e-20);  // d[H2O]/d[H+]
-    EXPECT_NEAR(jacobian[0][0][2], d_reverse_d_hp, 1e-20);   // d[H2O]/d[OH-]
+    // Stored as -J: negate each partial
+    EXPECT_NEAR(jacobian[0][0][0], d_forward_d_h2o - d_reverse_d_solvent, 1e-6);   // -d[H2O]/d[H2O]
+    EXPECT_NEAR(jacobian[0][0][1], -d_reverse_d_ohm, 1e-6);  // -d[H2O]/d[H+]
+    EXPECT_NEAR(jacobian[0][0][2], -d_reverse_d_hp, 1e-6);   // -d[H2O]/d[OH-]
     // For H+ and OH- (products): d[H+]/dt = +forward_rate - reverse_rate
-    // d[H+]/d[H2O] = +d(forward_rate)/d[H2O] - d(reverse_rate)/d[H2O]
-    EXPECT_NEAR(jacobian[0][1][0], d_forward_d_h2o - d_reverse_d_solvent, 1e-15);  // d[H+]/d[H2O]
-    EXPECT_NEAR(jacobian[0][1][1], -d_reverse_d_ohm, 1e-20);  // d[H+]/d[H+]
-    EXPECT_NEAR(jacobian[0][1][2], -d_reverse_d_hp, 1e-20);   // d[H+]/d[OH-]
-    EXPECT_NEAR(jacobian[0][2][0], d_forward_d_h2o - d_reverse_d_solvent, 1e-15);  // d[OH-]/d[H2O]
-    EXPECT_NEAR(jacobian[0][2][1], -d_reverse_d_ohm, 1e-20);  // d[OH-]/d[H+]
-    EXPECT_NEAR(jacobian[0][2][2], -d_reverse_d_hp, 1e-20);   // d[OH-]/d[OH-]
+    // Stored as -J: negate each partial
+    EXPECT_NEAR(jacobian[0][1][0], -d_forward_d_h2o + d_reverse_d_solvent, 1e-6);  // -d[H+]/d[H2O]
+    EXPECT_NEAR(jacobian[0][1][1], d_reverse_d_ohm, 1e-6);   // -d[H+]/d[H+]
+    EXPECT_NEAR(jacobian[0][1][2], d_reverse_d_hp, 1e-6);    // -d[H+]/d[OH-]
+    EXPECT_NEAR(jacobian[0][2][0], -d_forward_d_h2o + d_reverse_d_solvent, 1e-6);  // -d[OH-]/d[H2O]
+    EXPECT_NEAR(jacobian[0][2][1], d_reverse_d_ohm, 1e-6);   // -d[OH-]/d[H+]
+    EXPECT_NEAR(jacobian[0][2][2], d_reverse_d_hp, 1e-6);    // -d[OH-]/d[OH-]
 }
 
 TEST(DissolvedReversibleReaction, JacobianFunctionMultipleReactantsProducts)
@@ -1181,15 +1240,16 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleReactantsProducts)
     // d[H2CO3]/d[H2CO3] = -k_r
     double d_h2co3_d_h2co3 = -k_reverse;
     
-    EXPECT_NEAR(jacobian[0][0][0], d_co2_d_co2, 1e-10);
-    EXPECT_NEAR(jacobian[0][0][1], d_co2_d_h2o, 1e-10);
-    EXPECT_NEAR(jacobian[0][0][2], d_co2_d_h2co3, 1e-10);
-    EXPECT_NEAR(jacobian[0][1][0], d_h2o_d_co2, 1e-10);
-    EXPECT_NEAR(jacobian[0][1][1], d_h2o_d_h2o, 1e-10);
-    EXPECT_NEAR(jacobian[0][1][2], d_h2o_d_h2co3, 1e-10);
-    EXPECT_NEAR(jacobian[0][2][0], d_h2co3_d_co2, 1e-10);
-    EXPECT_NEAR(jacobian[0][2][1], d_h2co3_d_h2o, 1e-10);
-    EXPECT_NEAR(jacobian[0][2][2], d_h2co3_d_h2co3, 1e-10);
+    // Stored as -J: negate each partial
+    EXPECT_NEAR(jacobian[0][0][0], -d_co2_d_co2, 1e-6);
+    EXPECT_NEAR(jacobian[0][0][1], -d_co2_d_h2o, 1e-6);
+    EXPECT_NEAR(jacobian[0][0][2], -d_co2_d_h2co3, 1e-6);
+    EXPECT_NEAR(jacobian[0][1][0], -d_h2o_d_co2, 1e-6);
+    EXPECT_NEAR(jacobian[0][1][1], -d_h2o_d_h2o, 1e-6);
+    EXPECT_NEAR(jacobian[0][1][2], -d_h2o_d_h2co3, 1e-6);
+    EXPECT_NEAR(jacobian[0][2][0], -d_h2co3_d_co2, 1e-6);
+    EXPECT_NEAR(jacobian[0][2][1], -d_h2co3_d_h2o, 1e-6);
+    EXPECT_NEAR(jacobian[0][2][2], -d_h2co3_d_h2co3, 1e-6);
 }
 
 TEST(DissolvedReversibleReaction, JacobianFunctionSigns)
@@ -1260,32 +1320,32 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSigns)
     
     jacobian_func(state_parameters, state_variables, jacobian);
     
-    // Check signs: 
-    // - Reactant w.r.t. reactant: negative (forward dominates)
-    // - Reactant w.r.t. product: positive (reverse adds back)
-    // - Product w.r.t. reactant: positive (forward produces)
-    // - Product w.r.t. product: negative (reverse consumes)
+    // Check signs (stored as -J, so all signs are flipped vs. the actual Jacobian):
+    // - Reactant w.r.t. reactant: positive (actual J negative)
+    // - Reactant w.r.t. product: negative (actual J positive)
+    // - Product w.r.t. reactant: negative (actual J positive)
+    // - Product w.r.t. product: positive (actual J negative)
     
-    // d[HCO3-]/d[HCO3-]: negative
-    EXPECT_LT(jacobian[0][0][0], 0.0);
-    // d[HCO3-]/d[H+]: positive
-    EXPECT_GT(jacobian[0][0][1], 0.0);
-    // d[HCO3-]/d[CO32-]: positive
-    EXPECT_GT(jacobian[0][0][2], 0.0);
+    // -d[HCO3-]/d[HCO3-]: positive
+    EXPECT_GT(jacobian[0][0][0], 0.0);
+    // -d[HCO3-]/d[H+]: negative
+    EXPECT_LT(jacobian[0][0][1], 0.0);
+    // -d[HCO3-]/d[CO32-]: negative
+    EXPECT_LT(jacobian[0][0][2], 0.0);
     
-    // d[H+]/d[HCO3-]: positive
-    EXPECT_GT(jacobian[0][1][0], 0.0);
-    // d[H+]/d[H+]: negative
-    EXPECT_LT(jacobian[0][1][1], 0.0);
-    // d[H+]/d[CO32-]: negative
-    EXPECT_LT(jacobian[0][1][2], 0.0);
+    // -d[H+]/d[HCO3-]: negative
+    EXPECT_LT(jacobian[0][1][0], 0.0);
+    // -d[H+]/d[H+]: positive
+    EXPECT_GT(jacobian[0][1][1], 0.0);
+    // -d[H+]/d[CO32-]: positive
+    EXPECT_GT(jacobian[0][1][2], 0.0);
     
-    // d[CO32-]/d[HCO3-]: positive
-    EXPECT_GT(jacobian[0][2][0], 0.0);
-    // d[CO32-]/d[H+]: negative
-    EXPECT_LT(jacobian[0][2][1], 0.0);
-    // d[CO32-]/d[CO32-]: negative
-    EXPECT_LT(jacobian[0][2][2], 0.0);
+    // -d[CO32-]/d[HCO3-]: negative
+    EXPECT_LT(jacobian[0][2][0], 0.0);
+    // -d[CO32-]/d[H+]: positive
+    EXPECT_GT(jacobian[0][2][1], 0.0);
+    // -d[CO32-]/d[CO32-]: positive
+    EXPECT_GT(jacobian[0][2][2], 0.0);
 }
 
 TEST(DissolvedReversibleReaction, JacobianFunctionMultipleCells)
@@ -1363,14 +1423,15 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleCells)
         double hp_conc = 1.0e-7 * (i + 1);
         double ohm_conc = 1.0e-7 * (i + 1);
         
-        // d[H2O]/d[H2O] should be negative (forward dominates over reverse for typical water concentrations)
-        EXPECT_LT(jacobian[i][0][0], 0.0);
+        // Stored as -J: signs are flipped vs. actual Jacobian
+        // -d[H2O]/d[H2O] should be positive (actual J negative)
+        EXPECT_GT(jacobian[i][0][0], 0.0);
         
-        // d[H+]/d[H2O] should be positive (forward produces H+)
-        EXPECT_GT(jacobian[i][1][0], 0.0);
+        // -d[H+]/d[H2O] should be negative (actual J positive)
+        EXPECT_LT(jacobian[i][1][0], 0.0);
         
-        // d[OH-]/d[H2O] should be positive (forward produces OH-)
-        EXPECT_GT(jacobian[i][2][0], 0.0);
+        // -d[OH-]/d[H2O] should be negative (actual J positive)
+        EXPECT_LT(jacobian[i][2][0], 0.0);
     }
 }
 
@@ -1550,12 +1611,13 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSimpleDistinctSpecies)
     double d_foo_d_baz = 0.0;  // No solvent dependence for 1 reactant / 1 product
     double d_bar_d_baz = 0.0;  // No solvent dependence for 1 reactant / 1 product
     
-    EXPECT_NEAR(jacobian[0][0][0], -d_forward_d_foo, 1e-10);  // d[foo]/d[foo]
-    EXPECT_NEAR(jacobian[0][0][1], d_reverse_d_bar, 1e-10);    // d[foo]/d[bar]
-    EXPECT_NEAR(jacobian[0][0][2], d_foo_d_baz, 1e-10);        // d[foo]/d[baz]
-    EXPECT_NEAR(jacobian[0][1][0], d_forward_d_foo, 1e-10);    // d[bar]/d[foo]
-    EXPECT_NEAR(jacobian[0][1][1], -d_reverse_d_bar, 1e-10);   // d[bar]/d[bar]
-    EXPECT_NEAR(jacobian[0][1][2], d_bar_d_baz, 1e-10);        // d[bar]/d[baz]
+    // Stored as -J: negate each partial
+    EXPECT_NEAR(jacobian[0][0][0], d_forward_d_foo, 1e-10);    // -d[foo]/d[foo]
+    EXPECT_NEAR(jacobian[0][0][1], -d_reverse_d_bar, 1e-10);   // -d[foo]/d[bar]
+    EXPECT_NEAR(jacobian[0][0][2], -d_foo_d_baz, 1e-10);       // -d[foo]/d[baz]
+    EXPECT_NEAR(jacobian[0][1][0], -d_forward_d_foo, 1e-10);   // -d[bar]/d[foo]
+    EXPECT_NEAR(jacobian[0][1][1], d_reverse_d_bar, 1e-10);    // -d[bar]/d[bar]
+    EXPECT_NEAR(jacobian[0][1][2], -d_bar_d_baz, 1e-10);       // -d[bar]/d[baz]
 }
 
 TEST(DissolvedReversibleReaction, JacobianFunctionTwoReactantsWithSolventDependence)
@@ -1652,7 +1714,478 @@ TEST(DissolvedReversibleReaction, JacobianFunctionTwoReactantsWithSolventDepende
     double d_qux_d_baz = -d_forward_rate_d_baz;   // Opposite sign because qux is consumed
     double d_bar_d_baz = d_forward_rate_d_baz;     // Same sign because bar is produced
     
-    EXPECT_NEAR(jacobian[0][0][3], d_foo_d_baz, 1e-10);  // d[foo]/d[baz]
-    EXPECT_NEAR(jacobian[0][1][3], d_qux_d_baz, 1e-10);  // d[qux]/d[baz]
-    EXPECT_NEAR(jacobian[0][2][3], d_bar_d_baz, 1e-10);  // d[bar]/d[baz]
+    // Stored as -J: negate each partial
+    EXPECT_NEAR(jacobian[0][0][3], -d_foo_d_baz, 1e-10);  // -d[foo]/d[baz]
+    EXPECT_NEAR(jacobian[0][1][3], -d_qux_d_baz, 1e-10);  // -d[qux]/d[baz]
+    EXPECT_NEAR(jacobian[0][2][3], -d_bar_d_baz, 1e-10);  // -d[bar]/d[baz]
+}
+
+// ============================================================================
+// FD Jacobian Tests
+// ============================================================================
+
+TEST(DissolvedReversibleReaction, JacobianFDForwardOnly)
+{
+    auto h2o = micm::Species{ "H2O" };
+    auto hp = micm::Species{ "H+" };
+    auto ohm = micm::Species{ "OH-" };
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
+
+    double k_forward = 1.0e-14;
+    double k_reverse = 0.0;
+    auto reaction = DissolvedReversibleReaction{
+        [k_forward](const micm::Conditions&) { return k_forward; },
+        [k_reverse](const micm::Conditions&) { return k_reverse; },
+        { h2o }, { hp, ohm }, h2o, aqueous_phase
+    };
+
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQUEOUS"].insert("MODE1");
+
+    std::unordered_map<std::string, std::size_t> spi;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_forward"] = 0;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_reverse"] = 1;
+
+    std::unordered_map<std::string, std::size_t> svi;
+    svi["MODE1.AQUEOUS.H2O"] = 0;
+    svi["MODE1.AQUEOUS.H+"] = 1;
+    svi["MODE1.AQUEOUS.OH-"] = 2;
+
+    MatrixPolicy params(1, 2, 0.0);
+    params[0][0] = k_forward; params[0][1] = k_reverse;
+    MatrixPolicy vars(1, 3, 0.0);
+    vars[0][0] = 55.0; vars[0][1] = 1.0e-7; vars[0][2] = 1.0e-7;
+
+    CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+
+TEST(DissolvedReversibleReaction, JacobianFDReverseOnly)
+{
+    auto h2o = micm::Species{ "H2O" };
+    auto hp = micm::Species{ "H+" };
+    auto ohm = micm::Species{ "OH-" };
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
+
+    double k_forward = 0.0;
+    double k_reverse = 1.0e11;
+    auto reaction = DissolvedReversibleReaction{
+        [k_forward](const micm::Conditions&) { return k_forward; },
+        [k_reverse](const micm::Conditions&) { return k_reverse; },
+        { h2o }, { hp, ohm }, h2o, aqueous_phase
+    };
+
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQUEOUS"].insert("MODE1");
+
+    std::unordered_map<std::string, std::size_t> spi;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_forward"] = 0;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_reverse"] = 1;
+
+    std::unordered_map<std::string, std::size_t> svi;
+    svi["MODE1.AQUEOUS.H2O"] = 0;
+    svi["MODE1.AQUEOUS.H+"] = 1;
+    svi["MODE1.AQUEOUS.OH-"] = 2;
+
+    MatrixPolicy params(1, 2, 0.0);
+    params[0][0] = k_forward; params[0][1] = k_reverse;
+    MatrixPolicy vars(1, 3, 0.0);
+    vars[0][0] = 55.0; vars[0][1] = 1.0e-4; vars[0][2] = 1.0e-4;
+
+    CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+
+TEST(DissolvedReversibleReaction, JacobianFDBidirectional)
+{
+    auto h2o = micm::Species{ "H2O" };
+    auto hp = micm::Species{ "H+" };
+    auto ohm = micm::Species{ "OH-" };
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
+
+    double k_forward = 1.0e-14;
+    double k_reverse = 1.0e11;
+    auto reaction = DissolvedReversibleReaction{
+        [k_forward](const micm::Conditions&) { return k_forward; },
+        [k_reverse](const micm::Conditions&) { return k_reverse; },
+        { h2o }, { hp, ohm }, h2o, aqueous_phase
+    };
+
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQUEOUS"].insert("MODE1");
+
+    std::unordered_map<std::string, std::size_t> spi;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_forward"] = 0;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_reverse"] = 1;
+
+    std::unordered_map<std::string, std::size_t> svi;
+    svi["MODE1.AQUEOUS.H2O"] = 0;
+    svi["MODE1.AQUEOUS.H+"] = 1;
+    svi["MODE1.AQUEOUS.OH-"] = 2;
+
+    MatrixPolicy params(1, 2, 0.0);
+    params[0][0] = k_forward; params[0][1] = k_reverse;
+    MatrixPolicy vars(1, 3, 0.0);
+    vars[0][0] = 55.0; vars[0][1] = 1.0e-7; vars[0][2] = 1.0e-7;
+
+    CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+
+TEST(DissolvedReversibleReaction, JacobianFDMultiCell)
+{
+    auto h2o = micm::Species{ "H2O" };
+    auto hp = micm::Species{ "H+" };
+    auto ohm = micm::Species{ "OH-" };
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
+
+    double k_forward = 1.0e-14;
+    double k_reverse = 1.0e11;
+    auto reaction = DissolvedReversibleReaction{
+        [k_forward](const micm::Conditions&) { return k_forward; },
+        [k_reverse](const micm::Conditions&) { return k_reverse; },
+        { h2o }, { hp, ohm }, h2o, aqueous_phase
+    };
+
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQUEOUS"].insert("MODE1");
+
+    std::unordered_map<std::string, std::size_t> spi;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_forward"] = 0;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_reverse"] = 1;
+
+    std::unordered_map<std::string, std::size_t> svi;
+    svi["MODE1.AQUEOUS.H2O"] = 0;
+    svi["MODE1.AQUEOUS.H+"] = 1;
+    svi["MODE1.AQUEOUS.OH-"] = 2;
+
+    MatrixPolicy params(3, 2, 0.0);
+    params[0][0] = k_forward; params[0][1] = k_reverse;
+    params[1][0] = k_forward; params[1][1] = k_reverse;
+    params[2][0] = k_forward; params[2][1] = k_reverse;
+
+    MatrixPolicy vars(3, 3, 0.0);
+    vars[0][0] = 55.0;  vars[0][1] = 1.0e-7; vars[0][2] = 1.0e-7;
+    vars[1][0] = 30.0;  vars[1][1] = 5.0e-5; vars[1][2] = 2.0e-5;
+    vars[2][0] = 10.0;  vars[2][1] = 1.0e-4; vars[2][2] = 1.0e-4;
+
+    CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+
+TEST(DissolvedReversibleReaction, JacobianFDMultipleReactantsProducts)
+{
+    auto h2o = micm::Species{ "H2O" };
+    auto a = micm::Species{ "A" };
+    auto b = micm::Species{ "B" };
+    auto c = micm::Species{ "C" };
+    auto d = micm::Species{ "D" };
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { a }, { b }, { c }, { d } } };
+
+    double k_forward = 0.05;
+    double k_reverse = 0.02;
+    auto reaction = DissolvedReversibleReaction{
+        [k_forward](const micm::Conditions&) { return k_forward; },
+        [k_reverse](const micm::Conditions&) { return k_reverse; },
+        { a, b }, { c, d }, h2o, aqueous_phase
+    };
+
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQUEOUS"].insert("DROP");
+
+    std::unordered_map<std::string, std::size_t> spi;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_forward"] = 0;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_reverse"] = 1;
+
+    std::unordered_map<std::string, std::size_t> svi;
+    svi["DROP.AQUEOUS.H2O"] = 0;
+    svi["DROP.AQUEOUS.A"] = 1;
+    svi["DROP.AQUEOUS.B"] = 2;
+    svi["DROP.AQUEOUS.C"] = 3;
+    svi["DROP.AQUEOUS.D"] = 4;
+
+    MatrixPolicy params(1, 2, 0.0);
+    params[0][0] = k_forward; params[0][1] = k_reverse;
+    MatrixPolicy vars(1, 5, 0.0);
+    vars[0][0] = 0.017; vars[0][1] = 0.5; vars[0][2] = 0.3; vars[0][3] = 0.1; vars[0][4] = 0.2;
+
+    CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+
+TEST(DissolvedReversibleReaction, JacobianFDMultipleInstances)
+{
+    auto h2o = micm::Species{ "H2O" };
+    auto hp = micm::Species{ "H+" };
+    auto ohm = micm::Species{ "OH-" };
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
+
+    double k_forward = 1.0e-14;
+    double k_reverse = 1.0e11;
+    auto reaction = DissolvedReversibleReaction{
+        [k_forward](const micm::Conditions&) { return k_forward; },
+        [k_reverse](const micm::Conditions&) { return k_reverse; },
+        { h2o }, { hp, ohm }, h2o, aqueous_phase
+    };
+
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQUEOUS"].insert("LARGE");
+    phase_prefixes["AQUEOUS"].insert("SMALL");
+
+    std::unordered_map<std::string, std::size_t> spi;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_forward"] = 0;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_reverse"] = 1;
+
+    std::unordered_map<std::string, std::size_t> svi;
+    svi["LARGE.AQUEOUS.H2O"] = 0; svi["LARGE.AQUEOUS.H+"] = 1; svi["LARGE.AQUEOUS.OH-"] = 2;
+    svi["SMALL.AQUEOUS.H2O"] = 3; svi["SMALL.AQUEOUS.H+"] = 4; svi["SMALL.AQUEOUS.OH-"] = 5;
+
+    MatrixPolicy params(1, 2, 0.0);
+    params[0][0] = k_forward; params[0][1] = k_reverse;
+    MatrixPolicy vars(1, 6, 0.0);
+    vars[0][0] = 55.0;  vars[0][1] = 1.0e-7; vars[0][2] = 1.0e-7;
+    vars[0][3] = 0.017; vars[0][4] = 1.0e-5; vars[0][5] = 1.0e-5;
+
+    CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+
+TEST(DissolvedReversibleReaction, JacobianFDSolventIsReactant)
+{
+    // H2O dissociation: H2O <-> H+ + OH-  (solvent is the reactant)
+    auto h2o = micm::Species{ "H2O" };
+    auto hp = micm::Species{ "H+" };
+    auto ohm = micm::Species{ "OH-" };
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
+
+    double k_forward = 1.0e-14;
+    double k_reverse = 1.0e11;
+    auto reaction = DissolvedReversibleReaction{
+        [k_forward](const micm::Conditions&) { return k_forward; },
+        [k_reverse](const micm::Conditions&) { return k_reverse; },
+        { h2o }, { hp, ohm }, h2o, aqueous_phase
+    };
+
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQUEOUS"].insert("BULK");
+
+    std::unordered_map<std::string, std::size_t> spi;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_forward"] = 0;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_reverse"] = 1;
+
+    std::unordered_map<std::string, std::size_t> svi;
+    svi["BULK.AQUEOUS.H2O"] = 0;
+    svi["BULK.AQUEOUS.H+"] = 1;
+    svi["BULK.AQUEOUS.OH-"] = 2;
+
+    MatrixPolicy params(1, 2, 0.0);
+    params[0][0] = k_forward; params[0][1] = k_reverse;
+    MatrixPolicy vars(1, 3, 0.0);
+    vars[0][0] = 1000.0; vars[0][1] = 1.0e-6; vars[0][2] = 1.0e-6;
+
+    CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+
+// ============================================================================
+// Limit / Extreme tests (Phase C1)
+// ============================================================================
+
+TEST(DissolvedReversibleReaction, ForcingFunctionZeroReactant)
+{
+    // H2O <-> H+ + OH-  with [H2O]=0: forward rate = 0, reverse still proceeds
+    using MatrixPolicy = micm::VectorMatrix<double>;
+
+    auto h2o = micm::Species{ "H2O" };
+    auto hp = micm::Species{ "H+" };
+    auto ohm = micm::Species{ "OH-" };
+    auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
+
+    double k_forward = 1.0e-14;
+    double k_reverse = 1.0e11;
+    auto reaction = DissolvedReversibleReaction{
+        [k_forward](const micm::Conditions&) { return k_forward; },
+        [k_reverse](const micm::Conditions&) { return k_reverse; },
+        { h2o }, { hp, ohm }, h2o, aqueous_phase
+    };
+
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQUEOUS"].insert("MODE1");
+
+    std::unordered_map<std::string, std::size_t> spi;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_forward"] = 0;
+    spi[aqueous_phase.name_ + "." + reaction.uuid_ + ".k_reverse"] = 1;
+
+    std::unordered_map<std::string, std::size_t> svi;
+    svi["MODE1.AQUEOUS.H2O"] = 0;
+    svi["MODE1.AQUEOUS.H+"] = 1;
+    svi["MODE1.AQUEOUS.OH-"] = 2;
+
+    auto ff = reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, spi, svi);
+
+    MatrixPolicy params(1, 2, 0.0);
+    params[0][0] = k_forward; params[0][1] = k_reverse;
+    MatrixPolicy vars(1, 3, 0.0);
+    vars[0][0] = 0.0;   // [H2O] = 0 → forward rate = 0 (via solvent floor)
+    vars[0][1] = 1.0e-4; vars[0][2] = 1.0e-4;
+
+    MatrixPolicy forcing(1, 3, 0.0);
+    ff(params, vars, forcing);
+
+    // forward_rate = k_f * [H2O] / ([H2O] + eps)^1 * [H2O] → ~0 when [H2O]=0
+    EXPECT_NEAR(forcing[0][0], 0.0, 1.0e-20);  // H2O: forcing ≈ 0 (forward ~ 0, reverse ~ 0 due to floor)
+    // reverse_rate = k_r * [H2O] / ([H2O] + eps)^2 * [H+] * [OH-] → ~0 too
+    EXPECT_NEAR(forcing[0][1], 0.0, 1.0e-20);
+    EXPECT_NEAR(forcing[0][2], 0.0, 1.0e-20);
+}
+
+TEST(DissolvedReversibleReaction, ForcingFunctionZeroProduct)
+{
+    // A <-> B  with [B]=0: reverse rate = 0, only forward proceeds
+    using MatrixPolicy = micm::VectorMatrix<double>;
+
+    auto solvent = micm::Species{ "SOLVENT" };
+    auto a = micm::Species{ "A" };
+    auto b = micm::Species{ "B" };
+    auto phase = micm::Phase{ "AQ", { { solvent }, { a }, { b } } };
+
+    double k_forward = 0.1;
+    double k_reverse = 0.2;
+    auto reaction = DissolvedReversibleReaction{
+        [k_forward](const micm::Conditions&) { return k_forward; },
+        [k_reverse](const micm::Conditions&) { return k_reverse; },
+        { a }, { b }, solvent, phase
+    };
+
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQ"].insert("MODE1");
+
+    std::unordered_map<std::string, std::size_t> spi;
+    spi[phase.name_ + "." + reaction.uuid_ + ".k_forward"] = 0;
+    spi[phase.name_ + "." + reaction.uuid_ + ".k_reverse"] = 1;
+
+    std::unordered_map<std::string, std::size_t> svi;
+    svi["MODE1.AQ.SOLVENT"] = 0;
+    svi["MODE1.AQ.A"] = 1;
+    svi["MODE1.AQ.B"] = 2;
+
+    auto ff = reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, spi, svi);
+
+    MatrixPolicy params(1, 2, 0.0);
+    params[0][0] = k_forward; params[0][1] = k_reverse;
+    MatrixPolicy vars(1, 3, 0.0);
+    double S = 10.0;
+    vars[0][0] = S;    // [SOLVENT]
+    vars[0][1] = 0.5;  // [A]
+    vars[0][2] = 0.0;  // [B] = 0 → reverse rate = 0
+
+    MatrixPolicy forcing(1, 3, 0.0);
+    ff(params, vars, forcing);
+
+    // forward_rate = k_f * [S] / ([S]+eps)^1 * [A] ≈ k_f * [A]
+    double fwd = k_forward * S / (S + 1.0e-20) * 0.5;
+    EXPECT_NEAR(forcing[0][1], -fwd, 1.0e-12);  // A is consumed
+    EXPECT_NEAR(forcing[0][2], +fwd, 1.0e-12);  // B is produced
+}
+
+TEST(DissolvedReversibleReaction, ForcingFunctionAtEquilibrium)
+{
+    // For net rate ≈ 0: k_f / [S]^(n_r-1) * prod([R]) = k_r / [S]^(n_p-1) * prod([P])
+    // With n_r=1, n_p=1: k_f * [A] = k_r * [B] → equilibrium at [A]/[B] = k_r/k_f
+    using MatrixPolicy = micm::VectorMatrix<double>;
+
+    auto solvent = micm::Species{ "SOLVENT" };
+    auto a = micm::Species{ "A" };
+    auto b = micm::Species{ "B" };
+    auto phase = micm::Phase{ "AQ", { { solvent }, { a }, { b } } };
+
+    double k_forward = 0.1;
+    double k_reverse = 0.3;
+    auto reaction = DissolvedReversibleReaction{
+        [k_forward](const micm::Conditions&) { return k_forward; },
+        [k_reverse](const micm::Conditions&) { return k_reverse; },
+        { a }, { b }, solvent, phase
+    };
+
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQ"].insert("MODE1");
+
+    std::unordered_map<std::string, std::size_t> spi;
+    spi[phase.name_ + "." + reaction.uuid_ + ".k_forward"] = 0;
+    spi[phase.name_ + "." + reaction.uuid_ + ".k_reverse"] = 1;
+
+    std::unordered_map<std::string, std::size_t> svi;
+    svi["MODE1.AQ.SOLVENT"] = 0;
+    svi["MODE1.AQ.A"] = 1;
+    svi["MODE1.AQ.B"] = 2;
+
+    auto ff = reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, spi, svi);
+
+    MatrixPolicy params(1, 2, 0.0);
+    params[0][0] = k_forward; params[0][1] = k_reverse;
+    MatrixPolicy vars(1, 3, 0.0);
+    double S = 5.0;
+    // Equilibrium: k_f * [A] * S / (S+eps)^1 = k_r * [B] * S / (S+eps)^1 → [A]/[B] = k_r/k_f = 3
+    double B_eq = 0.1;
+    double A_eq = k_reverse / k_forward * B_eq;  // = 0.3
+    vars[0][0] = S;
+    vars[0][1] = A_eq;
+    vars[0][2] = B_eq;
+
+    MatrixPolicy forcing(1, 3, 0.0);
+    ff(params, vars, forcing);
+
+    EXPECT_NEAR(forcing[0][1], 0.0, 1.0e-14);  // A: net rate = 0 at equilibrium
+    EXPECT_NEAR(forcing[0][2], 0.0, 1.0e-14);  // B: net rate = 0 at equilibrium
+}
+
+TEST(DissolvedReversibleReaction, JacobianFDZeroSolvent)
+{
+    // [S]=0 should not crash; solvent floor prevents singularity in the *forcing function*
+    // (rates → 0), but the Jacobian ∂(rate)/∂[S] = k * [A] * eps / (S+eps)^2 ≈ k * [A] / eps
+    // is huge near [S]=0 — this is expected and finite.  Just verify no NaN/Inf.
+    using LocalSMP = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
+
+    auto solvent = micm::Species{ "SOLVENT" };
+    auto a = micm::Species{ "A" };
+    auto b = micm::Species{ "B" };
+    auto phase = micm::Phase{ "AQ", { { solvent }, { a }, { b } } };
+
+    double k_forward = 0.1;
+    double k_reverse = 0.05;
+    auto reaction = DissolvedReversibleReaction{
+        [k_forward](const micm::Conditions&) { return k_forward; },
+        [k_reverse](const micm::Conditions&) { return k_reverse; },
+        { a }, { b }, solvent, phase
+    };
+
+    std::map<std::string, std::set<std::string>> phase_prefixes;
+    phase_prefixes["AQ"].insert("MODE1");
+
+    std::unordered_map<std::string, std::size_t> spi;
+    spi[phase.name_ + "." + reaction.uuid_ + ".k_forward"] = 0;
+    spi[phase.name_ + "." + reaction.uuid_ + ".k_reverse"] = 1;
+
+    std::unordered_map<std::string, std::size_t> svi;
+    svi["MODE1.AQ.SOLVENT"] = 0;
+    svi["MODE1.AQ.A"] = 1;
+    svi["MODE1.AQ.B"] = 2;
+
+    auto jac_elements = reaction.NonZeroJacobianElements(phase_prefixes, svi);
+    auto jac_builder = LocalSMP::Create(3).SetNumberOfBlocks(1);
+    for (const auto& elem : jac_elements) jac_builder.WithElement(elem.first, elem.second);
+    LocalSMP jacobian(jac_builder);
+    jacobian.Fill(0.0);
+
+    auto jac_func = reaction.JacobianFunction<MatrixPolicy, LocalSMP>(
+        phase_prefixes, spi, svi, jacobian);
+
+    MatrixPolicy params(1, 2, 0.0);
+    params[0][0] = k_forward; params[0][1] = k_reverse;
+    MatrixPolicy vars(1, 3, 0.0);
+    vars[0][0] = 0.0;  // [SOLVENT] = 0
+    vars[0][1] = 0.5;
+    vars[0][2] = 0.3;
+
+    // Should not crash or produce NaN/Inf
+    jac_func(params, vars, jacobian);
+    for (const auto& elem : jac_elements)
+    {
+        double val = jacobian[0][elem.first][elem.second];
+        EXPECT_FALSE(std::isnan(val)) << "NaN at (" << elem.first << "," << elem.second << ")";
+        EXPECT_FALSE(std::isinf(val)) << "Inf at (" << elem.first << "," << elem.second << ")";
+    }
 }

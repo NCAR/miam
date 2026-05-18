@@ -28,7 +28,7 @@ with :math:`K_\text{eq} = k_f / k_r`.
      .SetSolvent(h2o)
      .SetEquilibriumConstant(process::constant::EquilibriumConstant(
          { .A_ = 1.14e-2, .C_ = 2300.0, .T0_ = 298.15 }))
-     .SetReverseRateConstant(ArrheniusRateConstant(
+     .SetReverseRateConstant(process::constant::ArrheniusRateConstantParameters(
          { .A_ = 1.4e11, .C_ = 5.1e4 }))
      .Build();
 

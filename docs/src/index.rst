@@ -36,6 +36,7 @@ atmospheric chemistry tools developed at
    user_guide/processes
    user_guide/building_a_model
    user_guide/aerosol_properties
+   user_guide/debugging_dae_systems
 
 .. toctree::
    :maxdepth: 2

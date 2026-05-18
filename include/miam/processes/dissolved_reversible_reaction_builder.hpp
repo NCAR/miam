@@ -5,6 +5,8 @@
 
 #include <miam/processes/dissolved_reversible_reaction.hpp>
 
+#include <micm/process/rate_constant/arrhenius_rate_constant.hpp>
+#include <micm/process/rate_constant/rate_constant_functions.hpp>
 #include <micm/system/conditions.hpp>
 
 #include <functional>
@@ -50,6 +52,14 @@ namespace miam
         return *this;
       }
 
+      /// @brief Sets the floor \f$\delta\f$ [mol m⁻³] added to the solvent in the denominator
+      ///        to prevent singularity as \f$[S] \to 0\f$. Default: 1e-20.
+      DissolvedReversibleReactionBuilder& SetSolventFloor(double solvent_floor)
+      {
+        solvent_floor_ = solvent_floor;
+        return *this;
+      }
+
       /// @brief Sets the forward rate constant function
       DissolvedReversibleReactionBuilder& SetForwardRateConstant(const auto& forward_rate_constant)
       {
@@ -63,6 +73,14 @@ namespace miam
       {
         reverse_rate_constant_ = [reverse_rate_constant](const micm::Conditions& conditions)
         { return reverse_rate_constant.Calculate(conditions); };
+        return *this;
+      }
+
+      /// @brief Sets the reverse rate constant from Arrhenius parameters
+      DissolvedReversibleReactionBuilder& SetReverseRateConstant(const micm::ArrheniusRateConstantParameters& params)
+      {
+        reverse_rate_constant_ = [params](const micm::Conditions& conditions)
+        { return micm::CalculateArrhenius(params, conditions.temperature_, conditions.pressure_); };
         return *this;
       }
 
@@ -136,7 +154,7 @@ namespace miam
           }
         }
         return process::DissolvedReversibleReaction(
-            forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_);
+            forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_);
       }
 
      private:
@@ -147,11 +165,12 @@ namespace miam
       micm::Species solvent_;                 ///< Solvent species
       bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
       mutable std::function<double(const micm::Conditions& conditions)>
-          forward_rate_constant_;  ///< Forward rate constant function
+          forward_rate_constant_;             ///< Forward rate constant function
       mutable std::function<double(const micm::Conditions& conditions)>
-          reverse_rate_constant_;  ///< Reverse rate constant function
+          reverse_rate_constant_;             ///< Reverse rate constant function
       mutable std::function<double(const micm::Conditions& conditions)>
-          equilibrium_constant_;  ///< Equilibrium constant function
+          equilibrium_constant_;              ///< Equilibrium constant function
+      double solvent_floor_{ 1.0e-20 };       ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
     };
   }  // namespace process
 }  // namespace miam

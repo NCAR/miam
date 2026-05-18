@@ -24,11 +24,11 @@ convert, we need the **condensed-phase solvent species** (typically water) and
 its **volume fraction**:
 
 ```
-f_v = [solvent] · Mw_solvent / ρ_solvent
+f_v = [solvent] · solvent_molecular_weight / solvent_density
 ```
 
-where `[solvent]` is the solvent concentration (`mol m⁻³ air`), `Mw_solvent` is
-the solvent molar mass (`kg mol⁻¹`), and `ρ_solvent` is the solvent density
+where `[solvent]` is the solvent concentration (`mol m⁻³ air`), `solvent_molecular_weight` is
+the solvent molar mass (`kg mol⁻¹`), and `solvent_density` is the solvent density
 (`kg m⁻³`). The dissolved concentration of species A is then:
 
 ```
@@ -123,9 +123,9 @@ and the Jacobian sign convention used by the MICM solver.
 | T      | Temperature | K |
 | D_g    | Gas-phase diffusion coefficient | m² s⁻¹ |
 | α      | Mass accommodation coefficient | dimensionless (0–1) |
-| Mw_gas | Molecular weight of gas species | kg mol⁻¹ |
-| Mw_solvent | Molecular weight of solvent | kg mol⁻¹ |
-| ρ_solvent | Density of solvent | kg m⁻³ |
+| gas_molecular_weight | Molecular weight of gas species | kg mol⁻¹ |
+| solvent_molecular_weight | Molecular weight of solvent | kg mol⁻¹ |
+| solvent_density | Density of solvent | kg m⁻³ |
 | [A]_gas | Gas-phase concentration | mol m⁻³ air |
 | [A]_aq | Aqueous-phase concentration | mol m⁻³ air |
 | [solvent] | Solvent concentration | mol m⁻³ air |
@@ -150,7 +150,7 @@ variables.
 ### 2. Mean molecular speed
 
 ```
-c̄ = √(8 R T / (π Mw_gas))
+c̄ = √(8 R T / (π gas_molecular_weight))
 ```
 
 Units: m s⁻¹. Used to derive the mean free path.
@@ -238,7 +238,7 @@ dk_e/dN     = dk_c/dN     / (HLC · R · T) = k_e / N
 ### 8. Solvent volume fraction
 
 ```
-f_v = [solvent] · Mw_solvent / ρ_solvent
+f_v = [solvent] · solvent_molecular_weight / solvent_density
 ```
 
 Dimensionless. Converts the dissolved-phase concentration basis
@@ -1363,8 +1363,8 @@ struct PerInstanceData {
     size_t solvent_species_idx;  // state variable index for condensed solvent
     size_t hlc_param_idx;        // state parameter index for HLC(T) [mol m⁻³ Pa⁻¹]
     size_t temperature_param_idx; // state parameter index for T [K]
-    double Mw_solvent;           // solvent molar mass [kg mol⁻¹]
-    double rho_solvent;          // solvent density [kg m⁻³]
+    double solvent_molecular_weight;           // solvent molar mass [kg mol⁻¹]
+    double solvent_density;          // solvent density [kg m⁻³]
     AerosolPropertyProvider<DenseMatrixPolicy> r_eff_provider;
     AerosolPropertyProvider<DenseMatrixPolicy> N_provider;
     AerosolPropertyProvider<DenseMatrixPolicy> phi_provider;  // phase volume fraction
@@ -1383,15 +1383,15 @@ for (const auto& [prefix, provider_vec] : providers) {
         prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc");
     inst.temperature_param_idx = param_indices.at(
         prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
-    inst.Mw_solvent = Mw_solvent_;
-    inst.rho_solvent = rho_solvent_;
+    inst.solvent_molecular_weight = solvent_molecular_weight_;
+    inst.solvent_density = solvent_density_;
     // Providers arrive in RequiredAerosolProperties() order:
     //   [0] = EffectiveRadius, [1] = NumberConcentration,
     //   [2] = PhaseVolumeFraction
     inst.r_eff_provider = provider_vec[0];
     inst.N_provider     = provider_vec[1];
     inst.phi_provider   = provider_vec[2];
-    inst.cond_rate_provider = MakeCondensationRateProvider(D_g_, alpha_, Mw_gas_);
+    inst.cond_rate_provider = MakeCondensationRateProvider(D_g_, alpha_, gas_molecular_weight_);
     instances.push_back(std::move(inst));
 }
 
@@ -1482,7 +1482,7 @@ return DenseMatrixPolicy::Function(
             // net = φ_p · k_cond · [gas] - φ_p · k_evap · [aq] / f_v
             // where k_evap = k_cond / (HLC·R·T), f_v = [solvent]·Mw/ρ
             // HLC is pre-computed in UpdateStateParametersFunction
-            double Mw_rho = inst.Mw_solvent / inst.rho_solvent;
+            double molar_volume = inst.solvent_molecular_weight / inst.solvent_density;
 
             state_parameters.ForEachRow(
                 [&](const double& kc, const double& phi_p,
@@ -1493,7 +1493,7 @@ return DenseMatrixPolicy::Function(
                 {
                     double kc_eff = phi_p * kc;
                     k_evap = kc_eff / (hlc * R_gas * T);
-                    double f_v = solvent_conc * Mw_rho;
+                    double f_v = solvent_conc * molar_volume;
                     net = kc_eff * gas_conc - k_evap * aq_conc / f_v;
                 },
                 k_cond_var,
@@ -1535,7 +1535,7 @@ return DenseMatrixPolicy::Function(
 // ====================================================================
 
 // net = φ_p · k_cond · [gas] - φ_p · k_evap · [aq] / f_v
-// where f_v = [solvent] · Mw_solvent / ρ_solvent
+// where f_v = [solvent] · solvent_molecular_weight / solvent_density
 //       φ_p = V_phase / V_total  (phase volume fraction)
 //       k_evap = k_cond / (HLC · R · T)
 //       HLC = pre-computed Henry's Law constant (state parameter)
@@ -1575,7 +1575,7 @@ return SparseMatrixPolicy::Function(
         auto jac_id = jacobian_indices.indices_.AsVector().begin();
 
         for (const auto& inst : instances) {
-            double Mw_rho = inst.Mw_solvent / inst.rho_solvent;
+            double molar_volume = inst.solvent_molecular_weight / inst.solvent_density;
 
             // --- Compute property values ---
             inst.r_eff_provider.ComputeValue(
@@ -1595,7 +1595,7 @@ return SparseMatrixPolicy::Function(
                     double& ke, double& fv, double& R)
                 {
                     ke = kc / (hlc * R_gas * T);
-                    fv = solvent_conc * Mw_rho;
+                    fv = solvent_conc * molar_volume;
                     R = kc * gas_conc - ke * aq_conc / fv;
                 },
                 k_cond,
@@ -2192,7 +2192,7 @@ and the provider can short-circuit.
    ```cpp
    // include/miam/util/condensation_rate.hpp
    CondensationRateProvider MakeCondensationRateProvider(
-       double D_g, double alpha, double Mw_gas);
+       double D_g, double alpha, double gas_molecular_weight);
    ```
 
    The returned lambdas capture the physical constants and encapsulate the
@@ -2276,7 +2276,7 @@ is written to a state parameter column (`hlc`) for each phase instance.
 
 `include/miam/util/condensation_rate.hpp` — `CondensationRateProvider` struct
 with `ComputeValue` and `ComputeValueAndDerivatives` lambdas, plus factory
-function `MakeCondensationRateProvider(D_g, alpha, Mw_gas)`. Encapsulates
+function `MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight)`. Encapsulates
 mean molecular speed, mean free path, Knudsen number, Fuchs-Sutugin correction,
 and all derivatives (`dk_cond/dr_eff`, `dk_cond/dN`) — same provider pattern as
 aerosol properties. Helper functions (mean free path, Fuchs-Sutugin factor) are

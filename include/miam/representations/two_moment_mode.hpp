@@ -157,14 +157,14 @@ namespace miam
             std::size_t gsd_idx = state_parameter_indices.at(GeometricStandardDeviation());
             std::size_t nc_var_idx = state_variable_indices.at(NumberConcentration());
             std::vector<std::size_t> species_indices;
-            std::vector<double> mw_over_rho;
+            std::vector<double> molar_volumes;
             for (const auto& phase : phases_)
               for (const auto& ps : phase.phase_species_)
                 if (!ps.species_.IsParameterized())
                 {
                   species_indices.push_back(
                       state_variable_indices.at(prefix_ + "." + phase.name_ + "." + ps.species_.name_));
-                  mw_over_rho.push_back(
+                  molar_volumes.push_back(
                       ps.species_.GetProperty<double>("molecular weight [kg mol-1]") /
                       ps.species_.GetProperty<double>("density [kg m-3]"));
                 }
@@ -173,13 +173,13 @@ namespace miam
             provider.dependent_variable_indices.push_back(nc_var_idx);
             DenseMatrixPolicy dummy_partials{ 1, provider.dependent_variable_indices.size(), 0.0 };
             provider.ComputeValue = DenseMatrixPolicy::Function(
-                [gsd_idx, nc_var_idx, species_indices, mw_over_rho](auto&& params, auto&& vars, auto&& result)
+                [gsd_idx, nc_var_idx, species_indices, molar_volumes](auto&& params, auto&& vars, auto&& result)
                 {
                   auto r = result.GetColumnView(0);
                   params.ForEachRow([](double& v) { v = 0.0; }, r);
                   for (std::size_t k = 0; k < species_indices.size(); ++k)
                     params.ForEachRow(
-                        [mwr = mw_over_rho[k]](const double& c, double& V) { V += c * mwr; },
+                        [molar_vol = molar_volumes[k]](const double& c, double& V) { V += c * molar_vol; },
                         vars.GetConstColumnView(species_indices[k]),
                         r);
                   params.ForEachRow(
@@ -198,7 +198,7 @@ namespace miam
                 dummy_vars,
                 dummy_result);
             provider.ComputeValueAndDerivatives = DenseMatrixPolicy::Function(
-                [gsd_idx, nc_var_idx, species_indices, mw_over_rho](
+                [gsd_idx, nc_var_idx, species_indices, molar_volumes](
                     auto&& params, auto&& vars, auto&& result, auto&& partials)
                 {
                   auto r = result.GetColumnView(0);
@@ -206,20 +206,20 @@ namespace miam
                   params.ForEachRow([](double& v) { v = 0.0; }, r);
                   for (std::size_t k = 0; k < species_indices.size(); ++k)
                     params.ForEachRow(
-                        [mwr = mw_over_rho[k]](const double& c, double& V) { V += c * mwr; },
+                        [molar_vol = molar_volumes[k]](const double& c, double& V) { V += c * molar_vol; },
                         vars.GetConstColumnView(species_indices[k]),
                         r);
                   // Partials w.r.t. species (while r still holds V_total)
-                  // ∂r_eff/∂[species_k] = r_eff / (3·V_total) · (Mw_k/ρ_k)
+                  // ∂r_eff/∂[species_k] = r_eff / (3·V_total) · molar_volume_k [m³ mol⁻¹]
                   for (std::size_t k = 0; k < species_indices.size(); ++k)
                     params.ForEachRow(
-                        [mwr = mw_over_rho[k]](const double& gsd, const double& nc, const double& V_total, double& dr)
+                        [molar_vol = molar_volumes[k]](const double& gsd, const double& nc, const double& V_total, double& dr)
                         {
                           double ln_gsd = std::log(gsd);
                           double V_mean = V_total / nc;
                           double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
                           double r_eff = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
-                          dr = r_eff * mwr / (3.0 * V_total);
+                          dr = r_eff * molar_vol / (3.0 * V_total);
                         },
                         params.GetConstColumnView(gsd_idx),
                         vars.GetConstColumnView(nc_var_idx),
@@ -321,7 +321,7 @@ namespace miam
                   "TwoMomentMode::GetPropertyProvider: target_phase_name required for PhaseVolumeFraction "
                   "with multiple phases");
             std::vector<std::size_t> all_species;
-            std::vector<double> all_mw_over_rho;
+            std::vector<double> all_molar_volumes;
             std::size_t phase_count = 0;
             for (const auto& phase : phases_)
               if (phase.name_ == target_phase_name)
@@ -330,7 +330,7 @@ namespace miam
                   if (!ps.species_.IsParameterized())
                   {
                     all_species.push_back(state_variable_indices.at(prefix_ + "." + phase.name_ + "." + ps.species_.name_));
-                    all_mw_over_rho.push_back(
+                    all_molar_volumes.push_back(
                         ps.species_.GetProperty<double>("molecular weight [kg mol-1]") /
                         ps.species_.GetProperty<double>("density [kg m-3]"));
                   }
@@ -345,7 +345,7 @@ namespace miam
                 if (!ps.species_.IsParameterized())
                 {
                   all_species.push_back(state_variable_indices.at(prefix_ + "." + phase.name_ + "." + ps.species_.name_));
-                  all_mw_over_rho.push_back(
+                  all_molar_volumes.push_back(
                       ps.species_.GetProperty<double>("molecular weight [kg mol-1]") /
                       ps.species_.GetProperty<double>("density [kg m-3]"));
                 }
@@ -353,7 +353,7 @@ namespace miam
             provider.dependent_variable_indices = all_species;
             DenseMatrixPolicy dummy_partials{ 1, all_species.size(), 0.0 };
             provider.ComputeValue = DenseMatrixPolicy::Function(
-                [all_species, all_mw_over_rho, phase_count](auto&& params, auto&& vars, auto&& result)
+                [all_species, all_molar_volumes, phase_count](auto&& params, auto&& vars, auto&& result)
                 {
                   auto phi = result.GetColumnView(0);
                   auto V_phase = result.GetRowVariable();
@@ -369,9 +369,9 @@ namespace miam
                   {
                     if (k < phase_count)
                       params.ForEachRow(
-                          [mwr = all_mw_over_rho[k]](const double& c, double& vt, double& vp)
+                          [molar_vol = all_molar_volumes[k]](const double& c, double& vt, double& vp)
                           {
-                            double vol = c * mwr;
+                            double vol = c * molar_vol;
                             vt += vol;
                             vp += vol;
                           },
@@ -380,7 +380,7 @@ namespace miam
                           V_phase);
                     else
                       params.ForEachRow(
-                          [mwr = all_mw_over_rho[k]](const double& c, double& vt) { vt += c * mwr; },
+                          [molar_vol = all_molar_volumes[k]](const double& c, double& vt) { vt += c * molar_vol; },
                           vars.GetConstColumnView(all_species[k]),
                           phi);
                   }
@@ -390,7 +390,7 @@ namespace miam
                 dummy_vars,
                 dummy_result);
             provider.ComputeValueAndDerivatives = DenseMatrixPolicy::Function(
-                [all_species, all_mw_over_rho, phase_count](auto&& params, auto&& vars, auto&& result, auto&& partials)
+                [all_species, all_molar_volumes, phase_count](auto&& params, auto&& vars, auto&& result, auto&& partials)
                 {
                   auto result_col = result.GetColumnView(0);
                   auto V_phase = result.GetRowVariable();
@@ -407,9 +407,9 @@ namespace miam
                   {
                     if (k < phase_count)
                       params.ForEachRow(
-                          [mwr = all_mw_over_rho[k]](const double& c, double& vt, double& vp)
+                          [molar_vol = all_molar_volumes[k]](const double& c, double& vt, double& vp)
                           {
-                            double vol = c * mwr;
+                            double vol = c * molar_vol;
                             vt += vol;
                             vp += vol;
                           },
@@ -418,7 +418,7 @@ namespace miam
                           V_phase);
                     else
                       params.ForEachRow(
-                          [mwr = all_mw_over_rho[k]](const double& c, double& vt) { vt += c * mwr; },
+                          [molar_vol = all_molar_volumes[k]](const double& c, double& vt) { vt += c * molar_vol; },
                           vars.GetConstColumnView(all_species[k]),
                           V_total);
                   }
@@ -431,15 +431,15 @@ namespace miam
                   {
                     if (k < phase_count)
                       params.ForEachRow(
-                          [mwr = all_mw_over_rho[k]](const double& phi, const double& vt, double& dphi)
-                          { dphi = (vt > 0.0) ? mwr * (1.0 - phi) / vt : 0.0; },
+                          [molar_vol = all_molar_volumes[k]](const double& phi, const double& vt, double& dphi)
+                          { dphi = (vt > 0.0) ? molar_vol * (1.0 - phi) / vt : 0.0; },
                           result_col,
                           V_total,
                           partials.GetColumnView(k));
                     else
                       params.ForEachRow(
-                          [mwr = all_mw_over_rho[k]](const double& phi, const double& vt, double& dphi)
-                          { dphi = (vt > 0.0) ? -mwr * phi / vt : 0.0; },
+                          [molar_vol = all_molar_volumes[k]](const double& phi, const double& vt, double& dphi)
+                          { dphi = (vt > 0.0) ? -molar_vol * phi / vt : 0.0; },
                           result_col,
                           V_total,
                           partials.GetColumnView(k));

@@ -28,6 +28,47 @@ MIAM provides:
   effective radius, number concentration, and phase volume fraction with
   analytical partial derivatives for implicit solvers
 
+## Units and Conventions
+
+All concentrations in MIAM — both gas-phase and condensed-phase — are in units
+of **mol m⁻³ of air**. This includes the solvent (e.g. cloud liquid water).
+
+| Parameter | MIAM units | Notes |
+|-----------|-----------|-------|
+| Gas-phase concentration | mol m⁻³ air | |
+| Condensed-phase concentration | mol m⁻³ air | Not mol/L of solution |
+| Solvent concentration [S] | mol m⁻³ air | Cloud water: ≈ 0.017 mol m⁻³ for LWC = 0.3 g m⁻³ |
+| Rate constant *k* | s⁻¹ | Always s⁻¹ after unit conversion (see below) |
+| Equilibrium constant *K*_eq | dimensionless | Always dimensionless after unit conversion |
+
+### Dissolved-phase rate expression
+
+For a dissolved reaction with *n*_r reactants, MIAM computes the rate as:
+
+> *r* = *k* / [S]^(*n*_r − 1) × ∏[R_i]
+
+The solvent-normalization factor [S]^(*n*_r − 1) absorbs the concentration
+dimensions, so *k* is always in units of s⁻¹ regardless of reaction order.
+
+### Converting from literature (molar) values
+
+Literature rate constants and equilibrium constants are typically expressed in
+molar (mol L⁻¹) units. To convert to MIAM's *k* and *K*_eq:
+
+> *k*_MIAM = *k*_lit × *c*_H₂O^(*n*_r − 1)
+>
+> *K*_eq,MIAM = *K*_lit / *c*_H₂O^(*n*_p − *n*_r)
+
+where *c*_H₂O = 55.556 mol L⁻¹ is the molar concentration of pure liquid
+water (a **fixed** unit-conversion constant, not the cloud water state
+variable), and *K*_lit includes all species — including water — in molar
+concentration units.
+
+Examples:
+- Unimolecular (*n*_r = 1): *k*_MIAM = *k*_lit
+- Bimolecular (*n*_r = 2): *k*_MIAM = *k*_lit × 55.556
+- Dissociation A → B + C (*n*_r = 1, *n*_p = 2): *K*_eq = *K*_lit / 55.556
+
 # Getting Started
 
 ## Installing MIAM locally
@@ -130,7 +171,7 @@ int main()
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                     .SetSystem(system)
-                    .AddExternalModelProcesses(cloud_model)
+                    .AddExternalModel(cloud_model)
                     .SetIgnoreUnusedSpecies(true)
                     .Build();
 
@@ -142,7 +183,7 @@ int main()
   state.conditions_[0].CalculateIdealAirDensity();
 
   state[co2] = 1.0e-3;                                  // mol m-3 air
-  state[cloud.Species(aqueous_phase, h2o)] = 300.0;      // mol m-3 (liquid water content)
+  state[cloud.Species(aqueous_phase, h2o)] = 0.017;      // mol m-3 air (cloud LWC ~ 0.3 g m-3)
   cloud.SetDefaultParameters(state);
 
   // Integrate
@@ -165,21 +206,14 @@ g++ -o cloud_chem cloud_chem.cpp -I/usr/local/miam/include -I/usr/local/micm/inc
 ```
 
 Expected output — gas-phase CO₂ dissolves into the cloud droplets, approaching
-Henry's Law equilibrium:
+Henry's Law equilibrium. With realistic cloud liquid water content
+(~0.017 mol m⁻³), only a trace fraction of the gas dissolves:
 
 ```
   time,                CO2,  CLOUD.AQUEOUS.CO2,  CLOUD.AQUEOUS.H2O
-     0,           1.00e-03,           0.00e+00,           3.00e+02
-   100,           9.12e-04,           8.85e-05,           3.00e+02
-   200,           8.48e-04,           1.52e-04,           3.00e+02
-   300,           8.03e-04,           1.97e-04,           3.00e+02
-   400,           7.47e-04,           2.53e-04,           3.00e+02
-   500,           7.30e-04,           2.70e-04,           3.00e+02
-   600,           7.18e-04,           2.82e-04,           3.00e+02
-   700,           7.09e-04,           2.91e-04,           3.00e+02
-   800,           7.03e-04,           2.97e-04,           3.00e+02
-   900,           6.98e-04,           3.02e-04,           3.00e+02
-  1000,           6.98e-04,           3.02e-04,           3.00e+02
+     0,           1.00e-03,           0.00e+00,           1.70e-02
+   ...
+  1000,           ~1.00e-03,          ~1.0e-08,           1.70e-02
 ```
 
 See the [MIAM documentation](https://miam.readthedocs.io/) for the full API
