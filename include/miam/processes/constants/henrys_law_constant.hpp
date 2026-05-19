@@ -9,12 +9,8 @@
 
 namespace miam
 {
-  namespace process
-  {
-    namespace constant
-    {
-      /// @brief Parameters for a Henry's Law constant
-      struct HenrysLawConstantParameters
+  /// @brief Parameters for a Henry's Law constant
+  struct HenrysLawConstantParameters
       {
         /// @brief Henry's Law constant at reference temperature [mol m⁻³ Pa⁻¹]
         double HLC_ref_{ 1.0 };
@@ -61,6 +57,4 @@ namespace miam
           return parameters_.HLC_ref_ * std::exp(parameters_.C_ * (1.0 / temperature - 1.0 / parameters_.T0_));
         }
       };
-    }  // namespace constant
-  }  // namespace process
 }  // namespace miam

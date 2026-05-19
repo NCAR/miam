@@ -11,11 +11,9 @@
 
 namespace miam
 {
-  namespace process
-  {
-    /// @brief A dissolved reaction builder
-    /// @details Builder class for constructing DissolvedReaction objects.
-    class DissolvedReactionBuilder
+  /// @brief A dissolved reaction builder
+  /// @details Builder class for constructing DissolvedReaction objects.
+  class DissolvedReactionBuilder
     {
      public:
       DissolvedReactionBuilder() = default;
@@ -87,7 +85,7 @@ namespace miam
       }
 
       /// @brief Builds and returns the DissolvedReaction object
-      process::DissolvedReaction Build() const
+      DissolvedReaction Build() const
       {
         if (!rate_constant_)
         {
@@ -109,7 +107,7 @@ namespace miam
         {
           throw std::runtime_error("DissolvedReactionBuilder requires the solvent to be set.");
         }
-        return process::DissolvedReaction(
+        return DissolvedReaction(
             rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_, min_halflife_);
       }
 
@@ -124,5 +122,4 @@ namespace miam
       double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
       double min_halflife_{ 0.0 };       ///< Minimum half-life for rate capping [s]
     };
-  }  // namespace process
 }  // namespace miam

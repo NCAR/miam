@@ -20,9 +20,7 @@
 
 namespace miam
 {
-  namespace constraint
-  {
-    /// @brief A linear algebraic constraint of the form  sum(coeff_i * [species_i]) = C
+  /// @brief A linear algebraic constraint of the form  sum(coeff_i * [species_i]) = C
     /// @details Replaces the ODE row for a designated algebraic species with a linear
     ///          constraint equation:
     ///
@@ -69,7 +67,7 @@ namespace miam
             terms_(terms),
             constant_(constant),
             diagnose_from_state_(diagnose_from_state),
-            uuid_(miam::util::generate_uuid_v4())
+            uuid_(GenerateUuid())
       {
       }
 
@@ -607,5 +605,4 @@ namespace miam
         return per_instance;
       }
     };
-  }  // namespace constraint
 }  // namespace miam

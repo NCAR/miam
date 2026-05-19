@@ -4,6 +4,7 @@
 #pragma once
 
 #include <micm/Util.hpp>
+#include <miam/util/constants.hpp>
 
 #include <cmath>
 #include <functional>
@@ -12,9 +13,6 @@
 
 namespace miam
 {
-    /// @brief Gas constant [J mol⁻¹ K⁻¹]
-    constexpr double R_gas = micm::constants::GAS_CONSTANT;
-
     /// @brief Provider for condensation rate and its derivatives
     /// @details Encapsulates the Fuchs-Sutugin transition regime calculation \cite Fuchs1971, Zaveri2008:
     ///
@@ -81,7 +79,7 @@ namespace miam
       {
         if (r_eff <= 0 || N <= 0 || T <= 0)
           return 0.0;
-        double c_bar = std::sqrt(8.0 * R_gas * T / (std::numbers::pi * molecular_weight));
+        double c_bar = std::sqrt(8.0 * miam::GAS_CONSTANT * T / (std::numbers::pi * molecular_weight));
         double lambda = 3.0 * diffusion_coefficient / c_bar;
         double Kn = lambda / r_eff;
         double denom = Kn * Kn + (1.0 + 0.283 * accommodation_coefficient) * Kn + 0.75 * accommodation_coefficient;
@@ -100,7 +98,7 @@ namespace miam
           dk_dN = 0.0;
           return;
         }
-        double c_bar = std::sqrt(8.0 * R_gas * T / (std::numbers::pi * molecular_weight));
+        double c_bar = std::sqrt(8.0 * miam::GAS_CONSTANT * T / (std::numbers::pi * molecular_weight));
         double lambda = 3.0 * diffusion_coefficient / c_bar;
         double Kn = lambda / r_eff;
         double denom = Kn * Kn + (1.0 + 0.283 * accommodation_coefficient) * Kn + 0.75 * accommodation_coefficient;

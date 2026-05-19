@@ -12,10 +12,8 @@
 
 namespace miam
 {
-  namespace constraint
-  {
-    /// @brief Builder for HenryLawEquilibriumConstraint
-    class HenryLawEquilibriumConstraintBuilder
+  /// @brief Builder for HenryLawEquilibriumConstraint
+  class HenryLawEquilibriumConstraintBuilder
     {
      public:
       HenryLawEquilibriumConstraintBuilder() = default;
@@ -124,5 +122,4 @@ namespace miam
       double solvent_density_ = 0.0;  ///< [kg m⁻³]
       bool solvent_density_is_set_ = false;
     };
-  }  // namespace constraint
 }  // namespace miam

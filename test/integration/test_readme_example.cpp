@@ -30,7 +30,7 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   Phase aqueous_phase{ "AQUEOUS", { { co2 }, { h2o } } };
 
   // Cloud droplets with a single-moment log-normal distribution
-  auto cloud = representation::SingleMomentMode{
+  auto cloud = SingleMomentMode{
     "CLOUD",
     { aqueous_phase },
     5.0e-6,  // geometric mean radius [m]
@@ -38,12 +38,12 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   };
 
   // Henry's Law phase transfer: CO2(g) <-> CO2(aq)
-  auto co2_transfer = process::HenryLawPhaseTransferBuilder()
+  auto co2_transfer = HenryLawPhaseTransferBuilder()
     .SetCondensedPhase(aqueous_phase)
     .SetGasSpecies(co2)
     .SetCondensedSpecies(co2)
     .SetSolvent(h2o)
-    .SetHenrysLawConstant(process::constant::HenrysLawConstant(
+    .SetHenrysLawConstant(HenrysLawConstant(
         { .HLC_ref_ = 3.4e-2 }))       // mol m-3 Pa-1 at 298 K
     .SetDiffusionCoefficient(1.5e-5)    // m2 s-1
     .SetAccommodationCoefficient(5.0e-6) // Set artificially low to see transfer over 10 time steps

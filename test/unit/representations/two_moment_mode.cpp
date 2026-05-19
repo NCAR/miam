@@ -13,7 +13,7 @@
 #include <unordered_map>
 
 using namespace miam;
-using namespace miam::representation;
+using namespace miam;
 
 TEST(TwoMomentMode, StateSize)
 {

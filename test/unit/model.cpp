@@ -21,7 +21,7 @@ TEST(Model, SpeciesUsedWithNoProcesses)
     
     auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { co2 } } };
     
-    auto mode = representation::SingleMomentMode{ "MODE1", { aqueous_phase } };
+    auto mode = SingleMomentMode{ "MODE1", { aqueous_phase } };
     
     Model model;
     model.name_ = "TEST_MODEL";
@@ -41,12 +41,12 @@ TEST(Model, SpeciesUsedWithSingleRepresentationAndProcess)
     
     auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
     
-    auto mode = representation::SingleMomentMode{ "SMALL_DROP", { aqueous_phase } };
+    auto mode = SingleMomentMode{ "SMALL_DROP", { aqueous_phase } };
     
     auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
     auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
     
-    process::DissolvedReversibleReaction reaction{
+    DissolvedReversibleReaction reaction{
         forward_rate,
         reverse_rate,
         { h2o },      // reactants
@@ -77,13 +77,13 @@ TEST(Model, SpeciesUsedWithMultipleRepresentations)
     
     auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
     
-    auto small_drop = representation::SingleMomentMode{ "SMALL_DROP", { aqueous_phase } };
-    auto large_drop = representation::SingleMomentMode{ "LARGE_DROP", { aqueous_phase } };
+    auto small_drop = SingleMomentMode{ "SMALL_DROP", { aqueous_phase } };
+    auto large_drop = SingleMomentMode{ "LARGE_DROP", { aqueous_phase } };
     
     auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
     auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
     
-    process::DissolvedReversibleReaction reaction{
+    DissolvedReversibleReaction reaction{
         forward_rate,
         reverse_rate,
         { h2o },      // reactants
@@ -124,12 +124,12 @@ TEST(Model, SpeciesUsedWithMultipleProcesses)
     
     auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm }, { co2 }, { h2co3 } } };
     
-    auto mode = representation::TwoMomentMode{ "AITKEN", { aqueous_phase } };
+    auto mode = TwoMomentMode{ "AITKEN", { aqueous_phase } };
     
     auto h2o_forward = [](const micm::Conditions& conditions) { return 1.0e-14; };
     auto h2o_reverse = [](const micm::Conditions& conditions) { return 1.0e11; };
     
-    process::DissolvedReversibleReaction h2o_dissociation{
+    DissolvedReversibleReaction h2o_dissociation{
         h2o_forward,
         h2o_reverse,
         { h2o },
@@ -141,7 +141,7 @@ TEST(Model, SpeciesUsedWithMultipleProcesses)
     auto co2_forward = [](const micm::Conditions& conditions) { return 1.0e-3; };
     auto co2_reverse = [](const micm::Conditions& conditions) { return 1.0e2; };
     
-    process::DissolvedReversibleReaction co2_hydration{
+    DissolvedReversibleReaction co2_hydration{
         co2_forward,
         co2_reverse,
         { co2, h2o },
@@ -175,14 +175,14 @@ TEST(Model, SpeciesUsedMixedRepresentationTypes)
     
     auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { co2 }, { h2co3 } } };
     
-    auto mode1 = representation::SingleMomentMode{ "MODE1", { aqueous_phase } };
-    auto mode2 = representation::TwoMomentMode{ "MODE2", { aqueous_phase } };
-    auto section = representation::UniformSection{ "BIN_01", { aqueous_phase } };
+    auto mode1 = SingleMomentMode{ "MODE1", { aqueous_phase } };
+    auto mode2 = TwoMomentMode{ "MODE2", { aqueous_phase } };
+    auto section = UniformSection{ "BIN_01", { aqueous_phase } };
     
     auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-3; };
     auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e2; };
     
-    process::DissolvedReversibleReaction reaction{
+    DissolvedReversibleReaction reaction{
         forward_rate,
         reverse_rate,
         { co2, h2o },
@@ -220,12 +220,12 @@ TEST(Model, AddProcesses)
     
     auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
     
-    auto mode = representation::SingleMomentMode{ "MODE1", { aqueous_phase } };
+    auto mode = SingleMomentMode{ "MODE1", { aqueous_phase } };
     
     auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
     auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
     
-    process::DissolvedReversibleReaction reaction1{
+    DissolvedReversibleReaction reaction1{
         forward_rate,
         reverse_rate,
         { h2o },
@@ -234,7 +234,7 @@ TEST(Model, AddProcesses)
         aqueous_phase
     };
     
-    process::DissolvedReversibleReaction reaction2{
+    DissolvedReversibleReaction reaction2{
         reverse_rate,
         forward_rate,
         { hp, ohm },
@@ -261,8 +261,8 @@ TEST(Model, CollectPhaseStatePrefixesValidation)
     auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o } } };
     
     // Create two representations with the same prefix (this should cause an error)
-    auto mode1 = representation::SingleMomentMode{ "DUPLICATE", { aqueous_phase } };
-    auto mode2 = representation::SingleMomentMode{ "DUPLICATE", { aqueous_phase } };
+    auto mode1 = SingleMomentMode{ "DUPLICATE", { aqueous_phase } };
+    auto mode2 = SingleMomentMode{ "DUPLICATE", { aqueous_phase } };
     
     Model model;
     model.name_ = "TEST_MODEL";
@@ -282,14 +282,14 @@ TEST(Model, SpeciesUsedWithDifferentPhasesInReactions)
     auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp } } };
     auto organic_phase = micm::Phase{ "ORGANIC", { { c6h14 } } };
     
-    auto aqueous_mode = representation::SingleMomentMode{ "DROPLET", { aqueous_phase } };
-    auto organic_mode = representation::UniformSection{ "PARTICLE", { organic_phase } };
+    auto aqueous_mode = SingleMomentMode{ "DROPLET", { aqueous_phase } };
+    auto organic_mode = UniformSection{ "PARTICLE", { organic_phase } };
     
     auto forward_rate = [](const micm::Conditions& conditions) { return 1.0; };
     auto reverse_rate = [](const micm::Conditions& conditions) { return 2.0; };
     
     // Reaction only in aqueous phase
-    process::DissolvedReversibleReaction aqueous_reaction{
+    DissolvedReversibleReaction aqueous_reaction{
         forward_rate,
         reverse_rate,
         { h2o },
@@ -322,7 +322,7 @@ TEST(Model, NonZeroJacobianElementsWithNoProcesses)
     
     auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { co2 } } };
     
-    auto mode = representation::SingleMomentMode{ "MODE1", { aqueous_phase } };
+    auto mode = SingleMomentMode{ "MODE1", { aqueous_phase } };
     
     Model model;
     model.name_ = "TEST_MODEL";
@@ -346,13 +346,13 @@ TEST(Model, NonZeroJacobianElementsWithSingleProcess)
     
     auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
     
-    auto mode = representation::SingleMomentMode{ "SMALL_DROP", { aqueous_phase } };
+    auto mode = SingleMomentMode{ "SMALL_DROP", { aqueous_phase } };
     
     auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
     auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
     
     // H2O <-> H+ + OH-
-    process::DissolvedReversibleReaction reaction{
+    DissolvedReversibleReaction reaction{
         forward_rate,
         reverse_rate,
         { h2o },
@@ -396,12 +396,12 @@ TEST(Model, NonZeroJacobianElementsWithMultipleProcesses)
     
     auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm }, { co2 }, { h2co3 } } };
     
-    auto mode = representation::TwoMomentMode{ "AITKEN", { aqueous_phase } };
+    auto mode = TwoMomentMode{ "AITKEN", { aqueous_phase } };
     
     auto h2o_forward = [](const micm::Conditions& conditions) { return 1.0e-14; };
     auto h2o_reverse = [](const micm::Conditions& conditions) { return 1.0e11; };
     
-    process::DissolvedReversibleReaction h2o_dissociation{
+    DissolvedReversibleReaction h2o_dissociation{
         h2o_forward,
         h2o_reverse,
         { h2o },
@@ -413,7 +413,7 @@ TEST(Model, NonZeroJacobianElementsWithMultipleProcesses)
     auto co2_forward = [](const micm::Conditions& conditions) { return 1.0e-3; };
     auto co2_reverse = [](const micm::Conditions& conditions) { return 1.0e2; };
     
-    process::DissolvedReversibleReaction co2_hydration{
+    DissolvedReversibleReaction co2_hydration{
         co2_forward,
         co2_reverse,
         { co2, h2o },
@@ -459,13 +459,13 @@ TEST(Model, NonZeroJacobianElementsWithMultipleRepresentations)
     
     auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
     
-    auto small_drop = representation::SingleMomentMode{ "SMALL_DROP", { aqueous_phase } };
-    auto large_drop = representation::SingleMomentMode{ "LARGE_DROP", { aqueous_phase } };
+    auto small_drop = SingleMomentMode{ "SMALL_DROP", { aqueous_phase } };
+    auto large_drop = SingleMomentMode{ "LARGE_DROP", { aqueous_phase } };
     
     auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
     auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
     
-    process::DissolvedReversibleReaction reaction{
+    DissolvedReversibleReaction reaction{
         forward_rate,
         reverse_rate,
         { h2o },
@@ -508,13 +508,13 @@ TEST(Model, NonZeroJacobianElementsMixedTypes)
     
     auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { co2 }, { h2co3 } } };
     
-    auto mode1 = representation::SingleMomentMode{ "MODE1", { aqueous_phase } };
-    auto mode2 = representation::TwoMomentMode{ "MODE2", { aqueous_phase } };
+    auto mode1 = SingleMomentMode{ "MODE1", { aqueous_phase } };
+    auto mode2 = TwoMomentMode{ "MODE2", { aqueous_phase } };
     
     auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-3; };
     auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e2; };
     
-    process::DissolvedReversibleReaction reaction{
+    DissolvedReversibleReaction reaction{
         forward_rate,
         reverse_rate,
         { co2, h2o },

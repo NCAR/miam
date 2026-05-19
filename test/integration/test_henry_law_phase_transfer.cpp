@@ -3,6 +3,8 @@
 
 #include <miam/miam.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
+#include <miam/util/constants.hpp>
+
 #include <micm/CPU.hpp>
 
 #include <gtest/gtest.h>
@@ -69,7 +71,7 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
 
-  auto droplet = representation::SingleMomentMode{
+  auto droplet = SingleMomentMode{
     "DROPLET",
     { aqueous_phase },
     5.0e-6,  // geometric mean radius (m)
@@ -79,13 +81,13 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   // Build the process using the builder
   auto hlc = [HLC_val](const Conditions& conditions) { return HLC_val; };
 
-  auto transfer = process::HenryLawPhaseTransferBuilder()
+  auto transfer = HenryLawPhaseTransferBuilder()
       .SetCondensedPhase(aqueous_phase)
       .SetGasSpecies(A_g)
       .SetCondensedSpecies(A_aq)
       .SetSolvent(H2O)
-      .SetHenrysLawConstant(process::constant::HenrysLawConstant(
-          process::constant::HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+      .SetHenrysLawConstant(miam::HenrysLawConstant(
+          HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
       .SetDiffusionCoefficient(D_g)
       .SetAccommodationCoefficient(alpha)
       .Build();
@@ -150,9 +152,9 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   double phi = 1.0;
 
   // k_cond from condensation rate utility
-  auto cond_provider = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto cond_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double k_cond = cond_provider.ComputeValue(r_eff, N, T);
-  double k_evap = k_cond / (HLC_val * R_gas * T);
+  double k_evap = k_cond / (HLC_val * GAS_CONSTANT * T);
 
   double f_v = solvent_conc * solvent_molecular_weight / solvent_density;
   double a = phi * k_cond;
@@ -228,32 +230,32 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
   Phase aqueous_small{ "AQ_SMALL", { { A_aq }, { H2O } } };
   Phase aqueous_large{ "AQ_LARGE", { { A_aq }, { H2O } } };
 
-  auto small_drop = representation::SingleMomentMode{
+  auto small_drop = SingleMomentMode{
     "SMALL", { aqueous_small }, 1.0e-6, 1.2
   };
-  auto large_drop = representation::SingleMomentMode{
+  auto large_drop = SingleMomentMode{
     "LARGE", { aqueous_large }, 1.0e-5, 1.4
   };
 
   // Build two transfer processes — one for each phase
-  auto transfer_small = process::HenryLawPhaseTransferBuilder()
+  auto transfer_small = HenryLawPhaseTransferBuilder()
       .SetCondensedPhase(aqueous_small)
       .SetGasSpecies(A_g)
       .SetCondensedSpecies(A_aq)
       .SetSolvent(H2O)
-      .SetHenrysLawConstant(process::constant::HenrysLawConstant(
-          process::constant::HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+      .SetHenrysLawConstant(HenrysLawConstant(
+          HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
       .SetDiffusionCoefficient(D_g)
       .SetAccommodationCoefficient(alpha)
       .Build();
 
-  auto transfer_large = process::HenryLawPhaseTransferBuilder()
+  auto transfer_large = HenryLawPhaseTransferBuilder()
       .SetCondensedPhase(aqueous_large)
       .SetGasSpecies(A_g)
       .SetCondensedSpecies(A_aq)
       .SetSolvent(H2O)
-      .SetHenrysLawConstant(process::constant::HenrysLawConstant(
-          process::constant::HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+      .SetHenrysLawConstant(HenrysLawConstant(
+          HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
       .SetDiffusionCoefficient(D_g)
       .SetAccommodationCoefficient(alpha)
       .Build();
@@ -366,21 +368,21 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
 
-  auto droplet = representation::SingleMomentMode{
+  auto droplet = SingleMomentMode{
     "DROP", { aqueous_phase }, 5.0e-6, 1.2
   };
 
-  process::constant::HenrysLawConstantParameters hlc_params{
+  HenrysLawConstantParameters hlc_params{
     .HLC_ref_ = HLC_ref, .C_ = C, .T0_ = T0
   };
 
   auto build_transfer = [&]() {
-    return process::HenryLawPhaseTransferBuilder()
+    return HenryLawPhaseTransferBuilder()
         .SetCondensedPhase(aqueous_phase)
         .SetGasSpecies(A_g)
         .SetCondensedSpecies(A_aq)
         .SetSolvent(H2O)
-        .SetHenrysLawConstant(process::constant::HenrysLawConstant(hlc_params))
+        .SetHenrysLawConstant(HenrysLawConstant(hlc_params))
         .SetDiffusionCoefficient(D_g)
         .SetAccommodationCoefficient(alpha)
         .Build();
@@ -496,17 +498,17 @@ TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
   {
     Phase aqueous_phase{ phase_name, { { A_aq }, { H2O } } };
 
-    auto droplet = representation::SingleMomentMode{
+    auto droplet = SingleMomentMode{
       prefix, { aqueous_phase }, r_mean, 1.01  // nearly monodisperse
     };
 
-    auto transfer = process::HenryLawPhaseTransferBuilder()
+    auto transfer = HenryLawPhaseTransferBuilder()
         .SetCondensedPhase(aqueous_phase)
         .SetGasSpecies(A_g)
         .SetCondensedSpecies(A_aq)
         .SetSolvent(H2O)
-        .SetHenrysLawConstant(process::constant::HenrysLawConstant(
-            process::constant::HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+        .SetHenrysLawConstant(HenrysLawConstant(
+            HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
         .SetDiffusionCoefficient(D_g)
         .SetAccommodationCoefficient(alpha)
         .Build();

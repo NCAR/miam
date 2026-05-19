@@ -18,9 +18,7 @@
 
 namespace miam
 {
-  namespace representation
-  {
-    /// @brief Sectional particle size distribution representation with uniform sections
+  /// @brief Sectional particle size distribution representation with uniform sections
     /// @details Represents a sectional distribution with uniform sections for aerosol or cloud particle size distributions.
     ///          Each section is characterized by a fixed size range and variable total volume. Number concentrations are
     ///          derived from the total volume and section size.
@@ -441,5 +439,4 @@ namespace miam
       double default_min_radius_;        // Minimum radius of the section
       double default_max_radius_;        // Maximum radius of the section
     };
-  }  // namespace representation
 }  // namespace miam

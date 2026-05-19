@@ -1,3 +1,7 @@
+// Copyright (C) 2026 University Corporation for Atmospheric Research
+// SPDX-License-Identifier: Apache-2.0
+
+#include <miam/util/constants.hpp>
 #include <miam/math/condensation_rate.hpp>
 
 #include <cmath>
@@ -20,7 +24,7 @@ namespace
   // Helper: compute mean molecular speed
   double mean_molecular_speed(double T, double Mw)
   {
-    return std::sqrt(8.0 * R_gas * T / (std::numbers::pi * Mw));
+    return std::sqrt(8.0 * miam::GAS_CONSTANT * T / (std::numbers::pi * Mw));
   }
 
   // Helper: compute mean free path
@@ -271,7 +275,7 @@ TEST(CondensationRate, FreeMolecularLimit)
   double r_small = 1.0e-10;  // 0.1 nm — deep free-molecular regime
   auto provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
 
-  double c_bar = std::sqrt(8.0 * R_gas * T / (std::numbers::pi * gas_molecular_weight));
+  double c_bar = std::sqrt(8.0 * miam::GAS_CONSTANT * T / (std::numbers::pi * gas_molecular_weight));
   double k_fm_limit = std::numbers::pi * r_small * r_small * N * c_bar * alpha;
 
   double k_cond = provider.ComputeValue(r_small, N, T);
@@ -285,7 +289,7 @@ TEST(CondensationRate, DerivativesFreeMolecularLimit)
   double r_small = 1.0e-10;  // 0.1 nm — deep free-molecular regime
   auto provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
 
-  double c_bar = std::sqrt(8.0 * R_gas * T / (std::numbers::pi * gas_molecular_weight));
+  double c_bar = std::sqrt(8.0 * miam::GAS_CONSTANT * T / (std::numbers::pi * gas_molecular_weight));
   double dk_dr_fm_limit = 2.0 * std::numbers::pi * r_small * N * c_bar * alpha;
 
   double k_cond, dk_dr, dk_dN;

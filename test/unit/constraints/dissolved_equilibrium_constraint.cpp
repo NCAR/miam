@@ -23,7 +23,7 @@
 #include <unordered_map>
 #include <vector>
 
-using namespace miam::constraint;
+using namespace miam;
 
 namespace
 {

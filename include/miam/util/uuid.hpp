@@ -8,10 +8,8 @@
 
 namespace miam
 {
-  namespace util
-  {
-
-    inline std::string generate_uuid_v4()
+  // Generates a verison 4 random Universally Unique Identifier
+  inline std::string GenerateUuid()
     {
       std::random_device rd;
       std::mt19937 gen(rd());
@@ -47,6 +45,4 @@ namespace miam
       }
       return ss.str();
     }
-
-  }  // namespace util
 }  // namespace miam

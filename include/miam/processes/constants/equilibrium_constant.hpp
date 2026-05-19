@@ -9,11 +9,7 @@
 
 namespace miam
 {
-  namespace process
-  {
-    namespace constant
-    {
-      /// @brief Parameters for an equilibrium constant
+  /// @brief Parameters for an equilibrium constant
       /// @details The pre-exponential factor A_ is the equilibrium constant at the
       ///          reference temperature T0_ in MIAM's solvent-normalized units.
       ///          To convert from a literature value K_lit in molar units:
@@ -68,6 +64,4 @@ namespace miam
           return parameters_.A_ * std::exp(parameters_.C_ * (1.0 / parameters_.T0_ - 1.0 / temperature));
         }
       };
-    }  // namespace constant
-  }  // namespace process
 }  // namespace miam

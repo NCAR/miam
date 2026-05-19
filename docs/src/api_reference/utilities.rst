@@ -17,22 +17,22 @@ AerosolPropertyProvider
 Rate Constants
 ==============
 
-.. doxygenclass:: miam::process::constant::EquilibriumConstant
+.. doxygenclass:: miam::EquilibriumConstant
    :members:
    :undoc-members:
 
-.. doxygenclass:: miam::process::constant::HenrysLawConstant
+.. doxygenclass:: miam::HenrysLawConstant
    :members:
    :undoc-members:
 
 Condensation Rate
 =================
 
-.. doxygenstruct:: miam::util::CondensationRateProvider
+.. doxygenstruct:: miam::CondensationRateProvider
    :members:
    :undoc-members:
 
 UUID Generation
 ===============
 
-.. doxygenfunction:: miam::util::generate_uuid_v4
+.. doxygenfunction:: miam::generate_uuid_v4

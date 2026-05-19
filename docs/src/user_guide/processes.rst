@@ -21,14 +21,14 @@ with :math:`K_\text{eq} = k_f / k_r`.
 
    #include <miam/miam.hpp>
 
-   auto h2o_dissociation = process::DissolvedReversibleReactionBuilder()
+   auto h2o_dissociation = DissolvedReversibleReactionBuilder()
      .SetPhase(aqueous_phase)
      .SetReactants({ h2o })
      .SetProducts({ ohm, hp })
      .SetSolvent(h2o)
-     .SetEquilibriumConstant(process::constant::EquilibriumConstant(
+     .SetEquilibriumConstant(EquilibriumConstant(
          { .A_ = 1.14e-2, .C_ = 2300.0, .T0_ = 298.15 }))
-     .SetReverseRateConstant(process::constant::ArrheniusRateConstantParameters(
+     .SetReverseRateConstant(ArrheniusRateConstantParameters(
          { .A_ = 1.4e11, .C_ = 5.1e4 }))
      .Build();
 
@@ -76,12 +76,12 @@ Gas-condensed phase mass transfer governed by Henry's Law:
    #include <miam/miam.hpp>
    #include <miam/processes/constants/henrys_law_constant.hpp>
 
-   auto transfer = process::HenryLawPhaseTransferBuilder()
+   auto transfer = HenryLawPhaseTransferBuilder()
      .SetCondensedPhase(aqueous_phase)
      .SetGasSpecies(A_gas)
      .SetCondensedSpecies(A_aq)
      .SetSolvent(H2O)
-     .SetHenrysLawConstant(process::constant::HenrysLawConstant(
+     .SetHenrysLawConstant(HenrysLawConstant(
          { .HLC_ref_ = 3.4e-2, .C_ = 2400.0, .T0_ = 298.15 }))
      .SetDiffusionCoefficient(1.5e-5)    // m2 s-1
      .SetAccommodationCoefficient(0.05)  // dimensionless
@@ -133,7 +133,7 @@ Temperature-dependent equilibrium constant:
 
 .. code-block:: c++
 
-   process::constant::EquilibriumConstant keq(
+   EquilibriumConstant keq(
        { .A_ = 1.14e-2, .C_ = 2300.0, .T0_ = 298.15 });
 
    double value = keq.Calculate(conditions);
@@ -149,7 +149,7 @@ Temperature-dependent Henry's Law constant:
 
 .. code-block:: c++
 
-   process::constant::HenrysLawConstant hlc(
+   HenrysLawConstant hlc(
        { .HLC_ref_ = 3.4e-2, .C_ = 2400.0, .T0_ = 298.15 });
 
    double value = hlc.Calculate(conditions);  // mol m-3 Pa-1
