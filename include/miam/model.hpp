@@ -34,14 +34,9 @@ namespace miam
   class Model
   {
    public:
-    using RepresentationVariant =
-        std::variant<SingleMomentMode, TwoMomentMode, UniformSection>;
-    using ProcessVariant =
-        std::variant<DissolvedReaction, DissolvedReversibleReaction, HenryLawPhaseTransfer>;
-    using ConstraintVariant = std::variant<
-        DissolvedEquilibriumConstraint,
-        HenryLawEquilibriumConstraint,
-        LinearConstraint>;
+    using RepresentationVariant = std::variant<SingleMomentMode, TwoMomentMode, UniformSection>;
+    using ProcessVariant = std::variant<DissolvedReaction, DissolvedReversibleReaction, HenryLawPhaseTransfer>;
+    using ConstraintVariant = std::variant<DissolvedEquilibriumConstraint, HenryLawEquilibriumConstraint, LinearConstraint>;
 
     std::string name_;
     std::vector<RepresentationVariant> representations_;

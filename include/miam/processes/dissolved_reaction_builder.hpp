@@ -14,112 +14,111 @@ namespace miam
   /// @brief A dissolved reaction builder
   /// @details Builder class for constructing DissolvedReaction objects.
   class DissolvedReactionBuilder
+  {
+   public:
+    DissolvedReactionBuilder() = default;
+
+    /// @brief Sets the phase in which the reaction occurs
+    DissolvedReactionBuilder& SetPhase(const micm::Phase& phase)
     {
-     public:
-      DissolvedReactionBuilder() = default;
+      phase_ = phase;
+      phase_is_set_ = true;
+      return *this;
+    }
 
-      /// @brief Sets the phase in which the reaction occurs
-      DissolvedReactionBuilder& SetPhase(const micm::Phase& phase)
-      {
-        phase_ = phase;
-        phase_is_set_ = true;
-        return *this;
+    /// @brief Sets the reactant species
+    DissolvedReactionBuilder& SetReactants(const std::vector<micm::Species>& reactants)
+    {
+      reactants_ = reactants;
+      return *this;
+    }
+
+    /// @brief Sets the product species
+    DissolvedReactionBuilder& SetProducts(const std::vector<micm::Species>& products)
+    {
+      products_ = products;
+      return *this;
+    }
+
+    /// @brief Sets the solvent species
+    DissolvedReactionBuilder& SetSolvent(const micm::Species& solvent)
+    {
+      solvent_ = solvent;
+      solvent_is_set_ = true;
+      return *this;
+    }
+
+    /// @brief Sets the floor \f$\delta\f$ [mol m⁻³] added to the solvent in the denominator
+    ///        to prevent singularity as \f$[S] \to 0\f$. Default: 1e-20.
+    DissolvedReactionBuilder& SetSolventFloor(double solvent_floor)
+    {
+      solvent_floor_ = solvent_floor;
+      return *this;
+    }
+
+    /// @brief Sets the minimum half-life for rate capping [s]
+    /// @details When positive, the reaction rate is smoothly capped so that no
+    ///          reactant is consumed faster than the specified half-life. When zero
+    ///          (default), rate capping is disabled with zero runtime overhead.
+    DissolvedReactionBuilder& SetMinHalflife(double min_halflife)
+    {
+      min_halflife_ = min_halflife;
+      return *this;
+    }
+
+    /// @brief Sets the rate constant from an object with a Calculate method
+    template<typename T>
+      requires requires(const T& t, const micm::Conditions& c) {
+        { t.Calculate(c) };
       }
+    DissolvedReactionBuilder& SetRateConstant(const T& rate_constant)
+    {
+      rate_constant_ = [rate_constant](const micm::Conditions& conditions) { return rate_constant.Calculate(conditions); };
+      return *this;
+    }
 
-      /// @brief Sets the reactant species
-      DissolvedReactionBuilder& SetReactants(const std::vector<micm::Species>& reactants)
+    /// @brief Sets the rate constant from a std::function or lambda
+    DissolvedReactionBuilder& SetRateConstant(std::function<double(const micm::Conditions&)> rate_constant)
+    {
+      rate_constant_ = std::move(rate_constant);
+      return *this;
+    }
+
+    /// @brief Builds and returns the DissolvedReaction object
+    DissolvedReaction Build() const
+    {
+      if (!rate_constant_)
       {
-        reactants_ = reactants;
-        return *this;
+        throw std::runtime_error("DissolvedReactionBuilder requires the rate constant to be set.");
       }
-
-      /// @brief Sets the product species
-      DissolvedReactionBuilder& SetProducts(const std::vector<micm::Species>& products)
+      if (reactants_.empty())
       {
-        products_ = products;
-        return *this;
+        throw std::runtime_error("DissolvedReactionBuilder requires at least one reactant species.");
       }
-
-      /// @brief Sets the solvent species
-      DissolvedReactionBuilder& SetSolvent(const micm::Species& solvent)
+      if (products_.empty())
       {
-        solvent_ = solvent;
-        solvent_is_set_ = true;
-        return *this;
+        throw std::runtime_error("DissolvedReactionBuilder requires at least one product species.");
       }
-
-      /// @brief Sets the floor \f$\delta\f$ [mol m⁻³] added to the solvent in the denominator
-      ///        to prevent singularity as \f$[S] \to 0\f$. Default: 1e-20.
-      DissolvedReactionBuilder& SetSolventFloor(double solvent_floor)
+      if (!phase_is_set_)
       {
-        solvent_floor_ = solvent_floor;
-        return *this;
+        throw std::runtime_error("DissolvedReactionBuilder requires the phase to be set.");
       }
-
-      /// @brief Sets the minimum half-life for rate capping [s]
-      /// @details When positive, the reaction rate is smoothly capped so that no
-      ///          reactant is consumed faster than the specified half-life. When zero
-      ///          (default), rate capping is disabled with zero runtime overhead.
-      DissolvedReactionBuilder& SetMinHalflife(double min_halflife)
+      if (!solvent_is_set_)
       {
-        min_halflife_ = min_halflife;
-        return *this;
+        throw std::runtime_error("DissolvedReactionBuilder requires the solvent to be set.");
       }
+      return DissolvedReaction(rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_, min_halflife_);
+    }
 
-      /// @brief Sets the rate constant from an object with a Calculate method
-      template<typename T>
-        requires requires(const T& t, const micm::Conditions& c) {
-          { t.Calculate(c) };
-        }
-      DissolvedReactionBuilder& SetRateConstant(const T& rate_constant)
-      {
-        rate_constant_ = [rate_constant](const micm::Conditions& conditions) { return rate_constant.Calculate(conditions); };
-        return *this;
-      }
-
-      /// @brief Sets the rate constant from a std::function or lambda
-      DissolvedReactionBuilder& SetRateConstant(std::function<double(const micm::Conditions&)> rate_constant)
-      {
-        rate_constant_ = std::move(rate_constant);
-        return *this;
-      }
-
-      /// @brief Builds and returns the DissolvedReaction object
-      DissolvedReaction Build() const
-      {
-        if (!rate_constant_)
-        {
-          throw std::runtime_error("DissolvedReactionBuilder requires the rate constant to be set.");
-        }
-        if (reactants_.empty())
-        {
-          throw std::runtime_error("DissolvedReactionBuilder requires at least one reactant species.");
-        }
-        if (products_.empty())
-        {
-          throw std::runtime_error("DissolvedReactionBuilder requires at least one product species.");
-        }
-        if (!phase_is_set_)
-        {
-          throw std::runtime_error("DissolvedReactionBuilder requires the phase to be set.");
-        }
-        if (!solvent_is_set_)
-        {
-          throw std::runtime_error("DissolvedReactionBuilder requires the solvent to be set.");
-        }
-        return DissolvedReaction(
-            rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_, min_halflife_);
-      }
-
-     private:
-      micm::Phase phase_;                     ///< Phase in which the reaction occurs
-      bool phase_is_set_ = false;             ///< Flag to track if the phase has been set
-      std::vector<micm::Species> reactants_;  ///< Reactant species
-      std::vector<micm::Species> products_;   ///< Product species
-      micm::Species solvent_;                 ///< Solvent species
-      bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
-      std::function<double(const micm::Conditions& conditions)> rate_constant_;  ///< Rate constant function
-      double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
-      double min_halflife_{ 0.0 };       ///< Minimum half-life for rate capping [s]
-    };
+   private:
+    micm::Phase phase_;                                                        ///< Phase in which the reaction occurs
+    bool phase_is_set_ = false;                                                ///< Flag to track if the phase has been set
+    std::vector<micm::Species> reactants_;                                     ///< Reactant species
+    std::vector<micm::Species> products_;                                      ///< Product species
+    micm::Species solvent_;                                                    ///< Solvent species
+    bool solvent_is_set_ = false;                                              ///< Flag to track if the solvent has been set
+    std::function<double(const micm::Conditions& conditions)> rate_constant_;  ///< Rate constant function
+    double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
+    double min_halflife_{ 0.0 };       ///< Minimum half-life for rate capping [s]
+  };
 }  // namespace miam

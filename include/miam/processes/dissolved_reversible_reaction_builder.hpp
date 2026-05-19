@@ -16,158 +16,158 @@ namespace miam
   /// @brief A dissolved reversible reaction builder
   /// @details Builder class for constructing DissolvedReversibleReaction objects.
   class DissolvedReversibleReactionBuilder
+  {
+   public:
+    DissolvedReversibleReactionBuilder() = default;
+
+    /// @brief Sets the phase in which the reaction occurs
+    DissolvedReversibleReactionBuilder& SetPhase(const micm::Phase& phase)
     {
-     public:
-      DissolvedReversibleReactionBuilder() = default;
+      phase_ = phase;
+      phase_is_set_ = true;
+      return *this;
+    }
 
-      /// @brief Sets the phase in which the reaction occurs
-      DissolvedReversibleReactionBuilder& SetPhase(const micm::Phase& phase)
+    /// @brief Sets the reactant species
+    DissolvedReversibleReactionBuilder& SetReactants(const std::vector<micm::Species>& reactants)
+    {
+      reactants_ = reactants;
+      return *this;
+    }
+
+    /// @brief Sets the product species
+    DissolvedReversibleReactionBuilder& SetProducts(const std::vector<micm::Species>& products)
+    {
+      products_ = products;
+      return *this;
+    }
+
+    /// @brief Sets the solvent species
+    DissolvedReversibleReactionBuilder& SetSolvent(const micm::Species& solvent)
+    {
+      solvent_ = solvent;
+      solvent_is_set_ = true;
+      return *this;
+    }
+
+    /// @brief Sets the floor \f$\delta\f$ [mol m⁻³] added to the solvent in the denominator
+    ///        to prevent singularity as \f$[S] \to 0\f$. Default: 1e-20.
+    DissolvedReversibleReactionBuilder& SetSolventFloor(double solvent_floor)
+    {
+      solvent_floor_ = solvent_floor;
+      return *this;
+    }
+
+    /// @brief Sets the forward rate constant function
+    DissolvedReversibleReactionBuilder& SetForwardRateConstant(const auto& forward_rate_constant)
+    {
+      forward_rate_constant_ = [forward_rate_constant](const micm::Conditions& conditions)
+      { return forward_rate_constant.Calculate(conditions); };
+      return *this;
+    }
+
+    /// @brief Sets the reverse rate constant function
+    DissolvedReversibleReactionBuilder& SetReverseRateConstant(const auto& reverse_rate_constant)
+    {
+      reverse_rate_constant_ = [reverse_rate_constant](const micm::Conditions& conditions)
+      { return reverse_rate_constant.Calculate(conditions); };
+      return *this;
+    }
+
+    /// @brief Sets the reverse rate constant from Arrhenius parameters
+    DissolvedReversibleReactionBuilder& SetReverseRateConstant(const micm::ArrheniusRateConstantParameters& params)
+    {
+      reverse_rate_constant_ = [params](const micm::Conditions& conditions)
+      { return micm::CalculateArrhenius(params, conditions.temperature_, conditions.pressure_); };
+      return *this;
+    }
+
+    /// @brief Sets the equilibrium constant function
+    DissolvedReversibleReactionBuilder& SetEquilibriumConstant(const auto& equilibrium_constant)
+    {
+      equilibrium_constant_ = [equilibrium_constant](const micm::Conditions& conditions)
+      { return equilibrium_constant.Calculate(conditions); };
+      return *this;
+    }
+
+    /// @brief Builds and returns the DissolvedReversibleReaction object
+    DissolvedReversibleReaction Build() const
+    {
+      // Check that exactly two of the three rate constant/equilibrium constant functions are set
+      int num_set = 0;
+      if (forward_rate_constant_)
+        ++num_set;
+      if (reverse_rate_constant_)
+        ++num_set;
+      if (equilibrium_constant_)
+        ++num_set;
+      if (num_set != 2)
       {
-        phase_ = phase;
-        phase_is_set_ = true;
-        return *this;
+        throw std::runtime_error(
+            "DissolvedReversibleReactionBuilder requires exactly two of forward rate constant, reverse rate constant, or "
+            "equilibrium constant to be set.");
       }
-
-      /// @brief Sets the reactant species
-      DissolvedReversibleReactionBuilder& SetReactants(const std::vector<micm::Species>& reactants)
+      if (reactants_.empty())
       {
-        reactants_ = reactants;
-        return *this;
+        throw std::runtime_error("DissolvedReversibleReactionBuilder requires at least one reactant species.");
       }
-
-      /// @brief Sets the product species
-      DissolvedReversibleReactionBuilder& SetProducts(const std::vector<micm::Species>& products)
+      if (products_.empty())
       {
-        products_ = products;
-        return *this;
+        throw std::runtime_error("DissolvedReversibleReactionBuilder requires at least one product species.");
       }
-
-      /// @brief Sets the solvent species
-      DissolvedReversibleReactionBuilder& SetSolvent(const micm::Species& solvent)
+      if (!phase_is_set_)
       {
-        solvent_ = solvent;
-        solvent_is_set_ = true;
-        return *this;
+        throw std::runtime_error("DissolvedReversibleReactionBuilder requires the phase to be set.");
       }
-
-      /// @brief Sets the floor \f$\delta\f$ [mol m⁻³] added to the solvent in the denominator
-      ///        to prevent singularity as \f$[S] \to 0\f$. Default: 1e-20.
-      DissolvedReversibleReactionBuilder& SetSolventFloor(double solvent_floor)
+      if (!solvent_is_set_)
       {
-        solvent_floor_ = solvent_floor;
-        return *this;
+        throw std::runtime_error("DissolvedReversibleReactionBuilder requires the solvent to be set.");
       }
-
-      /// @brief Sets the forward rate constant function
-      DissolvedReversibleReactionBuilder& SetForwardRateConstant(const auto& forward_rate_constant)
+      // If equilibrium constant is set, compute the missing rate constant
+      if (equilibrium_constant_)
       {
-        forward_rate_constant_ = [forward_rate_constant](const micm::Conditions& conditions)
-        { return forward_rate_constant.Calculate(conditions); };
-        return *this;
-      }
-
-      /// @brief Sets the reverse rate constant function
-      DissolvedReversibleReactionBuilder& SetReverseRateConstant(const auto& reverse_rate_constant)
-      {
-        reverse_rate_constant_ = [reverse_rate_constant](const micm::Conditions& conditions)
-        { return reverse_rate_constant.Calculate(conditions); };
-        return *this;
-      }
-
-      /// @brief Sets the reverse rate constant from Arrhenius parameters
-      DissolvedReversibleReactionBuilder& SetReverseRateConstant(const micm::ArrheniusRateConstantParameters& params)
-      {
-        reverse_rate_constant_ = [params](const micm::Conditions& conditions)
-        { return micm::CalculateArrhenius(params, conditions.temperature_, conditions.pressure_); };
-        return *this;
-      }
-
-      /// @brief Sets the equilibrium constant function
-      DissolvedReversibleReactionBuilder& SetEquilibriumConstant(const auto& equilibrium_constant)
-      {
-        equilibrium_constant_ = [equilibrium_constant](const micm::Conditions& conditions)
-        { return equilibrium_constant.Calculate(conditions); };
-        return *this;
-      }
-
-      /// @brief Builds and returns the DissolvedReversibleReaction object
-      DissolvedReversibleReaction Build() const
-      {
-        // Check that exactly two of the three rate constant/equilibrium constant functions are set
-        int num_set = 0;
-        if (forward_rate_constant_)
-          ++num_set;
-        if (reverse_rate_constant_)
-          ++num_set;
-        if (equilibrium_constant_)
-          ++num_set;
-        if (num_set != 2)
+        if (!forward_rate_constant_)
         {
-          throw std::runtime_error(
-              "DissolvedReversibleReactionBuilder requires exactly two of forward rate constant, reverse rate constant, or "
-              "equilibrium constant to be set.");
-        }
-        if (reactants_.empty())
-        {
-          throw std::runtime_error("DissolvedReversibleReactionBuilder requires at least one reactant species.");
-        }
-        if (products_.empty())
-        {
-          throw std::runtime_error("DissolvedReversibleReactionBuilder requires at least one product species.");
-        }
-        if (!phase_is_set_)
-        {
-          throw std::runtime_error("DissolvedReversibleReactionBuilder requires the phase to be set.");
-        }
-        if (!solvent_is_set_)
-        {
-          throw std::runtime_error("DissolvedReversibleReactionBuilder requires the solvent to be set.");
-        }
-        // If equilibrium constant is set, compute the missing rate constant
-        if (equilibrium_constant_)
-        {
-          if (!forward_rate_constant_)
+          // Capture the necessary functions by value to avoid dangling references
+          auto eq_const = equilibrium_constant_;
+          auto rev_const = reverse_rate_constant_;
+          forward_rate_constant_ = [eq_const, rev_const](const micm::Conditions& conditions)
           {
-            // Capture the necessary functions by value to avoid dangling references
-            auto eq_const = equilibrium_constant_;
-            auto rev_const = reverse_rate_constant_;
-            forward_rate_constant_ = [eq_const, rev_const](const micm::Conditions& conditions)
-            {
-              double K_eq = eq_const(conditions);
-              double k_r = rev_const(conditions);
-              return K_eq * k_r;
-            };
-          }
-          else if (!reverse_rate_constant_)
-          {
-            // Capture the necessary functions by value to avoid dangling references
-            auto eq_const = equilibrium_constant_;
-            auto fwd_const = forward_rate_constant_;
-            reverse_rate_constant_ = [eq_const, fwd_const](const micm::Conditions& conditions)
-            {
-              double K_eq = eq_const(conditions);
-              double k_f = fwd_const(conditions);
-              return k_f / K_eq;
-            };
-          }
+            double K_eq = eq_const(conditions);
+            double k_r = rev_const(conditions);
+            return K_eq * k_r;
+          };
         }
-        return DissolvedReversibleReaction(
-            forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_);
+        else if (!reverse_rate_constant_)
+        {
+          // Capture the necessary functions by value to avoid dangling references
+          auto eq_const = equilibrium_constant_;
+          auto fwd_const = forward_rate_constant_;
+          reverse_rate_constant_ = [eq_const, fwd_const](const micm::Conditions& conditions)
+          {
+            double K_eq = eq_const(conditions);
+            double k_f = fwd_const(conditions);
+            return k_f / K_eq;
+          };
+        }
       }
+      return DissolvedReversibleReaction(
+          forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_);
+    }
 
-     private:
-      micm::Phase phase_;                     ///< Phase in which the reaction occurs
-      bool phase_is_set_ = false;             ///< Flag to track if the phase has been set
-      std::vector<micm::Species> reactants_;  ///< Reactant species
-      std::vector<micm::Species> products_;   ///< Product species
-      micm::Species solvent_;                 ///< Solvent species
-      bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
-      mutable std::function<double(const micm::Conditions& conditions)>
-          forward_rate_constant_;  ///< Forward rate constant function
-      mutable std::function<double(const micm::Conditions& conditions)>
-          reverse_rate_constant_;  ///< Reverse rate constant function
-      mutable std::function<double(const micm::Conditions& conditions)>
-          equilibrium_constant_;         ///< Equilibrium constant function
-      double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
-    };
+   private:
+    micm::Phase phase_;                     ///< Phase in which the reaction occurs
+    bool phase_is_set_ = false;             ///< Flag to track if the phase has been set
+    std::vector<micm::Species> reactants_;  ///< Reactant species
+    std::vector<micm::Species> products_;   ///< Product species
+    micm::Species solvent_;                 ///< Solvent species
+    bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
+    mutable std::function<double(const micm::Conditions& conditions)>
+        forward_rate_constant_;  ///< Forward rate constant function
+    mutable std::function<double(const micm::Conditions& conditions)>
+        reverse_rate_constant_;  ///< Reverse rate constant function
+    mutable std::function<double(const micm::Conditions& conditions)>
+        equilibrium_constant_;         ///< Equilibrium constant function
+    double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
+  };
 }  // namespace miam

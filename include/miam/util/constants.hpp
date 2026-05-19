@@ -5,7 +5,7 @@
 
 #include <micm/util/constants.hpp>
 
-namespace miam 
+namespace miam
 {
   using micm::constants::GAS_CONSTANT;
 }
