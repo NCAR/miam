@@ -12,7 +12,7 @@ namespace miam
   /// @brief Builder for LinearConstraint
   class LinearConstraintBuilder
   {
-    public:
+   public:
     LinearConstraintBuilder() = default;
 
     LinearConstraintBuilder& SetAlgebraicSpecies(const micm::Phase& phase, const micm::Species& species)
@@ -62,7 +62,7 @@ namespace miam
       return LinearConstraint(algebraic_phase_, algebraic_species_, terms_, constant_, diagnose_from_state_);
     }
 
-    private:
+   private:
     micm::Phase algebraic_phase_;
     micm::Species algebraic_species_;
     bool algebraic_is_set_ = false;
