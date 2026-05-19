@@ -85,7 +85,7 @@ namespace miam
       }
 
       /// @brief Builds and returns the DissolvedReaction object
-      miam::DissolvedReaction Build() const
+      DissolvedReaction Build() const
       {
         if (!rate_constant_)
         {
@@ -107,7 +107,7 @@ namespace miam
         {
           throw std::runtime_error("DissolvedReactionBuilder requires the solvent to be set.");
         }
-        return miam::DissolvedReaction(
+        return DissolvedReaction(
             rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_, min_halflife_);
       }
 

@@ -46,7 +46,7 @@ TEST(DissolvedReversibleReactionIntegration, SimpleAtoB)
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
   
   // Define representation (single uniform section)
-  auto droplet = miam::UniformSection{
+  auto droplet = UniformSection{
     "DROPLET",
     { aqueous_phase }
   };
@@ -60,7 +60,7 @@ TEST(DissolvedReversibleReactionIntegration, SimpleAtoB)
   auto reverse_rate = [k_reverse](const Conditions& conditions) { return k_reverse; };
   
   // Create reversible reaction: A <-> B with solvent C
-  auto reaction = miam::DissolvedReversibleReaction{
+  auto reaction = DissolvedReversibleReaction{
     forward_rate,
     reverse_rate,
     { A },  // reactants
@@ -186,7 +186,7 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsReactant)
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
   
   // Define representation
-  auto droplet = miam::UniformSection{
+  auto droplet = UniformSection{
     "DROPLET",
     { aqueous_phase }
   };
@@ -199,7 +199,7 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsReactant)
   auto reverse_rate = [k_reverse](const Conditions& conditions) { return k_reverse; };
   
   // Create reversible reaction: A + C <-> B with solvent C
-  auto reaction = miam::DissolvedReversibleReaction{
+  auto reaction = DissolvedReversibleReaction{
     forward_rate,
     reverse_rate,
     { A, C },  // reactants: A + C
@@ -329,7 +329,7 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsProduct) {
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
   
   // Define representation
-  auto droplet = miam::UniformSection{
+  auto droplet = UniformSection{
     "DROPLET",
     { aqueous_phase }
   };
@@ -344,7 +344,7 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsProduct) {
   // Create reversible reaction: A ⇌ B + C with solvent C
   // Forward: k_f/[C]^0 × [A] = k_f × [A] (no solvent dependence)
   // Reverse: k_r/[C]^1 × [B] × [C] = k_r × [B] (C cancels)
-  auto reaction = miam::DissolvedReversibleReaction{
+  auto reaction = DissolvedReversibleReaction{
     forward_rate,
     reverse_rate,
     { A },     // reactants: A
@@ -475,12 +475,12 @@ TEST(DissolvedReversibleReactionIntegration, MultiPhaseInstances) {
   auto large_aqueous = Phase{ "AQUEOUS_LARGE", { { A }, { B }, { C } } };
   
   // Define representations
-  auto small_droplet = miam::UniformSection{
+  auto small_droplet = UniformSection{
     "DROPLET_SMALL",
     { small_aqueous }
   };
   
-  auto large_droplet = miam::UniformSection{
+  auto large_droplet = UniformSection{
     "DROPLET_LARGE",
     { large_aqueous }
   };
@@ -493,7 +493,7 @@ TEST(DissolvedReversibleReactionIntegration, MultiPhaseInstances) {
   auto reverse_rate_small = [k_reverse_small](const Conditions& conditions) { return k_reverse_small; };
   
   // Create reaction for small droplets: A ⇌ B
-  auto reaction_small = miam::DissolvedReversibleReaction{
+  auto reaction_small = DissolvedReversibleReaction{
     forward_rate_small,
     reverse_rate_small,
     { A },  // reactants
@@ -510,7 +510,7 @@ TEST(DissolvedReversibleReactionIntegration, MultiPhaseInstances) {
   auto reverse_rate_large = [k_reverse_large](const Conditions& conditions) { return k_reverse_large; };
   
   // Create reaction for large droplets: A ⇌ B
-  auto reaction_large = miam::DissolvedReversibleReaction{
+  auto reaction_large = DissolvedReversibleReaction{
     forward_rate_large,
     reverse_rate_large,
     { A },  // reactants

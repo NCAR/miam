@@ -78,11 +78,11 @@ namespace
 
   /// Create a simple AerosolPropertyProvider that returns a constant value
   template<typename DenseMatrixPolicy>
-  miam::AerosolPropertyProvider<DenseMatrixPolicy> MakeConstantProvider(
+  AerosolPropertyProvider<DenseMatrixPolicy> MakeConstantProvider(
       double value,
       const std::vector<std::size_t>& dependent_variable_indices = {})
   {
-    miam::AerosolPropertyProvider<DenseMatrixPolicy> provider;
+    AerosolPropertyProvider<DenseMatrixPolicy> provider;
     provider.dependent_variable_indices = dependent_variable_indices;
     provider.ComputeValue = [value](const DenseMatrixPolicy& params, const DenseMatrixPolicy& vars, DenseMatrixPolicy& result)
     {
@@ -101,7 +101,7 @@ namespace
   }
 
   /// Create providers with specified values for r_eff, N, phi
-  std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>> MakeTestProviders(
+  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> MakeTestProviders(
       const std::string& prefix,
       double r_eff,
       double N,
@@ -110,10 +110,10 @@ namespace
       const std::vector<std::size_t>& N_deps = {},
       const std::vector<std::size_t>& phi_deps = {})
   {
-    std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>> providers;
-    providers[prefix][miam::AerosolProperty::EffectiveRadius] = MakeConstantProvider<MatrixPolicy>(r_eff, r_eff_deps);
-    providers[prefix][miam::AerosolProperty::NumberConcentration] = MakeConstantProvider<MatrixPolicy>(N, N_deps);
-    providers[prefix][miam::AerosolProperty::PhaseVolumeFraction] = MakeConstantProvider<MatrixPolicy>(phi, phi_deps);
+    std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
+    providers[prefix][AerosolProperty::EffectiveRadius] = MakeConstantProvider<MatrixPolicy>(r_eff, r_eff_deps);
+    providers[prefix][AerosolProperty::NumberConcentration] = MakeConstantProvider<MatrixPolicy>(N, N_deps);
+    providers[prefix][AerosolProperty::PhaseVolumeFraction] = MakeConstantProvider<MatrixPolicy>(phi, phi_deps);
     return providers;
   }
 }  // namespace
@@ -216,9 +216,9 @@ TEST(HenryLawPhaseTransfer, RequiredAerosolProperties)
 
   const auto& props = required.at("AQUEOUS");
   EXPECT_EQ(props.size(), 3);
-  EXPECT_EQ(props[0], miam::AerosolProperty::EffectiveRadius);
-  EXPECT_EQ(props[1], miam::AerosolProperty::NumberConcentration);
-  EXPECT_EQ(props[2], miam::AerosolProperty::PhaseVolumeFraction);
+  EXPECT_EQ(props[0], AerosolProperty::EffectiveRadius);
+  EXPECT_EQ(props[1], AerosolProperty::NumberConcentration);
+  EXPECT_EQ(props[2], AerosolProperty::PhaseVolumeFraction);
 }
 
 // ======================== NonZeroJacobianElements ========================
@@ -402,7 +402,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionBasicRates)
   forcing_func(state_parameters, state_variables, forcing_terms);
 
   // Compute expected net rate
-  auto cond_rate_provider = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
   double kc_eff = phi_val * kc;
   double ke_eff = kc_eff / (hlc * GAS_CONSTANT * T);
@@ -462,7 +462,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionMultipleCells)
 
   forcing_func(state_parameters, state_variables, forcing_terms);
 
-  auto cond_rate_provider = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
   double kc_eff = phi_val * kc;
   double ke_eff = kc_eff / (hlc * GAS_CONSTANT * T);
@@ -574,7 +574,7 @@ TEST(HenryLawPhaseTransfer, JacobianFunctionDirectEntries)
 
   jac_func(state_parameters, state_variables, jacobian);
 
-  auto cond_rate_provider = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
   double ke = kc / (hlc * GAS_CONSTANT * T);
   double fv = solvent_conc * solvent_molecular_weight / solvent_density;
@@ -793,7 +793,7 @@ TEST(HenryLawPhaseTransfer, JacobianFunctionMultipleCells)
 
   jac_func(state_parameters, state_variables, jacobian);
 
-  auto cond_rate_provider = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
 
   // Both cells should have same -J[gas,gas] = +φ · k_cond (MICM convention)
@@ -817,7 +817,7 @@ namespace
       const HenryLawPhaseTransfer& process,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-      const std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>>& providers,
+      const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>>& providers,
       std::size_t num_blocks)
   {
     auto elements = process.NonZeroJacobianElements<MatrixPolicy>(
@@ -835,7 +835,7 @@ namespace
       const std::vector<std::reference_wrapper<const HenryLawPhaseTransfer>>& processes,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-      const std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>>& providers,
+      const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>>& providers,
       std::size_t num_blocks)
   {
     std::set<std::pair<std::size_t, std::size_t>> elements;
@@ -860,7 +860,7 @@ namespace
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
       const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-      const std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>>& providers,
+      const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>>& providers,
       const MatrixPolicy& state_parameters,
       const MatrixPolicy& state_variables)
   {
@@ -900,12 +900,12 @@ namespace
 
   /// @brief Create a provider that varies linearly with given state variables:
   ///        value = base_value + sum(coeffs[k] * vars[dep_indices[k]])
-  miam::AerosolPropertyProvider<MatrixPolicy> MakeLinearProvider(
+  AerosolPropertyProvider<MatrixPolicy> MakeLinearProvider(
       double base_value,
       const std::vector<std::size_t>& dep_indices,
       const std::vector<double>& coeffs)
   {
-    miam::AerosolPropertyProvider<MatrixPolicy> provider;
+    AerosolPropertyProvider<MatrixPolicy> provider;
     provider.dependent_variable_indices = dep_indices;
     provider.ComputeValue =
         [base_value, dep_indices, coeffs](
@@ -968,7 +968,7 @@ TEST(HenryLawPhaseTransfer, ForcingMultiplePhaseInstances)
 
   auto prov1 = MakeTestProviders("MODE1", r1, N1, phi1);
   auto prov2 = MakeTestProviders("MODE2", r2, N2, phi2);
-  std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>> providers;
+  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
   providers.insert(prov1.begin(), prov1.end());
   providers.insert(prov2.begin(), prov2.end());
 
@@ -993,7 +993,7 @@ TEST(HenryLawPhaseTransfer, ForcingMultiplePhaseInstances)
   MatrixPolicy forcing(1, 5, 0.0);
   forcing_func(params, vars, forcing);
 
-  auto crp = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto crp = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
 
   double kc1 = crp.ComputeValue(r1, N1, T);
   double ke1 = kc1 / (hlc * GAS_CONSTANT * T);
@@ -1046,7 +1046,7 @@ TEST(HenryLawPhaseTransfer, JacobianMultiplePhaseInstances)
 
   auto prov1 = MakeTestProviders("MODE1", r1, N1, phi1);
   auto prov2 = MakeTestProviders("MODE2", r2, N2, phi2);
-  std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>> providers;
+  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
   providers.insert(prov1.begin(), prov1.end());
   providers.insert(prov2.begin(), prov2.end());
 
@@ -1070,7 +1070,7 @@ TEST(HenryLawPhaseTransfer, JacobianMultiplePhaseInstances)
 
   jac_func(params, vars, jacobian);
 
-  auto crp = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto crp = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
 
   double kc1 = crp.ComputeValue(r1, N1, T);
   double ke1 = kc1 / (hlc * GAS_CONSTANT * T);
@@ -1139,7 +1139,7 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultiplePhaseInstances)
 
   auto prov1 = MakeTestProviders("MODE1", r1, N1, phi1);
   auto prov2 = MakeTestProviders("MODE2", r2, N2, phi2);
-  std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>> providers;
+  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
   providers.insert(prov1.begin(), prov1.end());
   providers.insert(prov2.begin(), prov2.end());
 
@@ -1230,7 +1230,7 @@ TEST(HenryLawPhaseTransfer, ForcingMultiCellsMultiInstances)
   double r2 = 5.0e-6, N2 = 1.0e7, phi2 = 1.0e-4;
   auto prov1 = MakeTestProviders("MODE1", r1, N1, phi1);
   auto prov2 = MakeTestProviders("MODE2", r2, N2, phi2);
-  std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>> providers;
+  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
   providers.insert(prov1.begin(), prov1.end());
   providers.insert(prov2.begin(), prov2.end());
 
@@ -1254,7 +1254,7 @@ TEST(HenryLawPhaseTransfer, ForcingMultiCellsMultiInstances)
   MatrixPolicy forcing(num_cells, 5, 0.0);
   forcing_func(params, vars, forcing);
 
-  auto crp = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto crp = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc1 = crp.ComputeValue(r1, N1, T);
   double ke1 = kc1 / (hlc * GAS_CONSTANT * T);
   double fv1 = 55000.0 * solvent_molecular_weight / solvent_density;
@@ -1306,7 +1306,7 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultiCellsMultiInstances)
   double r2 = 5.0e-6, N2 = 1.0e7, phi2 = 1.0e-4;
   auto prov1 = MakeTestProviders("MODE1", r1, N1, phi1);
   auto prov2 = MakeTestProviders("MODE2", r2, N2, phi2);
-  std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>> providers;
+  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
   providers.insert(prov1.begin(), prov1.end());
   providers.insert(prov2.begin(), prov2.end());
 
@@ -1391,8 +1391,8 @@ TEST(HenryLawPhaseTransfer, ForcingMultipleTransferProcesses)
   ff_CO2(params, vars, forcing);
   ff_SO2(params, vars, forcing);
 
-  auto crp_CO2 = miam::MakeCondensationRateProvider(D_CO2, alpha, 0.044);
-  auto crp_SO2 = miam::MakeCondensationRateProvider(D_SO2, alpha, 0.064);
+  auto crp_CO2 = MakeCondensationRateProvider(D_CO2, alpha, 0.044);
+  auto crp_SO2 = MakeCondensationRateProvider(D_SO2, alpha, 0.064);
   double fv = h2o * solvent_molecular_weight / solvent_density;
 
   double kc_co2 = crp_CO2.ComputeValue(r, N, T);
@@ -1537,10 +1537,10 @@ TEST(HenryLawPhaseTransfer, JacobianFDWithLinearProviders)
   // phi depends linearly on H2O: phi = 1e-6 + 1e-10 * [H2O]
   auto phi_prov = MakeLinearProvider(1.0e-6, { 2 }, { 1.0e-10 });
 
-  std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>> providers;
-  providers["MODE1"][miam::AerosolProperty::EffectiveRadius] = r_eff_prov;
-  providers["MODE1"][miam::AerosolProperty::NumberConcentration] = N_prov;
-  providers["MODE1"][miam::AerosolProperty::PhaseVolumeFraction] = phi_prov;
+  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
+  providers["MODE1"][AerosolProperty::EffectiveRadius] = r_eff_prov;
+  providers["MODE1"][AerosolProperty::NumberConcentration] = N_prov;
+  providers["MODE1"][AerosolProperty::PhaseVolumeFraction] = phi_prov;
 
   MatrixPolicy params(1, 2);
   params[0][0] = HLC_ref;
@@ -1581,10 +1581,10 @@ TEST(HenryLawPhaseTransfer, JacobianFDLinearProvidersMultiCell)
   auto N_prov = MakeLinearProvider(1.0e8, { 4 }, { 1.0e6 });
   auto phi_prov = MakeLinearProvider(1.0e-6, { 2 }, { 1.0e-10 });
 
-  std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>> providers;
-  providers["MODE1"][miam::AerosolProperty::EffectiveRadius] = r_eff_prov;
-  providers["MODE1"][miam::AerosolProperty::NumberConcentration] = N_prov;
-  providers["MODE1"][miam::AerosolProperty::PhaseVolumeFraction] = phi_prov;
+  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
+  providers["MODE1"][AerosolProperty::EffectiveRadius] = r_eff_prov;
+  providers["MODE1"][AerosolProperty::NumberConcentration] = N_prov;
+  providers["MODE1"][AerosolProperty::PhaseVolumeFraction] = phi_prov;
 
   std::size_t nc = 3;
   MatrixPolicy params(nc, 2);
@@ -1707,10 +1707,10 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultipleDepsPerProvider)
   // phi depends on H2O and NaCl
   auto phi_prov = MakeLinearProvider(1.0e-6, { 2, 3 }, { 1.0e-10, 5.0e-8 });
 
-  std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>> providers;
-  providers["MODE1"][miam::AerosolProperty::EffectiveRadius] = r_eff_prov;
-  providers["MODE1"][miam::AerosolProperty::NumberConcentration] = N_prov;
-  providers["MODE1"][miam::AerosolProperty::PhaseVolumeFraction] = phi_prov;
+  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
+  providers["MODE1"][AerosolProperty::EffectiveRadius] = r_eff_prov;
+  providers["MODE1"][AerosolProperty::NumberConcentration] = N_prov;
+  providers["MODE1"][AerosolProperty::PhaseVolumeFraction] = phi_prov;
 
   MatrixPolicy params(1, 2);
   params[0][0] = HLC_ref;
@@ -1763,13 +1763,13 @@ TEST(HenryLawPhaseTransfer, JacobianFDKitchenSink)
   auto N_prov2 = MakeLinearProvider(1.0e7, { 6 }, { 1.0e5 });
   auto phi_prov2 = MakeConstantProvider<MatrixPolicy>(1.0e-4);
 
-  std::map<std::string, std::map<miam::AerosolProperty, miam::AerosolPropertyProvider<MatrixPolicy>>> providers;
-  providers["MODE1"][miam::AerosolProperty::EffectiveRadius] = r_eff_prov1;
-  providers["MODE1"][miam::AerosolProperty::NumberConcentration] = N_prov1;
-  providers["MODE1"][miam::AerosolProperty::PhaseVolumeFraction] = phi_prov1;
-  providers["MODE2"][miam::AerosolProperty::EffectiveRadius] = r_eff_prov2;
-  providers["MODE2"][miam::AerosolProperty::NumberConcentration] = N_prov2;
-  providers["MODE2"][miam::AerosolProperty::PhaseVolumeFraction] = phi_prov2;
+  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
+  providers["MODE1"][AerosolProperty::EffectiveRadius] = r_eff_prov1;
+  providers["MODE1"][AerosolProperty::NumberConcentration] = N_prov1;
+  providers["MODE1"][AerosolProperty::PhaseVolumeFraction] = phi_prov1;
+  providers["MODE2"][AerosolProperty::EffectiveRadius] = r_eff_prov2;
+  providers["MODE2"][AerosolProperty::NumberConcentration] = N_prov2;
+  providers["MODE2"][AerosolProperty::PhaseVolumeFraction] = phi_prov2;
 
   std::size_t nc = 2;
   MatrixPolicy params(nc, 4);
@@ -1792,11 +1792,11 @@ TEST(HenryLawPhaseTransfer, JacobianFDKitchenSink)
 
 TEST(HenryLawPhaseTransferBuilder, BuildSuccess)
 {
-  miam::HenrysLawConstantParameters hlc_params;
+  HenrysLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
   hlc_params.C_ = 2400.0;
   hlc_params.T0_ = 298.15;
-  miam::HenrysLawConstant hlc(hlc_params);
+  HenrysLawConstant hlc(hlc_params);
 
   auto process = HenryLawPhaseTransferBuilder()
       .SetCondensedPhase(MakeAqueousPhase())
@@ -1819,9 +1819,9 @@ TEST(HenryLawPhaseTransferBuilder, BuildSuccess)
 
 TEST(HenryLawPhaseTransferBuilder, MissingCondensedPhaseThrows)
 {
-  miam::HenrysLawConstantParameters hlc_params;
+  HenrysLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
-  miam::HenrysLawConstant hlc(hlc_params);
+  HenrysLawConstant hlc(hlc_params);
 
   EXPECT_THROW(
       HenryLawPhaseTransferBuilder()
@@ -1837,9 +1837,9 @@ TEST(HenryLawPhaseTransferBuilder, MissingCondensedPhaseThrows)
 
 TEST(HenryLawPhaseTransferBuilder, MissingGasSpeciesThrows)
 {
-  miam::HenrysLawConstantParameters hlc_params;
+  HenrysLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
-  miam::HenrysLawConstant hlc(hlc_params);
+  HenrysLawConstant hlc(hlc_params);
 
   EXPECT_THROW(
       HenryLawPhaseTransferBuilder()
@@ -1869,9 +1869,9 @@ TEST(HenryLawPhaseTransferBuilder, MissingHLCThrows)
 
 TEST(HenryLawPhaseTransferBuilder, MissingDiffusionCoefficientThrows)
 {
-  miam::HenrysLawConstantParameters hlc_params;
+  HenrysLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
-  miam::HenrysLawConstant hlc(hlc_params);
+  HenrysLawConstant hlc(hlc_params);
 
   EXPECT_THROW(
       HenryLawPhaseTransferBuilder()
@@ -1887,9 +1887,9 @@ TEST(HenryLawPhaseTransferBuilder, MissingDiffusionCoefficientThrows)
 
 TEST(HenryLawPhaseTransferBuilder, MissingAccommodationCoefficientThrows)
 {
-  miam::HenrysLawConstantParameters hlc_params;
+  HenrysLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
-  miam::HenrysLawConstant hlc(hlc_params);
+  HenrysLawConstant hlc(hlc_params);
 
   EXPECT_THROW(
       HenryLawPhaseTransferBuilder()
@@ -1905,11 +1905,11 @@ TEST(HenryLawPhaseTransferBuilder, MissingAccommodationCoefficientThrows)
 
 TEST(HenryLawPhaseTransferBuilder, BuiltProcessHLCWorks)
 {
-  miam::HenrysLawConstantParameters hlc_params;
+  HenrysLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
   hlc_params.C_ = 2400.0;
   hlc_params.T0_ = 298.15;
-  miam::HenrysLawConstant hlc(hlc_params);
+  HenrysLawConstant hlc(hlc_params);
 
   auto process = HenryLawPhaseTransferBuilder()
       .SetCondensedPhase(MakeAqueousPhase())
@@ -1967,7 +1967,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionZeroGasConcentration)
   MatrixPolicy forcing(1, 3, 0.0);
   ff(params, vars, forcing);
 
-  auto cond_rate_provider = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff, N, T);
   double kc_eff = phi * kc;
   double ke_eff = kc_eff / (HLC_ref * GAS_CONSTANT * T);
@@ -2010,7 +2010,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionZeroAqueousConcentration)
   MatrixPolicy forcing(1, 3, 0.0);
   ff(params, vars, forcing);
 
-  auto cond_rate_provider = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff, N, T);
   double kc_eff = phi * kc;
   double expected_net = kc_eff * 1.0e-3;  // evaporation term = 0

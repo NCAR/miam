@@ -43,7 +43,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
   double solvent_density = 1000.0;    // kg m⁻³ (water)
   double H2O_conc = 0.017;  // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
   double f_v = H2O_conc * solvent_molecular_weight / solvent_density;  // ~ 3.06e-7
-  double alpha = HLC * miam::GAS_CONSTANT * T * f_v;               // dimensionless
+  double alpha = HLC * GAS_CONSTANT * T * f_v;               // dimensionless
 
   // Species
   auto Precursor = Species{ "Precursor" };
@@ -58,7 +58,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
 
   // Representation
-  auto droplet = miam::UniformSection{
+  auto droplet = UniformSection{
     "DROPLET",
     { aqueous_phase }
   };
@@ -68,18 +68,18 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
   Process gas_rxn = ChemicalReactionBuilder()
       .SetReactants({ Precursor })
       .SetProducts({ StoichSpecies(A_g, 1.0) })
-      .SetRateConstant(miam::ArrheniusRateConstantParameters{ .A_ = k })
+      .SetRateConstant(ArrheniusRateConstantParameters{ .A_ = k })
       .SetPhase(gas_phase)
       .Build();
 
   // HL equilibrium constraint: A_g <-> A_aq (A_aq algebraic, per instance)
-  auto hl_constraint = miam::HenryLawEquilibriumConstraintBuilder()
+  auto hl_constraint = HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(A_g)
       .SetCondensedSpecies(A_aq)
       .SetSolvent(H2O)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(miam::HenrysLawConstant(
-          miam::HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+      .SetHenryLawConstant(HenrysLawConstant(
+          HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
       .SetSolventMolecularWeight(solvent_molecular_weight)
       .SetSolventDensity(solvent_density)
       .Build();
@@ -88,7 +88,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
   double P0 = 1.0;   // mol/m³ initial [Precursor]
   double total = P0;  // total mass (A_g0 = A_aq0 = 0)
 
-  auto mass_cons = miam::LinearConstraintBuilder()
+  auto mass_cons = LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, A_g)
       .AddTerm(gas_phase, Precursor, 1.0)
       .AddTerm(gas_phase, A_g, 1.0)
@@ -206,7 +206,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
   double solvent_density = 1000.0;
   double H2O_conc = 0.017;  // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
   double f_v = H2O_conc * solvent_molecular_weight / solvent_density;
-  double alpha = HLC * miam::GAS_CONSTANT * T * f_v;
+  double alpha = HLC * GAS_CONSTANT * T * f_v;
 
   auto Precursor = Species{ "Precursor" };
   auto A_g = Species{ "A_g" };
@@ -218,24 +218,24 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
   Phase gas_phase{ "GAS", { { Precursor }, { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
 
-  auto small_drop = miam::UniformSection{ "SMALL", { aqueous_phase } };
-  auto large_drop = miam::UniformSection{ "LARGE", { aqueous_phase } };
+  auto small_drop = UniformSection{ "SMALL", { aqueous_phase } };
+  auto large_drop = UniformSection{ "LARGE", { aqueous_phase } };
 
   double k = 0.05;
   Process gas_rxn = ChemicalReactionBuilder()
       .SetReactants({ Precursor })
       .SetProducts({ StoichSpecies(A_g, 1.0) })
-      .SetRateConstant(miam::ArrheniusRateConstantParameters{ .A_ = k })
+      .SetRateConstant(ArrheniusRateConstantParameters{ .A_ = k })
       .SetPhase(gas_phase)
       .Build();
 
-  auto hl_constraint = miam::HenryLawEquilibriumConstraintBuilder()
+  auto hl_constraint = HenryLawEquilibriumConstraintBuilder()
       .SetGasSpecies(A_g)
       .SetCondensedSpecies(A_aq)
       .SetSolvent(H2O)
       .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(miam::HenrysLawConstant(
-          miam::HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+      .SetHenryLawConstant(HenrysLawConstant(
+          HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
       .SetSolventMolecularWeight(solvent_molecular_weight)
       .SetSolventDensity(solvent_density)
       .Build();
@@ -246,7 +246,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
   // total = [P] + [A_g] + 2*α*[A_g] = [P] + [A_g]*(1 + 2*α)
   double total = P0;
 
-  auto mass_cons = miam::LinearConstraintBuilder()
+  auto mass_cons = LinearConstraintBuilder()
       .SetAlgebraicSpecies(gas_phase, A_g)
       .AddTerm(gas_phase, Precursor, 1.0)
       .AddTerm(gas_phase, A_g, 1.0)

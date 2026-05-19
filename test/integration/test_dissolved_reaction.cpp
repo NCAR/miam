@@ -24,7 +24,7 @@ TEST(DissolvedReactionIntegration, SimpleFirstOrderDecay)
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
 
-  auto droplet = miam::UniformSection{
+  auto droplet = UniformSection{
     "DROPLET",
     { aqueous_phase }
   };
@@ -33,7 +33,7 @@ TEST(DissolvedReactionIntegration, SimpleFirstOrderDecay)
   auto rate = [k](const Conditions& conditions) { return k; };
 
   // A -> B with solvent C
-  auto reaction = miam::DissolvedReaction{
+  auto reaction = DissolvedReaction{
     rate,
     { A },   // reactants
     { B },   // products
@@ -133,7 +133,7 @@ TEST(DissolvedReactionIntegration, SolventAsReactant)
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
 
-  auto droplet = miam::UniformSection{
+  auto droplet = UniformSection{
     "DROPLET",
     { aqueous_phase }
   };
@@ -143,7 +143,7 @@ TEST(DissolvedReactionIntegration, SolventAsReactant)
 
   // A + C -> B with solvent C
   // rate = k / [C]^(2-1) * [A] * [C] = k * [A]
-  auto reaction = miam::DissolvedReaction{
+  auto reaction = DissolvedReaction{
     rate,
     { A, C },  // reactants
     { B },     // products
@@ -240,7 +240,7 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
 
-  auto droplet = miam::UniformSection{
+  auto droplet = UniformSection{
     "DROPLET",
     { aqueous_phase }
   };
@@ -250,7 +250,7 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
 
   // A -> B + C with solvent C
   // rate = k * [A] (1 reactant, no solvent normalization)
-  auto reaction = miam::DissolvedReaction{
+  auto reaction = DissolvedReaction{
     rate,
     { A },      // reactants
     { B, C },   // products (solvent is a product)
@@ -350,12 +350,12 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
   auto small_aqueous = Phase{ "AQUEOUS_SMALL", { { A }, { B }, { C } } };
   auto large_aqueous = Phase{ "AQUEOUS_LARGE", { { A }, { B }, { C } } };
 
-  auto small_droplet = miam::UniformSection{
+  auto small_droplet = UniformSection{
     "DROPLET_SMALL",
     { small_aqueous }
   };
 
-  auto large_droplet = miam::UniformSection{
+  auto large_droplet = UniformSection{
     "DROPLET_LARGE",
     { large_aqueous }
   };
@@ -366,7 +366,7 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
   auto rate_small = [k_small](const Conditions& conditions) { return k_small; };
   auto rate_large = [k_large](const Conditions& conditions) { return k_large; };
 
-  auto reaction_small = miam::DissolvedReaction{
+  auto reaction_small = DissolvedReaction{
     rate_small,
     { A },
     { B },
@@ -374,7 +374,7 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
     small_aqueous
   };
 
-  auto reaction_large = miam::DissolvedReaction{
+  auto reaction_large = DissolvedReaction{
     rate_large,
     { A },
     { B },
@@ -501,7 +501,7 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
 
-  auto droplet = miam::UniformSection{
+  auto droplet = UniformSection{
     "DROPLET",
     { aqueous_phase }
   };
@@ -511,7 +511,7 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
 
   // A + B -> C with solvent S
   // rate = k / [S] * [A] * [B]
-  auto reaction = miam::DissolvedReaction{
+  auto reaction = DissolvedReaction{
     rate,
     { A, B },  // reactants
     { C },     // products
@@ -625,7 +625,7 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
 
-  auto droplet = miam::UniformSection{
+  auto droplet = UniformSection{
     "DROPLET",
     { aqueous_phase }
   };
@@ -636,7 +636,7 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
   double t_half = 10.0;  // seconds
 
   // A + B -> C with min_halflife cap
-  auto reaction = miam::DissolvedReaction{
+  auto reaction = DissolvedReaction{
     rate,
     { A, B },  // reactants: two species so soft-min is tested
     { C },     // products

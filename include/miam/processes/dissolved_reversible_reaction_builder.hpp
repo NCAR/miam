@@ -91,7 +91,7 @@ namespace miam
       }
 
       /// @brief Builds and returns the DissolvedReversibleReaction object
-      miam::DissolvedReversibleReaction Build() const
+      DissolvedReversibleReaction Build() const
       {
         // Check that exactly two of the three rate constant/equilibrium constant functions are set
         int num_set = 0;
@@ -151,7 +151,7 @@ namespace miam
             };
           }
         }
-        return miam::DissolvedReversibleReaction(
+        return DissolvedReversibleReaction(
             forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_);
       }
 

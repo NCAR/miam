@@ -31,16 +31,16 @@ namespace
     auto S = Species{ "S" };
 
     auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
-    auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
+    auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
     auto rate = [k](const Conditions& conditions) { return k; };
-    auto reaction = miam::DissolvedReaction{
+    auto reaction = DissolvedReaction{
       rate, { A }, { B }, S, aqueous_phase
     };
 
     auto forward_rate = [k_f](const Conditions& conditions) { return k_f; };
     auto reverse_rate = [k_r](const Conditions& conditions) { return k_r; };
-    auto reversible = miam::DissolvedReversibleReaction{
+    auto reversible = DissolvedReversibleReaction{
       forward_rate, reverse_rate,
       { B }, { C }, S, aqueous_phase
     };
@@ -130,16 +130,16 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
     auto S = Species{ "S" };
 
     auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
-    auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
+    auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
     auto rate = [k](const Conditions& conditions) { return k; };
-    auto reaction = miam::DissolvedReaction{
+    auto reaction = DissolvedReaction{
       rate, { A }, { B }, S, aqueous_phase
     };
 
     auto forward_rate = [k_f](const Conditions& conditions) { return k_f; };
     auto reverse_rate = [k_r](const Conditions& conditions) { return k_r; };
-    auto reversible = miam::DissolvedReversibleReaction{
+    auto reversible = DissolvedReversibleReaction{
       forward_rate, reverse_rate,
       { B }, { C }, S, aqueous_phase
     };
@@ -199,24 +199,24 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
     auto S = Species{ "S" };
 
     auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
-    auto droplet = miam::UniformSection{ "DROPLET", { aqueous_phase } };
+    auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
     auto rate = [k](const Conditions& conditions) { return k; };
-    auto reaction = miam::DissolvedReaction{
+    auto reaction = DissolvedReaction{
       rate, { A }, { B }, S, aqueous_phase
     };
 
-    auto equil = miam::DissolvedEquilibriumConstraintBuilder()
+    auto equil = DissolvedEquilibriumConstraintBuilder()
         .SetPhase(aqueous_phase)
         .SetReactants({ B })
         .SetProducts({ C })
         .SetAlgebraicSpecies(C)
         .SetSolvent(S)
-        .SetEquilibriumConstant(miam::EquilibriumConstant(
-            miam::EquilibriumConstantParameters{ .A_ = K_eq }))
+        .SetEquilibriumConstant(EquilibriumConstant(
+            EquilibriumConstantParameters{ .A_ = K_eq }))
         .Build();
 
-    auto mass_cons = miam::LinearConstraintBuilder()
+    auto mass_cons = LinearConstraintBuilder()
         .SetAlgebraicSpecies(aqueous_phase, B)
         .AddTerm(aqueous_phase, A, 1.0)
         .AddTerm(aqueous_phase, B, 1.0)
@@ -324,7 +324,7 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
   double accommodation = 0.05;
   double H2O_conc = 0.017;  // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
   double f_v = H2O_conc * solvent_molecular_weight / solvent_density;
-  double alpha = HLC * miam::GAS_CONSTANT * T * f_v;
+  double alpha = HLC * GAS_CONSTANT * T * f_v;
 
   auto A_g = Species{ "A_g",
       { { "molecular weight [kg mol-1]", gas_molecular_weight } } };
@@ -345,17 +345,17 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
   // --- Kinetic system (HL phase transfer) ---
   double kinetic_A_g, kinetic_A_aq;
   {
-    auto droplet = miam::SingleMomentMode{
+    auto droplet = SingleMomentMode{
       "DROPLET", { aqueous_phase }, 5.0e-6, 1.2
     };
 
-    auto transfer = miam::HenryLawPhaseTransferBuilder()
+    auto transfer = HenryLawPhaseTransferBuilder()
         .SetCondensedPhase(aqueous_phase)
         .SetGasSpecies(A_g)
         .SetCondensedSpecies(A_aq)
         .SetSolvent(H2O)
-        .SetHenrysLawConstant(miam::HenrysLawConstant(
-            miam::HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+        .SetHenrysLawConstant(HenrysLawConstant(
+            HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
         .SetDiffusionCoefficient(D_g)
         .SetAccommodationCoefficient(accommodation)
         .Build();
@@ -408,22 +408,22 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
   double dae_A_g, dae_A_aq;
   {
     // Use UniformSection for the constrained system — no kinetic mass transfer
-    auto droplet = miam::UniformSection{
+    auto droplet = UniformSection{
       "DROPLET", { aqueous_phase }
     };
 
-    auto hl_constraint = miam::HenryLawEquilibriumConstraintBuilder()
+    auto hl_constraint = HenryLawEquilibriumConstraintBuilder()
         .SetGasSpecies(A_g)
         .SetCondensedSpecies(A_aq)
         .SetSolvent(H2O)
         .SetCondensedPhase(aqueous_phase)
-        .SetHenryLawConstant(miam::HenrysLawConstant(
-            miam::HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+        .SetHenryLawConstant(HenrysLawConstant(
+            HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
         .SetSolventMolecularWeight(solvent_molecular_weight)
         .SetSolventDensity(solvent_density)
         .Build();
 
-    auto mass_cons = miam::LinearConstraintBuilder()
+    auto mass_cons = LinearConstraintBuilder()
         .SetAlgebraicSpecies(gas_phase, A_g)
         .AddTerm(gas_phase, A_g, 1.0)
         .AddTerm(aqueous_phase, A_aq, 1.0)
