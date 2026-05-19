@@ -1,11 +1,11 @@
-#include <miam/util/condensation_rate.hpp>
+#include <miam/math/condensation_rate.hpp>
 
 #include <cmath>
 #include <numbers>
 
 #include <gtest/gtest.h>
 
-using namespace miam::util;
+using namespace miam::math;
 
 namespace
 {

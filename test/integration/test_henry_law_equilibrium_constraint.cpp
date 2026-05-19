@@ -16,7 +16,7 @@ using namespace miam;
 
 namespace
 {
-  constexpr double R_gas = miam::util::R_gas;  // 8.314462618 J mol⁻¹ K⁻¹
+  constexpr double R_gas = miam::math::R_gas;  // 8.314462618 J mol⁻¹ K⁻¹
 }
 
 // ============================================================================

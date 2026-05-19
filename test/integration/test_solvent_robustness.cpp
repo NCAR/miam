@@ -35,7 +35,7 @@ using DenseMatrix = micm::Matrix<double>;
 
 namespace
 {
-  constexpr double R_gas = miam::util::R_gas;
+  constexpr double R_gas = miam::math::R_gas;
   constexpr double M_ATM_TO_MOL_M3_PA = 1000.0 / 101325.0;
   constexpr double c_H2O_M = 55.556;
   constexpr double water_molecular_weight = 0.018;

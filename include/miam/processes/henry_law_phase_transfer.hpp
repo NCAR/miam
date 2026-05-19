@@ -4,7 +4,7 @@
 #pragma once
 
 #include <miam/aerosol_property.hpp>
-#include <miam/util/condensation_rate.hpp>
+#include <miam/math/condensation_rate.hpp>
 #include <miam/util/uuid.hpp>
 
 #include <micm/system/conditions.hpp>
@@ -285,7 +285,7 @@ namespace miam
           AerosolPropertyProvider<DenseMatrixPolicy> r_eff_provider;
           AerosolPropertyProvider<DenseMatrixPolicy> N_provider;
           AerosolPropertyProvider<DenseMatrixPolicy> phi_provider;
-          util::CondensationRateProvider cond_rate_provider;
+          math::CondensationRateProvider cond_rate_provider;
         };
 
         std::vector<InstanceData> instances;
@@ -310,7 +310,7 @@ namespace miam
             inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
             inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
             inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
-            inst.cond_rate_provider = util::MakeCondensationRateProvider(
+            inst.cond_rate_provider = math::MakeCondensationRateProvider(
                 diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
             instances.push_back(std::move(inst));
           }
@@ -358,7 +358,7 @@ namespace miam
                     {
                       double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
                       double kc_eff = phi * kc;
-                      double ke_eff = kc_eff / (hlc * util::R_gas * T);
+                      double ke_eff = kc_eff / (hlc * math::R_gas * T);
                       double fv = solvent * inst.molar_volume;
                       net_val = kc_eff * gas - ke_eff * aq / fv;
                     },
@@ -439,7 +439,7 @@ namespace miam
           AerosolPropertyProvider<DenseMatrixPolicy> r_eff_provider;
           AerosolPropertyProvider<DenseMatrixPolicy> N_provider;
           AerosolPropertyProvider<DenseMatrixPolicy> phi_provider;
-          util::CondensationRateProvider cond_rate_provider;
+          math::CondensationRateProvider cond_rate_provider;
           std::size_t n_r_eff_deps;
           std::size_t n_N_deps;
           std::size_t n_phi_deps;
@@ -470,7 +470,7 @@ namespace miam
             inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
             inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
             inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
-            inst.cond_rate_provider = util::MakeCondensationRateProvider(
+            inst.cond_rate_provider = math::MakeCondensationRateProvider(
                 diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
             inst.n_r_eff_deps = prov_map.at(AerosolProperty::EffectiveRadius).dependent_variable_indices.size();
             inst.n_N_deps = prov_map.at(AerosolProperty::NumberConcentration).dependent_variable_indices.size();
@@ -576,7 +576,7 @@ namespace miam
                         double& j_as)
                     {
                       double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
-                      double ke = kc / (hlc * util::R_gas * T);
+                      double ke = kc / (hlc * math::R_gas * T);
                       double fv = solvent * inst.molar_volume;
                       // -J[gas, gas] = +φ · k_cond
                       j_gg += phi * kc;
@@ -627,7 +627,7 @@ namespace miam
                       {
                         double kc_dummy, dk_dr, dk_dN_unused;
                         inst.cond_rate_provider.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr, dk_dN_unused);
-                        double dke_dr = dk_dr / (hlc * util::R_gas * T);
+                        double dke_dr = dk_dr / (hlc * math::R_gas * T);
                         double fv = solvent * inst.molar_volume;
                         double eff = phi * (dk_dr * dr_dvar * gas - dke_dr * dr_dvar * aq / fv);
                         j_gas += eff;
@@ -667,7 +667,7 @@ namespace miam
                       {
                         double kc_dummy, dk_dr_unused, dk_dN;
                         inst.cond_rate_provider.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr_unused, dk_dN);
-                        double dke_dN = dk_dN / (hlc * util::R_gas * T);
+                        double dke_dN = dk_dN / (hlc * math::R_gas * T);
                         double fv = solvent * inst.molar_volume;
                         double eff = phi * (dk_dN * dN_dvar * gas - dke_dN * dN_dvar * aq / fv);
                         j_gas += eff;
@@ -706,7 +706,7 @@ namespace miam
                           double& j_aq)
                       {
                         double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
-                        double ke = kc / (hlc * util::R_gas * T);
+                        double ke = kc / (hlc * math::R_gas * T);
                         double fv = solvent * inst.molar_volume;
                         double R = kc * gas - ke * aq / fv;
                         j_gas += R * dphi_dvar;
