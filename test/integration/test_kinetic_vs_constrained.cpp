@@ -19,8 +19,6 @@ using namespace miam;
 
 namespace
 {
-  constexpr double R_gas = miam::math::R_gas;
-
   // Solve a kinetic ODE system to steady state and return final concentrations
   template<typename FindIdx>
   std::tuple<double, double, double> SolveKineticSystem(

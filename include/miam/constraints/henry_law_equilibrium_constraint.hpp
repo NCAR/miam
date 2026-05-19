@@ -190,7 +190,7 @@ namespace miam
               for (const auto& hlc_rt_idx : hlc_rt_indices)
                 params.ForEachRow(
                     [hlc_fn](const micm::Conditions& cond, double& hlc_rt)
-                    { hlc_rt = hlc_fn(cond) * math::R_gas * cond.temperature_; },
+                    { hlc_rt = hlc_fn(cond) * R_gas * cond.temperature_; },
                     conditions,
                     params.GetColumnView(hlc_rt_idx));
             },

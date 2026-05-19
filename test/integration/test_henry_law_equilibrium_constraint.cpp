@@ -14,11 +14,6 @@
 using namespace micm;
 using namespace miam;
 
-namespace
-{
-  constexpr double R_gas = miam::math::R_gas;  // 8.314462618 J mol⁻¹ K⁻¹
-}
-
 // ============================================================================
 // Test 1: Henry's Law equilibrium constraint with gas-phase driver
 //

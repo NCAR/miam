@@ -232,7 +232,7 @@ TEST(HenryLawEquilibriumConstraint, ResidualSingleInstance)
   residual_fn(state_variables, state_params, residual);
 
   double f_v = solvent_conc * water_molecular_weight / water_density;
-  double hlc_rt = HLC * miam::math::R_gas * T;
+  double hlc_rt = HLC * miam::R_gas * T;
   double expected = hlc_rt * f_v * gas_conc - aq_conc;
   EXPECT_NEAR(residual[0][1], expected, std::abs(expected) * 1.0e-12);
 }
@@ -285,7 +285,7 @@ TEST(HenryLawEquilibriumConstraint, ResidualMultipleInstances)
   DMP residual{ 1, 5, 0.0 };
   residual_fn(state_variables, state_params, residual);
 
-  double hlc_rt = HLC * miam::math::R_gas * T;
+  double hlc_rt = HLC * miam::R_gas * T;
   double gas_conc = 1.0e-5;
 
   // LARGE: f_v = 400.0 * 0.018 / 1000.0 = 0.0072
@@ -351,7 +351,7 @@ TEST(HenryLawEquilibriumConstraint, JacobianSingleInstance)
     v = 0.0;
   jac_fn(state_variables, state_params, jacobian);
 
-  double hlc_rt = HLC * miam::math::R_gas * T;
+  double hlc_rt = HLC * miam::R_gas * T;
   double f_v = solvent_conc * water_molecular_weight / water_density;
   double Mw_rho = water_molecular_weight / water_density;
 
@@ -400,7 +400,7 @@ TEST(HenryLawEquilibriumConstraint, UpdateConstraintParametersTemperatureDep)
   update_fn(conditions, state_params);
 
   // HLC*R*T = (1000/T) * R * T = 1000 * R (temperature-independent)
-  double expected = 1000.0 * miam::math::R_gas;
+  double expected = 1000.0 * miam::R_gas;
   std::size_t hlc_rt_col = pi.begin()->second;
   EXPECT_NEAR(state_params[0][hlc_rt_col], expected, expected * 1.0e-12);
   EXPECT_NEAR(state_params[1][hlc_rt_col], expected, expected * 1.0e-12);
@@ -645,7 +645,7 @@ TEST(HenryLawEquilibriumConstraint, ResidualMultipleCells)
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   auto sp = InitHlcRt(constraint, phase_prefixes, pi, nc, T);
 
-  double hlc_rt = HLC * miam::math::R_gas * T;
+  double hlc_rt = HLC * miam::R_gas * T;
 
   DMP sv{ nc, 3, 0.0 };
   sv[0][0] = 1.0e-6;  sv[0][1] = 0.5;  sv[0][2] = 300.0;
@@ -888,7 +888,7 @@ TEST(HenryLawEquilibriumConstraint, TemperatureDependentHlcMultiCell)
   {
     double T = conditions[c].temperature_;
     double hlc_val = 5000.0 * std::exp(2400.0 * (1.0 / T - 1.0 / 298.15));
-    double hlc_rt = hlc_val * miam::math::R_gas * T;
+    double hlc_rt = hlc_val * miam::R_gas * T;
     double fv = sv[c][2] * water_molecular_weight / water_density;
     double expected = hlc_rt * fv * sv[c][0] - sv[c][1];
     EXPECT_NEAR(residual[c][1], expected, std::max(std::abs(expected) * 1e-10, 1e-20))
@@ -994,7 +994,7 @@ TEST(HenryLawEquilibriumConstraint, JacobianMultipleInstancesAnalytical)
 
   jac_fn(sv, sp, jacobian);
 
-  double hlc_rt = HLC * miam::math::R_gas * T;
+  double hlc_rt = HLC * miam::R_gas * T;
   double Mw_rho = water_molecular_weight / water_density;
 
   // LARGE instance (row 1):
@@ -1053,7 +1053,7 @@ TEST(HenryLawEquilibriumConstraint, LargeHLC)
   DMP residual{ 1, 3, 0.0 };
   rf(sv, sp, residual);
 
-  double hlc_rt = HLC * miam::math::R_gas * T;
+  double hlc_rt = HLC * miam::R_gas * T;
   double fv = 0.017 * water_molecular_weight / water_density;
   double expected = hlc_rt * fv * 1.0e-9 - 0.1;
   EXPECT_NEAR(residual[0][1], expected, std::abs(expected) * 1e-10);
@@ -1136,7 +1136,7 @@ TEST(HenryLawEquilibriumConstraint, ResidualZeroAtEquilibrium)
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   auto sp = InitHlcRt(constraint, phase_prefixes, pi, 1, T);
 
-  double hlc_rt = HLC * miam::math::R_gas * T;
+  double hlc_rt = HLC * miam::R_gas * T;
   double solvent_conc = 0.017;
   double fv = solvent_conc * water_molecular_weight / water_density;
   double gas_conc = 1.0e-6;
@@ -1264,7 +1264,7 @@ namespace
     for (std::size_t c = 0; c < num_cells; ++c)
     {
       double T = conditions[c].temperature_;
-      double expected = HLC * miam::math::R_gas * T;
+      double expected = HLC * miam::R_gas * T;
       EXPECT_NEAR(state_params[c][hlc_rt_col], expected, expected * 1e-12)
           << "Cell " << c << " T=" << T;
     }
@@ -1448,7 +1448,7 @@ TEST(HenryLawEquilibriumConstraint, ResidualZeroAqueousConcentration)
   rf(sv, sp, residual);
 
   double f_v = H2O_conc * water_molecular_weight / water_density;
-  double hlc_rt = HLC * miam::math::R_gas * T;
+  double hlc_rt = HLC * miam::R_gas * T;
   EXPECT_NEAR(residual[0][1], hlc_rt * f_v * A_g_conc, 1.0e-10);
   EXPECT_GT(residual[0][1], 0.0);  // positive: equilibrium favors aqueous phase
 }

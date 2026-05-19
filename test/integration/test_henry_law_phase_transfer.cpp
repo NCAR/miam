@@ -14,8 +14,6 @@ using namespace miam;
 
 namespace
 {
-  constexpr double R_gas = miam::math::R_gas;  // 8.314462618 J mol⁻¹ K⁻¹
-
   // Analytical solution for the HLPT two-species linear system:
   //   d[gas]/dt = -a · [gas] + b · [aq]
   //   d[aq]/dt  =  a · [gas] - b · [aq]
@@ -152,7 +150,7 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   double phi = 1.0;
 
   // k_cond from condensation rate utility
-  auto cond_provider = miam::math::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto cond_provider = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double k_cond = cond_provider.ComputeValue(r_eff, N, T);
   double k_evap = k_cond / (HLC_val * R_gas * T);
 

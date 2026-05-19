@@ -12,8 +12,6 @@
 
 namespace miam
 {
-  namespace math
-  {
     /// @brief Gas constant [J mol⁻¹ K⁻¹]
     constexpr double R_gas = micm::constants::GAS_CONSTANT;
 
@@ -126,5 +124,4 @@ namespace miam
 
       return provider;
     }
-  }  // namespace math
 }  // namespace miam

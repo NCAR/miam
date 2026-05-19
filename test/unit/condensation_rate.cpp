@@ -5,7 +5,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace miam::math;
+using namespace miam;
 
 namespace
 {
