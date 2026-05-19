@@ -16,7 +16,6 @@ using namespace miam;
 
 namespace
 {
-
   // Analytical solution for the HLPT two-species linear system:
   //   d[gas]/dt = -a · [gas] + b · [aq]
   //   d[aq]/dt  =  a · [gas] - b · [aq]

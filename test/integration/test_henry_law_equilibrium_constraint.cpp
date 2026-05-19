@@ -14,7 +14,6 @@
 using namespace micm;
 using namespace miam;
 
-
 // ============================================================================
 // Test 1: Henry's Law equilibrium constraint with gas-phase driver
 //

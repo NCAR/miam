@@ -4,7 +4,7 @@
 #include <miam/processes/henry_law_phase_transfer.hpp>
 #include <miam/processes/henry_law_phase_transfer_builder.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
-#include <miam/util/condensation_rate.hpp>
+#include <miam/math/condensation_rate.hpp>
 
 #include <micm/util/jacobian_verification.hpp>
 
@@ -854,7 +854,7 @@ namespace
   }
 
   /// @brief Compare analytical Jacobian against central finite-difference approximation
-  ///        using MICM's FiniteDifferenceJacobian / CompareJacobianToFiniteDifference utilities.
+  ///        using MICM's FiniteDifferenceJacobian / CompareJacobianToFiniteDifference mathities.
   void CheckFiniteDifferenceJacobian(
       const HenryLawPhaseTransfer& process,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,

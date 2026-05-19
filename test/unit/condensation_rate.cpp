@@ -1,5 +1,8 @@
-#include <miam/util/condensation_rate.hpp>
+// Copyright (C) 2026 University Corporation for Atmospheric Research
+// SPDX-License-Identifier: Apache-2.0
+
 #include <miam/util/constants.hpp>
+#include <miam/math/condensation_rate.hpp>
 
 #include <cmath>
 #include <numbers>

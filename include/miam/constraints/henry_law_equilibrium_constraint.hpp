@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <miam/util/condensation_rate.hpp>
+#include <miam/math/condensation_rate.hpp>
 #include <miam/util/uuid.hpp>
 #include <miam/util/constants.hpp>
 

@@ -3,7 +3,7 @@
 
 #include <miam/constraints/henry_law_equilibrium_constraint.hpp>
 #include <miam/constraints/henry_law_equilibrium_constraint_builder.hpp>
-#include <miam/util/condensation_rate.hpp>
+#include <miam/math/condensation_rate.hpp>
 #include <micm/util/jacobian_verification.hpp>
 
 #include <micm/system/conditions.hpp>
