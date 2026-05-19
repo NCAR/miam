@@ -310,8 +310,8 @@ namespace miam
             inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
             inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
             inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
-            inst.cond_rate_provider = MakeCondensationRateProvider(
-                diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
+            inst.cond_rate_provider =
+                MakeCondensationRateProvider(diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
             instances.push_back(std::move(inst));
           }
         }
@@ -470,8 +470,8 @@ namespace miam
             inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
             inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
             inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
-            inst.cond_rate_provider = MakeCondensationRateProvider(
-                diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
+            inst.cond_rate_provider =
+                MakeCondensationRateProvider(diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
             inst.n_r_eff_deps = prov_map.at(AerosolProperty::EffectiveRadius).dependent_variable_indices.size();
             inst.n_N_deps = prov_map.at(AerosolProperty::NumberConcentration).dependent_variable_indices.size();
             inst.n_phi_deps = prov_map.at(AerosolProperty::PhaseVolumeFraction).dependent_variable_indices.size();
