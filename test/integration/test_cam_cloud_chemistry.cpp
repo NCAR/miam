@@ -36,8 +36,6 @@ using SparseMatrixFD = micm::SparseMatrix<double, micm::SparseMatrixStandardOrde
 
 namespace
 {
-  constexpr double R_gas = miam::util::R_gas;
-
   // M/atm → mol m⁻³ Pa⁻¹
   constexpr double M_ATM_TO_MOL_M3_PA = 1000.0 / 101325.0;
 

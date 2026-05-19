@@ -4,7 +4,7 @@
 #include <miam/processes/henry_law_phase_transfer.hpp>
 #include <miam/processes/henry_law_phase_transfer_builder.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
-#include <miam/util/condensation_rate.hpp>
+#include <miam/math/condensation_rate.hpp>
 
 #include <micm/util/jacobian_verification.hpp>
 
@@ -402,10 +402,10 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionBasicRates)
   forcing_func(state_parameters, state_variables, forcing_terms);
 
   // Compute expected net rate
-  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto cond_rate_provider = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
   double kc_eff = phi_val * kc;
-  double ke_eff = kc_eff / (hlc * miam::util::R_gas * T);
+  double ke_eff = kc_eff / (hlc * miam::R_gas * T);
   double f_v = solvent_conc * solvent_molecular_weight / solvent_density;
   double expected_net = kc_eff * gas_conc - ke_eff * aq_conc / f_v;
 
@@ -462,10 +462,10 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionMultipleCells)
 
   forcing_func(state_parameters, state_variables, forcing_terms);
 
-  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto cond_rate_provider = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
   double kc_eff = phi_val * kc;
-  double ke_eff = kc_eff / (hlc * miam::util::R_gas * T);
+  double ke_eff = kc_eff / (hlc * miam::R_gas * T);
   double f_v = solvent * solvent_molecular_weight / solvent_density;
 
   for (std::size_t i = 0; i < num_cells; ++i)
@@ -574,9 +574,9 @@ TEST(HenryLawPhaseTransfer, JacobianFunctionDirectEntries)
 
   jac_func(state_parameters, state_variables, jacobian);
 
-  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto cond_rate_provider = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
-  double ke = kc / (hlc * miam::util::R_gas * T);
+  double ke = kc / (hlc * miam::R_gas * T);
   double fv = solvent_conc * solvent_molecular_weight / solvent_density;
 
   // Stored as -J (MICM convention). -J[gas,gas] = +φ · k_cond
@@ -793,7 +793,7 @@ TEST(HenryLawPhaseTransfer, JacobianFunctionMultipleCells)
 
   jac_func(state_parameters, state_variables, jacobian);
 
-  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto cond_rate_provider = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
 
   // Both cells should have same -J[gas,gas] = +φ · k_cond (MICM convention)
@@ -854,7 +854,7 @@ namespace
   }
 
   /// @brief Compare analytical Jacobian against central finite-difference approximation
-  ///        using MICM's FiniteDifferenceJacobian / CompareJacobianToFiniteDifference utilities.
+  ///        using MICM's FiniteDifferenceJacobian / CompareJacobianToFiniteDifference mathities.
   void CheckFiniteDifferenceJacobian(
       const HenryLawPhaseTransfer& process,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
@@ -993,15 +993,15 @@ TEST(HenryLawPhaseTransfer, ForcingMultiplePhaseInstances)
   MatrixPolicy forcing(1, 5, 0.0);
   forcing_func(params, vars, forcing);
 
-  auto crp = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto crp = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
 
   double kc1 = crp.ComputeValue(r1, N1, T);
-  double ke1 = kc1 / (hlc * miam::util::R_gas * T);
+  double ke1 = kc1 / (hlc * miam::R_gas * T);
   double fv1 = solvent1 * solvent_molecular_weight / solvent_density;
   double net1 = phi1 * kc1 * gas - phi1 * ke1 * aq1 / fv1;
 
   double kc2 = crp.ComputeValue(r2, N2, T);
-  double ke2 = kc2 / (hlc * miam::util::R_gas * T);
+  double ke2 = kc2 / (hlc * miam::R_gas * T);
   double fv2 = solvent2 * solvent_molecular_weight / solvent_density;
   double net2 = phi2 * kc2 * gas - phi2 * ke2 * aq2 / fv2;
 
@@ -1070,14 +1070,14 @@ TEST(HenryLawPhaseTransfer, JacobianMultiplePhaseInstances)
 
   jac_func(params, vars, jacobian);
 
-  auto crp = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto crp = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
 
   double kc1 = crp.ComputeValue(r1, N1, T);
-  double ke1 = kc1 / (hlc * miam::util::R_gas * T);
+  double ke1 = kc1 / (hlc * miam::R_gas * T);
   double fv1 = solvent1 * solvent_molecular_weight / solvent_density;
 
   double kc2 = crp.ComputeValue(r2, N2, T);
-  double ke2 = kc2 / (hlc * miam::util::R_gas * T);
+  double ke2 = kc2 / (hlc * miam::R_gas * T);
   double fv2 = solvent2 * solvent_molecular_weight / solvent_density;
 
   // -J[gas,gas] = phi1*kc1 + phi2*kc2  (both instances contribute)
@@ -1254,12 +1254,12 @@ TEST(HenryLawPhaseTransfer, ForcingMultiCellsMultiInstances)
   MatrixPolicy forcing(num_cells, 5, 0.0);
   forcing_func(params, vars, forcing);
 
-  auto crp = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto crp = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc1 = crp.ComputeValue(r1, N1, T);
-  double ke1 = kc1 / (hlc * miam::util::R_gas * T);
+  double ke1 = kc1 / (hlc * miam::R_gas * T);
   double fv1 = 55000.0 * solvent_molecular_weight / solvent_density;
   double kc2 = crp.ComputeValue(r2, N2, T);
-  double ke2 = kc2 / (hlc * miam::util::R_gas * T);
+  double ke2 = kc2 / (hlc * miam::R_gas * T);
   double fv2 = 45000.0 * solvent_molecular_weight / solvent_density;
 
   for (std::size_t c = 0; c < num_cells; ++c)
@@ -1391,16 +1391,16 @@ TEST(HenryLawPhaseTransfer, ForcingMultipleTransferProcesses)
   ff_CO2(params, vars, forcing);
   ff_SO2(params, vars, forcing);
 
-  auto crp_CO2 = miam::util::MakeCondensationRateProvider(D_CO2, alpha, 0.044);
-  auto crp_SO2 = miam::util::MakeCondensationRateProvider(D_SO2, alpha, 0.064);
+  auto crp_CO2 = miam::MakeCondensationRateProvider(D_CO2, alpha, 0.044);
+  auto crp_SO2 = miam::MakeCondensationRateProvider(D_SO2, alpha, 0.064);
   double fv = h2o * solvent_molecular_weight / solvent_density;
 
   double kc_co2 = crp_CO2.ComputeValue(r, N, T);
-  double ke_co2 = kc_co2 / (HLC_CO2 * miam::util::R_gas * T);
+  double ke_co2 = kc_co2 / (HLC_CO2 * miam::R_gas * T);
   double net_co2 = phi * kc_co2 * co2_g - phi * ke_co2 * co2_aq / fv;
 
   double kc_so2 = crp_SO2.ComputeValue(r, N, T);
-  double ke_so2 = kc_so2 / (HLC_SO2 * miam::util::R_gas * T);
+  double ke_so2 = kc_so2 / (HLC_SO2 * miam::R_gas * T);
   double net_so2 = phi * kc_so2 * so2_g - phi * ke_so2 * so2_aq / fv;
 
   EXPECT_NEAR(forcing[0][0], -net_co2, std::abs(net_co2) * 1e-10);
@@ -1967,10 +1967,10 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionZeroGasConcentration)
   MatrixPolicy forcing(1, 3, 0.0);
   ff(params, vars, forcing);
 
-  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto cond_rate_provider = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff, N, T);
   double kc_eff = phi * kc;
-  double ke_eff = kc_eff / (HLC_ref * miam::util::R_gas * T);
+  double ke_eff = kc_eff / (HLC_ref * miam::R_gas * T);
   double f_v = 55000.0 * solvent_molecular_weight / solvent_density;
   double expected_net = 0.0 - ke_eff * 1.0e-5 / f_v;  // condensation term = 0
 
@@ -2010,7 +2010,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionZeroAqueousConcentration)
   MatrixPolicy forcing(1, 3, 0.0);
   ff(params, vars, forcing);
 
-  auto cond_rate_provider = miam::util::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
+  auto cond_rate_provider = miam::MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff, N, T);
   double kc_eff = phi * kc;
   double expected_net = kc_eff * 1.0e-3;  // evaporation term = 0
