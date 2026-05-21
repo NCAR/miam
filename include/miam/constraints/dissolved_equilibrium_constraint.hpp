@@ -4,6 +4,8 @@
 #pragma once
 
 #include <miam/util/uuid.hpp>
+#include <miam/util/error.hpp>
+#include <miam/util/miam_exception.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
@@ -82,7 +84,9 @@ namespace miam
       }
       if (!found)
       {
-        throw std::invalid_argument(
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_ALGEBRAIC_SPECIES_NOT_FOUND_IN_PRODUCTS,
             "DissolvedEquilibriumConstraint: algebraic species '" + algebraic_species_.name_ +
             "' must be one of the products.");
       }
@@ -459,8 +463,10 @@ namespace miam
       auto phase_it = phase_prefixes.find(phase_.name_);
       if (phase_it == phase_prefixes.end())
       {
-        throw std::runtime_error(
-            "Internal Error: DissolvedEquilibriumConstraint: Phase " + phase_.name_ + " not found in phase_prefixes");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_PHASE,
+            "DissolvedEquilibriumConstraint: Phase " + phase_.name_ + " not found in phase_prefixes");
       }
       const auto& prefixes = phase_it->second;
       indices.number_of_phase_instances_ = prefixes.size();

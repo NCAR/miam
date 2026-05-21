@@ -6,6 +6,8 @@
 #include <miam/math/condensation_rate.hpp>
 #include <miam/util/constants.hpp>
 #include <miam/util/uuid.hpp>
+#include <miam/util/miam_exception.hpp>
+#include <miam/util/error.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
@@ -125,7 +127,9 @@ namespace miam
       std::set<std::pair<std::size_t, std::size_t>> elements;
       auto gas_it = state_variable_indices.find(gas_species_.name_);
       if (gas_it == state_variable_indices.end())
-        throw std::runtime_error(
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_GAS_SPECIES,
             "Internal Error: Gas species " + gas_species_.name_ + " not found in state_variable_indices");
       std::size_t gas_idx = gas_it->second;
 
@@ -350,16 +354,20 @@ namespace miam
       StateVariableIndices indices;
       auto gas_it = state_variable_indices.find(gas_species_.name_);
       if (gas_it == state_variable_indices.end())
-        throw std::runtime_error(
-            "Internal Error: HenryLawEquilibriumConstraint: Gas species " + gas_species_.name_ +
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_GAS_SPECIES,
+            "HenryLawEquilibriumConstraint: Gas species " + gas_species_.name_ +
             " not found in state_variable_indices");
       indices.gas_idx_ = gas_it->second;
 
       auto phase_it = phase_prefixes.find(condensed_phase_.name_);
       if (phase_it == phase_prefixes.end())
       {
-        throw std::runtime_error(
-            "Internal Error: HenryLawEquilibriumConstraint: Phase " + condensed_phase_.name_ +
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_PHASE,
+            "HenryLawEquilibriumConstraint: Phase " + condensed_phase_.name_ +
             " not found in phase_prefixes");
       }
       const auto& prefixes = phase_it->second;

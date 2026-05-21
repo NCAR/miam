@@ -5,6 +5,8 @@
 
 #include <miam/aerosol_property.hpp>
 #include <miam/util/uuid.hpp>
+#include <miam/util/error.hpp>
+#include <miam/util/miam_exception.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
@@ -125,7 +127,9 @@ namespace miam
       }
       else
       {
-        throw std::runtime_error(
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_PHASE,
             "Internal Error: Phase " + phase_.name_ + " not found in phase_prefixes map for process " + uuid_);
       }
       return species_names;
@@ -235,15 +239,19 @@ namespace miam
       std::string reverse_param = phase_.name_ + "." + uuid_ + ".k_reverse";
       if (state_parameter_indices.find(forward_param) == state_parameter_indices.end())
       {
-        throw std::runtime_error(
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
             "Internal Error: UpdateStateParametersFunction: Forward rate constant parameter " + forward_param +
-            " not found in state_parameter_indices");
+                " not found in state_parameter_indices");
       }
       if (state_parameter_indices.find(reverse_param) == state_parameter_indices.end())
       {
-        throw std::runtime_error(
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
             "Internal Error: UpdateStateParametersFunction: Reverse rate constant parameter " + reverse_param +
-            " not found in state_parameter_indices");
+                " not found in state_parameter_indices");
       }
       std::size_t forward_index = state_parameter_indices.at(forward_param);
       std::size_t reverse_index = state_parameter_indices.at(reverse_param);
@@ -587,13 +595,17 @@ namespace miam
       std::string reverse_param = phase_.name_ + "." + uuid_ + ".k_reverse";
       if (state_parameter_indices.find(forward_param) == state_parameter_indices.end())
       {
-        throw std::runtime_error(
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
             "Internal Error: GetParameterIndices: Forward rate constant parameter " + forward_param +
             " not found in state_parameter_indices");
       }
       if (state_parameter_indices.find(reverse_param) == state_parameter_indices.end())
       {
-        throw std::runtime_error(
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
             "Internal Error: GetParameterIndices: Reverse rate constant parameter " + reverse_param +
             " not found in state_parameter_indices");
       }
@@ -615,7 +627,9 @@ namespace miam
       auto phase_it = phase_prefixes.find(phase_.name_);
       if (phase_it == phase_prefixes.end())
       {
-        throw std::runtime_error(
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_PHASE,
             "Internal Error: GetStateVariableIndices: Phase " + phase_.name_ + " not found in phase_prefixes");
       }
       const auto& prefixes = phase_it->second;
@@ -631,7 +645,9 @@ namespace miam
           std::string reactant_var = prefix + "." + phase_.name_ + "." + reactants_[i_reactant].name_;
           if (state_variable_indices.find(reactant_var) == state_variable_indices.end())
           {
-            throw std::runtime_error(
+            throw MiamException(
+                MIAM_ERROR_CATEGORY_CONFIGURATION,
+                MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
                 "Internal Error: GetStateVariableIndices: Reactant variable " + reactant_var +
                 " not found in state_variable_indices");
           }
@@ -642,7 +658,9 @@ namespace miam
           std::string product_var = prefix + "." + phase_.name_ + "." + products_[i_product].name_;
           if (state_variable_indices.find(product_var) == state_variable_indices.end())
           {
-            throw std::runtime_error(
+            throw MiamException(
+                MIAM_ERROR_CATEGORY_CONFIGURATION,
+                MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
                 "Internal Error: GetStateVariableIndices: Product variable " + product_var +
                 " not found in state_variable_indices");
           }
@@ -651,7 +669,9 @@ namespace miam
         std::string solvent_var = prefix + "." + phase_.name_ + "." + solvent_.name_;
         if (state_variable_indices.find(solvent_var) == state_variable_indices.end())
         {
-          throw std::runtime_error(
+          throw MiamException(
+              MIAM_ERROR_CATEGORY_CONFIGURATION,
+              MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
               "Internal Error: GetStateVariableIndices: Solvent variable " + solvent_var +
               " not found in state_variable_indices");
         }

@@ -4,6 +4,8 @@
 #pragma once
 
 #include <miam/constraints/linear_constraint.hpp>
+#include <miam/util/error.hpp>
+#include <miam/util/miam_exception.hpp>
 
 #include <stdexcept>
 
@@ -32,7 +34,9 @@ namespace miam
     LinearConstraintBuilder& SetConstant(double constant)
     {
       if (diagnose_from_state_)
-        throw std::runtime_error(
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MUTUALLY_EXCLUSIVE_PARAMETERS,
             "LinearConstraintBuilder: SetConstant() and DiagnoseConstantFromState() are mutually exclusive.");
       constant_ = constant;
       constant_is_set_ = true;
@@ -46,7 +50,9 @@ namespace miam
     LinearConstraintBuilder& DiagnoseConstantFromState()
     {
       if (constant_is_set_)
-        throw std::runtime_error(
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MUTUALLY_EXCLUSIVE_PARAMETERS,
             "LinearConstraintBuilder: SetConstant() and DiagnoseConstantFromState() are mutually exclusive.");
       diagnose_from_state_ = true;
       return *this;
@@ -55,9 +61,15 @@ namespace miam
     LinearConstraint Build() const
     {
       if (!algebraic_is_set_)
-        throw std::runtime_error("LinearConstraintBuilder requires the algebraic species to be set.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "LinearConstraintBuilder requires the algebraic species to be set.");
       if (terms_.empty())
-        throw std::runtime_error("LinearConstraintBuilder requires at least one term.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "LinearConstraintBuilder requires at least one term.");
 
       return LinearConstraint(algebraic_phase_, algebraic_species_, terms_, constant_, diagnose_from_state_);
     }

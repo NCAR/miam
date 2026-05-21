@@ -7,6 +7,8 @@
 #include <miam/math/condensation_rate.hpp>
 #include <miam/util/constants.hpp>
 #include <miam/util/uuid.hpp>
+#include <miam/util/miam_exception.hpp>
+#include <miam/util/error.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
@@ -126,7 +128,9 @@ namespace miam
       }
       else
       {
-        throw std::runtime_error(
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_PHASE,
             "Internal Error: Phase " + condensed_phase_.name_ + " not found in phase_prefixes for process " + uuid_);
       }
       return species_names;
@@ -149,7 +153,9 @@ namespace miam
       std::set<std::pair<std::size_t, std::size_t>> elements;
       auto gas_it = state_variable_indices.find(gas_species_.name_);
       if (gas_it == state_variable_indices.end())
-        throw std::runtime_error(
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_GAS_SPECIES,
             "Internal Error: Gas species " + gas_species_.name_ + " not found in state_variable_indices");
       std::size_t gas_idx = gas_it->second;
 
@@ -232,9 +238,15 @@ namespace miam
           std::string hlc_param = prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc";
           std::string temp_param = prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature";
           if (state_parameter_indices.find(hlc_param) == state_parameter_indices.end())
-            throw std::runtime_error("Internal Error: HLC parameter " + hlc_param + " not found");
+            throw MiamException(
+                MIAM_ERROR_CATEGORY_CONFIGURATION,
+                MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+                "Internal Error: HLC parameter " + hlc_param + " not found");
           if (state_parameter_indices.find(temp_param) == state_parameter_indices.end())
-            throw std::runtime_error("Internal Error: Temperature parameter " + temp_param + " not found");
+            throw MiamException(
+                MIAM_ERROR_CATEGORY_CONFIGURATION,
+                MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+                "Internal Error: Temperature parameter " + temp_param + " not found");
           hlc_indices.push_back(state_parameter_indices.at(hlc_param));
           temp_indices.push_back(state_parameter_indices.at(temp_param));
         }
