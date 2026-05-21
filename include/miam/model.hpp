@@ -9,6 +9,8 @@
 #include <miam/constraints/linear_constraint.hpp>
 #include <miam/process.hpp>
 #include <miam/representation.hpp>
+#include <miam/util/miam_exception.hpp>
+#include <miam/util/error.hpp>
 
 #include <micm/system/conditions.hpp>
 
@@ -527,7 +529,12 @@ namespace miam
       {
         auto pp_it = phase_prefixes.find(phase_name);
         if (pp_it == phase_prefixes.end())
-          throw std::runtime_error("BuildProviders: phase not found: " + phase_name);
+        {
+          throw MiamException(
+              MIAM_ERROR_CATEGORY_CONFIGURATION,
+              MIAM_CONFIGURATION_INVALID_PARAMETER,
+              "BuildProviders: phase not found: " + phase_name);
+        }
 
         for (const auto& prefix : pp_it->second)
         {
@@ -598,7 +605,9 @@ namespace miam
         {
           if (prefixes.size() != expected_count_it->second)
           {
-            throw std::runtime_error(
+            throw MiamException(
+                MIAM_ERROR_CATEGORY_CONFIGURATION,
+                MIAM_CONFIGURATION_INVALID_PARAMETER,
                 "Internal Error: PhaseStatePrefixes: Non-unique state variable prefixes detected for phase " + phase_name);
           }
         }
