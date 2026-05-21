@@ -64,22 +64,6 @@ namespace miam
       return *this;
     }
 
-    /// @brief Sets the molecular weight of the solvent species [kg mol⁻¹]
-    HenryLawEquilibriumConstraintBuilder& SetSolventMolecularWeight(double solvent_molecular_weight)
-    {
-      solvent_molecular_weight_ = solvent_molecular_weight;
-      solvent_molecular_weight_is_set_ = true;
-      return *this;
-    }
-
-    /// @brief Sets the density of the solvent species [kg m⁻³]
-    HenryLawEquilibriumConstraintBuilder& SetSolventDensity(double solvent_density)
-    {
-      solvent_density_ = solvent_density;
-      solvent_density_is_set_ = true;
-      return *this;
-    }
-
     HenryLawEquilibriumConstraint Build() const
     {
       if (!gas_species_is_set_)
@@ -92,10 +76,9 @@ namespace miam
         throw std::runtime_error("HenryLawEquilibriumConstraintBuilder requires the condensed phase to be set.");
       if (!henry_law_constant_)
         throw std::runtime_error("HenryLawEquilibriumConstraintBuilder requires the Henry's Law constant to be set.");
-      if (!solvent_molecular_weight_is_set_)
-        throw std::runtime_error("HenryLawEquilibriumConstraintBuilder requires the solvent molecular weight to be set.");
-      if (!solvent_density_is_set_)
-        throw std::runtime_error("HenryLawEquilibriumConstraintBuilder requires the solvent density to be set.");
+
+      double solvent_molecular_weight = solvent_.GetProperty<double>("molecular weight [kg mol-1]");
+      double solvent_density = solvent_.GetProperty<double>("density [kg m-3]");
 
       return HenryLawEquilibriumConstraint(
           henry_law_constant_,
@@ -103,8 +86,8 @@ namespace miam
           condensed_species_,
           solvent_,
           condensed_phase_,
-          solvent_molecular_weight_,
-          solvent_density_);
+          solvent_molecular_weight,
+          solvent_density);
     }
 
    private:
@@ -117,9 +100,5 @@ namespace miam
     micm::Phase condensed_phase_;
     bool condensed_phase_is_set_ = false;
     std::function<double(const micm::Conditions& conditions)> henry_law_constant_;
-    double solvent_molecular_weight_ = 0.0;  ///< [kg mol⁻¹]
-    bool solvent_molecular_weight_is_set_ = false;
-    double solvent_density_ = 0.0;  ///< [kg m⁻³]
-    bool solvent_density_is_set_ = false;
   };
 }  // namespace miam

@@ -419,8 +419,6 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
         .SetCondensedPhase(aqueous_phase)
         .SetHenryLawConstant(HenrysLawConstant(
             HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
-        .SetSolventMolecularWeight(solvent_molecular_weight)
-        .SetSolventDensity(solvent_density)
         .Build();
 
     auto mass_cons = LinearConstraintBuilder()
