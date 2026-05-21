@@ -4,6 +4,8 @@
 #pragma once
 
 #include <miam/aerosol_property.hpp>
+#include <miam/util/error.hpp>
+#include <miam/util/miam_exception.hpp>
 
 #include <micm/system/phase.hpp>
 
@@ -103,12 +105,18 @@ namespace miam
       auto min_radius_it = state.custom_rate_parameter_map_.find(MinRadius());
       if (min_radius_it == state.custom_rate_parameter_map_.end())
       {
-        throw std::runtime_error("Custom parameter map missing MIN_RADIUS for " + prefix_);
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "UniformSection::SetDefaultParameters: MIN_RADIUS parameter not found in state for " + prefix_);
       }
       auto max_radius_it = state.custom_rate_parameter_map_.find(MaxRadius());
       if (max_radius_it == state.custom_rate_parameter_map_.end())
       {
-        throw std::runtime_error("Custom parameter map missing MAX_RADIUS for " + prefix_);
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "UniformSection::SetDefaultParameters: MAX_RADIUS parameter not found in state for " + prefix_);
       }
       for (std::size_t cell = 0; cell < state.variables_.NumRows(); ++cell)
       {
@@ -293,7 +301,9 @@ namespace miam
             break;
           }
           if (target_phase_name.empty())
-            throw std::runtime_error(
+            throw MiamException(
+                MIAM_ERROR_CATEGORY_CONFIGURATION,
+                MIAM_CONFIGURATION_PHASE_NAME_REQUIRED,
                 "UniformSection::GetPropertyProvider: target_phase_name required for PhaseVolumeFraction "
                 "with multiple phases");
           std::vector<std::size_t> all_species;
@@ -427,7 +437,10 @@ namespace miam
               dummy_partials);
           break;
         }
-        default: throw std::runtime_error("UniformSection: unsupported AerosolProperty");
+        default: throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_UNSUPPORTED_PROPERTY,
+            "UniformSection: unsupported AerosolProperty");
       }
       return provider;
     }

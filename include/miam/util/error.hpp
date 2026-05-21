@@ -1,0 +1,11 @@
+#if 0
+// Copyright (C) 2023-2026 University Corporation for Atmospheric Research
+// SPDX-License-Identifier: Apache-2.0
+
+// This file defines error categories and codes for MIAM
+#endif
+
+#define MIAM_ERROR_CATEGORY_CONFIGURATION                       "MIAM Configuration"
+#define MIAM_CONFIGURATION_PHASE_NAME_REQUIRED 1
+#define MIAM_CONFIGURATION_UNSUPPORTED_PROPERTY 2
+#define MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER 3

@@ -4,6 +4,8 @@
 #pragma once
 
 #include <miam/aerosol_property.hpp>
+#include <miam/util/error.hpp>
+#include <miam/util/miam_exception.hpp>
 
 #include <micm/system/phase.hpp>
 
@@ -103,12 +105,18 @@ namespace miam
       auto gmd_it = state.custom_rate_parameter_map_.find(GeometricMeanRadius());
       if (gmd_it == state.custom_rate_parameter_map_.end())
       {
-        throw std::runtime_error("Geometric mean radius parameter not found in state for " + prefix_);
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "SingleMomentMode::SetDefaultParameters: GEOMETRIC_MEAN_RADIUS parameter not found in state for " + prefix_);
       }
       auto gsd_it = state.custom_rate_parameter_map_.find(GeometricStandardDeviation());
       if (gsd_it == state.custom_rate_parameter_map_.end())
       {
-        throw std::runtime_error("Geometric standard deviation parameter not found in state for " + prefix_);
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "SingleMomentMode::SetDefaultParameters: GEOMETRIC_STANDARD_DEVIATION parameter not found in state for " + prefix_);
       }
       for (std::size_t i_cell = 0; i_cell < state.variables_.NumRows(); ++i_cell)
       {
@@ -303,9 +311,10 @@ namespace miam
             break;
           }
           if (target_phase_name.empty())
-            throw std::runtime_error(
-                "SingleMomentMode::GetPropertyProvider: target_phase_name required for PhaseVolumeFraction "
-                "with multiple phases");
+            throw MiamException(
+                MIAM_ERROR_CATEGORY_CONFIGURATION,
+                MIAM_CONFIGURATION_PHASE_NAME_REQUIRED,
+                "SingleMomentMode::GetPropertyProvider: target_phase_name required for PhaseVolumeFraction with multiple phases");
           std::vector<std::size_t> all_species;
           std::vector<double> all_mw_over_rho;
           std::size_t phase_count = 0;
@@ -437,7 +446,10 @@ namespace miam
               dummy_partials);
           break;
         }
-        default: throw std::runtime_error("SingleMomentMode: unsupported AerosolProperty");
+        default: throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_UNSUPPORTED_PROPERTY,
+            "SingleMomentMode::GetPropertyProvider: unsupported AerosolProperty");
       }
       return provider;
     }
