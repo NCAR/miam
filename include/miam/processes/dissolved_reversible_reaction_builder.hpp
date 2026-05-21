@@ -4,6 +4,8 @@
 #pragma once
 
 #include <miam/processes/dissolved_reversible_reaction.hpp>
+#include <miam/util/error.hpp>
+#include <miam/util/miam_exception.hpp>
 
 #include <micm/process/rate_constant/arrhenius_rate_constant.hpp>
 #include <micm/process/rate_constant/rate_constant_functions.hpp>
@@ -103,25 +105,39 @@ namespace miam
         ++num_set;
       if (num_set != 2)
       {
-        throw std::runtime_error(
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
             "DissolvedReversibleReactionBuilder requires exactly two of forward rate constant, reverse rate constant, or "
             "equilibrium constant to be set.");
       }
       if (reactants_.empty())
       {
-        throw std::runtime_error("DissolvedReversibleReactionBuilder requires at least one reactant species.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedReversibleReactionBuilder requires at least one reactant species.");
       }
       if (products_.empty())
       {
-        throw std::runtime_error("DissolvedReversibleReactionBuilder requires at least one product species.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedReversibleReactionBuilder requires at least one product species.");
       }
       if (!phase_is_set_)
       {
-        throw std::runtime_error("DissolvedReversibleReactionBuilder requires the phase to be set.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedReversibleReactionBuilder requires the phase to be set.");
       }
       if (!solvent_is_set_)
       {
-        throw std::runtime_error("DissolvedReversibleReactionBuilder requires the solvent to be set.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedReversibleReactionBuilder requires the solvent to be set.");
       }
       // If equilibrium constant is set, compute the missing rate constant
       if (equilibrium_constant_)

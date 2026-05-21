@@ -4,6 +4,7 @@
 #include <miam/constraints/dissolved_equilibrium_constraint.hpp>
 #include <miam/constraints/dissolved_equilibrium_constraint_builder.hpp>
 #include <micm/util/jacobian_verification.hpp>
+#include <miam/util/miam_exception.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
@@ -553,12 +554,12 @@ TEST(DissolvedEquilibriumConstraint, BuilderValidation)
           .SetSolvent(h2o)
           .SetEquilibriumConstant(FakeConstant{})
           .Build(),
-      std::invalid_argument);
+      miam::MiamException);
 
   // Missing phase
   EXPECT_THROW(
       DissolvedEquilibriumConstraintBuilder().SetReactants({ A }).SetProducts({ B }).SetAlgebraicSpecies(B).SetSolvent(h2o).SetEquilibriumConstant(FakeConstant{}).Build(),
-      std::runtime_error);
+      miam::MiamException);
 
   // Valid build
   auto constraint = DissolvedEquilibriumConstraintBuilder()

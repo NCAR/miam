@@ -4,6 +4,8 @@
 #pragma once
 
 #include <miam/processes/dissolved_reaction.hpp>
+#include <miam/util/miam_exception.hpp>
+#include <miam/util/error.hpp>
 
 #include <micm/system/conditions.hpp>
 
@@ -89,23 +91,38 @@ namespace miam
     {
       if (!rate_constant_)
       {
-        throw std::runtime_error("DissolvedReactionBuilder requires the rate constant to be set.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedReactionBuilder requires the rate constant to be set.");
       }
       if (reactants_.empty())
       {
-        throw std::runtime_error("DissolvedReactionBuilder requires at least one reactant species.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedReactionBuilder requires at least one reactant species.");
       }
       if (products_.empty())
       {
-        throw std::runtime_error("DissolvedReactionBuilder requires at least one product species.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedReactionBuilder requires at least one product species.");
       }
       if (!phase_is_set_)
       {
-        throw std::runtime_error("DissolvedReactionBuilder requires the phase to be set.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedReactionBuilder requires the phase to be set.");
       }
       if (!solvent_is_set_)
       {
-        throw std::runtime_error("DissolvedReactionBuilder requires the solvent to be set.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedReactionBuilder requires the solvent to be set.");
       }
       return DissolvedReaction(rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_, min_halflife_);
     }

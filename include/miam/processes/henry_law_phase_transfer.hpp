@@ -161,7 +161,12 @@ namespace miam
 
       auto phase_it = phase_prefixes.find(condensed_phase_.name_);
       if (phase_it == phase_prefixes.end())
-        throw std::runtime_error("Internal Error: Phase " + condensed_phase_.name_ + " not found in phase_prefixes");
+      {
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_PHASE,
+            "Internal Error: Phase " + condensed_phase_.name_ + " not found in phase_prefixes for process " + uuid_);
+      }
 
       // We need provider-dependent indices, but at this stage we don't have providers yet.
       // Conservatively include all variables in each representation prefix as potential
