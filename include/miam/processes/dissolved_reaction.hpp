@@ -4,9 +4,9 @@
 #pragma once
 
 #include <miam/aerosol_property.hpp>
-#include <miam/util/uuid.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
+#include <miam/util/uuid.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
@@ -143,8 +143,8 @@ namespace miam
       else
       {
         throw MiamException(
-            MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_MISSING_PHASE,
+            MIAM_ERROR_CATEGORY_INTERNAL,
+            MIAM_INTERNAL_MISSING_PHASE_PREFIX,
             "Internal Error: Phase " + phase_.name_ + " not found in phase_prefixes map for process " + uuid_);
       }
       return species_names;
@@ -239,10 +239,10 @@ namespace miam
       if (state_parameter_indices.find(k_param) == state_parameter_indices.end())
       {
         throw MiamException(
-            MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_MISSING_STATE_PARAMETER,
+            MIAM_ERROR_CATEGORY_INTERNAL,
+            MIAM_INTERNAL_MISSING_STATE_PARAMETER,
             "Internal Error: UpdateStateParametersFunction: Rate constant parameter " + k_param +
-            " not found in state_parameter_indices");
+                " not found in state_parameter_indices");
       }
       std::size_t k_index = state_parameter_indices.at(k_param);
 
@@ -433,7 +433,8 @@ namespace miam
               // Calculate partials for independent solvent
               // dr/d[S] = k * (eps + (1-n_r)*[S]) / ([S]+eps)^(n_r+1) * prod([R_i])
               jacobian_values.ForEachBlock(
-                  [&](const double& rate_constant, const double& solvent, double& partial) {
+                  [&](const double& rate_constant, const double& solvent, double& partial)
+                  {
                     partial =
                         rate_constant * (eps + (1.0 - static_cast<int>(n_r)) * solvent) / std::pow(solvent + eps, n_r + 1);
                   },
@@ -719,7 +720,8 @@ namespace miam
               // Step E: Partial for independent solvent
               // dr/dS = k * (eps + (1-n_r)*S) / (S+eps)^{n_r+1} * prod(R_i)
               jacobian_values.ForEachBlock(
-                  [&](const double& rate_constant, const double& solvent, double& partial) {
+                  [&](const double& rate_constant, const double& solvent, double& partial)
+                  {
                     partial =
                         rate_constant * (eps + (1.0 - static_cast<int>(n_r)) * solvent) / std::pow(solvent + eps, n_r + 1);
                   },
@@ -770,10 +772,10 @@ namespace miam
       if (state_parameter_indices.find(k_param) == state_parameter_indices.end())
       {
         throw MiamException(
-            MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_MISSING_STATE_PARAMETER,
+            MIAM_ERROR_CATEGORY_INTERNAL,
+            MIAM_INTERNAL_MISSING_STATE_PARAMETER,
             "Internal Error: GetParameterIndex: Rate constant parameter " + k_param +
-            " not found in state_parameter_indices");
+                " not found in state_parameter_indices");
       }
       return state_parameter_indices.at(k_param);
     }
@@ -789,8 +791,8 @@ namespace miam
       if (phase_it == phase_prefixes.end())
       {
         throw MiamException(
-            MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_MISSING_PHASE,
+            MIAM_ERROR_CATEGORY_INTERNAL,
+            MIAM_INTERNAL_MISSING_PHASE_PREFIX,
             "Internal Error: GetStateVariableIndices: Phase " + phase_.name_ + " not found in phase_prefixes");
       }
       const auto& prefixes = phase_it->second;
@@ -807,10 +809,10 @@ namespace miam
           if (state_variable_indices.find(reactant_var) == state_variable_indices.end())
           {
             throw MiamException(
-                MIAM_ERROR_CATEGORY_CONFIGURATION,
-                MIAM_CONFIGURATION_MISSING_STATE_PARAMETER,
+                MIAM_ERROR_CATEGORY_INTERNAL,
+                MIAM_INTERNAL_MISSING_STATE_VARIABLE,
                 "Internal Error: GetStateVariableIndices: Reactant variable " + reactant_var +
-                " not found in state_variable_indices");
+                    " not found in state_variable_indices");
           }
           indices.reactant_indices_[i_phase][i_reactant] = state_variable_indices.at(reactant_var);
         }
@@ -820,10 +822,10 @@ namespace miam
           if (state_variable_indices.find(product_var) == state_variable_indices.end())
           {
             throw MiamException(
-                MIAM_ERROR_CATEGORY_CONFIGURATION,
-                MIAM_CONFIGURATION_MISSING_STATE_PARAMETER,
+                MIAM_ERROR_CATEGORY_INTERNAL,
+                MIAM_INTERNAL_MISSING_STATE_VARIABLE,
                 "Internal Error: GetStateVariableIndices: Product variable " + product_var +
-                " not found in state_variable_indices");
+                    " not found in state_variable_indices");
           }
           indices.product_indices_[i_phase][i_product] = state_variable_indices.at(product_var);
         }
@@ -831,10 +833,10 @@ namespace miam
         if (state_variable_indices.find(solvent_var) == state_variable_indices.end())
         {
           throw MiamException(
-              MIAM_ERROR_CATEGORY_CONFIGURATION,
-              MIAM_CONFIGURATION_MISSING_STATE_PARAMETER,
+              MIAM_ERROR_CATEGORY_INTERNAL,
+              MIAM_INTERNAL_MISSING_STATE_VARIABLE,
               "Internal Error: GetStateVariableIndices: Solvent variable " + solvent_var +
-              " not found in state_variable_indices");
+                  " not found in state_variable_indices");
         }
         indices.solvent_indices_[i_phase] = state_variable_indices.at(solvent_var);
         ++i_phase;

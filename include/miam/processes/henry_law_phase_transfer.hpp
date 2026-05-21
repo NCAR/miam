@@ -6,9 +6,9 @@
 #include <miam/aerosol_property.hpp>
 #include <miam/math/condensation_rate.hpp>
 #include <miam/util/constants.hpp>
-#include <miam/util/uuid.hpp>
-#include <miam/util/miam_exception.hpp>
 #include <miam/util/error.hpp>
+#include <miam/util/miam_exception.hpp>
+#include <miam/util/uuid.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
@@ -129,8 +129,8 @@ namespace miam
       else
       {
         throw MiamException(
-            MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_MISSING_PHASE,
+            MIAM_ERROR_CATEGORY_INTERNAL,
+            MIAM_INTERNAL_MISSING_PHASE_PREFIX,
             "Internal Error: Phase " + condensed_phase_.name_ + " not found in phase_prefixes for process " + uuid_);
       }
       return species_names;
@@ -154,8 +154,8 @@ namespace miam
       auto gas_it = state_variable_indices.find(gas_species_.name_);
       if (gas_it == state_variable_indices.end())
         throw MiamException(
-            MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_MISSING_GAS_SPECIES,
+            MIAM_ERROR_CATEGORY_INTERNAL,
+            MIAM_INTERNAL_MISSING_STATE_VARIABLE,
             "Internal Error: Gas species " + gas_species_.name_ + " not found in state_variable_indices");
       std::size_t gas_idx = gas_it->second;
 
@@ -163,8 +163,8 @@ namespace miam
       if (phase_it == phase_prefixes.end())
       {
         throw MiamException(
-            MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_MISSING_PHASE,
+            MIAM_ERROR_CATEGORY_INTERNAL,
+            MIAM_INTERNAL_MISSING_PHASE_PREFIX,
             "Internal Error: Phase " + condensed_phase_.name_ + " not found in phase_prefixes for process " + uuid_);
       }
 
@@ -244,13 +244,13 @@ namespace miam
           std::string temp_param = prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature";
           if (state_parameter_indices.find(hlc_param) == state_parameter_indices.end())
             throw MiamException(
-                MIAM_ERROR_CATEGORY_CONFIGURATION,
-                MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+                MIAM_ERROR_CATEGORY_INTERNAL,
+                MIAM_INTERNAL_MISSING_STATE_PARAMETER,
                 "Internal Error: HLC parameter " + hlc_param + " not found");
           if (state_parameter_indices.find(temp_param) == state_parameter_indices.end())
             throw MiamException(
-                MIAM_ERROR_CATEGORY_CONFIGURATION,
-                MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+                MIAM_ERROR_CATEGORY_INTERNAL,
+                MIAM_INTERNAL_MISSING_STATE_PARAMETER,
                 "Internal Error: Temperature parameter " + temp_param + " not found");
           hlc_indices.push_back(state_parameter_indices.at(hlc_param));
           temp_indices.push_back(state_parameter_indices.at(temp_param));
@@ -546,205 +546,206 @@ namespace miam
 
       for (const auto& inst : jac_instances)
       {
-        inner_jac_functions.push_back(SparseMatrixPolicy::Function(
-            [inst, gas_idx](
-                auto&& state_parameters,
-                auto&& state_variables,
-                auto&& jacobian_values,
-                auto&& r_eff_view,
-                auto&& N_view,
-                auto&& phi_view,
-                auto&& r_eff_partials_view,
-                auto&& N_partials_view,
-                auto&& phi_partials_view)
-            {
-              auto jac_id = inst.jac_indices.AsVector().begin();
+        inner_jac_functions.push_back(
+            SparseMatrixPolicy::Function(
+                [inst, gas_idx](
+                    auto&& state_parameters,
+                    auto&& state_variables,
+                    auto&& jacobian_values,
+                    auto&& r_eff_view,
+                    auto&& N_view,
+                    auto&& phi_view,
+                    auto&& r_eff_partials_view,
+                    auto&& N_partials_view,
+                    auto&& phi_partials_view)
+                {
+                  auto jac_id = inst.jac_indices.AsVector().begin();
 
-              // Pre-extract BlockViews sequentially to avoid unspecified argument evaluation order
-              auto bv_gg = jacobian_values.GetBlockView(*jac_id++);
-              auto bv_ga = jacobian_values.GetBlockView(*jac_id++);
-              auto bv_gs = jacobian_values.GetBlockView(*jac_id++);
-              auto bv_ag = jacobian_values.GetBlockView(*jac_id++);
-              auto bv_aa = jacobian_values.GetBlockView(*jac_id++);
-              auto bv_as = jacobian_values.GetBlockView(*jac_id++);
+                  // Pre-extract BlockViews sequentially to avoid unspecified argument evaluation order
+                  auto bv_gg = jacobian_values.GetBlockView(*jac_id++);
+                  auto bv_ga = jacobian_values.GetBlockView(*jac_id++);
+                  auto bv_gs = jacobian_values.GetBlockView(*jac_id++);
+                  auto bv_ag = jacobian_values.GetBlockView(*jac_id++);
+                  auto bv_aa = jacobian_values.GetBlockView(*jac_id++);
+                  auto bv_as = jacobian_values.GetBlockView(*jac_id++);
 
-              // Read inputs and compute direct Jacobian entries
-              jacobian_values.ForEachBlock(
-                  [&inst](
-                      const double& r_eff,
-                      const double& N,
-                      const double& phi,
-                      const double& hlc,
-                      const double& T,
-                      const double& gas,
-                      const double& aq,
-                      const double& solvent,
-                      double& j_gg,
-                      double& j_ga,
-                      double& j_gs,
-                      double& j_ag,
-                      double& j_aa,
-                      double& j_as)
+                  // Read inputs and compute direct Jacobian entries
+                  jacobian_values.ForEachBlock(
+                      [&inst](
+                          const double& r_eff,
+                          const double& N,
+                          const double& phi,
+                          const double& hlc,
+                          const double& T,
+                          const double& gas,
+                          const double& aq,
+                          const double& solvent,
+                          double& j_gg,
+                          double& j_ga,
+                          double& j_gs,
+                          double& j_ag,
+                          double& j_aa,
+                          double& j_as)
+                      {
+                        double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
+                        double ke = kc / (hlc * miam::GAS_CONSTANT * T);
+                        double fv = solvent * inst.molar_volume;
+                        // -J[gas, gas] = +φ · k_cond
+                        j_gg += phi * kc;
+                        // -J[gas, aq] = -φ · k_evap / f_v
+                        j_ga -= phi * ke / fv;
+                        // -J[gas, solvent] = +φ · k_evap · [aq] / (f_v · [solvent])
+                        j_gs += phi * ke * aq / (fv * solvent);
+                        // -J[aq, gas] = -φ · k_cond
+                        j_ag -= phi * kc;
+                        // -J[aq, aq] = +φ · k_evap / f_v
+                        j_aa += phi * ke / fv;
+                        // -J[aq, solvent] = -φ · k_evap · [aq] / (f_v · [solvent])
+                        j_as -= phi * ke * aq / (fv * solvent);
+                      },
+                      r_eff_view.GetConstColumnView(0),
+                      N_view.GetConstColumnView(0),
+                      phi_view.GetConstColumnView(0),
+                      state_parameters.GetConstColumnView(inst.hlc_param_idx),
+                      state_parameters.GetConstColumnView(inst.temperature_param_idx),
+                      state_variables.GetConstColumnView(gas_idx),
+                      state_variables.GetConstColumnView(inst.aq_species_idx),
+                      state_variables.GetConstColumnView(inst.solvent_species_idx),
+                      bv_gg,
+                      bv_ga,
+                      bv_gs,
+                      bv_ag,
+                      bv_aa,
+                      bv_as);
+
+                  // Indirect entries through r_eff
+                  for (std::size_t k = 0; k < inst.n_r_eff_deps; ++k)
                   {
-                    double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
-                    double ke = kc / (hlc * miam::GAS_CONSTANT * T);
-                    double fv = solvent * inst.molar_volume;
-                    // -J[gas, gas] = +φ · k_cond
-                    j_gg += phi * kc;
-                    // -J[gas, aq] = -φ · k_evap / f_v
-                    j_ga -= phi * ke / fv;
-                    // -J[gas, solvent] = +φ · k_evap · [aq] / (f_v · [solvent])
-                    j_gs += phi * ke * aq / (fv * solvent);
-                    // -J[aq, gas] = -φ · k_cond
-                    j_ag -= phi * kc;
-                    // -J[aq, aq] = +φ · k_evap / f_v
-                    j_aa += phi * ke / fv;
-                    // -J[aq, solvent] = -φ · k_evap · [aq] / (f_v · [solvent])
-                    j_as -= phi * ke * aq / (fv * solvent);
-                  },
-                  r_eff_view.GetConstColumnView(0),
-                  N_view.GetConstColumnView(0),
-                  phi_view.GetConstColumnView(0),
-                  state_parameters.GetConstColumnView(inst.hlc_param_idx),
-                  state_parameters.GetConstColumnView(inst.temperature_param_idx),
-                  state_variables.GetConstColumnView(gas_idx),
-                  state_variables.GetConstColumnView(inst.aq_species_idx),
-                  state_variables.GetConstColumnView(inst.solvent_species_idx),
-                  bv_gg,
-                  bv_ga,
-                  bv_gs,
-                  bv_ag,
-                  bv_aa,
-                  bv_as);
+                    auto bv_r_gas = jacobian_values.GetBlockView(*jac_id++);
+                    auto bv_r_aq = jacobian_values.GetBlockView(*jac_id++);
+                    jacobian_values.ForEachBlock(
+                        [&inst](
+                            const double& r_eff,
+                            const double& N,
+                            const double& phi,
+                            const double& hlc,
+                            const double& T,
+                            const double& gas,
+                            const double& aq,
+                            const double& solvent,
+                            const double& dr_dvar,
+                            double& j_gas,
+                            double& j_aq)
+                        {
+                          double kc_dummy, dk_dr, dk_dN_unused;
+                          inst.cond_rate_provider.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr, dk_dN_unused);
+                          double dke_dr = dk_dr / (hlc * miam::GAS_CONSTANT * T);
+                          double fv = solvent * inst.molar_volume;
+                          double eff = phi * (dk_dr * dr_dvar * gas - dke_dr * dr_dvar * aq / fv);
+                          j_gas += eff;
+                          j_aq -= eff;
+                        },
+                        r_eff_view.GetConstColumnView(0),
+                        N_view.GetConstColumnView(0),
+                        phi_view.GetConstColumnView(0),
+                        state_parameters.GetConstColumnView(inst.hlc_param_idx),
+                        state_parameters.GetConstColumnView(inst.temperature_param_idx),
+                        state_variables.GetConstColumnView(gas_idx),
+                        state_variables.GetConstColumnView(inst.aq_species_idx),
+                        state_variables.GetConstColumnView(inst.solvent_species_idx),
+                        r_eff_partials_view.GetConstColumnView(k),
+                        bv_r_gas,
+                        bv_r_aq);
+                  }
 
-              // Indirect entries through r_eff
-              for (std::size_t k = 0; k < inst.n_r_eff_deps; ++k)
-              {
-                auto bv_r_gas = jacobian_values.GetBlockView(*jac_id++);
-                auto bv_r_aq = jacobian_values.GetBlockView(*jac_id++);
-                jacobian_values.ForEachBlock(
-                    [&inst](
-                        const double& r_eff,
-                        const double& N,
-                        const double& phi,
-                        const double& hlc,
-                        const double& T,
-                        const double& gas,
-                        const double& aq,
-                        const double& solvent,
-                        const double& dr_dvar,
-                        double& j_gas,
-                        double& j_aq)
-                    {
-                      double kc_dummy, dk_dr, dk_dN_unused;
-                      inst.cond_rate_provider.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr, dk_dN_unused);
-                      double dke_dr = dk_dr / (hlc * miam::GAS_CONSTANT * T);
-                      double fv = solvent * inst.molar_volume;
-                      double eff = phi * (dk_dr * dr_dvar * gas - dke_dr * dr_dvar * aq / fv);
-                      j_gas += eff;
-                      j_aq -= eff;
-                    },
-                    r_eff_view.GetConstColumnView(0),
-                    N_view.GetConstColumnView(0),
-                    phi_view.GetConstColumnView(0),
-                    state_parameters.GetConstColumnView(inst.hlc_param_idx),
-                    state_parameters.GetConstColumnView(inst.temperature_param_idx),
-                    state_variables.GetConstColumnView(gas_idx),
-                    state_variables.GetConstColumnView(inst.aq_species_idx),
-                    state_variables.GetConstColumnView(inst.solvent_species_idx),
-                    r_eff_partials_view.GetConstColumnView(k),
-                    bv_r_gas,
-                    bv_r_aq);
-              }
+                  // Indirect entries through N
+                  for (std::size_t k = 0; k < inst.n_N_deps; ++k)
+                  {
+                    auto bv_N_gas = jacobian_values.GetBlockView(*jac_id++);
+                    auto bv_N_aq = jacobian_values.GetBlockView(*jac_id++);
+                    jacobian_values.ForEachBlock(
+                        [&inst](
+                            const double& r_eff,
+                            const double& N,
+                            const double& phi,
+                            const double& hlc,
+                            const double& T,
+                            const double& gas,
+                            const double& aq,
+                            const double& solvent,
+                            const double& dN_dvar,
+                            double& j_gas,
+                            double& j_aq)
+                        {
+                          double kc_dummy, dk_dr_unused, dk_dN;
+                          inst.cond_rate_provider.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr_unused, dk_dN);
+                          double dke_dN = dk_dN / (hlc * miam::GAS_CONSTANT * T);
+                          double fv = solvent * inst.molar_volume;
+                          double eff = phi * (dk_dN * dN_dvar * gas - dke_dN * dN_dvar * aq / fv);
+                          j_gas += eff;
+                          j_aq -= eff;
+                        },
+                        r_eff_view.GetConstColumnView(0),
+                        N_view.GetConstColumnView(0),
+                        phi_view.GetConstColumnView(0),
+                        state_parameters.GetConstColumnView(inst.hlc_param_idx),
+                        state_parameters.GetConstColumnView(inst.temperature_param_idx),
+                        state_variables.GetConstColumnView(gas_idx),
+                        state_variables.GetConstColumnView(inst.aq_species_idx),
+                        state_variables.GetConstColumnView(inst.solvent_species_idx),
+                        N_partials_view.GetConstColumnView(k),
+                        bv_N_gas,
+                        bv_N_aq);
+                  }
 
-              // Indirect entries through N
-              for (std::size_t k = 0; k < inst.n_N_deps; ++k)
-              {
-                auto bv_N_gas = jacobian_values.GetBlockView(*jac_id++);
-                auto bv_N_aq = jacobian_values.GetBlockView(*jac_id++);
-                jacobian_values.ForEachBlock(
-                    [&inst](
-                        const double& r_eff,
-                        const double& N,
-                        const double& phi,
-                        const double& hlc,
-                        const double& T,
-                        const double& gas,
-                        const double& aq,
-                        const double& solvent,
-                        const double& dN_dvar,
-                        double& j_gas,
-                        double& j_aq)
-                    {
-                      double kc_dummy, dk_dr_unused, dk_dN;
-                      inst.cond_rate_provider.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr_unused, dk_dN);
-                      double dke_dN = dk_dN / (hlc * miam::GAS_CONSTANT * T);
-                      double fv = solvent * inst.molar_volume;
-                      double eff = phi * (dk_dN * dN_dvar * gas - dke_dN * dN_dvar * aq / fv);
-                      j_gas += eff;
-                      j_aq -= eff;
-                    },
-                    r_eff_view.GetConstColumnView(0),
-                    N_view.GetConstColumnView(0),
-                    phi_view.GetConstColumnView(0),
-                    state_parameters.GetConstColumnView(inst.hlc_param_idx),
-                    state_parameters.GetConstColumnView(inst.temperature_param_idx),
-                    state_variables.GetConstColumnView(gas_idx),
-                    state_variables.GetConstColumnView(inst.aq_species_idx),
-                    state_variables.GetConstColumnView(inst.solvent_species_idx),
-                    N_partials_view.GetConstColumnView(k),
-                    bv_N_gas,
-                    bv_N_aq);
-              }
-
-              // Indirect entries through φ_p (negated: MICM solver expects -J)
-              for (std::size_t k = 0; k < inst.n_phi_deps; ++k)
-              {
-                auto bv_phi_gas = jacobian_values.GetBlockView(*jac_id++);
-                auto bv_phi_aq = jacobian_values.GetBlockView(*jac_id++);
-                jacobian_values.ForEachBlock(
-                    [&inst](
-                        const double& r_eff,
-                        const double& N,
-                        const double& phi,
-                        const double& hlc,
-                        const double& T,
-                        const double& gas,
-                        const double& aq,
-                        const double& solvent,
-                        const double& dphi_dvar,
-                        double& j_gas,
-                        double& j_aq)
-                    {
-                      double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
-                      double ke = kc / (hlc * miam::GAS_CONSTANT * T);
-                      double fv = solvent * inst.molar_volume;
-                      double R = kc * gas - ke * aq / fv;
-                      j_gas += R * dphi_dvar;
-                      j_aq -= R * dphi_dvar;
-                    },
-                    r_eff_view.GetConstColumnView(0),
-                    N_view.GetConstColumnView(0),
-                    phi_view.GetConstColumnView(0),
-                    state_parameters.GetConstColumnView(inst.hlc_param_idx),
-                    state_parameters.GetConstColumnView(inst.temperature_param_idx),
-                    state_variables.GetConstColumnView(gas_idx),
-                    state_variables.GetConstColumnView(inst.aq_species_idx),
-                    state_variables.GetConstColumnView(inst.solvent_species_idx),
-                    phi_partials_view.GetConstColumnView(k),
-                    bv_phi_gas,
-                    bv_phi_aq);
-              }
-            },
-            dummy_state_parameters,
-            dummy_state_variables,
-            jacobian,
-            dummy_buf,
-            dummy_buf,
-            dummy_buf,
-            dummy_partials,
-            dummy_partials,
-            dummy_partials));
+                  // Indirect entries through φ_p (negated: MICM solver expects -J)
+                  for (std::size_t k = 0; k < inst.n_phi_deps; ++k)
+                  {
+                    auto bv_phi_gas = jacobian_values.GetBlockView(*jac_id++);
+                    auto bv_phi_aq = jacobian_values.GetBlockView(*jac_id++);
+                    jacobian_values.ForEachBlock(
+                        [&inst](
+                            const double& r_eff,
+                            const double& N,
+                            const double& phi,
+                            const double& hlc,
+                            const double& T,
+                            const double& gas,
+                            const double& aq,
+                            const double& solvent,
+                            const double& dphi_dvar,
+                            double& j_gas,
+                            double& j_aq)
+                        {
+                          double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
+                          double ke = kc / (hlc * miam::GAS_CONSTANT * T);
+                          double fv = solvent * inst.molar_volume;
+                          double R = kc * gas - ke * aq / fv;
+                          j_gas += R * dphi_dvar;
+                          j_aq -= R * dphi_dvar;
+                        },
+                        r_eff_view.GetConstColumnView(0),
+                        N_view.GetConstColumnView(0),
+                        phi_view.GetConstColumnView(0),
+                        state_parameters.GetConstColumnView(inst.hlc_param_idx),
+                        state_parameters.GetConstColumnView(inst.temperature_param_idx),
+                        state_variables.GetConstColumnView(gas_idx),
+                        state_variables.GetConstColumnView(inst.aq_species_idx),
+                        state_variables.GetConstColumnView(inst.solvent_species_idx),
+                        phi_partials_view.GetConstColumnView(k),
+                        bv_phi_gas,
+                        bv_phi_aq);
+                  }
+                },
+                dummy_state_parameters,
+                dummy_state_variables,
+                jacobian,
+                dummy_buf,
+                dummy_buf,
+                dummy_buf,
+                dummy_partials,
+                dummy_partials,
+                dummy_partials));
       }
 
       return [jac_instances = std::move(jac_instances), inner_jac_functions = std::move(inner_jac_functions), gas_idx](

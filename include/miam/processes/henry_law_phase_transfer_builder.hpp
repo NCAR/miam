@@ -4,8 +4,8 @@
 #pragma once
 
 #include <miam/processes/henry_law_phase_transfer.hpp>
-#include <miam/util/miam_exception.hpp>
 #include <miam/util/error.hpp>
+#include <miam/util/miam_exception.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
@@ -100,49 +100,49 @@ namespace miam
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_INVALID_PARAMETER,
+            MIAM_CONFIGURATION_MISSING_BUILDER_PARAMETER,
             "HenryLawPhaseTransferBuilder requires the condensed phase to be set.");
       }
       if (!gas_species_is_set_)
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_INVALID_PARAMETER,
+            MIAM_CONFIGURATION_MISSING_BUILDER_PARAMETER,
             "HenryLawPhaseTransferBuilder requires the gas species to be set.");
       }
       if (!condensed_species_is_set_)
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_INVALID_PARAMETER,
+            MIAM_CONFIGURATION_MISSING_BUILDER_PARAMETER,
             "HenryLawPhaseTransferBuilder requires the condensed species to be set.");
       }
       if (!solvent_is_set_)
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_INVALID_PARAMETER,
+            MIAM_CONFIGURATION_MISSING_BUILDER_PARAMETER,
             "HenryLawPhaseTransferBuilder requires the solvent to be set.");
       }
       if (!henry_law_constant_)
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_INVALID_PARAMETER,
+            MIAM_CONFIGURATION_MISSING_BUILDER_PARAMETER,
             "HenryLawPhaseTransferBuilder requires the Henry's Law constant to be set.");
       }
       if (!diffusion_coefficient_is_set_)
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_INVALID_PARAMETER,
+            MIAM_CONFIGURATION_MISSING_BUILDER_PARAMETER,
             "HenryLawPhaseTransferBuilder requires the diffusion coefficient to be set.");
       }
       if (!accommodation_coefficient_is_set_)
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_INVALID_PARAMETER,
+            MIAM_CONFIGURATION_MISSING_BUILDER_PARAMETER,
             "HenryLawPhaseTransferBuilder requires the accommodation coefficient to be set.");
       }
 
