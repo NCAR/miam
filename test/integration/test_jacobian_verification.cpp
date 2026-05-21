@@ -542,8 +542,6 @@ TEST(JacobianVerification, HenryLawEquilibriumConstraint)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(HenrysLawConstant(
           HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
-      .SetSolventMolecularWeight(solvent_molecular_weight)
-      .SetSolventDensity(solvent_density)
       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -665,8 +663,6 @@ TEST(JacobianVerification, HenryLawEquilibriumWithConservation)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(HenrysLawConstant(
           HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
-      .SetSolventMolecularWeight(solvent_molecular_weight)
-      .SetSolventDensity(solvent_density)
       .Build();
 
   double total = 1.0;

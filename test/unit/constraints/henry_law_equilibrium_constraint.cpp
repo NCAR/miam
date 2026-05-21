@@ -30,12 +30,14 @@ namespace
 {
   using DMP = micm::Matrix<double>;
 
-  auto h2o = micm::Species{ "H2O" };
+  constexpr double water_molecular_weight = 0.018;
+  constexpr double water_density = 1000.0;
+  auto h2o = micm::Species{ "H2O",
+      { { "molecular weight [kg mol-1]", water_molecular_weight },
+        { "density [kg m-3]", water_density } } };
   auto A_g = micm::Species{ "A_g" };
   auto A_aq = micm::Species{ "A_aq" };
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { A_aq } } };
-  constexpr double water_molecular_weight = 0.018;
-  constexpr double water_density = 1000.0;
 
   /// @brief Build state parameter index map from a constraint's ConstraintStateParameterNames
   template<typename ConstraintT>
@@ -62,8 +64,6 @@ TEST(HenryLawEquilibriumConstraint, AlgebraicVariableNamesSinglePrefix)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -83,8 +83,6 @@ TEST(HenryLawEquilibriumConstraint, AlgebraicVariableNamesMultiplePrefixes)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -108,8 +106,6 @@ TEST(HenryLawEquilibriumConstraint, SpeciesDependencies)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -132,8 +128,6 @@ TEST(HenryLawEquilibriumConstraint, SpeciesDependenciesMultipleInstances)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -161,8 +155,6 @@ TEST(HenryLawEquilibriumConstraint, NonZeroJacobianElements)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -196,8 +188,6 @@ TEST(HenryLawEquilibriumConstraint, ResidualSingleInstance)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -250,8 +240,6 @@ TEST(HenryLawEquilibriumConstraint, ResidualMultipleInstances)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -310,8 +298,6 @@ TEST(HenryLawEquilibriumConstraint, JacobianSingleInstance)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -380,8 +366,6 @@ TEST(HenryLawEquilibriumConstraint, UpdateConstraintParametersTemperatureDep)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -422,8 +406,6 @@ TEST(HenryLawEquilibriumConstraint, BuilderValidation)
           .SetSolvent(h2o)
           .SetCondensedPhase(aqueous_phase)
           .SetHenryLawConstant(FakeHLC{})
-          .SetSolventMolecularWeight(water_molecular_weight)
-          .SetSolventDensity(water_density)
           .Build(),
       std::runtime_error);
 
@@ -434,8 +416,6 @@ TEST(HenryLawEquilibriumConstraint, BuilderValidation)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
                         .SetHenryLawConstant(FakeHLC{})
-                        .SetSolventMolecularWeight(water_molecular_weight)
-                        .SetSolventDensity(water_density)
                         .Build();
   EXPECT_EQ(constraint.gas_species_.name_, "A_g");
   EXPECT_EQ(constraint.condensed_species_.name_, "A_aq");
@@ -552,8 +532,6 @@ TEST(HenryLawEquilibriumConstraint, JacobianFDSingleInstance)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -588,8 +566,6 @@ TEST(HenryLawEquilibriumConstraint, JacobianFDMultipleInstances)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -629,8 +605,6 @@ TEST(HenryLawEquilibriumConstraint, ResidualMultipleCells)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -680,8 +654,6 @@ TEST(HenryLawEquilibriumConstraint, MultiInstanceMultiCellFD)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -721,8 +693,6 @@ TEST(HenryLawEquilibriumConstraint, ThreeInstancesFD)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -766,8 +736,6 @@ TEST(HenryLawEquilibriumConstraint, JacobianAccumulates)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -813,8 +781,6 @@ TEST(HenryLawEquilibriumConstraint, ResidualSetsNotAccumulates)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -854,8 +820,6 @@ TEST(HenryLawEquilibriumConstraint, TemperatureDependentHlcMultiCell)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -911,8 +875,6 @@ TEST(HenryLawEquilibriumConstraint, CrossInstanceJacobianIsolation)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -964,8 +926,6 @@ TEST(HenryLawEquilibriumConstraint, JacobianMultipleInstancesAnalytical)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1029,8 +989,6 @@ TEST(HenryLawEquilibriumConstraint, LargeHLC)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1074,8 +1032,6 @@ TEST(HenryLawEquilibriumConstraint, CopiedConstraintProducesSameResults)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   auto copy = original.CopyWithNewUuid();
@@ -1121,8 +1077,6 @@ TEST(HenryLawEquilibriumConstraint, ResidualZeroAtEquilibrium)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1166,8 +1120,6 @@ TEST(HenryLawEquilibriumConstraint, KitchenSinkFD)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1230,8 +1182,6 @@ namespace
         .SetSolvent(h2o)
         .SetCondensedPhase(aqueous_phase)
         .SetHenryLawConstant(hlc_fn)
-        .SetSolventMolecularWeight(water_molecular_weight)
-        .SetSolventDensity(water_density)
         .Build();
 
     std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1385,8 +1335,6 @@ TEST(HenryLawEquilibriumConstraint, ResidualZeroGasConcentration)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1423,8 +1371,6 @@ TEST(HenryLawEquilibriumConstraint, ResidualZeroAqueousConcentration)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1464,8 +1410,6 @@ TEST(HenryLawEquilibriumConstraint, JacobianFDZeroConcentrations)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1502,8 +1446,6 @@ TEST(HenryLawEquilibriumConstraint, JacobianFDTemperatureExtremes)
       .SetSolvent(h2o)
       .SetCondensedPhase(aqueous_phase)
       .SetHenryLawConstant(hlc)
-      .SetSolventMolecularWeight(water_molecular_weight)
-      .SetSolventDensity(water_density)
       .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
