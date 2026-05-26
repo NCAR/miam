@@ -104,7 +104,7 @@ namespace miam
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            MIAM_CONFIGURATION_MISSING_STATE_PARAMETER,
             "TwoMomentMode::SetDefaultParameters: Geometric standard deviation parameter not found in state.");
       }
       for (std::size_t i_cell = 0; i_cell < state.variables_.NumRows(); ++i_cell)

@@ -107,7 +107,7 @@ namespace miam
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            MIAM_CONFIGURATION_MISSING_STATE_PARAMETER,
             "SingleMomentMode::SetDefaultParameters: GEOMETRIC_MEAN_RADIUS parameter not found in state for " + prefix_);
       }
       auto gsd_it = state.custom_rate_parameter_map_.find(GeometricStandardDeviation());
@@ -115,7 +115,7 @@ namespace miam
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            MIAM_CONFIGURATION_MISSING_STATE_PARAMETER,
             "SingleMomentMode::SetDefaultParameters: GEOMETRIC_STANDARD_DEVIATION parameter not found in state for " + prefix_);
       }
       for (std::size_t i_cell = 0; i_cell < state.variables_.NumRows(); ++i_cell)
