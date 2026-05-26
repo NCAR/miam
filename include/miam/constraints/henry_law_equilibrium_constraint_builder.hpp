@@ -4,6 +4,8 @@
 #pragma once
 
 #include <miam/constraints/henry_law_equilibrium_constraint.hpp>
+#include <miam/util/miam_exception.hpp>
+#include <miam/util/error.hpp>
 
 #include <micm/system/conditions.hpp>
 
@@ -67,15 +69,30 @@ namespace miam
     HenryLawEquilibriumConstraint Build() const
     {
       if (!gas_species_is_set_)
-        throw std::runtime_error("HenryLawEquilibriumConstraintBuilder requires the gas species to be set.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_GAS_SPECIES,
+            "HenryLawEquilibriumConstraintBuilder requires the gas species to be set.");
       if (!condensed_species_is_set_)
-        throw std::runtime_error("HenryLawEquilibriumConstraintBuilder requires the condensed species to be set.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "HenryLawEquilibriumConstraintBuilder requires the condensed species to be set.");
       if (!solvent_is_set_)
-        throw std::runtime_error("HenryLawEquilibriumConstraintBuilder requires the solvent to be set.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "HenryLawEquilibriumConstraintBuilder requires the solvent to be set.");
       if (!condensed_phase_is_set_)
-        throw std::runtime_error("HenryLawEquilibriumConstraintBuilder requires the condensed phase to be set.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "HenryLawEquilibriumConstraintBuilder requires the condensed phase to be set.");
       if (!henry_law_constant_)
-        throw std::runtime_error("HenryLawEquilibriumConstraintBuilder requires the Henry's Law constant to be set.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "HenryLawEquilibriumConstraintBuilder requires the Henry's Law constant to be set.");
 
       double solvent_molecular_weight = solvent_.GetProperty<double>("molecular weight [kg mol-1]");
       double solvent_density = solvent_.GetProperty<double>("density [kg m-3]");

@@ -4,6 +4,8 @@
 #pragma once
 
 #include <miam/constraints/dissolved_equilibrium_constraint.hpp>
+#include <miam/util/error.hpp>
+#include <miam/util/miam_exception.hpp>
 
 #include <micm/system/conditions.hpp>
 
@@ -81,17 +83,35 @@ namespace miam
     DissolvedEquilibriumConstraint Build() const
     {
       if (!phase_is_set_)
-        throw std::runtime_error("DissolvedEquilibriumConstraintBuilder requires the phase to be set.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedEquilibriumConstraintBuilder requires the phase to be set.");
       if (reactants_.empty())
-        throw std::runtime_error("DissolvedEquilibriumConstraintBuilder requires at least one reactant.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedEquilibriumConstraintBuilder requires at least one reactant.");
       if (products_.empty())
-        throw std::runtime_error("DissolvedEquilibriumConstraintBuilder requires at least one product.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedEquilibriumConstraintBuilder requires at least one product.");
       if (!algebraic_species_is_set_)
-        throw std::runtime_error("DissolvedEquilibriumConstraintBuilder requires the algebraic species to be set.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedEquilibriumConstraintBuilder requires the algebraic species to be set.");
       if (!solvent_is_set_)
-        throw std::runtime_error("DissolvedEquilibriumConstraintBuilder requires the solvent to be set.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedEquilibriumConstraintBuilder requires the solvent to be set.");
       if (!equilibrium_constant_)
-        throw std::runtime_error("DissolvedEquilibriumConstraintBuilder requires the equilibrium constant to be set.");
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedEquilibriumConstraintBuilder requires the equilibrium constant to be set.");
 
       return DissolvedEquilibriumConstraint(
           equilibrium_constant_, reactants_, products_, algebraic_species_, solvent_, phase_, solvent_floor_);

@@ -4,6 +4,8 @@
 #pragma once
 
 #include <miam/aerosol_property.hpp>
+#include <miam/util/miam_exception.hpp>
+#include <miam/util/error.hpp>
 
 #include <micm/system/phase.hpp>
 
@@ -100,7 +102,9 @@ namespace miam
       auto gsd_it = state.custom_rate_parameter_map_.find(GeometricStandardDeviation());
       if (gsd_it == state.custom_rate_parameter_map_.end())
       {
-        throw std::runtime_error(
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_STATE_PARAMETER,
             "TwoMomentMode::SetDefaultParameters: Geometric standard deviation parameter not found in state.");
       }
       for (std::size_t i_cell = 0; i_cell < state.variables_.NumRows(); ++i_cell)
@@ -314,7 +318,9 @@ namespace miam
             break;
           }
           if (target_phase_name.empty())
-            throw std::runtime_error(
+            throw MiamException(
+                MIAM_ERROR_CATEGORY_CONFIGURATION,
+                MIAM_CONFIGURATION_PHASE_NAME_REQUIRED,
                 "TwoMomentMode::GetPropertyProvider: target_phase_name required for PhaseVolumeFraction "
                 "with multiple phases");
           std::vector<std::size_t> all_species;
@@ -448,7 +454,10 @@ namespace miam
               dummy_partials);
           break;
         }
-        default: throw std::runtime_error("TwoMomentMode: unsupported AerosolProperty");
+        default: throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_UNSUPPORTED_PROPERTY,
+            "TwoMomentMode: unsupported AerosolProperty");
       }
       return provider;
     }

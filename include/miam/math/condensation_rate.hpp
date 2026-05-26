@@ -4,6 +4,8 @@
 #pragma once
 
 #include <miam/util/constants.hpp>
+#include <miam/util/miam_exception.hpp>
+#include <miam/util/error.hpp>
 
 #include <micm/Util.hpp>
 
@@ -67,11 +69,26 @@ namespace miam
   MakeCondensationRateProvider(double diffusion_coefficient, double accommodation_coefficient, double molecular_weight)
   {
     if (diffusion_coefficient <= 0)
-      throw std::invalid_argument("Diffusion coefficient must be positive.");
+    {
+      throw MiamException(
+          MIAM_ERROR_CATEGORY_CONFIGURATION,
+          MIAM_CONFIGURATION_INVALID_PARAMETER,
+          "Diffusion coefficient must be positive.");
+    }
     if (accommodation_coefficient <= 0)
-      throw std::invalid_argument("Accommodation coefficient must be positive.");
+    {
+      throw MiamException(
+          MIAM_ERROR_CATEGORY_CONFIGURATION,
+          MIAM_CONFIGURATION_INVALID_PARAMETER,
+          "Accommodation coefficient must be positive.");
+    }
     if (molecular_weight <= 0)
-      throw std::invalid_argument("Molecular weight must be positive.");
+    {
+      throw MiamException(
+          MIAM_ERROR_CATEGORY_CONFIGURATION,
+          MIAM_CONFIGURATION_INVALID_PARAMETER,
+          "Molecular weight must be positive.");
+    }
 
     CondensationRateProvider provider;
 
