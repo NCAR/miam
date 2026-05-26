@@ -4,8 +4,8 @@
 #pragma once
 
 #include <miam/processes/dissolved_reaction.hpp>
-#include <miam/util/miam_exception.hpp>
 #include <miam/util/error.hpp>
+#include <miam/util/miam_exception.hpp>
 
 #include <micm/system/conditions.hpp>
 

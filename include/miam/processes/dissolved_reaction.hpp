@@ -433,8 +433,7 @@ namespace miam
               // Calculate partials for independent solvent
               // dr/d[S] = k * (eps + (1-n_r)*[S]) / ([S]+eps)^(n_r+1) * prod([R_i])
               jacobian_values.ForEachBlock(
-                  [&](const double& rate_constant, const double& solvent, double& partial)
-                  {
+                  [&](const double& rate_constant, const double& solvent, double& partial) {
                     partial =
                         rate_constant * (eps + (1.0 - static_cast<int>(n_r)) * solvent) / std::pow(solvent + eps, n_r + 1);
                   },
@@ -720,8 +719,7 @@ namespace miam
               // Step E: Partial for independent solvent
               // dr/dS = k * (eps + (1-n_r)*S) / (S+eps)^{n_r+1} * prod(R_i)
               jacobian_values.ForEachBlock(
-                  [&](const double& rate_constant, const double& solvent, double& partial)
-                  {
+                  [&](const double& rate_constant, const double& solvent, double& partial) {
                     partial =
                         rate_constant * (eps + (1.0 - static_cast<int>(n_r)) * solvent) / std::pow(solvent + eps, n_r + 1);
                   },

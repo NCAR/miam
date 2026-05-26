@@ -4,8 +4,8 @@
 #pragma once
 
 #include <miam/aerosol_property.hpp>
-#include <miam/util/miam_exception.hpp>
 #include <miam/util/error.hpp>
+#include <miam/util/miam_exception.hpp>
 
 #include <micm/system/phase.hpp>
 
@@ -454,10 +454,11 @@ namespace miam
               dummy_partials);
           break;
         }
-        default: throw MiamException(
-            MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_UNSUPPORTED_PROPERTY,
-            "TwoMomentMode: unsupported AerosolProperty");
+        default:
+          throw MiamException(
+              MIAM_ERROR_CATEGORY_CONFIGURATION,
+              MIAM_CONFIGURATION_UNSUPPORTED_PROPERTY,
+              "TwoMomentMode: unsupported AerosolProperty");
       }
       return provider;
     }

@@ -4,8 +4,8 @@
 #pragma once
 
 #include <miam/constraints/henry_law_equilibrium_constraint.hpp>
-#include <miam/util/miam_exception.hpp>
 #include <miam/util/error.hpp>
+#include <miam/util/miam_exception.hpp>
 
 #include <micm/system/conditions.hpp>
 
