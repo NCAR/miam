@@ -42,9 +42,9 @@ namespace miam
     micm::Species condensed_species_;                                               ///< Condensed-phase solute species
     micm::Species solvent_;                                                         ///< Condensed-phase solvent species
     micm::Phase condensed_phase_;                                                   ///< The condensed phase
-    double solvent_molecular_weight_;                                               ///< Solvent molecular weight [kg mol⁻¹]
-    double solvent_density_;                                                        ///< Solvent density [kg m⁻³]
-    std::string uuid_;                                                              ///< Unique identifier
+    double solvent_molecular_weight_;  ///< Solvent molecular weight [kg mol⁻¹]
+    double solvent_density_;           ///< Solvent density [kg m⁻³]
+    std::string uuid_;                 ///< Unique identifier
 
     HenryLawEquilibriumConstraint() = delete;
 

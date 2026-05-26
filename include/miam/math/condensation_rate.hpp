@@ -4,8 +4,8 @@
 #pragma once
 
 #include <miam/util/constants.hpp>
-#include <miam/util/miam_exception.hpp>
 #include <miam/util/error.hpp>
+#include <miam/util/miam_exception.hpp>
 
 #include <micm/Util.hpp>
 
@@ -85,9 +85,7 @@ namespace miam
     if (molecular_weight <= 0)
     {
       throw MiamException(
-          MIAM_ERROR_CATEGORY_CONFIGURATION,
-          MIAM_CONFIGURATION_INVALID_PARAMETER,
-          "Molecular weight must be positive.");
+          MIAM_ERROR_CATEGORY_CONFIGURATION, MIAM_CONFIGURATION_INVALID_PARAMETER, "Molecular weight must be positive.");
     }
 
     CondensationRateProvider provider;

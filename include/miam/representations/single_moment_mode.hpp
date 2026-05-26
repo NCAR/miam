@@ -116,7 +116,8 @@ namespace miam
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
             MIAM_CONFIGURATION_MISSING_STATE_PARAMETER,
-            "SingleMomentMode::SetDefaultParameters: GEOMETRIC_STANDARD_DEVIATION parameter not found in state for " + prefix_);
+            "SingleMomentMode::SetDefaultParameters: GEOMETRIC_STANDARD_DEVIATION parameter not found in state for " +
+                prefix_);
       }
       for (std::size_t i_cell = 0; i_cell < state.variables_.NumRows(); ++i_cell)
       {
@@ -314,7 +315,8 @@ namespace miam
             throw MiamException(
                 MIAM_ERROR_CATEGORY_CONFIGURATION,
                 MIAM_CONFIGURATION_PHASE_NAME_REQUIRED,
-                "SingleMomentMode::GetPropertyProvider: target_phase_name required for PhaseVolumeFraction with multiple phases");
+                "SingleMomentMode::GetPropertyProvider: target_phase_name required for PhaseVolumeFraction with multiple "
+                "phases");
           std::vector<std::size_t> all_species;
           std::vector<double> all_mw_over_rho;
           std::size_t phase_count = 0;
@@ -446,10 +448,11 @@ namespace miam
               dummy_partials);
           break;
         }
-        default: throw MiamException(
-            MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_UNSUPPORTED_PROPERTY,
-            "SingleMomentMode::GetPropertyProvider: unsupported AerosolProperty");
+        default:
+          throw MiamException(
+              MIAM_ERROR_CATEGORY_CONFIGURATION,
+              MIAM_CONFIGURATION_UNSUPPORTED_PROPERTY,
+              "SingleMomentMode::GetPropertyProvider: unsupported AerosolProperty");
       }
       return provider;
     }

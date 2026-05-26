@@ -437,10 +437,11 @@ namespace miam
               dummy_partials);
           break;
         }
-        default: throw MiamException(
-            MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_UNSUPPORTED_PROPERTY,
-            "UniformSection: unsupported AerosolProperty");
+        default:
+          throw MiamException(
+              MIAM_ERROR_CATEGORY_CONFIGURATION,
+              MIAM_CONFIGURATION_UNSUPPORTED_PROPERTY,
+              "UniformSection: unsupported AerosolProperty");
       }
       return provider;
     }
