@@ -97,12 +97,9 @@ TEST(DissolvedReversibleReactionIntegration, SimpleAtoB)
   State state = solver.GetState();
   
   // Find variable indices
-  std::size_t i_A = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.A") - state.variable_names_.begin();
-  std::size_t i_B = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.B") - state.variable_names_.begin();
-  std::size_t i_C = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.C") - state.variable_names_.begin();
-  ASSERT_LT(i_A, state.variable_names_.size()) << "Species A not found in state variables";
-  ASSERT_LT(i_B, state.variable_names_.size()) << "Species B not found in state variables";
-  ASSERT_LT(i_C, state.variable_names_.size()) << "Species C not found in state variables";
+  std::size_t i_A = state.variable_map_.at("DROPLET.AQUEOUS.A");
+  std::size_t i_B = state.variable_map_.at("DROPLET.AQUEOUS.B");
+  std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
 
   // Set initial conditions
   state.variables_[0][i_A] = A0;     // [A] = 1.0 mol/m^3
@@ -236,10 +233,10 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsReactant)
   State state = solver.GetState();
   
   // Find variable indices
-  std::size_t i_A = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.A") - state.variable_names_.begin();
-  std::size_t i_B = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.B") - state.variable_names_.begin();
-  std::size_t i_C = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.C") - state.variable_names_.begin();
-  
+  std::size_t i_A = state.variable_map_.at("DROPLET.AQUEOUS.A");
+  std::size_t i_B = state.variable_map_.at("DROPLET.AQUEOUS.B");
+  std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
+
   // Set initial conditions
   state.variables_[0][i_A] = A0;
   state.variables_[0][i_B] = 0.0;
@@ -385,13 +382,10 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsProduct) {
   
   // Initialize state
   State state = solver.GetState();
-  std::size_t i_A = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                               "DROPLET.AQUEOUS.A") - state.variable_names_.begin();
-  std::size_t i_B = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                               "DROPLET.AQUEOUS.B") - state.variable_names_.begin();
-  std::size_t i_C = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                               "DROPLET.AQUEOUS.C") - state.variable_names_.begin();
-  
+  std::size_t i_A = state.variable_map_.at("DROPLET.AQUEOUS.A");
+  std::size_t i_B = state.variable_map_.at("DROPLET.AQUEOUS.B");
+  std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
+
   state.variables_[0][i_A] = A0;
   state.variables_[0][i_B] = B0;
   state.variables_[0][i_C] = C0;
@@ -556,20 +550,14 @@ TEST(DissolvedReversibleReactionIntegration, MultiPhaseInstances) {
   State state = solver.GetState();
   
   // Find variable indices for small droplets
-  std::size_t i_A_small = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_SMALL.AQUEOUS_SMALL.A") - state.variable_names_.begin();
-  std::size_t i_B_small = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_SMALL.AQUEOUS_SMALL.B") - state.variable_names_.begin();
-  std::size_t i_C_small = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_SMALL.AQUEOUS_SMALL.C") - state.variable_names_.begin();
-  
+  std::size_t i_A_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS_SMALL.A");
+  std::size_t i_B_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS_SMALL.B");
+  std::size_t i_C_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS_SMALL.C");
+
   // Find variable indices for large droplets
-  std::size_t i_A_large = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_LARGE.AQUEOUS_LARGE.A") - state.variable_names_.begin();
-  std::size_t i_B_large = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_LARGE.AQUEOUS_LARGE.B") - state.variable_names_.begin();
-  std::size_t i_C_large = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_LARGE.AQUEOUS_LARGE.C") - state.variable_names_.begin();
+  std::size_t i_A_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS_LARGE.A");
+  std::size_t i_B_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS_LARGE.B");
+  std::size_t i_C_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS_LARGE.C");
   
   // Set initial conditions
   state.variables_[0][i_A_small] = A0_small;

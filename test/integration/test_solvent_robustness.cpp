@@ -129,15 +129,6 @@ namespace
               << std::endl;
   }
 
-  // ── Variable index lookup ──
-  template <typename StateT>
-  std::size_t FindIdx(const StateT& state, const std::string& name)
-  {
-    auto it = std::find(state.variable_names_.begin(),
-                        state.variable_names_.end(), name);
-    return static_cast<std::size_t>(it - state.variable_names_.begin());
-  }
-
   // ── Check if any variable is NaN or Inf ──
   template <typename StateT>
   bool HasNanOrInf(const StateT& state, std::size_t cell = 0)
@@ -385,11 +376,11 @@ TEST(SolventRobustness, A1_DissolvedReaction_SolventSweep)
     state.conditions_[0].pressure_ = 70000.0;
     state.conditions_[0].CalculateIdealAirDensity();
 
-    auto i_h2o   = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-    auto i_o3    = FindIdx(state, "CLOUD.AQUEOUS.O3_aq");
-    auto i_hso3m = FindIdx(state, "CLOUD.AQUEOUS.HSO3m");
-    auto i_so4mm = FindIdx(state, "CLOUD.AQUEOUS.SO4mm");
-    auto i_hp    = FindIdx(state, "CLOUD.AQUEOUS.Hp");
+    auto i_h2o   = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+    auto i_o3    = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
+    auto i_hso3m = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+    auto i_so4mm = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
+    auto i_hp    = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
 
     state.variables_[0][i_h2o]   = h2o_level;
     state.variables_[0][i_o3]    = 5.0e-7;
@@ -466,10 +457,10 @@ TEST(SolventRobustness, A2_DissolvedReversibleReaction_SolventSweep)
     state.conditions_[0].pressure_ = 70000.0;
     state.conditions_[0].CalculateIdealAirDensity();
 
-    auto i_h2o   = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-    auto i_hso3m = FindIdx(state, "CLOUD.AQUEOUS.HSO3m");
-    auto i_h2o2  = FindIdx(state, "CLOUD.AQUEOUS.H2O2_aq");
-    auto i_inter = FindIdx(state, "CLOUD.AQUEOUS.SO2OOHm");
+    auto i_h2o   = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+    auto i_hso3m = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+    auto i_h2o2  = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
+    auto i_inter = state.variable_map_.at("CLOUD.AQUEOUS.SO2OOHm");
 
     state.variables_[0][i_h2o]   = h2o_level;
     state.variables_[0][i_hso3m] = 1.0e-3;
@@ -540,10 +531,10 @@ TEST(SolventRobustness, A3_DissolvedEquilibriumConstraint_SolventSweep)
     state.conditions_[0].pressure_ = 70000.0;
     state.conditions_[0].CalculateIdealAirDensity();
 
-    auto i_h2o   = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-    auto i_so2   = FindIdx(state, "CLOUD.AQUEOUS.SO2_aq");
-    auto i_hso3m = FindIdx(state, "CLOUD.AQUEOUS.HSO3m");
-    auto i_hp    = FindIdx(state, "CLOUD.AQUEOUS.Hp");
+    auto i_h2o   = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+    auto i_so2   = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+    auto i_hso3m = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+    auto i_hp    = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
 
     state.variables_[0][i_h2o]   = h2o_level;
     state.variables_[0][i_so2]   = 1.0e-4;
@@ -614,9 +605,9 @@ TEST(SolventRobustness, A4_HenryLawConstraint_SolventSweep)
     state.conditions_[0].pressure_ = 70000.0;
     state.conditions_[0].CalculateIdealAirDensity();
 
-    auto i_g  = FindIdx(state, "SO2");
-    auto i_aq = FindIdx(state, "CLOUD.AQUEOUS.SO2_aq");
-    auto i_w  = FindIdx(state, "CLOUD.AQUEOUS.H2O");
+    auto i_g  = state.variable_map_.at("SO2");
+    auto i_aq = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+    auto i_w  = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
 
     state.variables_[0][i_g]  = 3.01e-8;
     state.variables_[0][i_aq] = 0.0;
@@ -711,11 +702,11 @@ TEST(SolventRobustness, A5_HLC_Plus_Dissociation_SolventSweep)
     state.conditions_[0].pressure_ = 70000.0;
     state.conditions_[0].CalculateIdealAirDensity();
 
-    auto i_g     = FindIdx(state, "SO2");
-    auto i_aq    = FindIdx(state, "CLOUD.AQUEOUS.SO2_aq");
-    auto i_hso3m = FindIdx(state, "CLOUD.AQUEOUS.HSO3m");
-    auto i_hp    = FindIdx(state, "CLOUD.AQUEOUS.Hp");
-    auto i_w     = FindIdx(state, "CLOUD.AQUEOUS.H2O");
+    auto i_g     = state.variable_map_.at("SO2");
+    auto i_aq    = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+    auto i_hso3m = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+    auto i_hp    = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+    auto i_w     = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
 
     state.variables_[0][i_g]     = 3.01e-8;
     state.variables_[0][i_aq]    = 0.0;
@@ -859,17 +850,17 @@ TEST(SolventRobustness, A6_FullEquilibrium_SolventSweep)
     state.conditions_[0].pressure_ = 70000.0;
     state.conditions_[0].CalculateIdealAirDensity();
 
-    auto i_so2_g   = FindIdx(state, "SO2");
-    auto i_h2o2_g  = FindIdx(state, "H2O2");
-    auto i_o3_g    = FindIdx(state, "O3");
-    auto i_w       = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-    auto i_so2_aq  = FindIdx(state, "CLOUD.AQUEOUS.SO2_aq");
-    auto i_h2o2_aq = FindIdx(state, "CLOUD.AQUEOUS.H2O2_aq");
-    auto i_o3_aq   = FindIdx(state, "CLOUD.AQUEOUS.O3_aq");
-    auto i_hp      = FindIdx(state, "CLOUD.AQUEOUS.Hp");
-    auto i_ohm     = FindIdx(state, "CLOUD.AQUEOUS.OHm");
-    auto i_hso3m   = FindIdx(state, "CLOUD.AQUEOUS.HSO3m");
-    auto i_so3mm   = FindIdx(state, "CLOUD.AQUEOUS.SO3mm");
+    auto i_so2_g   = state.variable_map_.at("SO2");
+    auto i_h2o2_g  = state.variable_map_.at("H2O2");
+    auto i_o3_g    = state.variable_map_.at("O3");
+    auto i_w       = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+    auto i_so2_aq  = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+    auto i_h2o2_aq = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
+    auto i_o3_aq   = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
+    auto i_hp      = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+    auto i_ohm     = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+    auto i_hso3m   = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+    auto i_so3mm   = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
 
     state.variables_[0][i_so2_g]   = 3.01e-8;
     state.variables_[0][i_h2o2_g]  = 3.01e-8;
@@ -937,19 +928,19 @@ TEST(SolventRobustness, B1_FullMechanism_StaticSweep)
     state.conditions_[0].pressure_ = 70000.0;
     state.conditions_[0].CalculateIdealAirDensity();
 
-    auto i_so2_g   = FindIdx(state, "SO2");
-    auto i_h2o2_g  = FindIdx(state, "H2O2");
-    auto i_o3_g    = FindIdx(state, "O3");
-    auto i_h2o     = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-    auto i_so2_aq  = FindIdx(state, "CLOUD.AQUEOUS.SO2_aq");
-    auto i_h2o2_aq = FindIdx(state, "CLOUD.AQUEOUS.H2O2_aq");
-    auto i_o3_aq   = FindIdx(state, "CLOUD.AQUEOUS.O3_aq");
-    auto i_hp      = FindIdx(state, "CLOUD.AQUEOUS.Hp");
-    auto i_ohm     = FindIdx(state, "CLOUD.AQUEOUS.OHm");
-    auto i_hso3m   = FindIdx(state, "CLOUD.AQUEOUS.HSO3m");
-    auto i_so3mm   = FindIdx(state, "CLOUD.AQUEOUS.SO3mm");
-    auto i_so4mm   = FindIdx(state, "CLOUD.AQUEOUS.SO4mm");
-    auto i_so2oohm = FindIdx(state, "CLOUD.AQUEOUS.SO2OOHm");
+    auto i_so2_g   = state.variable_map_.at("SO2");
+    auto i_h2o2_g  = state.variable_map_.at("H2O2");
+    auto i_o3_g    = state.variable_map_.at("O3");
+    auto i_h2o     = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+    auto i_so2_aq  = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+    auto i_h2o2_aq = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
+    auto i_o3_aq   = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
+    auto i_hp      = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+    auto i_ohm     = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+    auto i_hso3m   = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+    auto i_so3mm   = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
+    auto i_so4mm   = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
+    auto i_so2oohm = state.variable_map_.at("CLOUD.AQUEOUS.SO2OOHm");
 
     // Naive ICs
     state.variables_[0][i_so2_g]   = 3.01e-8;
@@ -1019,26 +1010,26 @@ TEST(SolventRobustness, B2_DynamicEvaporation)
   state.conditions_[0].pressure_ = 70000.0;
   state.conditions_[0].CalculateIdealAirDensity();
 
-  auto i_so2_g   = FindIdx(state, "SO2");
-  auto i_h2o2_g  = FindIdx(state, "H2O2");
-  auto i_o3_g    = FindIdx(state, "O3");
-  auto i_h2o     = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-  auto i_so4mm   = FindIdx(state, "CLOUD.AQUEOUS.SO4mm");
-  auto i_so2oohm = FindIdx(state, "CLOUD.AQUEOUS.SO2OOHm");
-  auto i_hp      = FindIdx(state, "CLOUD.AQUEOUS.Hp");
+  auto i_so2_g   = state.variable_map_.at("SO2");
+  auto i_h2o2_g  = state.variable_map_.at("H2O2");
+  auto i_o3_g    = state.variable_map_.at("O3");
+  auto i_h2o     = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+  auto i_so4mm   = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
+  auto i_so2oohm = state.variable_map_.at("CLOUD.AQUEOUS.SO2OOHm");
+  auto i_hp      = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
 
   // Start with normal cloud water
   state.variables_[0][i_so2_g]   = 3.01e-8;
   state.variables_[0][i_h2o2_g]  = 3.01e-8;
   state.variables_[0][i_o3_g]    = 1.50e-6;
   state.variables_[0][i_h2o]     = C_H2O_NORMAL;
-  state.variables_[0][FindIdx(state, "CLOUD.AQUEOUS.SO2_aq")]  = 0.0;
-  state.variables_[0][FindIdx(state, "CLOUD.AQUEOUS.H2O2_aq")] = 0.0;
-  state.variables_[0][FindIdx(state, "CLOUD.AQUEOUS.O3_aq")]   = 0.0;
+  state.variables_[0][state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq")]  = 0.0;
+  state.variables_[0][state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq")] = 0.0;
+  state.variables_[0][state.variable_map_.at("CLOUD.AQUEOUS.O3_aq")]   = 0.0;
   state.variables_[0][i_hp]      = 1.0;
-  state.variables_[0][FindIdx(state, "CLOUD.AQUEOUS.OHm")]     = 0.0;
-  state.variables_[0][FindIdx(state, "CLOUD.AQUEOUS.HSO3m")]   = 0.0;
-  state.variables_[0][FindIdx(state, "CLOUD.AQUEOUS.SO3mm")]   = 0.0;
+  state.variables_[0][state.variable_map_.at("CLOUD.AQUEOUS.OHm")]     = 0.0;
+  state.variables_[0][state.variable_map_.at("CLOUD.AQUEOUS.HSO3m")]   = 0.0;
+  state.variables_[0][state.variable_map_.at("CLOUD.AQUEOUS.SO3mm")]   = 0.0;
   state.variables_[0][i_so4mm]   = 1.0;
   state.variables_[0][i_so2oohm] = 0.0;
   cloud.SetDefaultParameters(state);
@@ -1119,26 +1110,26 @@ TEST(SolventRobustness, B3_CloudFormation)
   state.conditions_[0].pressure_ = 70000.0;
   state.conditions_[0].CalculateIdealAirDensity();
 
-  auto i_so2_g   = FindIdx(state, "SO2");
-  auto i_h2o2_g  = FindIdx(state, "H2O2");
-  auto i_o3_g    = FindIdx(state, "O3");
-  auto i_h2o     = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-  auto i_so4mm   = FindIdx(state, "CLOUD.AQUEOUS.SO4mm");
-  auto i_so2oohm = FindIdx(state, "CLOUD.AQUEOUS.SO2OOHm");
-  auto i_hp      = FindIdx(state, "CLOUD.AQUEOUS.Hp");
+  auto i_so2_g   = state.variable_map_.at("SO2");
+  auto i_h2o2_g  = state.variable_map_.at("H2O2");
+  auto i_o3_g    = state.variable_map_.at("O3");
+  auto i_h2o     = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+  auto i_so4mm   = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
+  auto i_so2oohm = state.variable_map_.at("CLOUD.AQUEOUS.SO2OOHm");
+  auto i_hp      = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
 
   // Phase 1: Very small cloud water (near-clear)
   state.variables_[0][i_so2_g]   = 3.01e-8;
   state.variables_[0][i_h2o2_g]  = 3.01e-8;
   state.variables_[0][i_o3_g]    = 1.50e-6;
   state.variables_[0][i_h2o]     = 1e-15;  // nearly zero
-  state.variables_[0][FindIdx(state, "CLOUD.AQUEOUS.SO2_aq")]  = 0.0;
-  state.variables_[0][FindIdx(state, "CLOUD.AQUEOUS.H2O2_aq")] = 0.0;
-  state.variables_[0][FindIdx(state, "CLOUD.AQUEOUS.O3_aq")]   = 0.0;
+  state.variables_[0][state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq")]  = 0.0;
+  state.variables_[0][state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq")] = 0.0;
+  state.variables_[0][state.variable_map_.at("CLOUD.AQUEOUS.O3_aq")]   = 0.0;
   state.variables_[0][i_hp]      = 1.0;
-  state.variables_[0][FindIdx(state, "CLOUD.AQUEOUS.OHm")]     = 0.0;
-  state.variables_[0][FindIdx(state, "CLOUD.AQUEOUS.HSO3m")]   = 0.0;
-  state.variables_[0][FindIdx(state, "CLOUD.AQUEOUS.SO3mm")]   = 0.0;
+  state.variables_[0][state.variable_map_.at("CLOUD.AQUEOUS.OHm")]     = 0.0;
+  state.variables_[0][state.variable_map_.at("CLOUD.AQUEOUS.HSO3m")]   = 0.0;
+  state.variables_[0][state.variable_map_.at("CLOUD.AQUEOUS.SO3mm")]   = 0.0;
   state.variables_[0][i_so4mm]   = 1.0;
   state.variables_[0][i_so2oohm] = 0.0;
   cloud.SetDefaultParameters(state);
@@ -1198,19 +1189,19 @@ TEST(SolventRobustness, C1_MixedColumn)
   State state = solver.GetState(NUM_CELLS);
 
   // Get indices (same for all cells)
-  auto i_so2_g   = FindIdx(state, "SO2");
-  auto i_h2o2_g  = FindIdx(state, "H2O2");
-  auto i_o3_g    = FindIdx(state, "O3");
-  auto i_h2o     = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-  auto i_so2_aq  = FindIdx(state, "CLOUD.AQUEOUS.SO2_aq");
-  auto i_h2o2_aq = FindIdx(state, "CLOUD.AQUEOUS.H2O2_aq");
-  auto i_o3_aq   = FindIdx(state, "CLOUD.AQUEOUS.O3_aq");
-  auto i_hp      = FindIdx(state, "CLOUD.AQUEOUS.Hp");
-  auto i_ohm     = FindIdx(state, "CLOUD.AQUEOUS.OHm");
-  auto i_hso3m   = FindIdx(state, "CLOUD.AQUEOUS.HSO3m");
-  auto i_so3mm   = FindIdx(state, "CLOUD.AQUEOUS.SO3mm");
-  auto i_so4mm   = FindIdx(state, "CLOUD.AQUEOUS.SO4mm");
-  auto i_so2oohm = FindIdx(state, "CLOUD.AQUEOUS.SO2OOHm");
+  auto i_so2_g   = state.variable_map_.at("SO2");
+  auto i_h2o2_g  = state.variable_map_.at("H2O2");
+  auto i_o3_g    = state.variable_map_.at("O3");
+  auto i_h2o     = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+  auto i_so2_aq  = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+  auto i_h2o2_aq = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
+  auto i_o3_aq   = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
+  auto i_hp      = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+  auto i_ohm     = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+  auto i_hso3m   = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+  auto i_so3mm   = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
+  auto i_so4mm   = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
+  auto i_so2oohm = state.variable_map_.at("CLOUD.AQUEOUS.SO2OOHm");
 
   for (std::size_t cell = 0; cell < NUM_CELLS; ++cell)
   {
@@ -1308,13 +1299,13 @@ TEST(SolventRobustness, C2_UniformColumn)
 
   State state = solver.GetState(NUM_CELLS);
 
-  auto i_so2_g   = FindIdx(state, "SO2");
-  auto i_h2o2_g  = FindIdx(state, "H2O2");
-  auto i_o3_g    = FindIdx(state, "O3");
-  auto i_h2o     = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-  auto i_so4mm   = FindIdx(state, "CLOUD.AQUEOUS.SO4mm");
-  auto i_so2oohm = FindIdx(state, "CLOUD.AQUEOUS.SO2OOHm");
-  auto i_hp      = FindIdx(state, "CLOUD.AQUEOUS.Hp");
+  auto i_so2_g   = state.variable_map_.at("SO2");
+  auto i_h2o2_g  = state.variable_map_.at("H2O2");
+  auto i_o3_g    = state.variable_map_.at("O3");
+  auto i_h2o     = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+  auto i_so4mm   = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
+  auto i_so2oohm = state.variable_map_.at("CLOUD.AQUEOUS.SO2OOHm");
+  auto i_hp      = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
 
   for (std::size_t cell = 0; cell < NUM_CELLS; ++cell)
   {
@@ -1326,13 +1317,13 @@ TEST(SolventRobustness, C2_UniformColumn)
     state.variables_[cell][i_h2o2_g]  = 3.01e-8;
     state.variables_[cell][i_o3_g]    = 1.50e-6;
     state.variables_[cell][i_h2o]     = C_H2O_NORMAL;
-    state.variables_[cell][FindIdx(state, "CLOUD.AQUEOUS.SO2_aq")]  = 0.0;
-    state.variables_[cell][FindIdx(state, "CLOUD.AQUEOUS.H2O2_aq")] = 0.0;
-    state.variables_[cell][FindIdx(state, "CLOUD.AQUEOUS.O3_aq")]   = 0.0;
+    state.variables_[cell][state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq")]  = 0.0;
+    state.variables_[cell][state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq")] = 0.0;
+    state.variables_[cell][state.variable_map_.at("CLOUD.AQUEOUS.O3_aq")]   = 0.0;
     state.variables_[cell][i_hp]      = 1.0;
-    state.variables_[cell][FindIdx(state, "CLOUD.AQUEOUS.OHm")]     = 0.0;
-    state.variables_[cell][FindIdx(state, "CLOUD.AQUEOUS.HSO3m")]   = 0.0;
-    state.variables_[cell][FindIdx(state, "CLOUD.AQUEOUS.SO3mm")]   = 0.0;
+    state.variables_[cell][state.variable_map_.at("CLOUD.AQUEOUS.OHm")]     = 0.0;
+    state.variables_[cell][state.variable_map_.at("CLOUD.AQUEOUS.HSO3m")]   = 0.0;
+    state.variables_[cell][state.variable_map_.at("CLOUD.AQUEOUS.SO3mm")]   = 0.0;
     state.variables_[cell][i_so4mm]   = 1.0;
     state.variables_[cell][i_so2oohm] = 0.0;
   }
@@ -1390,19 +1381,19 @@ TEST(SolventRobustness, C3_ExtremeContrast)
 
   State state = solver.GetState(NUM_CELLS);
 
-  auto i_so2_g   = FindIdx(state, "SO2");
-  auto i_h2o2_g  = FindIdx(state, "H2O2");
-  auto i_o3_g    = FindIdx(state, "O3");
-  auto i_h2o     = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-  auto i_so2_aq  = FindIdx(state, "CLOUD.AQUEOUS.SO2_aq");
-  auto i_h2o2_aq = FindIdx(state, "CLOUD.AQUEOUS.H2O2_aq");
-  auto i_o3_aq   = FindIdx(state, "CLOUD.AQUEOUS.O3_aq");
-  auto i_hp      = FindIdx(state, "CLOUD.AQUEOUS.Hp");
-  auto i_ohm     = FindIdx(state, "CLOUD.AQUEOUS.OHm");
-  auto i_hso3m   = FindIdx(state, "CLOUD.AQUEOUS.HSO3m");
-  auto i_so3mm   = FindIdx(state, "CLOUD.AQUEOUS.SO3mm");
-  auto i_so4mm   = FindIdx(state, "CLOUD.AQUEOUS.SO4mm");
-  auto i_so2oohm = FindIdx(state, "CLOUD.AQUEOUS.SO2OOHm");
+  auto i_so2_g   = state.variable_map_.at("SO2");
+  auto i_h2o2_g  = state.variable_map_.at("H2O2");
+  auto i_o3_g    = state.variable_map_.at("O3");
+  auto i_h2o     = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+  auto i_so2_aq  = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+  auto i_h2o2_aq = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
+  auto i_o3_aq   = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
+  auto i_hp      = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+  auto i_ohm     = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+  auto i_hso3m   = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+  auto i_so3mm   = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
+  auto i_so4mm   = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
+  auto i_so2oohm = state.variable_map_.at("CLOUD.AQUEOUS.SO2OOHm");
 
   for (std::size_t cell = 0; cell < NUM_CELLS; ++cell)
   {

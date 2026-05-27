@@ -21,9 +21,8 @@ using namespace miam;
 namespace
 {
   // Solve a kinetic ODE system to steady state and return final concentrations
-  template<typename FindIdx>
   std::tuple<double, double, double> SolveKineticSystem(
-      double k, double k_f, double k_r, double A0, FindIdx find_idx)
+      double k, double k_f, double k_r, double A0)
   {
     auto A = Species{ "A" };
     auto B = Species{ "B" };
@@ -63,10 +62,10 @@ namespace
 
     State state = solver.GetState();
 
-    std::size_t i_A = find_idx(state, "DROPLET.AQUEOUS.A");
-    std::size_t i_B = find_idx(state, "DROPLET.AQUEOUS.B");
-    std::size_t i_C = find_idx(state, "DROPLET.AQUEOUS.C");
-    std::size_t i_S = find_idx(state, "DROPLET.AQUEOUS.S");
+    std::size_t i_A = state.variable_map_.at("DROPLET.AQUEOUS.A");
+    std::size_t i_B = state.variable_map_.at("DROPLET.AQUEOUS.B");
+    std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
+    std::size_t i_S = state.variable_map_.at("DROPLET.AQUEOUS.S");
 
     state.variables_[0][i_A] = A0;
     state.variables_[0][i_B] = 0.0;
@@ -117,11 +116,6 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
   double k_r = k_f / K_eq;  // reverse rate for C → B
   double A0 = 1.0;
 
-  auto find_idx = [](const auto& state, const std::string& name) -> std::size_t {
-    auto it = std::find(state.variable_names_.begin(), state.variable_names_.end(), name);
-    return static_cast<std::size_t>(it - state.variable_names_.begin());
-  };
-
   // --- Kinetic system ---
   auto [A_kin, B_kin, C_kin] = [&]() {
     auto A = Species{ "A" };
@@ -162,10 +156,10 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
 
     State state = solver.GetState();
 
-    std::size_t i_A = find_idx(state, "DROPLET.AQUEOUS.A");
-    std::size_t i_B = find_idx(state, "DROPLET.AQUEOUS.B");
-    std::size_t i_C = find_idx(state, "DROPLET.AQUEOUS.C");
-    std::size_t i_S = find_idx(state, "DROPLET.AQUEOUS.S");
+    std::size_t i_A = state.variable_map_.at("DROPLET.AQUEOUS.A");
+    std::size_t i_B = state.variable_map_.at("DROPLET.AQUEOUS.B");
+    std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
+    std::size_t i_S = state.variable_map_.at("DROPLET.AQUEOUS.S");
 
     state.variables_[0][i_A] = A0;
     state.variables_[0][i_B] = 0.0;
@@ -242,10 +236,10 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
 
     State state = solver.GetState();
 
-    std::size_t i_A = find_idx(state, "DROPLET.AQUEOUS.A");
-    std::size_t i_B = find_idx(state, "DROPLET.AQUEOUS.B");
-    std::size_t i_C = find_idx(state, "DROPLET.AQUEOUS.C");
-    std::size_t i_S = find_idx(state, "DROPLET.AQUEOUS.S");
+    std::size_t i_A = state.variable_map_.at("DROPLET.AQUEOUS.A");
+    std::size_t i_B = state.variable_map_.at("DROPLET.AQUEOUS.B");
+    std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
+    std::size_t i_S = state.variable_map_.at("DROPLET.AQUEOUS.S");
 
     state.variables_[0][i_A] = A0;
     state.variables_[0][i_B] = 0.0;
@@ -376,14 +370,9 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
 
     State state = solver.GetState();
 
-    auto find_idx = [&](const std::string& name) {
-      auto it = std::find(state.variable_names_.begin(), state.variable_names_.end(), name);
-      return static_cast<std::size_t>(it - state.variable_names_.begin());
-    };
-
-    state.variables_[0][find_idx("A_g")] = gas0;
-    state.variables_[0][find_idx("DROPLET.AQUEOUS.A_aq")] = aq0;
-    state.variables_[0][find_idx("DROPLET.AQUEOUS.H2O")] = H2O_conc;
+    state.variables_[0][state.variable_map_.at("A_g")] = gas0;
+    state.variables_[0][state.variable_map_.at("DROPLET.AQUEOUS.A_aq")] = aq0;
+    state.variables_[0][state.variable_map_.at("DROPLET.AQUEOUS.H2O")] = H2O_conc;
 
     state.conditions_[0].temperature_ = T;
     state.conditions_[0].pressure_ = 101325.0;
@@ -400,8 +389,8 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
         break;
     }
 
-    kinetic_A_g = state.variables_[0][find_idx("A_g")];
-    kinetic_A_aq = state.variables_[0][find_idx("DROPLET.AQUEOUS.A_aq")];
+    kinetic_A_g = state.variables_[0][state.variable_map_.at("A_g")];
+    kinetic_A_aq = state.variables_[0][state.variable_map_.at("DROPLET.AQUEOUS.A_aq")];
   }
 
   // --- Constrained system (HL equilibrium + mass conservation) ---
@@ -454,15 +443,10 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
 
     State state = solver.GetState();
 
-    auto find_idx = [&](const std::string& name) {
-      auto it = std::find(state.variable_names_.begin(), state.variable_names_.end(), name);
-      return static_cast<std::size_t>(it - state.variable_names_.begin());
-    };
-
-    state.variables_[0][find_idx("A_g")] = gas0;
-    state.variables_[0][find_idx("DROPLET.AQUEOUS.A_aq")] = aq0;
-    state.variables_[0][find_idx("DROPLET.AQUEOUS.H2O")] = H2O_conc;
-    state.variables_[0][find_idx("Inert")] = 1.0;  // dummy species
+    state.variables_[0][state.variable_map_.at("A_g")] = gas0;
+    state.variables_[0][state.variable_map_.at("DROPLET.AQUEOUS.A_aq")] = aq0;
+    state.variables_[0][state.variable_map_.at("DROPLET.AQUEOUS.H2O")] = H2O_conc;
+    state.variables_[0][state.variable_map_.at("Inert")] = 1.0;  // dummy species
 
     state.conditions_[0].temperature_ = T;
     state.conditions_[0].pressure_ = 101325.0;
@@ -478,8 +462,8 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
       EXPECT_EQ(result.state_, SolverState::Converged) << "DAE solver failed at step " << step;
     }
 
-    dae_A_g = state.variables_[0][find_idx("A_g")];
-    dae_A_aq = state.variables_[0][find_idx("DROPLET.AQUEOUS.A_aq")];
+    dae_A_g = state.variables_[0][state.variable_map_.at("A_g")];
+    dae_A_aq = state.variables_[0][state.variable_map_.at("DROPLET.AQUEOUS.A_aq")];
   }
 
   // Expected equilibrium values (analytical)

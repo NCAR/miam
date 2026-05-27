@@ -112,16 +112,10 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
 
   State state = solver.GetState();
 
-  auto find_idx = [&](const std::string& name) {
-    auto it = std::find(state.variable_names_.begin(), state.variable_names_.end(), name);
-    EXPECT_NE(it, state.variable_names_.end()) << "Species " << name << " not found";
-    return static_cast<std::size_t>(it - state.variable_names_.begin());
-  };
-
-  std::size_t i_P = find_idx("Precursor");
-  std::size_t i_gas = find_idx("A_g");
-  std::size_t i_aq = find_idx("DROPLET.AQUEOUS.A_aq");
-  std::size_t i_h2o = find_idx("DROPLET.AQUEOUS.H2O");
+  std::size_t i_P = state.variable_map_.at("Precursor");
+  std::size_t i_gas = state.variable_map_.at("A_g");
+  std::size_t i_aq = state.variable_map_.at("DROPLET.AQUEOUS.A_aq");
+  std::size_t i_h2o = state.variable_map_.at("DROPLET.AQUEOUS.H2O");
 
   // Set initial conditions
   state.variables_[0][i_P] = P0;
@@ -266,18 +260,12 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
 
   State state = solver.GetState();
 
-  auto find_idx = [&](const std::string& name) {
-    auto it = std::find(state.variable_names_.begin(), state.variable_names_.end(), name);
-    EXPECT_NE(it, state.variable_names_.end()) << "Species " << name << " not found";
-    return static_cast<std::size_t>(it - state.variable_names_.begin());
-  };
-
-  std::size_t i_P = find_idx("Precursor");
-  std::size_t i_gas = find_idx("A_g");
-  std::size_t i_aq_small = find_idx("SMALL.AQUEOUS.A_aq");
-  std::size_t i_h2o_small = find_idx("SMALL.AQUEOUS.H2O");
-  std::size_t i_aq_large = find_idx("LARGE.AQUEOUS.A_aq");
-  std::size_t i_h2o_large = find_idx("LARGE.AQUEOUS.H2O");
+  std::size_t i_P = state.variable_map_.at("Precursor");
+  std::size_t i_gas = state.variable_map_.at("A_g");
+  std::size_t i_aq_small = state.variable_map_.at("SMALL.AQUEOUS.A_aq");
+  std::size_t i_h2o_small = state.variable_map_.at("SMALL.AQUEOUS.H2O");
+  std::size_t i_aq_large = state.variable_map_.at("LARGE.AQUEOUS.A_aq");
+  std::size_t i_h2o_large = state.variable_map_.at("LARGE.AQUEOUS.H2O");
 
   state.variables_[0][i_P] = P0;
   state.variables_[0][i_gas] = 0.0;

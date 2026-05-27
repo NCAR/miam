@@ -206,14 +206,6 @@ namespace
                                  << " fd_value=" << sparsity.worst_fd;
   }
 
-  // Helper for variable index lookup
-  template<typename StateT>
-  std::size_t FindIdx(const StateT& state, const std::string& name)
-  {
-    auto it = std::find(state.variable_names_.begin(),
-                        state.variable_names_.end(), name);
-    return static_cast<std::size_t>(it - state.variable_names_.begin());
-  }
 }  // namespace
 
 // ════════════════════════════════════════════════════════════════════════
@@ -276,9 +268,9 @@ TEST(CamCloudChemistry, Step1_SingleHLC)
   state.conditions_[0].pressure_ = 70000.0;
   state.conditions_[0].CalculateIdealAirDensity();
 
-  auto i_g  = FindIdx(state, "SO2");
-  auto i_aq = FindIdx(state, "CLOUD.AQUEOUS.SO2_aq");
-  auto i_w  = FindIdx(state, "CLOUD.AQUEOUS.H2O");
+  auto i_g  = state.variable_map_.at("SO2");
+  auto i_aq = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+  auto i_w  = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
 
   state.variables_[0][i_g]  = gas0;
   state.variables_[0][i_aq] = 0.0;
@@ -367,9 +359,9 @@ TEST(CamCloudChemistry, Step1b_KwOnly)
   state.conditions_[0].temperature_ = T;
   state.conditions_[0].pressure_ = 70000.0;
 
-  auto i_hp  = FindIdx(state, "CLOUD.AQUEOUS.Hp");
-  auto i_oh  = FindIdx(state, "CLOUD.AQUEOUS.OHm");
-  auto i_w   = FindIdx(state, "CLOUD.AQUEOUS.H2O");
+  auto i_hp  = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+  auto i_oh  = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+  auto i_w   = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
 
   // Set per-variable absolute tolerances for the algebraic ion concentrations.
   // Use moderate values — the step-change error estimate for algebraic variables
@@ -474,9 +466,9 @@ TEST(CamCloudChemistry, Step1c_KwNaiveIC)
   // constraint initialisation tolerance (1e-20 above) already ensures algebraic
   // variables are resolved to high precision before each step.
   auto atol = state.absolute_tolerance_;
-  auto i_hp  = FindIdx(state, "CLOUD.AQUEOUS.Hp");
-  auto i_oh  = FindIdx(state, "CLOUD.AQUEOUS.OHm");
-  auto i_w   = FindIdx(state, "CLOUD.AQUEOUS.H2O");
+  auto i_hp  = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+  auto i_oh  = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+  auto i_w   = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
   atol[i_hp] = 1e-8;
   atol[i_oh] = 1e-8;
   state.SetAbsoluteTolerances(atol);
@@ -609,12 +601,12 @@ TEST(CamCloudChemistry, Step2_HLC_Plus_Dissociation)
   state.conditions_[0].pressure_ = 70000.0;
   state.conditions_[0].CalculateIdealAirDensity();
 
-  auto i_g  = FindIdx(state, "SO2");
-  auto i_aq = FindIdx(state, "CLOUD.AQUEOUS.SO2_aq");
-  auto i_hs = FindIdx(state, "CLOUD.AQUEOUS.HSO3m");
-  auto i_hp = FindIdx(state, "CLOUD.AQUEOUS.Hp");
-  auto i_oh = FindIdx(state, "CLOUD.AQUEOUS.OHm");
-  auto i_w  = FindIdx(state, "CLOUD.AQUEOUS.H2O");
+  auto i_g  = state.variable_map_.at("SO2");
+  auto i_aq = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+  auto i_hs = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+  auto i_hp = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+  auto i_oh = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+  auto i_w  = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
 
   // Initial conditions: compute self-consistent equilibrium values
   // by damped fixed-point iteration on [H+].
@@ -864,18 +856,18 @@ TEST(CamCloudChemistry, Step3_FullEquilibrium)
   state.conditions_[0].pressure_ = 70000.0;
   state.conditions_[0].CalculateIdealAirDensity();
 
-  auto i_so2_g_   = FindIdx(state, "SO2");
-  auto i_h2o2_g_  = FindIdx(state, "H2O2");
-  auto i_o3_g_    = FindIdx(state, "O3");
-  auto i_h2o_     = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-  auto i_so2_aq_  = FindIdx(state, "CLOUD.AQUEOUS.SO2_aq");
-  auto i_h2o2_aq_ = FindIdx(state, "CLOUD.AQUEOUS.H2O2_aq");
-  auto i_o3_aq_   = FindIdx(state, "CLOUD.AQUEOUS.O3_aq");
-  auto i_hp_      = FindIdx(state, "CLOUD.AQUEOUS.Hp");
-  auto i_ohm_     = FindIdx(state, "CLOUD.AQUEOUS.OHm");
-  auto i_hso3m_   = FindIdx(state, "CLOUD.AQUEOUS.HSO3m");
-  auto i_so3mm_   = FindIdx(state, "CLOUD.AQUEOUS.SO3mm");
-  auto i_so4mm_   = FindIdx(state, "CLOUD.AQUEOUS.SO4mm");
+  auto i_so2_g_   = state.variable_map_.at("SO2");
+  auto i_h2o2_g_  = state.variable_map_.at("H2O2");
+  auto i_o3_g_    = state.variable_map_.at("O3");
+  auto i_h2o_     = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+  auto i_so2_aq_  = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+  auto i_h2o2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
+  auto i_o3_aq_   = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
+  auto i_hp_      = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+  auto i_ohm_     = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+  auto i_hso3m_   = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+  auto i_so3mm_   = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
+  auto i_so4mm_   = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
 
   // Initial conditions: compute self-consistent equilibrium values
   // by damped fixed-point iteration on [H+].
@@ -1105,18 +1097,18 @@ TEST(CamCloudChemistry, Step3b_NaiveInitialConditions)
   state.conditions_[0].pressure_ = 70000.0;
   state.conditions_[0].CalculateIdealAirDensity();
 
-  auto i_so2_g_   = FindIdx(state, "SO2");
-  auto i_h2o2_g_  = FindIdx(state, "H2O2");
-  auto i_o3_g_    = FindIdx(state, "O3");
-  auto i_h2o_     = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-  auto i_so2_aq_  = FindIdx(state, "CLOUD.AQUEOUS.SO2_aq");
-  auto i_h2o2_aq_ = FindIdx(state, "CLOUD.AQUEOUS.H2O2_aq");
-  auto i_o3_aq_   = FindIdx(state, "CLOUD.AQUEOUS.O3_aq");
-  auto i_hp_      = FindIdx(state, "CLOUD.AQUEOUS.Hp");
-  auto i_ohm_     = FindIdx(state, "CLOUD.AQUEOUS.OHm");
-  auto i_hso3m_   = FindIdx(state, "CLOUD.AQUEOUS.HSO3m");
-  auto i_so3mm_   = FindIdx(state, "CLOUD.AQUEOUS.SO3mm");
-  auto i_so4mm_   = FindIdx(state, "CLOUD.AQUEOUS.SO4mm");
+  auto i_so2_g_   = state.variable_map_.at("SO2");
+  auto i_h2o2_g_  = state.variable_map_.at("H2O2");
+  auto i_o3_g_    = state.variable_map_.at("O3");
+  auto i_h2o_     = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+  auto i_so2_aq_  = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+  auto i_h2o2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
+  auto i_o3_aq_   = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
+  auto i_hp_      = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+  auto i_ohm_     = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+  auto i_hso3m_   = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+  auto i_so3mm_   = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
+  auto i_so4mm_   = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
 
   double so4mm0 = 1.0;
 
@@ -1374,19 +1366,19 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
   state.conditions_[0].pressure_ = 70000.0;
   state.conditions_[0].CalculateIdealAirDensity();
 
-  auto i_so2_g_   = FindIdx(state, "SO2");
-  auto i_h2o2_g_  = FindIdx(state, "H2O2");
-  auto i_o3_g_    = FindIdx(state, "O3");
-  auto i_h2o_     = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-  auto i_so2_aq_  = FindIdx(state, "CLOUD.AQUEOUS.SO2_aq");
-  auto i_h2o2_aq_ = FindIdx(state, "CLOUD.AQUEOUS.H2O2_aq");
-  auto i_o3_aq_   = FindIdx(state, "CLOUD.AQUEOUS.O3_aq");
-  auto i_hp_      = FindIdx(state, "CLOUD.AQUEOUS.Hp");
-  auto i_ohm_     = FindIdx(state, "CLOUD.AQUEOUS.OHm");
-  auto i_hso3m_   = FindIdx(state, "CLOUD.AQUEOUS.HSO3m");
-  auto i_so3mm_   = FindIdx(state, "CLOUD.AQUEOUS.SO3mm");
-  auto i_so4mm_   = FindIdx(state, "CLOUD.AQUEOUS.SO4mm");
-  auto i_so2oohm_ = FindIdx(state, "CLOUD.AQUEOUS.SO2OOHm");
+  auto i_so2_g_   = state.variable_map_.at("SO2");
+  auto i_h2o2_g_  = state.variable_map_.at("H2O2");
+  auto i_o3_g_    = state.variable_map_.at("O3");
+  auto i_h2o_     = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+  auto i_so2_aq_  = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+  auto i_h2o2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
+  auto i_o3_aq_   = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
+  auto i_hp_      = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+  auto i_ohm_     = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+  auto i_hso3m_   = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+  auto i_so3mm_   = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
+  auto i_so4mm_   = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
+  auto i_so2oohm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO2OOHm");
 
   // Initial conditions: compute self-consistent equilibrium values
   // Same iteration as Step 3, but with SO4mm in the S-budget
@@ -1695,19 +1687,19 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
   state.conditions_[0].pressure_ = 70000.0;
   state.conditions_[0].CalculateIdealAirDensity();
 
-  auto i_so2_g_   = FindIdx(state, "SO2");
-  auto i_h2o2_g_  = FindIdx(state, "H2O2");
-  auto i_o3_g_    = FindIdx(state, "O3");
-  auto i_h2o_     = FindIdx(state, "CLOUD.AQUEOUS.H2O");
-  auto i_so2_aq_  = FindIdx(state, "CLOUD.AQUEOUS.SO2_aq");
-  auto i_h2o2_aq_ = FindIdx(state, "CLOUD.AQUEOUS.H2O2_aq");
-  auto i_o3_aq_   = FindIdx(state, "CLOUD.AQUEOUS.O3_aq");
-  auto i_hp_      = FindIdx(state, "CLOUD.AQUEOUS.Hp");
-  auto i_ohm_     = FindIdx(state, "CLOUD.AQUEOUS.OHm");
-  auto i_hso3m_   = FindIdx(state, "CLOUD.AQUEOUS.HSO3m");
-  auto i_so3mm_   = FindIdx(state, "CLOUD.AQUEOUS.SO3mm");
-  auto i_so4mm_   = FindIdx(state, "CLOUD.AQUEOUS.SO4mm");
-  auto i_so2oohm_ = FindIdx(state, "CLOUD.AQUEOUS.SO2OOHm");
+  auto i_so2_g_   = state.variable_map_.at("SO2");
+  auto i_h2o2_g_  = state.variable_map_.at("H2O2");
+  auto i_o3_g_    = state.variable_map_.at("O3");
+  auto i_h2o_     = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+  auto i_so2_aq_  = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+  auto i_h2o2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
+  auto i_o3_aq_   = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
+  auto i_hp_      = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+  auto i_ohm_     = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+  auto i_hso3m_   = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+  auto i_so3mm_   = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
+  auto i_so4mm_   = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
+  auto i_so2oohm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO2OOHm");
 
   // NAIVE initial conditions: no fixed-point iteration.
   // Gas species at their total budgets, aqueous equilibrium species at zero.

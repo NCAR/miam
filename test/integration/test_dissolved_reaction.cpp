@@ -59,12 +59,9 @@ TEST(DissolvedReactionIntegration, SimpleFirstOrderDecay)
 
   State state = solver.GetState();
 
-  std::size_t i_A = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.A") - state.variable_names_.begin();
-  std::size_t i_B = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.B") - state.variable_names_.begin();
-  std::size_t i_C = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.C") - state.variable_names_.begin();
-  ASSERT_LT(i_A, state.variable_names_.size());
-  ASSERT_LT(i_B, state.variable_names_.size());
-  ASSERT_LT(i_C, state.variable_names_.size());
+  std::size_t i_A = state.variable_map_.at("DROPLET.AQUEOUS.A");
+  std::size_t i_B = state.variable_map_.at("DROPLET.AQUEOUS.B");
+  std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
 
   state.variables_[0][i_A] = A0;
   state.variables_[0][i_B] = 0.0;
@@ -171,9 +168,9 @@ TEST(DissolvedReactionIntegration, SolventAsReactant)
 
   State state = solver.GetState();
 
-  std::size_t i_A = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.A") - state.variable_names_.begin();
-  std::size_t i_B = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.B") - state.variable_names_.begin();
-  std::size_t i_C = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.C") - state.variable_names_.begin();
+  std::size_t i_A = state.variable_map_.at("DROPLET.AQUEOUS.A");
+  std::size_t i_B = state.variable_map_.at("DROPLET.AQUEOUS.B");
+  std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
 
   state.variables_[0][i_A] = A0;
   state.variables_[0][i_B] = 0.0;
@@ -279,9 +276,9 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
 
   State state = solver.GetState();
 
-  std::size_t i_A = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.A") - state.variable_names_.begin();
-  std::size_t i_B = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.B") - state.variable_names_.begin();
-  std::size_t i_C = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.C") - state.variable_names_.begin();
+  std::size_t i_A = state.variable_map_.at("DROPLET.AQUEOUS.A");
+  std::size_t i_B = state.variable_map_.at("DROPLET.AQUEOUS.B");
+  std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
 
   state.variables_[0][i_A] = A0;
   state.variables_[0][i_B] = B0;
@@ -402,19 +399,13 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
 
   State state = solver.GetState();
 
-  std::size_t i_A_small = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_SMALL.AQUEOUS_SMALL.A") - state.variable_names_.begin();
-  std::size_t i_B_small = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_SMALL.AQUEOUS_SMALL.B") - state.variable_names_.begin();
-  std::size_t i_C_small = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_SMALL.AQUEOUS_SMALL.C") - state.variable_names_.begin();
+  std::size_t i_A_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS_SMALL.A");
+  std::size_t i_B_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS_SMALL.B");
+  std::size_t i_C_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS_SMALL.C");
 
-  std::size_t i_A_large = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_LARGE.AQUEOUS_LARGE.A") - state.variable_names_.begin();
-  std::size_t i_B_large = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_LARGE.AQUEOUS_LARGE.B") - state.variable_names_.begin();
-  std::size_t i_C_large = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_LARGE.AQUEOUS_LARGE.C") - state.variable_names_.begin();
+  std::size_t i_A_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS_LARGE.A");
+  std::size_t i_B_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS_LARGE.B");
+  std::size_t i_C_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS_LARGE.C");
 
   state.variables_[0][i_A_small] = A0_small;
   state.variables_[0][i_B_small] = 0.0;
@@ -540,14 +531,10 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
 
   State state = solver.GetState();
 
-  std::size_t i_A = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.A") - state.variable_names_.begin();
-  std::size_t i_B = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.B") - state.variable_names_.begin();
-  std::size_t i_C = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.C") - state.variable_names_.begin();
-  std::size_t i_S = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.S") - state.variable_names_.begin();
-  ASSERT_LT(i_A, state.variable_names_.size());
-  ASSERT_LT(i_B, state.variable_names_.size());
-  ASSERT_LT(i_C, state.variable_names_.size());
-  ASSERT_LT(i_S, state.variable_names_.size());
+  std::size_t i_A = state.variable_map_.at("DROPLET.AQUEOUS.A");
+  std::size_t i_B = state.variable_map_.at("DROPLET.AQUEOUS.B");
+  std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
+  std::size_t i_S = state.variable_map_.at("DROPLET.AQUEOUS.S");
 
   state.variables_[0][i_A] = c0;
   state.variables_[0][i_B] = c0;
@@ -665,14 +652,10 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
   {
     State state = solver.GetState();
 
-    std::size_t i_A = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.A") - state.variable_names_.begin();
-    std::size_t i_B = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.B") - state.variable_names_.begin();
-    std::size_t i_C = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.C") - state.variable_names_.begin();
-    std::size_t i_S = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.S") - state.variable_names_.begin();
-    ASSERT_LT(i_A, state.variable_names_.size());
-    ASSERT_LT(i_B, state.variable_names_.size());
-    ASSERT_LT(i_C, state.variable_names_.size());
-    ASSERT_LT(i_S, state.variable_names_.size());
+    std::size_t i_A = state.variable_map_.at("DROPLET.AQUEOUS.A");
+    std::size_t i_B = state.variable_map_.at("DROPLET.AQUEOUS.B");
+    std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
+    std::size_t i_S = state.variable_map_.at("DROPLET.AQUEOUS.S");
 
     state.variables_[0][i_A] = 1.0;    // nonzero
     state.variables_[0][i_B] = 0.0;    // exactly zero — triggers the NaN bug
@@ -702,10 +685,10 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
   {
     State state = solver.GetState();
 
-    std::size_t i_A = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.A") - state.variable_names_.begin();
-    std::size_t i_B = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.B") - state.variable_names_.begin();
-    std::size_t i_C = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.C") - state.variable_names_.begin();
-    std::size_t i_S = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.S") - state.variable_names_.begin();
+    std::size_t i_A = state.variable_map_.at("DROPLET.AQUEOUS.A");
+    std::size_t i_B = state.variable_map_.at("DROPLET.AQUEOUS.B");
+    std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
+    std::size_t i_S = state.variable_map_.at("DROPLET.AQUEOUS.S");
 
     state.variables_[0][i_A] = 0.0;    // both zero
     state.variables_[0][i_B] = 0.0;
@@ -727,10 +710,10 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
   {
     State state = solver.GetState();
 
-    std::size_t i_A = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.A") - state.variable_names_.begin();
-    std::size_t i_B = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.B") - state.variable_names_.begin();
-    std::size_t i_C = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.C") - state.variable_names_.begin();
-    std::size_t i_S = std::find(state.variable_names_.begin(), state.variable_names_.end(), "DROPLET.AQUEOUS.S") - state.variable_names_.begin();
+    std::size_t i_A = state.variable_map_.at("DROPLET.AQUEOUS.A");
+    std::size_t i_B = state.variable_map_.at("DROPLET.AQUEOUS.B");
+    std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
+    std::size_t i_S = state.variable_map_.at("DROPLET.AQUEOUS.S");
 
     state.variables_[0][i_A] = 1.0;
     state.variables_[0][i_B] = 1.0e-30;  // near-zero

@@ -108,16 +108,9 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
 
   State state = solver.GetState();
 
-  // Find variable indices
-  auto find_idx = [&](const std::string& name) {
-    auto it = std::find(state.variable_names_.begin(), state.variable_names_.end(), name);
-    EXPECT_NE(it, state.variable_names_.end()) << "Species " << name << " not found";
-    return static_cast<std::size_t>(it - state.variable_names_.begin());
-  };
-
-  std::size_t i_gas = find_idx("A_g");
-  std::size_t i_aq = find_idx("DROPLET.AQUEOUS.A_aq");
-  std::size_t i_h2o = find_idx("DROPLET.AQUEOUS.H2O");
+  std::size_t i_gas = state.variable_map_.at("A_g");
+  std::size_t i_aq = state.variable_map_.at("DROPLET.AQUEOUS.A_aq");
+  std::size_t i_h2o = state.variable_map_.at("DROPLET.AQUEOUS.H2O");
 
   // Initial conditions
   double T = 298.15;
@@ -277,17 +270,11 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
 
   State state = solver.GetState();
 
-  auto find_idx = [&](const std::string& name) {
-    auto it = std::find(state.variable_names_.begin(), state.variable_names_.end(), name);
-    EXPECT_NE(it, state.variable_names_.end()) << name << " not found";
-    return static_cast<std::size_t>(it - state.variable_names_.begin());
-  };
-
-  std::size_t i_gas = find_idx("A_g");
-  std::size_t i_aq_small = find_idx("SMALL.AQ_SMALL.A_aq");
-  std::size_t i_h2o_small = find_idx("SMALL.AQ_SMALL.H2O");
-  std::size_t i_aq_large = find_idx("LARGE.AQ_LARGE.A_aq");
-  std::size_t i_h2o_large = find_idx("LARGE.AQ_LARGE.H2O");
+  std::size_t i_gas = state.variable_map_.at("A_g");
+  std::size_t i_aq_small = state.variable_map_.at("SMALL.AQ_SMALL.A_aq");
+  std::size_t i_h2o_small = state.variable_map_.at("SMALL.AQ_SMALL.H2O");
+  std::size_t i_aq_large = state.variable_map_.at("LARGE.AQ_LARGE.A_aq");
+  std::size_t i_h2o_large = state.variable_map_.at("LARGE.AQ_LARGE.H2O");
 
   double gas_0 = 1.0e-2;
   double solvent = 0.017;
@@ -411,14 +398,9 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
 
     State state = solver.GetState();
 
-    auto find_idx = [&](const std::string& name) {
-      auto it = std::find(state.variable_names_.begin(), state.variable_names_.end(), name);
-      return static_cast<std::size_t>(it - state.variable_names_.begin());
-    };
-
-    std::size_t i_gas = find_idx("A_g");
-    std::size_t i_aq = find_idx("DROP.AQUEOUS.A_aq");
-    std::size_t i_h2o = find_idx("DROP.AQUEOUS.H2O");
+    std::size_t i_gas = state.variable_map_.at("A_g");
+    std::size_t i_aq = state.variable_map_.at("DROP.AQUEOUS.A_aq");
+    std::size_t i_h2o = state.variable_map_.at("DROP.AQUEOUS.H2O");
 
     state.variables_[0][i_gas] = gas_0;
     state.variables_[0][i_aq] = 0.0;
@@ -529,14 +511,9 @@ TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
 
     State state = solver.GetState();
 
-    auto find_idx = [&](const std::string& name) {
-      auto it = std::find(state.variable_names_.begin(), state.variable_names_.end(), name);
-      return static_cast<std::size_t>(it - state.variable_names_.begin());
-    };
-
-    std::size_t i_gas = find_idx("A_g");
-    std::size_t i_aq = find_idx(prefix + "." + phase_name + ".A_aq");
-    std::size_t i_h2o = find_idx(prefix + "." + phase_name + ".H2O");
+    std::size_t i_gas = state.variable_map_.at("A_g");
+    std::size_t i_aq = state.variable_map_.at(prefix + "." + phase_name + ".A_aq");
+    std::size_t i_h2o = state.variable_map_.at(prefix + "." + phase_name + ".H2O");
 
     state.variables_[0][i_gas] = gas_0;
     state.variables_[0][i_aq] = 0.0;
