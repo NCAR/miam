@@ -105,17 +105,10 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
 
   State state = solver.GetState();
 
-  // Find variable indices
-  auto find_idx = [&](const std::string& name) {
-    auto it = std::find(state.variable_names_.begin(), state.variable_names_.end(), name);
-    EXPECT_NE(it, state.variable_names_.end()) << "Species " << name << " not found";
-    return static_cast<std::size_t>(it - state.variable_names_.begin());
-  };
-
-  std::size_t i_A = find_idx("DROPLET.AQUEOUS.A");
-  std::size_t i_B = find_idx("DROPLET.AQUEOUS.B");
-  std::size_t i_C = find_idx("DROPLET.AQUEOUS.C");
-  std::size_t i_S = find_idx("DROPLET.AQUEOUS.S");
+  std::size_t i_A = state.variable_map_.at("DROPLET.AQUEOUS.A");
+  std::size_t i_B = state.variable_map_.at("DROPLET.AQUEOUS.B");
+  std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
+  std::size_t i_S = state.variable_map_.at("DROPLET.AQUEOUS.S");
 
   // Set initial conditions (consistent with constraints: B0=C0=0, total=A0)
   state.variables_[0][i_A] = A0;
@@ -263,20 +256,14 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
 
   State state = solver.GetState();
 
-  auto find_idx = [&](const std::string& name) {
-    auto it = std::find(state.variable_names_.begin(), state.variable_names_.end(), name);
-    EXPECT_NE(it, state.variable_names_.end()) << "Species " << name << " not found";
-    return static_cast<std::size_t>(it - state.variable_names_.begin());
-  };
-
-  std::size_t i_A_small = find_idx("SMALL.AQUEOUS.A");
-  std::size_t i_B_small = find_idx("SMALL.AQUEOUS.B");
-  std::size_t i_C_small = find_idx("SMALL.AQUEOUS.C");
-  std::size_t i_S_small = find_idx("SMALL.AQUEOUS.S");
-  std::size_t i_A_large = find_idx("LARGE.AQUEOUS.A");
-  std::size_t i_B_large = find_idx("LARGE.AQUEOUS.B");
-  std::size_t i_C_large = find_idx("LARGE.AQUEOUS.C");
-  std::size_t i_S_large = find_idx("LARGE.AQUEOUS.S");
+  std::size_t i_A_small = state.variable_map_.at("SMALL.AQUEOUS.A");
+  std::size_t i_B_small = state.variable_map_.at("SMALL.AQUEOUS.B");
+  std::size_t i_C_small = state.variable_map_.at("SMALL.AQUEOUS.C");
+  std::size_t i_S_small = state.variable_map_.at("SMALL.AQUEOUS.S");
+  std::size_t i_A_large = state.variable_map_.at("LARGE.AQUEOUS.A");
+  std::size_t i_B_large = state.variable_map_.at("LARGE.AQUEOUS.B");
+  std::size_t i_C_large = state.variable_map_.at("LARGE.AQUEOUS.C");
+  std::size_t i_S_large = state.variable_map_.at("LARGE.AQUEOUS.S");
 
   // Different starting concentrations for each instance
   state.variables_[0][i_A_small] = A0_small;
@@ -404,16 +391,10 @@ TEST(EquilibriumConstraintsIntegration, InconsistentInitialConditions)
 
   State state = solver.GetState();
 
-  auto find_idx = [&](const std::string& name) {
-    auto it = std::find(state.variable_names_.begin(), state.variable_names_.end(), name);
-    EXPECT_NE(it, state.variable_names_.end()) << "Species " << name << " not found";
-    return static_cast<std::size_t>(it - state.variable_names_.begin());
-  };
-
-  std::size_t i_A = find_idx("DROPLET.AQUEOUS.A");
-  std::size_t i_B = find_idx("DROPLET.AQUEOUS.B");
-  std::size_t i_C = find_idx("DROPLET.AQUEOUS.C");
-  std::size_t i_S = find_idx("DROPLET.AQUEOUS.S");
+  std::size_t i_A = state.variable_map_.at("DROPLET.AQUEOUS.A");
+  std::size_t i_B = state.variable_map_.at("DROPLET.AQUEOUS.B");
+  std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
+  std::size_t i_S = state.variable_map_.at("DROPLET.AQUEOUS.S");
 
   // Deliberately INCONSISTENT initial conditions:
   // The constraint-consistent values are B=0, C=0 (since A0=total).
