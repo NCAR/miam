@@ -101,7 +101,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
   model.AddConstraints(hl_constraint, mass_cons);
 
   // Build DAE solver with MICM gas-phase reaction + MIAM constraints
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
                     .SetSystem(system)
@@ -249,7 +249,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
   };
   model.AddConstraints(hl_constraint, mass_cons);
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
                     .SetSystem(system)

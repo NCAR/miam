@@ -50,7 +50,7 @@ TEST(DissolvedReactionIntegration, SimpleFirstOrderDecay)
   Phase gas_phase{ "GAS", {} };
   double A0 = 1.0;  // mol/m^3
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
                   .AddExternalModel(model)
@@ -159,7 +159,7 @@ TEST(DissolvedReactionIntegration, SolventAsReactant)
   double A0 = 1.0e-5;
   double C0 = 1.0e-4;
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
                   .AddExternalModel(model)
@@ -267,7 +267,7 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
   double B0 = 0.0;
   double C0 = 1.0e-4;
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
                   .AddExternalModel(model)
@@ -390,7 +390,7 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
   double A0_small = 1.0;
   double A0_large = 0.5;
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
                   .AddExternalModel(model)
@@ -522,7 +522,7 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
   double S0 = 50.0;    // mol/m^3 (solvent, large and approximately constant)
   double k_eff = k / S0;  // effective second-order rate constant
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
                   .AddExternalModel(model)
@@ -641,7 +641,7 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
 
   Phase gas_phase{ "GAS", {} };
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
                   .AddExternalModel(model)

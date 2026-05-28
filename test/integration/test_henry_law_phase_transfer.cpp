@@ -98,7 +98,7 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   };
   model.AddProcesses({ transfer });
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                     .SetSystem(system)
@@ -260,7 +260,7 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
   model.AddProcesses({ transfer_small });
   model.AddProcesses({ transfer_large });
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                     .SetSystem(system)
@@ -388,7 +388,7 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
     };
     model.AddProcesses({ transfer });
 
-    auto system = System(gas_phase, model);
+    auto system = System(gas_phase);
     auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                       RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                       .SetSystem(system)
@@ -501,7 +501,7 @@ TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
     };
     model.AddProcesses({ transfer });
 
-    auto system = System(gas_phase, model);
+    auto system = System(gas_phase);
     auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                       RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                       .SetSystem(system)
