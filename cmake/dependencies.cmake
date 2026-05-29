@@ -24,7 +24,7 @@ endif()
 
 FetchContent_Declare(micm
     GIT_REPOSITORY https://github.com/NCAR/micm.git
-    GIT_TAG 983-investigate-system-passed-twice
+    GIT_TAG fa3e8c5d86db9f148ce75a44a14343554ccfa4bc
     GIT_PROGRESS NOT ${FETCHCONTENT_QUIET}
     FIND_PACKAGE_ARGS NAMES micm
 )
