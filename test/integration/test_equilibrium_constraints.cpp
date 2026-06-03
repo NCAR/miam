@@ -6,6 +6,7 @@
 
 #include <miam/miam.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
+
 #include <micm/CPU.hpp>
 
 #include <gtest/gtest.h>
@@ -42,10 +43,7 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
 
   // Phase and representation
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
-  auto droplet = UniformSection{
-    "DROPLET",
-    { aqueous_phase }
-  };
+  auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   // Parameters
   double k = 0.1;     // s⁻¹ (rate for A → B)
@@ -55,41 +53,35 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
 
   // Kinetic process: A → B (dissolved reaction)
   auto rate = [k](const Conditions& conditions) { return k; };
-  auto reaction = DissolvedReaction{
-    rate,
-    { A },   // reactants
-    { B },   // products
-    S,       // solvent
-    aqueous_phase
-  };
+  auto reaction = DissolvedReaction{ rate,
+                                     { A },  // reactants
+                                     { B },  // products
+                                     S,      // solvent
+                                     aqueous_phase };
 
   // Equilibrium constraint: B <-> C, K_eq, algebraic species = C
   // Residual: G = K_eq * [B] - [C] = 0
   auto equil = DissolvedEquilibriumConstraintBuilder()
-      .SetPhase(aqueous_phase)
-      .SetReactants({ B })
-      .SetProducts({ C })
-      .SetAlgebraicSpecies(C)
-      .SetSolvent(S)
-      .SetEquilibriumConstant(EquilibriumConstant(
-          EquilibriumConstantParameters{ .A_ = K_eq }))
-      .Build();
+                   .SetPhase(aqueous_phase)
+                   .SetReactants({ B })
+                   .SetProducts({ C })
+                   .SetAlgebraicSpecies(C)
+                   .SetSolvent(S)
+                   .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = K_eq }))
+                   .Build();
 
   // Mass conservation constraint: [A] + [B] + [C] = total, algebraic species = B
   // Residual: G = [A] + [B] + [C] - total = 0
   auto mass_cons = LinearConstraintBuilder()
-      .SetAlgebraicSpecies(aqueous_phase, B)
-      .AddTerm(aqueous_phase, A, 1.0)
-      .AddTerm(aqueous_phase, B, 1.0)
-      .AddTerm(aqueous_phase, C, 1.0)
-      .SetConstant(total)
-      .Build();
+                       .SetAlgebraicSpecies(aqueous_phase, B)
+                       .AddTerm(aqueous_phase, A, 1.0)
+                       .AddTerm(aqueous_phase, B, 1.0)
+                       .AddTerm(aqueous_phase, C, 1.0)
+                       .SetConstant(total)
+                       .Build();
 
   // Build model
-  auto model = Model{
-    .name_ = "AEROSOL",
-    .representations_ = { droplet }
-  };
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
   model.AddConstraints(equil, mass_cons);
 
@@ -135,8 +127,7 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
       double dt = std::min(0.1, target_time - time);
       solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
-      ASSERT_EQ(result.state_, SolverState::Converged)
-        << "Solver failed at t = " << time << " s with dt = " << dt;
+      ASSERT_EQ(result.state_, SolverState::Converged) << "Solver failed at t = " << time << " s with dt = " << dt;
       time += dt;
     }
 
@@ -149,33 +140,26 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
     double B_an = (total - A_an) / (1.0 + K_eq);
     double C_an = K_eq * (total - A_an) / (1.0 + K_eq);
 
-    EXPECT_NEAR(A_num, A_an, tolerance)
-      << "Species A mismatch at t = " << time << " s";
-    EXPECT_NEAR(B_num, B_an, tolerance)
-      << "Species B mismatch at t = " << time << " s";
-    EXPECT_NEAR(C_num, C_an, tolerance)
-      << "Species C mismatch at t = " << time << " s";
+    EXPECT_NEAR(A_num, A_an, tolerance) << "Species A mismatch at t = " << time << " s";
+    EXPECT_NEAR(B_num, B_an, tolerance) << "Species B mismatch at t = " << time << " s";
+    EXPECT_NEAR(C_num, C_an, tolerance) << "Species C mismatch at t = " << time << " s";
 
     // Verify mass conservation
     double mass = A_num + B_num + C_num;
-    EXPECT_NEAR(mass, total, 1.0e-4)
-      << "Mass conservation violated at t = " << time << " s";
+    EXPECT_NEAR(mass, total, 1.0e-4) << "Mass conservation violated at t = " << time << " s";
 
     // Verify equilibrium relation
     if (B_num > 1.0e-10)
     {
-      EXPECT_NEAR(C_num / B_num, K_eq, 1.0e-3)
-        << "Equilibrium ratio violated at t = " << time << " s";
+      EXPECT_NEAR(C_num / B_num, K_eq, 1.0e-3) << "Equilibrium ratio violated at t = " << time << " s";
     }
   }
 
   // Steady state check (at t=100, exp(-0.1*100) = exp(-10) ~ 4.5e-5)
-  EXPECT_NEAR(state.variables_[0][i_A], 0.0, 1.0e-3)
-    << "A should have decayed to zero by t = " << time;
-  EXPECT_NEAR(state.variables_[0][i_B], total / (1.0 + K_eq), tolerance)
-    << "B should be total/(1+K_eq) at steady state";
+  EXPECT_NEAR(state.variables_[0][i_A], 0.0, 1.0e-3) << "A should have decayed to zero by t = " << time;
+  EXPECT_NEAR(state.variables_[0][i_B], total / (1.0 + K_eq), tolerance) << "B should be total/(1+K_eq) at steady state";
   EXPECT_NEAR(state.variables_[0][i_C], total * K_eq / (1.0 + K_eq), tolerance)
-    << "C should be total*K_eq/(1+K_eq) at steady state";
+      << "C should be total*K_eq/(1+K_eq) at steady state";
 }
 
 // ============================================================================
@@ -204,14 +188,8 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
 
-  auto small_drop = UniformSection{
-    "SMALL",
-    { aqueous_phase }
-  };
-  auto large_drop = UniformSection{
-    "LARGE",
-    { aqueous_phase }
-  };
+  auto small_drop = UniformSection{ "SMALL", { aqueous_phase } };
+  auto large_drop = UniformSection{ "LARGE", { aqueous_phase } };
 
   double k = 0.05;
   double K_eq = 3.0;
@@ -219,29 +197,19 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
   double A0_large = 2.0;
 
   auto rate = [k](const Conditions& conditions) { return k; };
-  auto reaction = DissolvedReaction{
-    rate,
-    { A },
-    { B },
-    S,
-    aqueous_phase
-  };
+  auto reaction = DissolvedReaction{ rate, { A }, { B }, S, aqueous_phase };
 
   // Equilibrium constraint: C = K_eq * B (C is algebraic)
   auto equil = DissolvedEquilibriumConstraintBuilder()
-      .SetPhase(aqueous_phase)
-      .SetReactants({ B })
-      .SetProducts({ C })
-      .SetAlgebraicSpecies(C)
-      .SetSolvent(S)
-      .SetEquilibriumConstant(EquilibriumConstant(
-          EquilibriumConstantParameters{ .A_ = K_eq }))
-      .Build();
+                   .SetPhase(aqueous_phase)
+                   .SetReactants({ B })
+                   .SetProducts({ C })
+                   .SetAlgebraicSpecies(C)
+                   .SetSolvent(S)
+                   .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = K_eq }))
+                   .Build();
 
-  auto model = Model{
-    .name_ = "AEROSOL",
-    .representations_ = { small_drop, large_drop }
-  };
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { small_drop, large_drop } };
   model.AddProcesses({ reaction });
   model.AddConstraints(equil);
 
@@ -289,8 +257,7 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
     double dt = 0.1;
     solver.UpdateStateParameters(state);
     auto result = solver.Solve(dt, state);
-    ASSERT_EQ(result.state_, SolverState::Converged)
-      << "Solver failed at t = " << time;
+    ASSERT_EQ(result.state_, SolverState::Converged) << "Solver failed at t = " << time;
     time += dt;
   }
 
@@ -314,9 +281,9 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
 
   // Verify the two instances are independent (different steady states)
   EXPECT_GT(std::abs(state.variables_[0][i_B_large] - state.variables_[0][i_B_small]), 0.5)
-    << "LARGE and SMALL should have distinct B values";
+      << "LARGE and SMALL should have distinct B values";
   EXPECT_GT(std::abs(state.variables_[0][i_C_large] - state.variables_[0][i_C_small]), 1.0)
-    << "LARGE and SMALL should have distinct C values";
+      << "LARGE and SMALL should have distinct C values";
 
   // Verify equilibrium relation holds for both instances
   EXPECT_NEAR(state.variables_[0][i_C_small] / state.variables_[0][i_B_small], K_eq, 1.0e-3);
@@ -340,10 +307,7 @@ TEST(EquilibriumConstraintsIntegration, InconsistentInitialConditions)
   auto S = Species{ "S" };
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
-  auto droplet = UniformSection{
-    "DROPLET",
-    { aqueous_phase }
-  };
+  auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 0.1;
   double K_eq = 2.0;
@@ -351,32 +315,26 @@ TEST(EquilibriumConstraintsIntegration, InconsistentInitialConditions)
   double total = A0;
 
   auto rate = [k](const Conditions& conditions) { return k; };
-  auto reaction = DissolvedReaction{
-    rate, { A }, { B }, S, aqueous_phase
-  };
+  auto reaction = DissolvedReaction{ rate, { A }, { B }, S, aqueous_phase };
 
   auto equil = DissolvedEquilibriumConstraintBuilder()
-      .SetPhase(aqueous_phase)
-      .SetReactants({ B })
-      .SetProducts({ C })
-      .SetAlgebraicSpecies(C)
-      .SetSolvent(S)
-      .SetEquilibriumConstant(EquilibriumConstant(
-          EquilibriumConstantParameters{ .A_ = K_eq }))
-      .Build();
+                   .SetPhase(aqueous_phase)
+                   .SetReactants({ B })
+                   .SetProducts({ C })
+                   .SetAlgebraicSpecies(C)
+                   .SetSolvent(S)
+                   .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = K_eq }))
+                   .Build();
 
   auto mass_cons = LinearConstraintBuilder()
-      .SetAlgebraicSpecies(aqueous_phase, B)
-      .AddTerm(aqueous_phase, A, 1.0)
-      .AddTerm(aqueous_phase, B, 1.0)
-      .AddTerm(aqueous_phase, C, 1.0)
-      .SetConstant(total)
-      .Build();
+                       .SetAlgebraicSpecies(aqueous_phase, B)
+                       .AddTerm(aqueous_phase, A, 1.0)
+                       .AddTerm(aqueous_phase, B, 1.0)
+                       .AddTerm(aqueous_phase, C, 1.0)
+                       .SetConstant(total)
+                       .Build();
 
-  auto model = Model{
-    .name_ = "AEROSOL",
-    .representations_ = { droplet }
-  };
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
   model.AddConstraints(equil, mass_cons);
 
@@ -422,8 +380,7 @@ TEST(EquilibriumConstraintsIntegration, InconsistentInitialConditions)
       double dt = std::min(0.1, target_time - time);
       solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
-      ASSERT_EQ(result.state_, SolverState::Converged)
-        << "Solver failed at t = " << time << " s with dt = " << dt;
+      ASSERT_EQ(result.state_, SolverState::Converged) << "Solver failed at t = " << time << " s with dt = " << dt;
       time += dt;
     }
 
@@ -435,21 +392,16 @@ TEST(EquilibriumConstraintsIntegration, InconsistentInitialConditions)
     double B_an = (total - A_an) / (1.0 + K_eq);
     double C_an = K_eq * (total - A_an) / (1.0 + K_eq);
 
-    EXPECT_NEAR(A_num, A_an, tolerance)
-      << "Species A mismatch at t = " << time << " s";
-    EXPECT_NEAR(B_num, B_an, tolerance)
-      << "Species B mismatch at t = " << time << " s";
-    EXPECT_NEAR(C_num, C_an, tolerance)
-      << "Species C mismatch at t = " << time << " s";
+    EXPECT_NEAR(A_num, A_an, tolerance) << "Species A mismatch at t = " << time << " s";
+    EXPECT_NEAR(B_num, B_an, tolerance) << "Species B mismatch at t = " << time << " s";
+    EXPECT_NEAR(C_num, C_an, tolerance) << "Species C mismatch at t = " << time << " s";
 
     double mass = A_num + B_num + C_num;
-    EXPECT_NEAR(mass, total, 1.0e-4)
-      << "Mass conservation violated at t = " << time << " s";
+    EXPECT_NEAR(mass, total, 1.0e-4) << "Mass conservation violated at t = " << time << " s";
 
     if (B_num > 1.0e-10)
     {
-      EXPECT_NEAR(C_num / B_num, K_eq, 1.0e-3)
-        << "Equilibrium ratio violated at t = " << time << " s";
+      EXPECT_NEAR(C_num / B_num, K_eq, 1.0e-3) << "Equilibrium ratio violated at t = " << time << " s";
     }
   }
 }

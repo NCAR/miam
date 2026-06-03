@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <miam/miam.hpp>
+
 #include <micm/CPU.hpp>
 
 #include <gtest/gtest.h>
@@ -24,27 +25,19 @@ TEST(DissolvedReactionIntegration, SimpleFirstOrderDecay)
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
 
-  auto droplet = UniformSection{
-    "DROPLET",
-    { aqueous_phase }
-  };
+  auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 0.1;  // s^-1
   auto rate = [k](const Conditions& conditions) { return k; };
 
   // A -> B with solvent C
-  auto reaction = DissolvedReaction{
-    rate,
-    { A },   // reactants
-    { B },   // products
-    C,       // solvent
-    aqueous_phase
-  };
+  auto reaction = DissolvedReaction{ rate,
+                                     { A },  // reactants
+                                     { B },  // products
+                                     C,      // solvent
+                                     aqueous_phase };
 
-  auto model = Model{
-    .name_ = "AEROSOL",
-    .representations_ = { droplet }
-  };
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
 
   Phase gas_phase{ "GAS", {} };
@@ -52,10 +45,10 @@ TEST(DissolvedReactionIntegration, SimpleFirstOrderDecay)
 
   auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                  .SetSystem(system)
-                  .AddExternalModel(model)
-                  .SetIgnoreUnusedSpecies(true)
-                  .Build();
+                    .SetSystem(system)
+                    .AddExternalModel(model)
+                    .SetIgnoreUnusedSpecies(true)
+                    .Build();
 
   State state = solver.GetState();
 
@@ -85,8 +78,7 @@ TEST(DissolvedReactionIntegration, SimpleFirstOrderDecay)
       double dt = std::min(0.01, target_time - time);
       solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
-      ASSERT_EQ(result.state_, SolverState::Converged)
-        << "Solver failed at t = " << time << " s";
+      ASSERT_EQ(result.state_, SolverState::Converged) << "Solver failed at t = " << time << " s";
       time += dt;
     }
 
@@ -98,24 +90,19 @@ TEST(DissolvedReactionIntegration, SimpleFirstOrderDecay)
     double A_analytic = A0 * std::exp(-k * time);
     double B_analytic = A0 * (1.0 - std::exp(-k * time));
 
-    EXPECT_NEAR(A_numeric, A_analytic, tolerance)
-      << "Species A mismatch at t = " << time << " s";
-    EXPECT_NEAR(B_numeric, B_analytic, tolerance)
-      << "Species B mismatch at t = " << time << " s";
+    EXPECT_NEAR(A_numeric, A_analytic, tolerance) << "Species A mismatch at t = " << time << " s";
+    EXPECT_NEAR(B_numeric, B_analytic, tolerance) << "Species B mismatch at t = " << time << " s";
 
     // Mass conservation: A + B = A0
-    EXPECT_NEAR(A_numeric + B_numeric, A0, tolerance)
-      << "Mass conservation violated at t = " << time << " s";
+    EXPECT_NEAR(A_numeric + B_numeric, A0, tolerance) << "Mass conservation violated at t = " << time << " s";
 
     // Solvent should remain constant
-    EXPECT_NEAR(C_numeric, 1.0e-4, tolerance)
-      << "Solvent changed at t = " << time << " s";
+    EXPECT_NEAR(C_numeric, 1.0e-4, tolerance) << "Solvent changed at t = " << time << " s";
   }
 
   // At t=100, A should be essentially zero: exp(-0.1*100) = exp(-10) ≈ 4.5e-5
   double A_final = state.variables_[0][i_A];
-  EXPECT_NEAR(A_final, 0.0, tolerance)
-    << "A should be depleted at t = 100 s";
+  EXPECT_NEAR(A_final, 0.0, tolerance) << "A should be depleted at t = 100 s";
 }
 
 // ============================================================================
@@ -130,28 +117,20 @@ TEST(DissolvedReactionIntegration, SolventAsReactant)
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
 
-  auto droplet = UniformSection{
-    "DROPLET",
-    { aqueous_phase }
-  };
+  auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 1.0e-3;
   auto rate = [k](const Conditions& conditions) { return k; };
 
   // A + C -> B with solvent C
   // rate = k / [C]^(2-1) * [A] * [C] = k * [A]
-  auto reaction = DissolvedReaction{
-    rate,
-    { A, C },  // reactants
-    { B },     // products
-    C,         // solvent
-    aqueous_phase
-  };
+  auto reaction = DissolvedReaction{ rate,
+                                     { A, C },  // reactants
+                                     { B },     // products
+                                     C,         // solvent
+                                     aqueous_phase };
 
-  auto model = Model{
-    .name_ = "AEROSOL",
-    .representations_ = { droplet }
-  };
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
 
   Phase gas_phase{ "GAS", {} };
@@ -161,10 +140,10 @@ TEST(DissolvedReactionIntegration, SolventAsReactant)
 
   auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                  .SetSystem(system)
-                  .AddExternalModel(model)
-                  .SetIgnoreUnusedSpecies(true)
-                  .Build();
+                    .SetSystem(system)
+                    .AddExternalModel(model)
+                    .SetIgnoreUnusedSpecies(true)
+                    .Build();
 
   State state = solver.GetState();
 
@@ -195,8 +174,7 @@ TEST(DissolvedReactionIntegration, SolventAsReactant)
       double dt = std::min(1.0, target_time - time);
       solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
-      ASSERT_EQ(result.state_, SolverState::Converged)
-        << "Solver failed at t = " << time << " s";
+      ASSERT_EQ(result.state_, SolverState::Converged) << "Solver failed at t = " << time << " s";
       time += dt;
     }
 
@@ -208,20 +186,16 @@ TEST(DissolvedReactionIntegration, SolventAsReactant)
     double A_analytic = A0 * std::exp(-k * time);
     double B_analytic = A0 - A_analytic;
 
-    EXPECT_NEAR(A_numeric, A_analytic, tolerance)
-      << "Species A mismatch at t = " << time << " s";
-    EXPECT_NEAR(B_numeric, B_analytic, tolerance)
-      << "Species B mismatch at t = " << time << " s";
+    EXPECT_NEAR(A_numeric, A_analytic, tolerance) << "Species A mismatch at t = " << time << " s";
+    EXPECT_NEAR(B_numeric, B_analytic, tolerance) << "Species B mismatch at t = " << time << " s";
 
     // Stoichiometry: C consumed = A consumed
     double A_consumed = A0 - A_numeric;
     double C_consumed = C0 - C_numeric;
-    EXPECT_NEAR(C_consumed, A_consumed, tolerance)
-      << "Stoichiometry violated at t = " << time << " s";
+    EXPECT_NEAR(C_consumed, A_consumed, tolerance) << "Stoichiometry violated at t = " << time << " s";
 
     // Mass balance: A + B = A0
-    EXPECT_NEAR(A_numeric + B_numeric, A0, tolerance)
-      << "Mass conservation violated at t = " << time << " s";
+    EXPECT_NEAR(A_numeric + B_numeric, A0, tolerance) << "Mass conservation violated at t = " << time << " s";
   }
 }
 
@@ -237,28 +211,20 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
 
-  auto droplet = UniformSection{
-    "DROPLET",
-    { aqueous_phase }
-  };
+  auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 1.0e-3;
   auto rate = [k](const Conditions& conditions) { return k; };
 
   // A -> B + C with solvent C
   // rate = k * [A] (1 reactant, no solvent normalization)
-  auto reaction = DissolvedReaction{
-    rate,
-    { A },      // reactants
-    { B, C },   // products (solvent is a product)
-    C,          // solvent
-    aqueous_phase
-  };
+  auto reaction = DissolvedReaction{ rate,
+                                     { A },     // reactants
+                                     { B, C },  // products (solvent is a product)
+                                     C,         // solvent
+                                     aqueous_phase };
 
-  auto model = Model{
-    .name_ = "AEROSOL",
-    .representations_ = { droplet }
-  };
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
 
   Phase gas_phase{ "GAS", {} };
@@ -269,10 +235,10 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
 
   auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                  .SetSystem(system)
-                  .AddExternalModel(model)
-                  .SetIgnoreUnusedSpecies(true)
-                  .Build();
+                    .SetSystem(system)
+                    .AddExternalModel(model)
+                    .SetIgnoreUnusedSpecies(true)
+                    .Build();
 
   State state = solver.GetState();
 
@@ -302,8 +268,7 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
       double dt = std::min(1.0, target_time - time);
       solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
-      ASSERT_EQ(result.state_, SolverState::Converged)
-        << "Solver failed at t = " << time << " s";
+      ASSERT_EQ(result.state_, SolverState::Converged) << "Solver failed at t = " << time << " s";
       time += dt;
     }
 
@@ -316,22 +281,17 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
     double B_analytic = A0 - A_analytic;
     double C_analytic = C0 + B_analytic;  // C produced at same rate as B
 
-    EXPECT_NEAR(A_numeric, A_analytic, tolerance)
-      << "Species A mismatch at t = " << time << " s";
-    EXPECT_NEAR(B_numeric, B_analytic, tolerance)
-      << "Species B mismatch at t = " << time << " s";
-    EXPECT_NEAR(C_numeric, C_analytic, tolerance)
-      << "Species C mismatch at t = " << time << " s";
+    EXPECT_NEAR(A_numeric, A_analytic, tolerance) << "Species A mismatch at t = " << time << " s";
+    EXPECT_NEAR(B_numeric, B_analytic, tolerance) << "Species B mismatch at t = " << time << " s";
+    EXPECT_NEAR(C_numeric, C_analytic, tolerance) << "Species C mismatch at t = " << time << " s";
 
     // Stoichiometry: ΔB = ΔC = -ΔA
     double delta_B = B_numeric - B0;
     double delta_C = C_numeric - C0;
-    EXPECT_NEAR(delta_B, delta_C, tolerance)
-      << "Stoichiometry violated at t = " << time << " s";
+    EXPECT_NEAR(delta_B, delta_C, tolerance) << "Stoichiometry violated at t = " << time << " s";
 
     // Mass balance: A + B = A0
-    EXPECT_NEAR(A_numeric + B_numeric, A0, tolerance)
-      << "Mass conservation violated at t = " << time << " s";
+    EXPECT_NEAR(A_numeric + B_numeric, A0, tolerance) << "Mass conservation violated at t = " << time << " s";
   }
 }
 
@@ -347,15 +307,9 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
   auto small_aqueous = Phase{ "AQUEOUS_SMALL", { { A }, { B }, { C } } };
   auto large_aqueous = Phase{ "AQUEOUS_LARGE", { { A }, { B }, { C } } };
 
-  auto small_droplet = UniformSection{
-    "DROPLET_SMALL",
-    { small_aqueous }
-  };
+  auto small_droplet = UniformSection{ "DROPLET_SMALL", { small_aqueous } };
 
-  auto large_droplet = UniformSection{
-    "DROPLET_LARGE",
-    { large_aqueous }
-  };
+  auto large_droplet = UniformSection{ "DROPLET_LARGE", { large_aqueous } };
 
   double k_small = 0.1;
   double k_large = 0.2;
@@ -363,26 +317,11 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
   auto rate_small = [k_small](const Conditions& conditions) { return k_small; };
   auto rate_large = [k_large](const Conditions& conditions) { return k_large; };
 
-  auto reaction_small = DissolvedReaction{
-    rate_small,
-    { A },
-    { B },
-    C,
-    small_aqueous
-  };
+  auto reaction_small = DissolvedReaction{ rate_small, { A }, { B }, C, small_aqueous };
 
-  auto reaction_large = DissolvedReaction{
-    rate_large,
-    { A },
-    { B },
-    C,
-    large_aqueous
-  };
+  auto reaction_large = DissolvedReaction{ rate_large, { A }, { B }, C, large_aqueous };
 
-  auto model = Model{
-    .name_ = "AEROSOL",
-    .representations_ = { small_droplet, large_droplet }
-  };
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { small_droplet, large_droplet } };
   model.AddProcesses({ reaction_small, reaction_large });
 
   Phase gas_phase{ "GAS", {} };
@@ -392,10 +331,10 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
 
   auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                  .SetSystem(system)
-                  .AddExternalModel(model)
-                  .SetIgnoreUnusedSpecies(true)
-                  .Build();
+                    .SetSystem(system)
+                    .AddExternalModel(model)
+                    .SetIgnoreUnusedSpecies(true)
+                    .Build();
 
   State state = solver.GetState();
 
@@ -434,8 +373,7 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
       double dt = std::min(0.01, target_time - time);
       solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
-      ASSERT_EQ(result.state_, SolverState::Converged)
-        << "Solver failed at t = " << time << " s";
+      ASSERT_EQ(result.state_, SolverState::Converged) << "Solver failed at t = " << time << " s";
       time += dt;
     }
 
@@ -450,19 +388,13 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
     double A_ana_lg = A0_large * std::exp(-k_large * time);
     double B_ana_lg = A0_large * (1.0 - std::exp(-k_large * time));
 
-    EXPECT_NEAR(A_num_sm, A_ana_sm, tolerance)
-      << "Small droplet A mismatch at t = " << time << " s";
-    EXPECT_NEAR(B_num_sm, B_ana_sm, tolerance)
-      << "Small droplet B mismatch at t = " << time << " s";
-    EXPECT_NEAR(A_num_sm + B_num_sm, A0_small, tolerance)
-      << "Small droplet mass not conserved at t = " << time << " s";
+    EXPECT_NEAR(A_num_sm, A_ana_sm, tolerance) << "Small droplet A mismatch at t = " << time << " s";
+    EXPECT_NEAR(B_num_sm, B_ana_sm, tolerance) << "Small droplet B mismatch at t = " << time << " s";
+    EXPECT_NEAR(A_num_sm + B_num_sm, A0_small, tolerance) << "Small droplet mass not conserved at t = " << time << " s";
 
-    EXPECT_NEAR(A_num_lg, A_ana_lg, tolerance)
-      << "Large droplet A mismatch at t = " << time << " s";
-    EXPECT_NEAR(B_num_lg, B_ana_lg, tolerance)
-      << "Large droplet B mismatch at t = " << time << " s";
-    EXPECT_NEAR(A_num_lg + B_num_lg, A0_large, tolerance)
-      << "Large droplet mass not conserved at t = " << time << " s";
+    EXPECT_NEAR(A_num_lg, A_ana_lg, tolerance) << "Large droplet A mismatch at t = " << time << " s";
+    EXPECT_NEAR(B_num_lg, B_ana_lg, tolerance) << "Large droplet B mismatch at t = " << time << " s";
+    EXPECT_NEAR(A_num_lg + B_num_lg, A0_large, tolerance) << "Large droplet mass not conserved at t = " << time << " s";
 
     // Solvent should be unchanged
     EXPECT_NEAR(state.variables_[0][i_C_small], 1.0e-4, tolerance);
@@ -472,8 +404,7 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
   // Large droplets should decay faster (k_large > k_small)
   double A_final_small = state.variables_[0][i_A_small];
   double A_final_large = state.variables_[0][i_A_large];
-  EXPECT_LT(A_final_large / A0_large, A_final_small / A0_small)
-    << "Large droplets should have decayed more";
+  EXPECT_LT(A_final_large / A0_large, A_final_small / A0_small) << "Large droplets should have decayed more";
 }
 
 // ============================================================================
@@ -492,42 +423,34 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
 
-  auto droplet = UniformSection{
-    "DROPLET",
-    { aqueous_phase }
-  };
+  auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 1.0;
   auto rate = [k](const Conditions& conditions) { return k; };
 
   // A + B -> C with solvent S
   // rate = k / [S] * [A] * [B]
-  auto reaction = DissolvedReaction{
-    rate,
-    { A, B },  // reactants
-    { C },     // products
-    S,         // solvent
-    aqueous_phase
-  };
+  auto reaction = DissolvedReaction{ rate,
+                                     { A, B },  // reactants
+                                     { C },     // products
+                                     S,         // solvent
+                                     aqueous_phase };
 
-  auto model = Model{
-    .name_ = "AEROSOL",
-    .representations_ = { droplet }
-  };
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
 
   Phase gas_phase{ "GAS", {} };
 
-  double c0 = 0.01;    // mol/m^3 (equal initial concentrations)
-  double S0 = 50.0;    // mol/m^3 (solvent, large and approximately constant)
+  double c0 = 0.01;       // mol/m^3 (equal initial concentrations)
+  double S0 = 50.0;       // mol/m^3 (solvent, large and approximately constant)
   double k_eff = k / S0;  // effective second-order rate constant
 
   auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                  .SetSystem(system)
-                  .AddExternalModel(model)
-                  .SetIgnoreUnusedSpecies(true)
-                  .Build();
+                    .SetSystem(system)
+                    .AddExternalModel(model)
+                    .SetIgnoreUnusedSpecies(true)
+                    .Build();
 
   State state = solver.GetState();
 
@@ -563,8 +486,7 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
       double dt = std::min(t_half * 0.001, target_time - time);
       solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
-      ASSERT_EQ(result.state_, SolverState::Converged)
-        << "Solver failed at t = " << time << " s";
+      ASSERT_EQ(result.state_, SolverState::Converged) << "Solver failed at t = " << time << " s";
       time += dt;
     }
 
@@ -580,21 +502,16 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
     double C_analytic = c0 - A_analytic;
 
     EXPECT_NEAR(A_numeric, A_analytic, tolerance)
-      << "Species A mismatch at t = " << time << " s"
-      << " (t/t_half = " << time / t_half << ")";
+        << "Species A mismatch at t = " << time << " s" << " (t/t_half = " << time / t_half << ")";
     // A and B should remain equal (symmetric)
-    EXPECT_NEAR(A_numeric, B_numeric, tolerance)
-      << "A and B should be equal at t = " << time << " s";
-    EXPECT_NEAR(C_numeric, C_analytic, tolerance)
-      << "Species C mismatch at t = " << time << " s";
+    EXPECT_NEAR(A_numeric, B_numeric, tolerance) << "A and B should be equal at t = " << time << " s";
+    EXPECT_NEAR(C_numeric, C_analytic, tolerance) << "Species C mismatch at t = " << time << " s";
 
     // Solvent should remain constant (it's not a reactant or product)
-    EXPECT_NEAR(S_numeric, S0, tolerance)
-      << "Solvent changed at t = " << time << " s";
+    EXPECT_NEAR(S_numeric, S0, tolerance) << "Solvent changed at t = " << time << " s";
 
     // Mass balance: A + C = c0 (and B + C = c0)
-    EXPECT_NEAR(A_numeric + C_numeric, c0, tolerance)
-      << "Mass conservation violated at t = " << time << " s";
+    EXPECT_NEAR(A_numeric + C_numeric, c0, tolerance) << "Mass conservation violated at t = " << time << " s";
   }
 }
 
@@ -612,10 +529,7 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
 
-  auto droplet = UniformSection{
-    "DROPLET",
-    { aqueous_phase }
-  };
+  auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 1.0;  // s^-1
   auto rate = [k](const Conditions& conditions) { return k; };
@@ -629,24 +543,21 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
     { C },     // products
     S,         // solvent
     aqueous_phase,
-    1.0e-20,   // solvent_damping_epsilon (default)
-    t_half     // min_halflife — triggers the capped code path
+    1.0e-20,  // solvent_damping_epsilon (default)
+    t_half    // min_halflife — triggers the capped code path
   };
 
-  auto model = Model{
-    .name_ = "AEROSOL",
-    .representations_ = { droplet }
-  };
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
 
   Phase gas_phase{ "GAS", {} };
 
   auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                  .SetSystem(system)
-                  .AddExternalModel(model)
-                  .SetIgnoreUnusedSpecies(true)
-                  .Build();
+                    .SetSystem(system)
+                    .AddExternalModel(model)
+                    .SetIgnoreUnusedSpecies(true)
+                    .Build();
 
   // --- Sub-test 1: One reactant exactly zero ---
   {
@@ -657,10 +568,10 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
     std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
     std::size_t i_S = state.variable_map_.at("DROPLET.AQUEOUS.S");
 
-    state.variables_[0][i_A] = 1.0;    // nonzero
-    state.variables_[0][i_B] = 0.0;    // exactly zero — triggers the NaN bug
+    state.variables_[0][i_A] = 1.0;  // nonzero
+    state.variables_[0][i_B] = 0.0;  // exactly zero — triggers the NaN bug
     state.variables_[0][i_C] = 0.0;
-    state.variables_[0][i_S] = 1.0e-4; // solvent
+    state.variables_[0][i_S] = 1.0e-4;  // solvent
 
     state.conditions_[0].temperature_ = 298.15;
     state.conditions_[0].pressure_ = 101325.0;
@@ -669,16 +580,12 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
     solver.UpdateStateParameters(state);
 
     auto result = solver.Solve(1.0, state);
-    EXPECT_EQ(result.state_, SolverState::Converged)
-      << "Solver should converge when one reactant is exactly zero";
+    EXPECT_EQ(result.state_, SolverState::Converged) << "Solver should converge when one reactant is exactly zero";
 
     // With B=0, no reaction should occur — concentrations should be unchanged
-    EXPECT_NEAR(state.variables_[0][i_A], 1.0, 1.0e-10)
-      << "A should remain unchanged when B=0";
-    EXPECT_NEAR(state.variables_[0][i_B], 0.0, 1.0e-10)
-      << "B should remain zero";
-    EXPECT_NEAR(state.variables_[0][i_C], 0.0, 1.0e-10)
-      << "C should remain zero when no reaction occurs";
+    EXPECT_NEAR(state.variables_[0][i_A], 1.0, 1.0e-10) << "A should remain unchanged when B=0";
+    EXPECT_NEAR(state.variables_[0][i_B], 0.0, 1.0e-10) << "B should remain zero";
+    EXPECT_NEAR(state.variables_[0][i_C], 0.0, 1.0e-10) << "C should remain zero when no reaction occurs";
   }
 
   // --- Sub-test 2: Both reactants zero ---
@@ -690,7 +597,7 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
     std::size_t i_C = state.variable_map_.at("DROPLET.AQUEOUS.C");
     std::size_t i_S = state.variable_map_.at("DROPLET.AQUEOUS.S");
 
-    state.variables_[0][i_A] = 0.0;    // both zero
+    state.variables_[0][i_A] = 0.0;  // both zero
     state.variables_[0][i_B] = 0.0;
     state.variables_[0][i_C] = 0.0;
     state.variables_[0][i_S] = 1.0e-4;
@@ -702,8 +609,7 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
     solver.UpdateStateParameters(state);
 
     auto result = solver.Solve(1.0, state);
-    EXPECT_EQ(result.state_, SolverState::Converged)
-      << "Solver should converge when both reactants are zero";
+    EXPECT_EQ(result.state_, SolverState::Converged) << "Solver should converge when both reactants are zero";
   }
 
   // --- Sub-test 3: Near-zero reactant (1e-30) — should converge smoothly ---
@@ -727,8 +633,7 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
     solver.UpdateStateParameters(state);
 
     auto result = solver.Solve(1.0, state);
-    EXPECT_EQ(result.state_, SolverState::Converged)
-      << "Solver should converge with near-zero reactant concentration";
+    EXPECT_EQ(result.state_, SolverState::Converged) << "Solver should converge with near-zero reactant concentration";
 
     // Concentrations should remain non-negative
     EXPECT_GE(state.variables_[0][i_A], 0.0) << "A should be non-negative";

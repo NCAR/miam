@@ -5,9 +5,10 @@
 // constrained DAE systems. At steady state, both should produce equivalent results.
 
 #include <miam/miam.hpp>
-#include <miam/util/constants.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
+#include <miam/util/constants.hpp>
+
 #include <micm/CPU.hpp>
 
 #include <gtest/gtest.h>
@@ -21,8 +22,7 @@ using namespace miam;
 namespace
 {
   // Solve a kinetic ODE system to steady state and return final concentrations
-  std::tuple<double, double, double> SolveKineticSystem(
-      double k, double k_f, double k_r, double A0)
+  std::tuple<double, double, double> SolveKineticSystem(double k, double k_f, double k_r, double A0)
   {
     auto A = Species{ "A" };
     auto B = Species{ "B" };
@@ -33,28 +33,19 @@ namespace
     auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
     auto rate = [k](const Conditions& conditions) { return k; };
-    auto reaction = DissolvedReaction{
-      rate, { A }, { B }, S, aqueous_phase
-    };
+    auto reaction = DissolvedReaction{ rate, { A }, { B }, S, aqueous_phase };
 
     auto forward_rate = [k_f](const Conditions& conditions) { return k_f; };
     auto reverse_rate = [k_r](const Conditions& conditions) { return k_r; };
-    auto reversible = DissolvedReversibleReaction{
-      forward_rate, reverse_rate,
-      { B }, { C }, S, aqueous_phase
-    };
+    auto reversible = DissolvedReversibleReaction{ forward_rate, reverse_rate, { B }, { C }, S, aqueous_phase };
 
-    auto model = Model{
-      .name_ = "AEROSOL",
-      .representations_ = { droplet }
-    };
+    auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model.AddProcesses({ reaction });
     model.AddProcesses({ reversible });
 
     Phase gas_phase{ "GAS", {} };
     auto system = System(gas_phase);
-    auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
-                      RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
+    auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                       .SetSystem(system)
                       .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
@@ -86,9 +77,7 @@ namespace
         break;
     }
 
-    return { state.variables_[0][i_A],
-             state.variables_[0][i_B],
-             state.variables_[0][i_C] };
+    return { state.variables_[0][i_A], state.variables_[0][i_B], state.variables_[0][i_C] };
   }
 }  // namespace
 
@@ -110,14 +99,15 @@ namespace
 // ============================================================================
 TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
 {
-  double k = 0.1;       // rate for A → B
-  double K_eq = 5.0;    // equilibrium constant for B <-> C
-  double k_f = 100.0;   // forward rate for B → C (fast)
+  double k = 0.1;           // rate for A → B
+  double K_eq = 5.0;        // equilibrium constant for B <-> C
+  double k_f = 100.0;       // forward rate for B → C (fast)
   double k_r = k_f / K_eq;  // reverse rate for C → B
   double A0 = 1.0;
 
   // --- Kinetic system ---
-  auto [A_kin, B_kin, C_kin] = [&]() {
+  auto [A_kin, B_kin, C_kin] = [&]()
+  {
     auto A = Species{ "A" };
     auto B = Species{ "B" };
     auto C = Species{ "C" };
@@ -127,28 +117,19 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
     auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
     auto rate = [k](const Conditions& conditions) { return k; };
-    auto reaction = DissolvedReaction{
-      rate, { A }, { B }, S, aqueous_phase
-    };
+    auto reaction = DissolvedReaction{ rate, { A }, { B }, S, aqueous_phase };
 
     auto forward_rate = [k_f](const Conditions& conditions) { return k_f; };
     auto reverse_rate = [k_r](const Conditions& conditions) { return k_r; };
-    auto reversible = DissolvedReversibleReaction{
-      forward_rate, reverse_rate,
-      { B }, { C }, S, aqueous_phase
-    };
+    auto reversible = DissolvedReversibleReaction{ forward_rate, reverse_rate, { B }, { C }, S, aqueous_phase };
 
-    auto model = Model{
-      .name_ = "AEROSOL",
-      .representations_ = { droplet }
-    };
+    auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model.AddProcesses({ reaction });
     model.AddProcesses({ reversible });
 
     Phase gas_phase{ "GAS", {} };
     auto system = System(gas_phase);
-    auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
-                      RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
+    auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                       .SetSystem(system)
                       .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
@@ -179,14 +160,12 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
       EXPECT_EQ(result.state_, SolverState::Converged) << "Kinetic solver failed at step " << step;
     }
 
-    return std::make_tuple(
-        state.variables_[0][i_A],
-        state.variables_[0][i_B],
-        state.variables_[0][i_C]);
+    return std::make_tuple(state.variables_[0][i_A], state.variables_[0][i_B], state.variables_[0][i_C]);
   }();
 
   // --- Constrained system (DAE) ---
-  auto [A_dae, B_dae, C_dae] = [&]() {
+  auto [A_dae, B_dae, C_dae] = [&]()
+  {
     auto A = Species{ "A" };
     auto B = Species{ "B" };
     auto C = Species{ "C" };
@@ -196,32 +175,26 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
     auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
     auto rate = [k](const Conditions& conditions) { return k; };
-    auto reaction = DissolvedReaction{
-      rate, { A }, { B }, S, aqueous_phase
-    };
+    auto reaction = DissolvedReaction{ rate, { A }, { B }, S, aqueous_phase };
 
     auto equil = DissolvedEquilibriumConstraintBuilder()
-        .SetPhase(aqueous_phase)
-        .SetReactants({ B })
-        .SetProducts({ C })
-        .SetAlgebraicSpecies(C)
-        .SetSolvent(S)
-        .SetEquilibriumConstant(EquilibriumConstant(
-            EquilibriumConstantParameters{ .A_ = K_eq }))
-        .Build();
+                     .SetPhase(aqueous_phase)
+                     .SetReactants({ B })
+                     .SetProducts({ C })
+                     .SetAlgebraicSpecies(C)
+                     .SetSolvent(S)
+                     .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = K_eq }))
+                     .Build();
 
     auto mass_cons = LinearConstraintBuilder()
-        .SetAlgebraicSpecies(aqueous_phase, B)
-        .AddTerm(aqueous_phase, A, 1.0)
-        .AddTerm(aqueous_phase, B, 1.0)
-        .AddTerm(aqueous_phase, C, 1.0)
-        .SetConstant(A0)
-        .Build();
+                         .SetAlgebraicSpecies(aqueous_phase, B)
+                         .AddTerm(aqueous_phase, A, 1.0)
+                         .AddTerm(aqueous_phase, B, 1.0)
+                         .AddTerm(aqueous_phase, C, 1.0)
+                         .SetConstant(A0)
+                         .Build();
 
-    auto model = Model{
-      .name_ = "AEROSOL",
-      .representations_ = { droplet }
-    };
+    auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model.AddProcesses({ reaction });
     model.AddConstraints(equil, mass_cons);
 
@@ -260,10 +233,7 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
       EXPECT_EQ(result.state_, SolverState::Converged) << "DAE solver failed at step " << step;
     }
 
-    return std::make_tuple(
-        state.variables_[0][i_A],
-        state.variables_[0][i_B],
-        state.variables_[0][i_C]);
+    return std::make_tuple(state.variables_[0][i_A], state.variables_[0][i_B], state.variables_[0][i_C]);
   }();
 
   // Both systems should agree at steady state
@@ -310,24 +280,21 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
 TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
 {
   double T = 298.15;
-  double HLC = 3.4e-2;         // mol m⁻³ Pa⁻¹
-  double gas_molecular_weight = 0.044;       // kg mol⁻¹
+  double HLC = 3.4e-2;                  // mol m⁻³ Pa⁻¹
+  double gas_molecular_weight = 0.044;  // kg mol⁻¹
   double solvent_molecular_weight = 0.018;
   double solvent_density = 1000.0;
-  double D_g = 1.5e-5;         // m² s⁻¹
+  double D_g = 1.5e-5;  // m² s⁻¹
   double accommodation = 0.05;
   double H2O_conc = 0.017;  // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
   double f_v = H2O_conc * solvent_molecular_weight / solvent_density;
   double alpha = HLC * GAS_CONSTANT * T * f_v;
 
-  auto A_g = Species{ "A_g",
-      { { "molecular weight [kg mol-1]", gas_molecular_weight } } };
-  auto A_aq = Species{ "A_aq",
-      { { "molecular weight [kg mol-1]", gas_molecular_weight },
-        { "density [kg m-3]", 1800.0 } } };
-  auto H2O = Species{ "H2O",
-      { { "molecular weight [kg mol-1]", solvent_molecular_weight },
-        { "density [kg m-3]", solvent_density } } };
+  auto A_g = Species{ "A_g", { { "molecular weight [kg mol-1]", gas_molecular_weight } } };
+  auto A_aq = Species{ "A_aq", { { "molecular weight [kg mol-1]", gas_molecular_weight }, { "density [kg m-3]", 1800.0 } } };
+  auto H2O =
+      Species{ "H2O",
+               { { "molecular weight [kg mol-1]", solvent_molecular_weight }, { "density [kg m-3]", solvent_density } } };
 
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
@@ -339,30 +306,23 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
   // --- Kinetic system (HL phase transfer) ---
   double kinetic_A_g, kinetic_A_aq;
   {
-    auto droplet = SingleMomentMode{
-      "DROPLET", { aqueous_phase }, 5.0e-6, 1.2
-    };
+    auto droplet = SingleMomentMode{ "DROPLET", { aqueous_phase }, 5.0e-6, 1.2 };
 
     auto transfer = HenryLawPhaseTransferBuilder()
-        .SetCondensedPhase(aqueous_phase)
-        .SetGasSpecies(A_g)
-        .SetCondensedSpecies(A_aq)
-        .SetSolvent(H2O)
-        .SetHenrysLawConstant(HenrysLawConstant(
-            HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
-        .SetDiffusionCoefficient(D_g)
-        .SetAccommodationCoefficient(accommodation)
-        .Build();
+                        .SetCondensedPhase(aqueous_phase)
+                        .SetGasSpecies(A_g)
+                        .SetCondensedSpecies(A_aq)
+                        .SetSolvent(H2O)
+                        .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+                        .SetDiffusionCoefficient(D_g)
+                        .SetAccommodationCoefficient(accommodation)
+                        .Build();
 
-    auto model = Model{
-      .name_ = "AEROSOL",
-      .representations_ = { droplet }
-    };
+    auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model.AddProcesses({ transfer });
 
     auto system = System(gas_phase);
-    auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
-                      RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
+    auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                       .SetSystem(system)
                       .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
@@ -397,30 +357,24 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
   double dae_A_g, dae_A_aq;
   {
     // Use UniformSection for the constrained system — no kinetic mass transfer
-    auto droplet = UniformSection{
-      "DROPLET", { aqueous_phase }
-    };
+    auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
     auto hl_constraint = HenryLawEquilibriumConstraintBuilder()
-        .SetGasSpecies(A_g)
-        .SetCondensedSpecies(A_aq)
-        .SetSolvent(H2O)
-        .SetCondensedPhase(aqueous_phase)
-        .SetHenryLawConstant(HenrysLawConstant(
-            HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
-        .Build();
+                             .SetGasSpecies(A_g)
+                             .SetCondensedSpecies(A_aq)
+                             .SetSolvent(H2O)
+                             .SetCondensedPhase(aqueous_phase)
+                             .SetHenryLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+                             .Build();
 
     auto mass_cons = LinearConstraintBuilder()
-        .SetAlgebraicSpecies(gas_phase, A_g)
-        .AddTerm(gas_phase, A_g, 1.0)
-        .AddTerm(aqueous_phase, A_aq, 1.0)
-        .SetConstant(total)
-        .Build();
+                         .SetAlgebraicSpecies(gas_phase, A_g)
+                         .AddTerm(gas_phase, A_g, 1.0)
+                         .AddTerm(aqueous_phase, A_aq, 1.0)
+                         .SetConstant(total)
+                         .Build();
 
-    auto model = Model{
-      .name_ = "AEROSOL",
-      .representations_ = { droplet }
-    };
+    auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model.AddConstraints(hl_constraint, mass_cons);
 
     auto system = System(gas_phase);
@@ -473,26 +427,18 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
   const double tolerance = 5.0e-3;
 
   // Verify the constrained (DAE) system matches the analytical solution
-  EXPECT_NEAR(dae_A_g, gas_expected, tolerance * total)
-    << "DAE: A_g mismatch vs analytical";
-  EXPECT_NEAR(dae_A_aq, aq_expected, tolerance * total)
-    << "DAE: A_aq mismatch vs analytical";
+  EXPECT_NEAR(dae_A_g, gas_expected, tolerance * total) << "DAE: A_g mismatch vs analytical";
+  EXPECT_NEAR(dae_A_aq, aq_expected, tolerance * total) << "DAE: A_aq mismatch vs analytical";
 
   // Verify the kinetic system reached the same equilibrium
-  EXPECT_NEAR(kinetic_A_g, gas_expected, tolerance * total)
-    << "Kinetic: A_g mismatch vs analytical";
-  EXPECT_NEAR(kinetic_A_aq, aq_expected, tolerance * total)
-    << "Kinetic: A_aq mismatch vs analytical";
+  EXPECT_NEAR(kinetic_A_g, gas_expected, tolerance * total) << "Kinetic: A_g mismatch vs analytical";
+  EXPECT_NEAR(kinetic_A_aq, aq_expected, tolerance * total) << "Kinetic: A_aq mismatch vs analytical";
 
   // Direct comparison: kinetic vs constrained
-  EXPECT_NEAR(kinetic_A_g, dae_A_g, tolerance * total)
-    << "Kinetic vs DAE: A_g mismatch";
-  EXPECT_NEAR(kinetic_A_aq, dae_A_aq, tolerance * total)
-    << "Kinetic vs DAE: A_aq mismatch";
+  EXPECT_NEAR(kinetic_A_g, dae_A_g, tolerance * total) << "Kinetic vs DAE: A_g mismatch";
+  EXPECT_NEAR(kinetic_A_aq, dae_A_aq, tolerance * total) << "Kinetic vs DAE: A_aq mismatch";
 
   // Mass conservation in both
-  EXPECT_NEAR(kinetic_A_g + kinetic_A_aq, total, 1.0e-6)
-    << "Kinetic: mass conservation";
-  EXPECT_NEAR(dae_A_g + dae_A_aq, total, 1.0e-6)
-    << "DAE: mass conservation";
+  EXPECT_NEAR(kinetic_A_g + kinetic_A_aq, total, 1.0e-6) << "Kinetic: mass conservation";
+  EXPECT_NEAR(dae_A_g + dae_A_aq, total, 1.0e-6) << "DAE: mass conservation";
 }

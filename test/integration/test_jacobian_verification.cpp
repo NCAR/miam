@@ -8,6 +8,7 @@
 #include <miam/miam.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
+
 #include <micm/CPU.hpp>
 #include <micm/util/jacobian_verification.hpp>
 
@@ -96,29 +97,26 @@ namespace
 
     // Compute finite-difference Jacobian
     auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
-    auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing)
-    { forcing_fn(params_copy, vars, forcing); };
+    auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing) { forcing_fn(params_copy, vars, forcing); };
 
     auto fd_jac = micm::FiniteDifferenceJacobian<DenseMatrix>(fd_wrapper, variables, num_species);
 
     // Compare
-    auto comparison = (atol > 0 && rtol > 0)
-        ? micm::CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
-              analytical_jac, fd_jac, num_species, atol, rtol)
-        : micm::CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
-              analytical_jac, fd_jac, num_species);
+    auto comparison = (atol > 0 && rtol > 0) ? micm::CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
+                                                   analytical_jac, fd_jac, num_species, atol, rtol)
+                                             : micm::CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
+                                                   analytical_jac, fd_jac, num_species);
 
     EXPECT_TRUE(comparison.passed_) << "Process Jacobian mismatch: block=" << comparison.worst_block_
-                                   << " row=" << comparison.worst_row_ << " col=" << comparison.worst_col_
-                                   << " analytical=" << comparison.worst_analytical_ << " fd=" << comparison.worst_fd_;
+                                    << " row=" << comparison.worst_row_ << " col=" << comparison.worst_col_
+                                    << " analytical=" << comparison.worst_analytical_ << " fd=" << comparison.worst_fd_;
 
     // Check sparsity completeness
     auto sparsity =
         micm::CheckJacobianSparsityCompleteness<DenseMatrix, SparseMatrixFD>(analytical_jac, fd_jac, num_species);
 
-    EXPECT_TRUE(sparsity.passed_) << "Missing sparsity at block=" << sparsity.worst_block_
-                                 << " row=" << sparsity.worst_row_ << " col=" << sparsity.worst_col_
-                                 << " fd_value=" << sparsity.worst_fd_;
+    EXPECT_TRUE(sparsity.passed_) << "Missing sparsity at block=" << sparsity.worst_block_ << " row=" << sparsity.worst_row_
+                                  << " col=" << sparsity.worst_col_ << " fd_value=" << sparsity.worst_fd_;
   }
 
   /// Helper to verify constraint Jacobian (residual-based) for a given model
@@ -149,35 +147,32 @@ namespace
     SparseMatrixFD analytical_jac(builder);
 
     // Compute analytical Jacobian
-    auto jac_fn =
-        model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, analytical_jac);
+    auto jac_fn = model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(
+        maps.parameter_indices, maps.variable_indices, analytical_jac);
     jac_fn(variables, params_copy, analytical_jac);
 
     // Compute finite-difference Jacobian from residual function
     auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
-    auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing)
-    { residual_fn(vars, params_copy, forcing); };
+    auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing) { residual_fn(vars, params_copy, forcing); };
 
     auto fd_jac = micm::FiniteDifferenceJacobian<DenseMatrix>(fd_wrapper, variables, num_species);
 
     // Compare
-    auto comparison = (atol > 0 && rtol > 0)
-        ? micm::CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
-              analytical_jac, fd_jac, num_species, atol, rtol)
-        : micm::CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
-              analytical_jac, fd_jac, num_species);
+    auto comparison = (atol > 0 && rtol > 0) ? micm::CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
+                                                   analytical_jac, fd_jac, num_species, atol, rtol)
+                                             : micm::CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
+                                                   analytical_jac, fd_jac, num_species);
 
     EXPECT_TRUE(comparison.passed_) << "Constraint Jacobian mismatch: block=" << comparison.worst_block_
-                                   << " row=" << comparison.worst_row_ << " col=" << comparison.worst_col_
-                                   << " analytical=" << comparison.worst_analytical_ << " fd=" << comparison.worst_fd_;
+                                    << " row=" << comparison.worst_row_ << " col=" << comparison.worst_col_
+                                    << " analytical=" << comparison.worst_analytical_ << " fd=" << comparison.worst_fd_;
 
     // Check sparsity completeness
     auto sparsity =
         micm::CheckJacobianSparsityCompleteness<DenseMatrix, SparseMatrixFD>(analytical_jac, fd_jac, num_species);
 
-    EXPECT_TRUE(sparsity.passed_) << "Missing sparsity at block=" << sparsity.worst_block_
-                                 << " row=" << sparsity.worst_row_ << " col=" << sparsity.worst_col_
-                                 << " fd_value=" << sparsity.worst_fd_;
+    EXPECT_TRUE(sparsity.passed_) << "Missing sparsity at block=" << sparsity.worst_block_ << " row=" << sparsity.worst_row_
+                                  << " col=" << sparsity.worst_col_ << " fd_value=" << sparsity.worst_fd_;
   }
 }  // namespace
 
@@ -236,9 +231,7 @@ TEST(JacobianVerification, DissolvedReversibleReactionProcess)
   double k_f = 0.1, k_r = 0.05;
   auto forward_rate = [k_f](const Conditions&) { return k_f; };
   auto reverse_rate = [k_r](const Conditions&) { return k_r; };
-  auto reaction = DissolvedReversibleReaction{
-    forward_rate, reverse_rate, { A }, { B }, C, aqueous_phase
-  };
+  auto reaction = DissolvedReversibleReaction{ forward_rate, reverse_rate, { A }, { B }, C, aqueous_phase };
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -275,7 +268,9 @@ TEST(JacobianVerification, HenryLawPhaseTransferProcess)
 
   auto A_g = Species{ "A_g", { { "molecular weight [kg mol-1]", gas_molecular_weight } } };
   auto A_aq = Species{ "A_aq", { { "molecular weight [kg mol-1]", gas_molecular_weight }, { "density [kg m-3]", 1800.0 } } };
-  auto H2O = Species{ "H2O", { { "molecular weight [kg mol-1]", solvent_molecular_weight }, { "density [kg m-3]", solvent_density } } };
+  auto H2O =
+      Species{ "H2O",
+               { { "molecular weight [kg mol-1]", solvent_molecular_weight }, { "density [kg m-3]", solvent_density } } };
 
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
@@ -283,15 +278,14 @@ TEST(JacobianVerification, HenryLawPhaseTransferProcess)
   auto droplet = SingleMomentMode{ "DROPLET", { aqueous_phase }, 5.0e-6, 1.2 };
 
   auto transfer = HenryLawPhaseTransferBuilder()
-      .SetCondensedPhase(aqueous_phase)
-      .SetGasSpecies(A_g)
-      .SetCondensedSpecies(A_aq)
-      .SetSolvent(H2O)
-      .SetHenrysLawConstant(HenrysLawConstant(
-          HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
-      .SetDiffusionCoefficient(D_g)
-      .SetAccommodationCoefficient(alpha)
-      .Build();
+                      .SetCondensedPhase(aqueous_phase)
+                      .SetGasSpecies(A_g)
+                      .SetCondensedSpecies(A_aq)
+                      .SetSolvent(H2O)
+                      .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                      .SetDiffusionCoefficient(D_g)
+                      .SetAccommodationCoefficient(alpha)
+                      .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ transfer });
@@ -329,25 +323,24 @@ TEST(JacobianVerification, HenryLawPhaseTransferTwoMomentMode)
 
   auto A_g = Species{ "A_g", { { "molecular weight [kg mol-1]", gas_molecular_weight } } };
   auto A_aq = Species{ "A_aq", { { "molecular weight [kg mol-1]", gas_molecular_weight }, { "density [kg m-3]", 1800.0 } } };
-  auto H2O = Species{ "H2O", { { "molecular weight [kg mol-1]", solvent_molecular_weight }, { "density [kg m-3]", solvent_density } } };
+  auto H2O =
+      Species{ "H2O",
+               { { "molecular weight [kg mol-1]", solvent_molecular_weight }, { "density [kg m-3]", solvent_density } } };
 
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
 
-  auto droplet = TwoMomentMode{
-    "DROPLET", { aqueous_phase }, 1.2
-  };
+  auto droplet = TwoMomentMode{ "DROPLET", { aqueous_phase }, 1.2 };
 
   auto transfer = HenryLawPhaseTransferBuilder()
-      .SetCondensedPhase(aqueous_phase)
-      .SetGasSpecies(A_g)
-      .SetCondensedSpecies(A_aq)
-      .SetSolvent(H2O)
-      .SetHenrysLawConstant(HenrysLawConstant(
-          HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
-      .SetDiffusionCoefficient(D_g)
-      .SetAccommodationCoefficient(alpha)
-      .Build();
+                      .SetCondensedPhase(aqueous_phase)
+                      .SetGasSpecies(A_g)
+                      .SetCondensedSpecies(A_aq)
+                      .SetSolvent(H2O)
+                      .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                      .SetDiffusionCoefficient(D_g)
+                      .SetAccommodationCoefficient(alpha)
+                      .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ transfer });
@@ -386,15 +379,11 @@ TEST(JacobianVerification, MultipleProcessesCombined)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   // A → B (irreversible)
-  auto reaction1 = DissolvedReaction{
-    [](const Conditions&) { return 0.1; }, { A }, { B }, S, aqueous_phase
-  };
+  auto reaction1 = DissolvedReaction{ [](const Conditions&) { return 0.1; }, { A }, { B }, S, aqueous_phase };
 
   // C ⇌ D (reversible)
   auto reaction2 = DissolvedReversibleReaction{
-    [](const Conditions&) { return 0.2; },
-    [](const Conditions&) { return 0.05; },
-    { C }, { D }, S, aqueous_phase
+    [](const Conditions&) { return 0.2; }, [](const Conditions&) { return 0.05; }, { C }, { D }, S, aqueous_phase
   };
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -441,14 +430,13 @@ TEST(JacobianVerification, DissolvedEquilibriumConstraint)
 
   double K_eq = 2.0;
   auto equil = DissolvedEquilibriumConstraintBuilder()
-      .SetPhase(aqueous_phase)
-      .SetReactants({ B })
-      .SetProducts({ C })
-      .SetAlgebraicSpecies(C)
-      .SetSolvent(S)
-      .SetEquilibriumConstant(EquilibriumConstant(
-          EquilibriumConstantParameters{ .A_ = K_eq }))
-      .Build();
+                   .SetPhase(aqueous_phase)
+                   .SetReactants({ B })
+                   .SetProducts({ C })
+                   .SetAlgebraicSpecies(C)
+                   .SetSolvent(S)
+                   .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = K_eq }))
+                   .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddConstraints({ equil });
@@ -487,12 +475,12 @@ TEST(JacobianVerification, LinearConstraint)
 
   double total = 1.0;
   auto mass_cons = LinearConstraintBuilder()
-      .SetAlgebraicSpecies(aqueous_phase, B)
-      .AddTerm(aqueous_phase, A, 1.0)
-      .AddTerm(aqueous_phase, B, 1.0)
-      .AddTerm(aqueous_phase, C, 1.0)
-      .SetConstant(total)
-      .Build();
+                       .SetAlgebraicSpecies(aqueous_phase, B)
+                       .AddTerm(aqueous_phase, A, 1.0)
+                       .AddTerm(aqueous_phase, B, 1.0)
+                       .AddTerm(aqueous_phase, C, 1.0)
+                       .SetConstant(total)
+                       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddConstraints({ mass_cons });
@@ -526,9 +514,9 @@ TEST(JacobianVerification, HenryLawEquilibriumConstraint)
 
   auto A_g = Species{ "A_g" };
   auto A_aq = Species{ "A_aq" };
-  auto H2O = Species{ "H2O",
-      { { "molecular weight [kg mol-1]", solvent_molecular_weight },
-        { "density [kg m-3]", solvent_density } } };
+  auto H2O =
+      Species{ "H2O",
+               { { "molecular weight [kg mol-1]", solvent_molecular_weight }, { "density [kg m-3]", solvent_density } } };
 
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
@@ -536,13 +524,12 @@ TEST(JacobianVerification, HenryLawEquilibriumConstraint)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   auto hl_constraint = HenryLawEquilibriumConstraintBuilder()
-      .SetGasSpecies(A_g)
-      .SetCondensedSpecies(A_aq)
-      .SetSolvent(H2O)
-      .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(HenrysLawConstant(
-          HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
-      .Build();
+                           .SetGasSpecies(A_g)
+                           .SetCondensedSpecies(A_aq)
+                           .SetSolvent(H2O)
+                           .SetCondensedPhase(aqueous_phase)
+                           .SetHenryLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+                           .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddConstraints({ hl_constraint });
@@ -587,27 +574,24 @@ TEST(JacobianVerification, ProcessAndConstraintsCombined)
   double K_eq = 2.0;
   double total = 1.0;
 
-  auto reaction = DissolvedReaction{
-    [k](const Conditions&) { return k; }, { A }, { B }, S, aqueous_phase
-  };
+  auto reaction = DissolvedReaction{ [k](const Conditions&) { return k; }, { A }, { B }, S, aqueous_phase };
 
   auto equil = DissolvedEquilibriumConstraintBuilder()
-      .SetPhase(aqueous_phase)
-      .SetReactants({ B })
-      .SetProducts({ C })
-      .SetAlgebraicSpecies(C)
-      .SetSolvent(S)
-      .SetEquilibriumConstant(EquilibriumConstant(
-          EquilibriumConstantParameters{ .A_ = K_eq }))
-      .Build();
+                   .SetPhase(aqueous_phase)
+                   .SetReactants({ B })
+                   .SetProducts({ C })
+                   .SetAlgebraicSpecies(C)
+                   .SetSolvent(S)
+                   .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = K_eq }))
+                   .Build();
 
   auto mass_cons = LinearConstraintBuilder()
-      .SetAlgebraicSpecies(aqueous_phase, B)
-      .AddTerm(aqueous_phase, A, 1.0)
-      .AddTerm(aqueous_phase, B, 1.0)
-      .AddTerm(aqueous_phase, C, 1.0)
-      .SetConstant(total)
-      .Build();
+                       .SetAlgebraicSpecies(aqueous_phase, B)
+                       .AddTerm(aqueous_phase, A, 1.0)
+                       .AddTerm(aqueous_phase, B, 1.0)
+                       .AddTerm(aqueous_phase, C, 1.0)
+                       .SetConstant(total)
+                       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -647,9 +631,9 @@ TEST(JacobianVerification, HenryLawEquilibriumWithConservation)
   auto Precursor = Species{ "Precursor" };
   auto A_g = Species{ "A_g" };
   auto A_aq = Species{ "A_aq" };
-  auto H2O = Species{ "H2O",
-      { { "molecular weight [kg mol-1]", solvent_molecular_weight },
-        { "density [kg m-3]", solvent_density } } };
+  auto H2O =
+      Species{ "H2O",
+               { { "molecular weight [kg mol-1]", solvent_molecular_weight }, { "density [kg m-3]", solvent_density } } };
 
   Phase gas_phase{ "GAS", { { Precursor }, { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
@@ -657,22 +641,21 @@ TEST(JacobianVerification, HenryLawEquilibriumWithConservation)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   auto hl_constraint = HenryLawEquilibriumConstraintBuilder()
-      .SetGasSpecies(A_g)
-      .SetCondensedSpecies(A_aq)
-      .SetSolvent(H2O)
-      .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(HenrysLawConstant(
-          HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
-      .Build();
+                           .SetGasSpecies(A_g)
+                           .SetCondensedSpecies(A_aq)
+                           .SetSolvent(H2O)
+                           .SetCondensedPhase(aqueous_phase)
+                           .SetHenryLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+                           .Build();
 
   double total = 1.0;
   auto mass_cons = LinearConstraintBuilder()
-      .SetAlgebraicSpecies(gas_phase, A_g)
-      .AddTerm(gas_phase, Precursor, 1.0)
-      .AddTerm(gas_phase, A_g, 1.0)
-      .AddTerm(aqueous_phase, A_aq, 1.0)
-      .SetConstant(total)
-      .Build();
+                       .SetAlgebraicSpecies(gas_phase, A_g)
+                       .AddTerm(gas_phase, Precursor, 1.0)
+                       .AddTerm(gas_phase, A_g, 1.0)
+                       .AddTerm(aqueous_phase, A_aq, 1.0)
+                       .SetConstant(total)
+                       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddConstraints(hl_constraint, mass_cons);
@@ -748,8 +731,7 @@ TEST(JacobianVerification, DissolvedReactionDampingRange)
   for (const auto& elem : jac_nz)
     jac_builder = jac_builder.WithElement(elem.first, elem.second);
   SparseMatrixFD jac(jac_builder);
-  auto jac_fn = model.JacobianFunction<DenseMatrix, SparseMatrixFD>(
-      maps.parameter_indices, maps.variable_indices, jac);
+  auto jac_fn = model.JacobianFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, jac);
 
   for (double sol : { 1.0e-10, 1.0e-15, 0.0 })
   {
@@ -793,9 +775,7 @@ TEST(JacobianVerification, DissolvedReversibleReactionDampingRange)
   double k_f = 0.1, k_r = 0.05;
   auto forward_rate = [k_f](const Conditions&) { return k_f; };
   auto reverse_rate = [k_r](const Conditions&) { return k_r; };
-  auto reaction = DissolvedReversibleReaction{
-    forward_rate, reverse_rate, { A }, { B }, C, aqueous_phase
-  };
+  auto reaction = DissolvedReversibleReaction{ forward_rate, reverse_rate, { A }, { B }, C, aqueous_phase };
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -827,8 +807,7 @@ TEST(JacobianVerification, DissolvedReversibleReactionDampingRange)
   for (const auto& elem : jac_nz)
     jac_builder = jac_builder.WithElement(elem.first, elem.second);
   SparseMatrixFD jac(jac_builder);
-  auto jac_fn = model.JacobianFunction<DenseMatrix, SparseMatrixFD>(
-      maps.parameter_indices, maps.variable_indices, jac);
+  auto jac_fn = model.JacobianFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, jac);
 
   for (double sol : { 1.0e-10, 1.0e-15, 0.0 })
   {
@@ -872,14 +851,13 @@ TEST(JacobianVerification, DissolvedEquilibriumConstraintDampingRange)
 
   double K_eq = 2.0;
   auto equil = DissolvedEquilibriumConstraintBuilder()
-      .SetPhase(aqueous_phase)
-      .SetReactants({ B })
-      .SetProducts({ C })
-      .SetAlgebraicSpecies(C)
-      .SetSolvent(S)
-      .SetEquilibriumConstant(EquilibriumConstant(
-          EquilibriumConstantParameters{ .A_ = K_eq }))
-      .Build();
+                   .SetPhase(aqueous_phase)
+                   .SetReactants({ B })
+                   .SetProducts({ C })
+                   .SetAlgebraicSpecies(C)
+                   .SetSolvent(S)
+                   .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = K_eq }))
+                   .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddConstraints({ equil });
@@ -912,8 +890,8 @@ TEST(JacobianVerification, DissolvedEquilibriumConstraintDampingRange)
   for (const auto& elem : jac_nz)
     jac_builder = jac_builder.WithElement(elem.first, elem.second);
   SparseMatrixFD jac(jac_builder);
-  auto jac_fn = model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(
-      maps.parameter_indices, maps.variable_indices, jac);
+  auto jac_fn =
+      model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, jac);
 
   for (double sol : { 1.0e-10, 1.0e-15, 0.0 })
   {
@@ -960,27 +938,24 @@ TEST(JacobianVerification, CombinedProcessAndConstraintZeroSolvent)
   double K_eq = 2.0;
   double total = 1.0;
 
-  auto reaction = DissolvedReaction{
-    [k](const Conditions&) { return k; }, { A }, { B }, S, aqueous_phase
-  };
+  auto reaction = DissolvedReaction{ [k](const Conditions&) { return k; }, { A }, { B }, S, aqueous_phase };
 
   auto equil = DissolvedEquilibriumConstraintBuilder()
-      .SetPhase(aqueous_phase)
-      .SetReactants({ B })
-      .SetProducts({ C })
-      .SetAlgebraicSpecies(C)
-      .SetSolvent(S)
-      .SetEquilibriumConstant(EquilibriumConstant(
-          EquilibriumConstantParameters{ .A_ = K_eq }))
-      .Build();
+                   .SetPhase(aqueous_phase)
+                   .SetReactants({ B })
+                   .SetProducts({ C })
+                   .SetAlgebraicSpecies(C)
+                   .SetSolvent(S)
+                   .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = K_eq }))
+                   .Build();
 
   auto mass_cons = LinearConstraintBuilder()
-      .SetAlgebraicSpecies(aqueous_phase, B)
-      .AddTerm(aqueous_phase, A, 1.0)
-      .AddTerm(aqueous_phase, B, 1.0)
-      .AddTerm(aqueous_phase, C, 1.0)
-      .SetConstant(total)
-      .Build();
+                       .SetAlgebraicSpecies(aqueous_phase, B)
+                       .AddTerm(aqueous_phase, A, 1.0)
+                       .AddTerm(aqueous_phase, B, 1.0)
+                       .AddTerm(aqueous_phase, C, 1.0)
+                       .SetConstant(total)
+                       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -1019,8 +994,8 @@ TEST(JacobianVerification, CombinedProcessAndConstraintZeroSolvent)
   for (const auto& elem : proc_nz)
     proc_jac_builder = proc_jac_builder.WithElement(elem.first, elem.second);
   SparseMatrixFD proc_jac(proc_jac_builder);
-  auto proc_jac_fn = model.JacobianFunction<DenseMatrix, SparseMatrixFD>(
-      maps.parameter_indices, maps.variable_indices, proc_jac);
+  auto proc_jac_fn =
+      model.JacobianFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, proc_jac);
   proc_jac_fn(parameters, variables, proc_jac);
   for (const auto& v : proc_jac.AsVector())
     EXPECT_TRUE(std::isfinite(v)) << "Process Jacobian element is not finite at sol=0";
@@ -1037,8 +1012,8 @@ TEST(JacobianVerification, CombinedProcessAndConstraintZeroSolvent)
   for (const auto& elem : cons_nz)
     cons_jac_builder = cons_jac_builder.WithElement(elem.first, elem.second);
   SparseMatrixFD cons_jac(cons_jac_builder);
-  auto cons_jac_fn = model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(
-      maps.parameter_indices, maps.variable_indices, cons_jac);
+  auto cons_jac_fn =
+      model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, cons_jac);
   cons_jac_fn(variables, parameters, cons_jac);
   for (const auto& v : cons_jac.AsVector())
     EXPECT_TRUE(std::isfinite(v)) << "Constraint Jacobian element is not finite at sol=0";
@@ -1060,13 +1035,13 @@ TEST(JacobianVerification, DissolvedReactionCappedSingleReactant)
 
   double t_half = 1.0;
   auto reaction = DissolvedReactionBuilder()
-      .SetPhase(aqueous_phase)
-      .SetReactants({ A })
-      .SetProducts({ B })
-      .SetSolvent(C)
-      .SetRateConstant([](const Conditions&) { return 0.5; })
-      .SetMinHalflife(t_half)
-      .Build();
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A })
+                      .SetProducts({ B })
+                      .SetSolvent(C)
+                      .SetRateConstant([](const Conditions&) { return 0.5; })
+                      .SetMinHalflife(t_half)
+                      .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -1108,13 +1083,13 @@ TEST(JacobianVerification, DissolvedReactionCappedTwoReactants)
 
   double t_half = 0.5;
   auto reaction = DissolvedReactionBuilder()
-      .SetPhase(aqueous_phase)
-      .SetReactants({ A, B })
-      .SetProducts({ P })
-      .SetSolvent(S)
-      .SetRateConstant([](const Conditions&) { return 1.0; })
-      .SetMinHalflife(t_half)
-      .Build();
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A, B })
+                      .SetProducts({ P })
+                      .SetSolvent(S)
+                      .SetRateConstant([](const Conditions&) { return 1.0; })
+                      .SetMinHalflife(t_half)
+                      .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -1122,8 +1097,12 @@ TEST(JacobianVerification, DissolvedReactionCappedTwoReactants)
   auto maps = BuildIndexMaps(model);
 
   // Sweep both reactant concentrations to test soft-min transitions
-  struct TestPoint { double A; double B; };
-  for (auto [cA, cB] : std::vector<TestPoint>{{ 0.01, 0.01 }, { 0.5, 0.5 }, { 10.0, 0.01 }, { 0.01, 10.0 }, { 5.0, 5.0 }})
+  struct TestPoint
+  {
+    double A;
+    double B;
+  };
+  for (auto [cA, cB] : std::vector<TestPoint>{ { 0.01, 0.01 }, { 0.5, 0.5 }, { 10.0, 0.01 }, { 0.01, 10.0 }, { 5.0, 5.0 } })
   {
     SCOPED_TRACE("A=" + std::to_string(cA) + " B=" + std::to_string(cB));
 
@@ -1153,13 +1132,13 @@ TEST(JacobianVerification, DissolvedReactionCappedSolventRange)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   auto reaction = DissolvedReactionBuilder()
-      .SetPhase(aqueous_phase)
-      .SetReactants({ A })
-      .SetProducts({ B })
-      .SetSolvent(C)
-      .SetRateConstant([](const Conditions&) { return 1.0; })
-      .SetMinHalflife(1.0)
-      .Build();
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A })
+                      .SetProducts({ B })
+                      .SetSolvent(C)
+                      .SetRateConstant([](const Conditions&) { return 1.0; })
+                      .SetMinHalflife(1.0)
+                      .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -1191,8 +1170,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSolventRange)
   for (const auto& elem : jac_nz)
     jac_builder = jac_builder.WithElement(elem.first, elem.second);
   SparseMatrixFD jac(jac_builder);
-  auto jac_fn = model.JacobianFunction<DenseMatrix, SparseMatrixFD>(
-      maps.parameter_indices, maps.variable_indices, jac);
+  auto jac_fn = model.JacobianFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, jac);
 
   for (double sol : { 1.0e-10, 1.0e-15, 0.0 })
   {
@@ -1234,13 +1212,13 @@ TEST(JacobianVerification, DissolvedReactionCappedMultiBlock)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   auto reaction = DissolvedReactionBuilder()
-      .SetPhase(aqueous_phase)
-      .SetReactants({ A })
-      .SetProducts({ B })
-      .SetSolvent(C)
-      .SetRateConstant([](const Conditions&) { return 2.0; })
-      .SetMinHalflife(0.1)
-      .Build();
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A })
+                      .SetProducts({ B })
+                      .SetSolvent(C)
+                      .SetRateConstant([](const Conditions&) { return 2.0; })
+                      .SetMinHalflife(0.1)
+                      .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -1252,7 +1230,7 @@ TEST(JacobianVerification, DissolvedReactionCappedMultiBlock)
   variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = 0.001;  // low rate, uncapped
   variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.B")] = 0.1;
   variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = 1.0;
-  variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = 50.0;   // high rate, capped
+  variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.A")] = 50.0;  // high rate, capped
   variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.B")] = 0.1;
   variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = 1.0;
 
@@ -1301,24 +1279,24 @@ namespace
 
     // Build uncapped model
     auto rxn_uncapped = DissolvedReactionBuilder()
-        .SetPhase(phase)
-        .SetReactants(reactants)
-        .SetProducts(products)
-        .SetSolvent(solvent)
-        .SetRateConstant(rate_fn)
-        .Build();
+                            .SetPhase(phase)
+                            .SetReactants(reactants)
+                            .SetProducts(products)
+                            .SetSolvent(solvent)
+                            .SetRateConstant(rate_fn)
+                            .Build();
     auto model_uncapped = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model_uncapped.AddProcesses({ rxn_uncapped });
 
     // Build capped model
     auto rxn_capped = DissolvedReactionBuilder()
-        .SetPhase(phase)
-        .SetReactants(reactants)
-        .SetProducts(products)
-        .SetSolvent(solvent)
-        .SetRateConstant(rate_fn)
-        .SetMinHalflife(min_halflife)
-        .Build();
+                          .SetPhase(phase)
+                          .SetReactants(reactants)
+                          .SetProducts(products)
+                          .SetSolvent(solvent)
+                          .SetRateConstant(rate_fn)
+                          .SetMinHalflife(min_halflife)
+                          .Build();
     auto model_capped = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model_capped.AddProcesses({ rxn_capped });
 
@@ -1346,8 +1324,10 @@ namespace
 
     // Compare forcing
     DenseMatrix forcing_u(1, n, 0.0), forcing_c(1, n, 0.0);
-    model_uncapped.ForcingFunction<DenseMatrix>(maps_u.parameter_indices, maps_u.variable_indices)(params_u, variables, forcing_u);
-    model_capped.ForcingFunction<DenseMatrix>(maps_c.parameter_indices, maps_c.variable_indices)(params_c, variables, forcing_c);
+    model_uncapped.ForcingFunction<DenseMatrix>(maps_u.parameter_indices, maps_u.variable_indices)(
+        params_u, variables, forcing_u);
+    model_capped.ForcingFunction<DenseMatrix>(maps_c.parameter_indices, maps_c.variable_indices)(
+        params_c, variables, forcing_c);
 
     double max_forcing_rel = 0.0;
     for (std::size_t j = 0; j < n; ++j)
@@ -1364,10 +1344,10 @@ namespace
       builder = builder.WithElement(elem.first, elem.second);
     SparseMatrixFD jac_u(builder), jac_c(builder);
 
-    model_uncapped.JacobianFunction<DenseMatrix, SparseMatrixFD>(
-        maps_u.parameter_indices, maps_u.variable_indices, jac_u)(params_u, variables, jac_u);
-    model_capped.JacobianFunction<DenseMatrix, SparseMatrixFD>(
-        maps_c.parameter_indices, maps_c.variable_indices, jac_c)(params_c, variables, jac_c);
+    model_uncapped.JacobianFunction<DenseMatrix, SparseMatrixFD>(maps_u.parameter_indices, maps_u.variable_indices, jac_u)(
+        params_u, variables, jac_u);
+    model_capped.JacobianFunction<DenseMatrix, SparseMatrixFD>(maps_c.parameter_indices, maps_c.variable_indices, jac_c)(
+        params_c, variables, jac_c);
 
     double max_jac_rel = 0.0;
     const auto& vec_u = jac_u.AsVector();
@@ -1409,7 +1389,13 @@ TEST(JacobianVerification, CappedConvergesToUncappedSingleReactant)
     double expected_jac_rel = u * u;
 
     auto result = CompareCappedToUncapped(
-        0.1, t_half, { A }, { B }, C, phase, droplet,
+        0.1,
+        t_half,
+        { A },
+        { B },
+        C,
+        phase,
+        droplet,
         { { "DROPLET.AQUEOUS.A", 0.5 }, { "DROPLET.AQUEOUS.B", 0.1 }, { "DROPLET.AQUEOUS.C", 1.0 } });
 
     // Verify the error is bounded by the Taylor prediction (with 2x margin for higher-order terms)
@@ -1453,7 +1439,13 @@ TEST(JacobianVerification, CappedConvergesToUncappedTwoReactants)
     SCOPED_TRACE("min_halflife = " + std::to_string(t_half));
 
     auto result = CompareCappedToUncapped(
-        k, t_half, { A, B }, { P }, S, phase, droplet,
+        k,
+        t_half,
+        { A, B },
+        { P },
+        S,
+        phase,
+        droplet,
         { { "DROPLET.AQUEOUS.A", 10.0 },
           { "DROPLET.AQUEOUS.B", 0.01 },
           { "DROPLET.AQUEOUS.P", 0.1 },

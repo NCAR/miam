@@ -5,6 +5,7 @@
 
 #include <miam/miam.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
+
 #include <micm/CPU.hpp>
 
 #include <gtest/gtest.h>
@@ -36,68 +37,61 @@ using namespace miam;
 TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
 {
   // Physical parameters
-  double T = 298.15;              // K
-  double HLC = 4.0e-4;            // mol m⁻³ Pa⁻¹ (constant, no T dependence)
-  double solvent_molecular_weight = 0.018;      // kg mol⁻¹ (water)
-  double solvent_density = 1000.0;    // kg m⁻³ (water)
-  double H2O_conc = 0.017;  // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
+  double T = 298.15;                                                   // K
+  double HLC = 4.0e-4;                                                 // mol m⁻³ Pa⁻¹ (constant, no T dependence)
+  double solvent_molecular_weight = 0.018;                             // kg mol⁻¹ (water)
+  double solvent_density = 1000.0;                                     // kg m⁻³ (water)
+  double H2O_conc = 0.017;                                             // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
   double f_v = H2O_conc * solvent_molecular_weight / solvent_density;  // ~ 3.06e-7
-  double alpha = HLC * GAS_CONSTANT * T * f_v;               // dimensionless
+  double alpha = HLC * GAS_CONSTANT * T * f_v;                         // dimensionless
 
   // Species
   auto Precursor = Species{ "Precursor" };
   auto A_g = Species{ "A_g" };
   auto A_aq = Species{ "A_aq" };
-  auto H2O = Species{ "H2O",
-      { { "molecular weight [kg mol-1]", solvent_molecular_weight },
-        { "density [kg m-3]", solvent_density } } };
+  auto H2O =
+      Species{ "H2O",
+               { { "molecular weight [kg mol-1]", solvent_molecular_weight }, { "density [kg m-3]", solvent_density } } };
 
   // Phases
   Phase gas_phase{ "GAS", { { Precursor }, { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
 
   // Representation
-  auto droplet = UniformSection{
-    "DROPLET",
-    { aqueous_phase }
-  };
+  auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   // MICM gas-phase reaction: Precursor → A_g with rate k
   double k = 0.05;  // s⁻¹
   Process gas_rxn = ChemicalReactionBuilder()
-      .SetReactants({ Precursor })
-      .SetProducts({ StoichSpecies(A_g, 1.0) })
-      .SetRateConstant(ArrheniusRateConstantParameters{ .A_ = k })
-      .SetPhase(gas_phase)
-      .Build();
+                        .SetReactants({ Precursor })
+                        .SetProducts({ StoichSpecies(A_g, 1.0) })
+                        .SetRateConstant(ArrheniusRateConstantParameters{ .A_ = k })
+                        .SetPhase(gas_phase)
+                        .Build();
 
   // HL equilibrium constraint: A_g <-> A_aq (A_aq algebraic, per instance)
   auto hl_constraint = HenryLawEquilibriumConstraintBuilder()
-      .SetGasSpecies(A_g)
-      .SetCondensedSpecies(A_aq)
-      .SetSolvent(H2O)
-      .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(HenrysLawConstant(
-          HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
-      .Build();
+                           .SetGasSpecies(A_g)
+                           .SetCondensedSpecies(A_aq)
+                           .SetSolvent(H2O)
+                           .SetCondensedPhase(aqueous_phase)
+                           .SetHenryLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+                           .Build();
 
   // Mass conservation: [Precursor] + [A_g] + [A_aq] = total, A_g algebraic (global)
-  double P0 = 1.0;   // mol/m³ initial [Precursor]
+  double P0 = 1.0;    // mol/m³ initial [Precursor]
   double total = P0;  // total mass (A_g0 = A_aq0 = 0)
 
   auto mass_cons = LinearConstraintBuilder()
-      .SetAlgebraicSpecies(gas_phase, A_g)
-      .AddTerm(gas_phase, Precursor, 1.0)
-      .AddTerm(gas_phase, A_g, 1.0)
-      .AddTerm(aqueous_phase, A_aq, 1.0)
-      .SetConstant(total)
-      .Build();
+                       .SetAlgebraicSpecies(gas_phase, A_g)
+                       .AddTerm(gas_phase, Precursor, 1.0)
+                       .AddTerm(gas_phase, A_g, 1.0)
+                       .AddTerm(aqueous_phase, A_aq, 1.0)
+                       .SetConstant(total)
+                       .Build();
 
   // Build MIAM model (no MIAM kinetic processes, only constraints)
-  auto model = Model{
-    .name_ = "AEROSOL",
-    .representations_ = { droplet }
-  };
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddConstraints(hl_constraint, mass_cons);
 
   // Build DAE solver with MICM gas-phase reaction + MIAM constraints
@@ -142,8 +136,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
       double dt = std::min(0.1, target_time - time);
       solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
-      ASSERT_EQ(result.state_, SolverState::Converged)
-        << "Solver failed at t = " << time << " s";
+      ASSERT_EQ(result.state_, SolverState::Converged) << "Solver failed at t = " << time << " s";
       time += dt;
     }
 
@@ -156,23 +149,18 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
     double gas_an = (total - P_an) / (1.0 + alpha);
     double aq_an = alpha * (total - P_an) / (1.0 + alpha);
 
-    EXPECT_NEAR(P_num, P_an, tolerance)
-      << "Precursor mismatch at t = " << time;
-    EXPECT_NEAR(gas_num, gas_an, tolerance)
-      << "A_g mismatch at t = " << time;
-    EXPECT_NEAR(aq_num, aq_an, tolerance)
-      << "A_aq mismatch at t = " << time;
+    EXPECT_NEAR(P_num, P_an, tolerance) << "Precursor mismatch at t = " << time;
+    EXPECT_NEAR(gas_num, gas_an, tolerance) << "A_g mismatch at t = " << time;
+    EXPECT_NEAR(aq_num, aq_an, tolerance) << "A_aq mismatch at t = " << time;
 
     // Verify mass conservation
     double mass = P_num + gas_num + aq_num;
-    EXPECT_NEAR(mass, total, 1.0e-6)
-      << "Mass conservation violated at t = " << time;
+    EXPECT_NEAR(mass, total, 1.0e-6) << "Mass conservation violated at t = " << time;
 
     // Verify HL equilibrium relation: A_aq = α * A_g
     if (gas_num > 1.0e-10)
     {
-      EXPECT_NEAR(aq_num / gas_num, alpha, 1.0e-2)
-        << "HL equilibrium ratio violated at t = " << time;
+      EXPECT_NEAR(aq_num / gas_num, alpha, 1.0e-2) << "HL equilibrium ratio violated at t = " << time;
     }
   }
 
@@ -202,9 +190,9 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
   auto Precursor = Species{ "Precursor" };
   auto A_g = Species{ "A_g" };
   auto A_aq = Species{ "A_aq" };
-  auto H2O = Species{ "H2O",
-      { { "molecular weight [kg mol-1]", solvent_molecular_weight },
-        { "density [kg m-3]", solvent_density } } };
+  auto H2O =
+      Species{ "H2O",
+               { { "molecular weight [kg mol-1]", solvent_molecular_weight }, { "density [kg m-3]", solvent_density } } };
 
   Phase gas_phase{ "GAS", { { Precursor }, { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
@@ -214,20 +202,19 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
 
   double k = 0.05;
   Process gas_rxn = ChemicalReactionBuilder()
-      .SetReactants({ Precursor })
-      .SetProducts({ StoichSpecies(A_g, 1.0) })
-      .SetRateConstant(ArrheniusRateConstantParameters{ .A_ = k })
-      .SetPhase(gas_phase)
-      .Build();
+                        .SetReactants({ Precursor })
+                        .SetProducts({ StoichSpecies(A_g, 1.0) })
+                        .SetRateConstant(ArrheniusRateConstantParameters{ .A_ = k })
+                        .SetPhase(gas_phase)
+                        .Build();
 
   auto hl_constraint = HenryLawEquilibriumConstraintBuilder()
-      .SetGasSpecies(A_g)
-      .SetCondensedSpecies(A_aq)
-      .SetSolvent(H2O)
-      .SetCondensedPhase(aqueous_phase)
-      .SetHenryLawConstant(HenrysLawConstant(
-          HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
-      .Build();
+                           .SetGasSpecies(A_g)
+                           .SetCondensedSpecies(A_aq)
+                           .SetSolvent(H2O)
+                           .SetCondensedPhase(aqueous_phase)
+                           .SetHenryLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+                           .Build();
 
   double P0 = 1.0;
   // With 2 instances: total = [P] + [A_g] + [A_aq_SMALL] + [A_aq_LARGE]
@@ -236,17 +223,14 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
   double total = P0;
 
   auto mass_cons = LinearConstraintBuilder()
-      .SetAlgebraicSpecies(gas_phase, A_g)
-      .AddTerm(gas_phase, Precursor, 1.0)
-      .AddTerm(gas_phase, A_g, 1.0)
-      .AddTerm(aqueous_phase, A_aq, 1.0)  // expands to SMALL + LARGE
-      .SetConstant(total)
-      .Build();
+                       .SetAlgebraicSpecies(gas_phase, A_g)
+                       .AddTerm(gas_phase, Precursor, 1.0)
+                       .AddTerm(gas_phase, A_g, 1.0)
+                       .AddTerm(aqueous_phase, A_aq, 1.0)  // expands to SMALL + LARGE
+                       .SetConstant(total)
+                       .Build();
 
-  auto model = Model{
-    .name_ = "AEROSOL",
-    .representations_ = { small_drop, large_drop }
-  };
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { small_drop, large_drop } };
   model.AddConstraints(hl_constraint, mass_cons);
 
   auto system = System(gas_phase);
@@ -287,8 +271,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
     double dt = 0.1;
     solver.UpdateStateParameters(state);
     auto result = solver.Solve(dt, state);
-    ASSERT_EQ(result.state_, SolverState::Converged)
-      << "Solver failed at t = " << time;
+    ASSERT_EQ(result.state_, SolverState::Converged) << "Solver failed at t = " << time;
     time += dt;
   }
 
@@ -307,7 +290,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
   EXPECT_NEAR(state.variables_[0][i_aq_small], state.variables_[0][i_aq_large], 1.0e-6);
 
   // Mass conservation
-  double mass = state.variables_[0][i_P] + state.variables_[0][i_gas]
-              + state.variables_[0][i_aq_small] + state.variables_[0][i_aq_large];
+  double mass = state.variables_[0][i_P] + state.variables_[0][i_gas] + state.variables_[0][i_aq_small] +
+                state.variables_[0][i_aq_large];
   EXPECT_NEAR(mass, total, 1.0e-4);
 }

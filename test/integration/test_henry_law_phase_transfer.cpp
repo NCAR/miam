@@ -25,9 +25,7 @@ namespace
   // Eigenvalues: 0 and -(a+b)
   // [gas](t) = gas_eq + (gas_0 - gas_eq) · exp(-(a+b)·t)
   // [aq](t)  = aq_eq  + (aq_0  - aq_eq)  · exp(-(a+b)·t)
-  void analytical_hlpt(double gas_0, double aq_0,
-                       double a, double b, double t,
-                       double& gas_t, double& aq_t)
+  void analytical_hlpt(double gas_0, double aq_0, double a, double b, double t, double& gas_t, double& aq_t)
   {
     double M = gas_0 + aq_0;
     double gas_eq = M * b / (a + b);
@@ -45,8 +43,7 @@ namespace
 
   micm::Species MakeCondensedSpecies(const std::string& name, double mw, double density)
   {
-    return micm::Species{ name, { { "molecular weight [kg mol-1]", mw },
-                                   { "density [kg m-3]", density } } };
+    return micm::Species{ name, { { "molecular weight [kg mol-1]", mw }, { "density [kg m-3]", density } } };
   }
 }  // namespace
 
@@ -57,12 +54,12 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
 {
   // Gas species A_g partitioning into aqueous phase as A_aq
   // Solvent is H2O
-  double gas_molecular_weight = 0.044;       // kg mol⁻¹ (like CO₂)
-  double solvent_molecular_weight = 0.018;   // kg mol⁻¹ (water)
-  double solvent_density = 1000.0; // kg m⁻³ (water)
-  double D_g = 1.5e-5;         // m² s⁻¹
-  double alpha = 0.05;         // accommodation coefficient
-  double HLC_val = 3.4e-2;     // mol m⁻³ Pa⁻¹ (constant, no T dependence)
+  double gas_molecular_weight = 0.044;      // kg mol⁻¹ (like CO₂)
+  double solvent_molecular_weight = 0.018;  // kg mol⁻¹ (water)
+  double solvent_density = 1000.0;          // kg m⁻³ (water)
+  double D_g = 1.5e-5;                      // m² s⁻¹
+  double alpha = 0.05;                      // accommodation coefficient
+  double HLC_val = 3.4e-2;                  // mol m⁻³ Pa⁻¹ (constant, no T dependence)
 
   auto A_g = MakeGasSpecies("A_g", gas_molecular_weight);
   auto A_aq = MakeCondensedSpecies("A_aq", gas_molecular_weight, 1800.0);
@@ -82,25 +79,20 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   auto hlc = [HLC_val](const Conditions& conditions) { return HLC_val; };
 
   auto transfer = HenryLawPhaseTransferBuilder()
-      .SetCondensedPhase(aqueous_phase)
-      .SetGasSpecies(A_g)
-      .SetCondensedSpecies(A_aq)
-      .SetSolvent(H2O)
-      .SetHenrysLawConstant(miam::HenrysLawConstant(
-          HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
-      .SetDiffusionCoefficient(D_g)
-      .SetAccommodationCoefficient(alpha)
-      .Build();
+                      .SetCondensedPhase(aqueous_phase)
+                      .SetGasSpecies(A_g)
+                      .SetCondensedSpecies(A_aq)
+                      .SetSolvent(H2O)
+                      .SetHenrysLawConstant(miam::HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                      .SetDiffusionCoefficient(D_g)
+                      .SetAccommodationCoefficient(alpha)
+                      .Build();
 
-  auto model = Model{
-    .name_ = "AEROSOL",
-    .representations_ = { droplet }
-  };
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ transfer });
 
   auto system = System(gas_phase);
-  auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
-                    RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
+  auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                     .SetSystem(system)
                     .AddExternalModel(model)
                     .SetIgnoreUnusedSpecies(true)
@@ -114,9 +106,9 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
 
   // Initial conditions
   double T = 298.15;
-  double gas_0 = 1.0e-3;       // mol m⁻³ air
-  double aq_0 = 0.0;           // mol m⁻³ air
-  double solvent_conc = 0.017;   // mol m⁻³ air (cloud LWC ~ 0.3 g m⁻³)
+  double gas_0 = 1.0e-3;        // mol m⁻³ air
+  double aq_0 = 0.0;            // mol m⁻³ air
+  double solvent_conc = 0.017;  // mol m⁻³ air (cloud LWC ~ 0.3 g m⁻³)
 
   state.variables_[0][i_gas] = gas_0;
   state.variables_[0][i_aq] = aq_0;
@@ -135,7 +127,7 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   double r_eff = GMD * std::exp(2.5 * ln_gsd * ln_gsd);
 
   // N = V_total / V_single where V_total from species, V_single from GMD/GSD
-  double V_aq = aq_0 * gas_molecular_weight / 1800.0;       // initial aq volume
+  double V_aq = aq_0 * gas_molecular_weight / 1800.0;                        // initial aq volume
   double V_h2o = solvent_conc * solvent_molecular_weight / solvent_density;  // water volume
   double V_total = V_aq + V_h2o;
   double V_single = (4.0 / 3.0) * M_PI * std::pow(GMD, 3) * std::exp(4.5 * ln_gsd * ln_gsd);
@@ -155,8 +147,8 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
 
   // Integrate and compare
   double time = 0.0;
-  double total_time = 1.0;  // 1 second total
-  double dt = 0.001;         // 1 ms steps
+  double total_time = 1.0;          // 1 second total
+  double dt = 0.001;                // 1 ms steps
   const double tolerance = 1.0e-2;  // relative tolerance
 
   while (time < total_time - 1.0e-15)
@@ -164,8 +156,7 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
     double step = std::min(dt, total_time - time);
     solver.UpdateStateParameters(state);
     auto result = solver.Solve(step, state);
-    ASSERT_EQ(result.state_, SolverState::Converged)
-        << "Solver failed at t = " << time;
+    ASSERT_EQ(result.state_, SolverState::Converged) << "Solver failed at t = " << time;
     time += step;
   }
 
@@ -178,12 +169,10 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   analytical_hlpt(gas_0, aq_0, a, b, total_time, gas_analytic, aq_analytic);
 
   // Mass conservation: gas + aq should be constant
-  EXPECT_NEAR(gas_final + aq_final, gas_0 + aq_0, (gas_0 + aq_0) * 1e-6)
-      << "Mass conservation violated";
+  EXPECT_NEAR(gas_final + aq_final, gas_0 + aq_0, (gas_0 + aq_0) * 1e-6) << "Mass conservation violated";
 
   // Solvent should be unchanged
-  EXPECT_NEAR(h2o_final, solvent_conc, solvent_conc * 1e-6)
-      << "Solvent concentration changed";
+  EXPECT_NEAR(h2o_final, solvent_conc, solvent_conc * 1e-6) << "Solvent concentration changed";
 
   // Direction check: gas should decrease and aq should increase
   // (since we start with all gas and zero aq, condensation dominates)
@@ -198,8 +187,7 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
     EXPECT_NEAR(gas_final / gas_analytic, 1.0, tolerance)
         << "Gas final: " << gas_final << " vs analytical: " << gas_analytic;
   if (aq_analytic > 1e-20)
-    EXPECT_NEAR(aq_final / aq_analytic, 1.0, tolerance)
-        << "Aq final: " << aq_final << " vs analytical: " << aq_analytic;
+    EXPECT_NEAR(aq_final / aq_analytic, 1.0, tolerance) << "Aq final: " << aq_final << " vs analytical: " << aq_analytic;
 }
 
 // ============================================================================
@@ -208,7 +196,7 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
 TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
 {
   // Same gas species partitions into two different droplet populations
-  double gas_molecular_weight = 0.030;       // kg mol⁻¹ (like HCHO)
+  double gas_molecular_weight = 0.030;  // kg mol⁻¹ (like HCHO)
   double solvent_molecular_weight = 0.018;
   double solvent_density = 1000.0;
   double D_g = 1.8e-5;
@@ -223,46 +211,36 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
   Phase aqueous_small{ "AQ_SMALL", { { A_aq }, { H2O } } };
   Phase aqueous_large{ "AQ_LARGE", { { A_aq }, { H2O } } };
 
-  auto small_drop = SingleMomentMode{
-    "SMALL", { aqueous_small }, 1.0e-6, 1.2
-  };
-  auto large_drop = SingleMomentMode{
-    "LARGE", { aqueous_large }, 1.0e-5, 1.4
-  };
+  auto small_drop = SingleMomentMode{ "SMALL", { aqueous_small }, 1.0e-6, 1.2 };
+  auto large_drop = SingleMomentMode{ "LARGE", { aqueous_large }, 1.0e-5, 1.4 };
 
   // Build two transfer processes — one for each phase
   auto transfer_small = HenryLawPhaseTransferBuilder()
-      .SetCondensedPhase(aqueous_small)
-      .SetGasSpecies(A_g)
-      .SetCondensedSpecies(A_aq)
-      .SetSolvent(H2O)
-      .SetHenrysLawConstant(HenrysLawConstant(
-          HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
-      .SetDiffusionCoefficient(D_g)
-      .SetAccommodationCoefficient(alpha)
-      .Build();
+                            .SetCondensedPhase(aqueous_small)
+                            .SetGasSpecies(A_g)
+                            .SetCondensedSpecies(A_aq)
+                            .SetSolvent(H2O)
+                            .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                            .SetDiffusionCoefficient(D_g)
+                            .SetAccommodationCoefficient(alpha)
+                            .Build();
 
   auto transfer_large = HenryLawPhaseTransferBuilder()
-      .SetCondensedPhase(aqueous_large)
-      .SetGasSpecies(A_g)
-      .SetCondensedSpecies(A_aq)
-      .SetSolvent(H2O)
-      .SetHenrysLawConstant(HenrysLawConstant(
-          HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
-      .SetDiffusionCoefficient(D_g)
-      .SetAccommodationCoefficient(alpha)
-      .Build();
+                            .SetCondensedPhase(aqueous_large)
+                            .SetGasSpecies(A_g)
+                            .SetCondensedSpecies(A_aq)
+                            .SetSolvent(H2O)
+                            .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                            .SetDiffusionCoefficient(D_g)
+                            .SetAccommodationCoefficient(alpha)
+                            .Build();
 
-  auto model = Model{
-    .name_ = "CLOUD",
-    .representations_ = { small_drop, large_drop }
-  };
+  auto model = Model{ .name_ = "CLOUD", .representations_ = { small_drop, large_drop } };
   model.AddProcesses({ transfer_small });
   model.AddProcesses({ transfer_large });
 
   auto system = System(gas_phase);
-  auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
-                    RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
+  auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                     .SetSystem(system)
                     .AddExternalModel(model)
                     .SetIgnoreUnusedSpecies(true)
@@ -303,8 +281,7 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
     double step = std::min(dt, total_time - time);
     solver.UpdateStateParameters(state);
     auto result = solver.Solve(step, state);
-    ASSERT_EQ(result.state_, SolverState::Converged)
-        << "Solver failed at t = " << time;
+    ASSERT_EQ(result.state_, SolverState::Converged) << "Solver failed at t = " << time;
     time += step;
   }
 
@@ -345,7 +322,7 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
   double D_g = 1.5e-5;
   double alpha = 0.05;
   double HLC_ref = 3.4e-2;  // at T0 = 298.15
-  double C = 2400.0;         // K (enthalpy parameter)
+  double C = 2400.0;        // K (enthalpy parameter)
   double T0 = 298.15;
 
   auto A_g = MakeGasSpecies("A_g", gas_molecular_weight);
@@ -355,15 +332,12 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
   Phase gas_phase{ "GAS", { { A_g } } };
   Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
 
-  auto droplet = SingleMomentMode{
-    "DROP", { aqueous_phase }, 5.0e-6, 1.2
-  };
+  auto droplet = SingleMomentMode{ "DROP", { aqueous_phase }, 5.0e-6, 1.2 };
 
-  HenrysLawConstantParameters hlc_params{
-    .HLC_ref_ = HLC_ref, .C_ = C, .T0_ = T0
-  };
+  HenrysLawConstantParameters hlc_params{ .HLC_ref_ = HLC_ref, .C_ = C, .T0_ = T0 };
 
-  auto build_transfer = [&]() {
+  auto build_transfer = [&]()
+  {
     return HenryLawPhaseTransferBuilder()
         .SetCondensedPhase(aqueous_phase)
         .SetGasSpecies(A_g)
@@ -382,15 +356,11 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
   auto run_to_equilibrium = [&](double T) -> std::pair<double, double>
   {
     auto transfer = build_transfer();
-    auto model = Model{
-      .name_ = "AEROSOL",
-      .representations_ = { droplet }
-    };
+    auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model.AddProcesses({ transfer });
 
     auto system = System(gas_phase);
-    auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
-                      RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
+    auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                       .SetSystem(system)
                       .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
@@ -421,8 +391,7 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
       double step = std::min(dt, total_time - time);
       solver.UpdateStateParameters(state);
       auto result = solver.Solve(step, state);
-      EXPECT_EQ(result.state_, SolverState::Converged)
-          << "Solver failed at T=" << T << " t=" << time;
+      EXPECT_EQ(result.state_, SolverState::Converged) << "Solver failed at T=" << T << " t=" << time;
       time += step;
     }
 
@@ -430,18 +399,17 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
   };
 
   // Cold temperature: more dissolution (higher HLC with positive C)
-  auto [gas_cold, aq_cold] = run_to_equilibrium(278.15);    // 5°C
+  auto [gas_cold, aq_cold] = run_to_equilibrium(278.15);  // 5°C
   // Warm temperature: less dissolution
-  auto [gas_warm, aq_warm] = run_to_equilibrium(308.15);    // 35°C
+  auto [gas_warm, aq_warm] = run_to_equilibrium(308.15);  // 35°C
 
   // At colder temperature, HLC is larger → more dissolved at equilibrium
   // So aq_cold / gas_cold > aq_warm / gas_warm
   double ratio_cold = (aq_cold > 1e-20 && gas_cold > 1e-20) ? aq_cold / gas_cold : 0.0;
   double ratio_warm = (aq_warm > 1e-20 && gas_warm > 1e-20) ? aq_warm / gas_warm : 0.0;
 
-  EXPECT_GT(ratio_cold, ratio_warm)
-      << "Cold temperature should have higher aq/gas ratio. "
-      << "Cold: " << ratio_cold << ", Warm: " << ratio_warm;
+  EXPECT_GT(ratio_cold, ratio_warm) << "Cold temperature should have higher aq/gas ratio. " << "Cold: " << ratio_cold
+                                    << ", Warm: " << ratio_warm;
 
   // Mass conservation at both temperatures
   EXPECT_NEAR(gas_cold + aq_cold, gas_0, gas_0 * 1e-4);
@@ -475,8 +443,8 @@ TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
   double solvent = 0.017;
 
   // Run HLPT for a given particle radius, return (gas, aq) after fixed time
-  auto run_with_radius = [&](double r_mean, const std::string& prefix,
-                              const std::string& phase_name) -> std::pair<double, double>
+  auto run_with_radius =
+      [&](double r_mean, const std::string& prefix, const std::string& phase_name) -> std::pair<double, double>
   {
     Phase aqueous_phase{ phase_name, { { A_aq }, { H2O } } };
 
@@ -485,25 +453,20 @@ TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
     };
 
     auto transfer = HenryLawPhaseTransferBuilder()
-        .SetCondensedPhase(aqueous_phase)
-        .SetGasSpecies(A_g)
-        .SetCondensedSpecies(A_aq)
-        .SetSolvent(H2O)
-        .SetHenrysLawConstant(HenrysLawConstant(
-            HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
-        .SetDiffusionCoefficient(D_g)
-        .SetAccommodationCoefficient(alpha)
-        .Build();
+                        .SetCondensedPhase(aqueous_phase)
+                        .SetGasSpecies(A_g)
+                        .SetCondensedSpecies(A_aq)
+                        .SetSolvent(H2O)
+                        .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                        .SetDiffusionCoefficient(D_g)
+                        .SetAccommodationCoefficient(alpha)
+                        .Build();
 
-    auto model = Model{
-      .name_ = "TEST",
-      .representations_ = { droplet }
-    };
+    auto model = Model{ .name_ = "TEST", .representations_ = { droplet } };
     model.AddProcesses({ transfer });
 
     auto system = System(gas_phase);
-    auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
-                      RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
+    auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                       .SetSystem(system)
                       .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
@@ -527,7 +490,7 @@ TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
     // Run for a short time to measure initial transfer rate
     double time = 0.0;
     double total_time = 0.01;  // 10 ms
-    double dt = 0.0001;         // 100 μs steps
+    double dt = 0.0001;        // 100 μs steps
 
     while (time < total_time - 1.0e-15)
     {

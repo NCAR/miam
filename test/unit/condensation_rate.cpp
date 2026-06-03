@@ -1,25 +1,25 @@
 // Copyright (C) 2026 University Corporation for Atmospheric Research
 // SPDX-License-Identifier: Apache-2.0
 
-#include <miam/util/constants.hpp>
 #include <miam/math/condensation_rate.hpp>
+#include <miam/util/constants.hpp>
+
+#include <gtest/gtest.h>
 
 #include <cmath>
 #include <numbers>
-
-#include <gtest/gtest.h>
 
 using namespace miam;
 
 namespace
 {
   // Physical parameters for test cases
-  constexpr double D_g = 1.3e-5;       // Gas diffusion coefficient [m² s⁻¹] (typical for SO2 in air)
-  constexpr double alpha = 0.1;        // Mass accommodation coefficient
+  constexpr double D_g = 1.3e-5;                     // Gas diffusion coefficient [m² s⁻¹] (typical for SO2 in air)
+  constexpr double alpha = 0.1;                      // Mass accommodation coefficient
   constexpr double gas_molecular_weight = 0.064064;  // Molecular weight of SO2 [kg mol⁻¹]
-  constexpr double T = 298.15;         // Temperature [K]
-  constexpr double r_eff = 1.0e-6;     // Effective radius [m] (1 μm)
-  constexpr double N = 1.0e9;          // Number concentration [# m⁻³]
+  constexpr double T = 298.15;                       // Temperature [K]
+  constexpr double r_eff = 1.0e-6;                   // Effective radius [m] (1 μm)
+  constexpr double N = 1.0e9;                        // Number concentration [# m⁻³]
 
   // Helper: compute mean molecular speed
   double mean_molecular_speed(double T, double Mw)

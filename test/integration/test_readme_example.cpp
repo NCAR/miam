@@ -5,9 +5,11 @@
 
 #include <miam/miam.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
+
 #include <micm/CPU.hpp>
 
 #include <gtest/gtest.h>
+
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -18,12 +20,8 @@ using namespace miam;
 TEST(ReadmeExample, HenryLawPhaseTransfer)
 {
   // Define species with physical properties required for mass transfer
-  auto co2 = Species{ "CO2",
-      { { "molecular weight [kg mol-1]", 0.044 },
-        { "density [kg m-3]", 1800.0 } } };
-  auto h2o = Species{ "H2O",
-      { { "molecular weight [kg mol-1]", 0.018 },
-        { "density [kg m-3]", 1000.0 } } };
+  auto co2 = Species{ "CO2", { { "molecular weight [kg mol-1]", 0.044 }, { "density [kg m-3]", 1800.0 } } };
+  auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
 
   // Define phases
   Phase gas_phase{ "GAS", { { co2 } } };
@@ -39,27 +37,22 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
 
   // Henry's Law phase transfer: CO2(g) <-> CO2(aq)
   auto co2_transfer = HenryLawPhaseTransferBuilder()
-    .SetCondensedPhase(aqueous_phase)
-    .SetGasSpecies(co2)
-    .SetCondensedSpecies(co2)
-    .SetSolvent(h2o)
-    .SetHenrysLawConstant(HenrysLawConstant(
-        { .HLC_ref_ = 3.4e-2 }))       // mol m-3 Pa-1 at 298 K
-    .SetDiffusionCoefficient(1.5e-5)    // m2 s-1
-    .SetAccommodationCoefficient(5.0e-6) // Set artificially low to see transfer over 10 time steps
-    .Build();
+                          .SetCondensedPhase(aqueous_phase)
+                          .SetGasSpecies(co2)
+                          .SetCondensedSpecies(co2)
+                          .SetSolvent(h2o)
+                          .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 3.4e-2 }))  // mol m-3 Pa-1 at 298 K
+                          .SetDiffusionCoefficient(1.5e-5)                                  // m2 s-1
+                          .SetAccommodationCoefficient(5.0e-6)  // Set artificially low to see transfer over 10 time steps
+                          .Build();
 
   // Create model and add processes
-  auto cloud_model = Model{
-    .name_ = "CLOUD",
-    .representations_ = { cloud }
-  };
+  auto cloud_model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
   cloud_model.AddProcesses({ co2_transfer });
 
   // Build solver (MICM Rosenbrock)
   auto system = System(gas_phase);
-  auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
-                    RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
+  auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                     .SetSystem(system)
                     .AddExternalModel(cloud_model)
                     .SetIgnoreUnusedSpecies(true)
@@ -68,12 +61,12 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   State state = solver.GetState();
 
   // Initial conditions
-  state.conditions_[0].temperature_ = 298.15;   // K
-  state.conditions_[0].pressure_ = 101325.0;    // Pa
+  state.conditions_[0].temperature_ = 298.15;  // K
+  state.conditions_[0].pressure_ = 101325.0;   // Pa
   state.conditions_[0].CalculateIdealAirDensity();
 
-  state[co2] = 1.0e-3;                                  // mol m-3 air
-  state[cloud.Species(aqueous_phase, h2o)] = 0.017;      // mol m-3 air (cloud LWC ~ 0.3 g m-3)
+  state[co2] = 1.0e-3;                               // mol m-3 air
+  state[cloud.Species(aqueous_phase, h2o)] = 0.017;  // mol m-3 air (cloud LWC ~ 0.3 g m-3)
   cloud.SetDefaultParameters(state);
 
   // Capture output
@@ -105,8 +98,7 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   // 1. All concentrations should be non-negative
   for (std::size_t var = 0; var < state.variables_.NumColumns(); ++var)
   {
-    EXPECT_GE(state.variables_[0][var], 0.0)
-        << "Negative concentration for variable " << var;
+    EXPECT_GE(state.variables_[0][var], 0.0) << "Negative concentration for variable " << var;
   }
 
   // 2. Gas CO2 should decrease (dissolving into aqueous phase)
@@ -118,8 +110,7 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   EXPECT_GT(co2_aq_final, 0.0) << "Aqueous CO2 should increase from zero";
 
   // 4. Mass conservation: gas + aqueous should equal initial total
-  EXPECT_NEAR(co2_g_final + co2_aq_final, 1.0e-3, 1.0e-6)
-      << "Mass conservation violated";
+  EXPECT_NEAR(co2_g_final + co2_aq_final, 1.0e-3, 1.0e-6) << "Mass conservation violated";
 
   // 5. Water (solvent) should be essentially unchanged
   double h2o_final = state.variables_[0][state.variable_map_["CLOUD.AQUEOUS.H2O"]];
