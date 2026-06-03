@@ -3,7 +3,7 @@
 
 #include <miam/miam.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
-#include <miam/util/constants.hpp>
+#include <micm/util/constants.hpp>
 
 #include <micm/CPU.hpp>
 
@@ -139,7 +139,7 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   // k_cond from condensation rate utility
   auto cond_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double k_cond = cond_provider.ComputeValue(r_eff, N, T);
-  double k_evap = k_cond / (HLC_val * GAS_CONSTANT * T);
+  double k_evap = k_cond / (HLC_val * micm::constants::GAS_CONSTANT * T);
 
   double f_v = solvent_conc * solvent_molecular_weight / solvent_density;
   double a = phi * k_cond;

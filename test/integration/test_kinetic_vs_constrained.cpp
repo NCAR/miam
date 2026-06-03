@@ -7,7 +7,7 @@
 #include <miam/miam.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
-#include <miam/util/constants.hpp>
+#include <micm/util/constants.hpp>
 
 #include <micm/CPU.hpp>
 
@@ -288,7 +288,7 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
   double accommodation = 0.05;
   double H2O_conc = 0.017;  // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
   double f_v = H2O_conc * solvent_molecular_weight / solvent_density;
-  double alpha = HLC * GAS_CONSTANT * T * f_v;
+  double alpha = HLC * micm::constants::GAS_CONSTANT * T * f_v;
 
   auto A_g = Species{ "A_g", { { "molecular weight [kg mol-1]", gas_molecular_weight } } };
   auto A_aq = Species{ "A_aq", { { "molecular weight [kg mol-1]", gas_molecular_weight }, { "density [kg m-3]", 1800.0 } } };

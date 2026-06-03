@@ -43,7 +43,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
   double solvent_density = 1000.0;                                     // kg m⁻³ (water)
   double H2O_conc = 0.017;                                             // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
   double f_v = H2O_conc * solvent_molecular_weight / solvent_density;  // ~ 3.06e-7
-  double alpha = HLC * GAS_CONSTANT * T * f_v;                         // dimensionless
+  double alpha = HLC * micm::constants::GAS_CONSTANT * T * f_v;                         // dimensionless
 
   // Species
   auto Precursor = Species{ "Precursor" };
@@ -185,7 +185,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
   double solvent_density = 1000.0;
   double H2O_conc = 0.017;  // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)
   double f_v = H2O_conc * solvent_molecular_weight / solvent_density;
-  double alpha = HLC * GAS_CONSTANT * T * f_v;
+  double alpha = HLC * micm::constants::GAS_CONSTANT * T * f_v;
 
   auto Precursor = Species{ "Precursor" };
   auto A_g = Species{ "A_g" };

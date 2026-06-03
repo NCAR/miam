@@ -5,7 +5,7 @@
 
 #include <miam/math/condensation_rate.hpp>
 #include <miam/representations/aerosol_property.hpp>
-#include <miam/util/constants.hpp>
+#include <micm/util/constants.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 #include <miam/util/uuid.hpp>
@@ -372,7 +372,7 @@ namespace miam
                   {
                     double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
                     double kc_eff = phi * kc;
-                    double ke_eff = kc_eff / (hlc * miam::GAS_CONSTANT * T);
+                    double ke_eff = kc_eff / (hlc * micm::constants::GAS_CONSTANT * T);
                     double fv = solvent * inst.molar_volume;
                     net_val = kc_eff * gas - ke_eff * aq / fv;
                   },
@@ -587,7 +587,7 @@ namespace miam
                       double& j_as)
                   {
                     double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
-                    double ke = kc / (hlc * miam::GAS_CONSTANT * T);
+                    double ke = kc / (hlc * micm::constants::GAS_CONSTANT * T);
                     double fv = solvent * inst.molar_volume;
                     // -J[gas, gas] = +φ · k_cond
                     j_gg += phi * kc;
@@ -638,7 +638,7 @@ namespace miam
                     {
                       double kc_dummy, dk_dr, dk_dN_unused;
                       inst.cond_rate_provider.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr, dk_dN_unused);
-                      double dke_dr = dk_dr / (hlc * miam::GAS_CONSTANT * T);
+                      double dke_dr = dk_dr / (hlc * micm::constants::GAS_CONSTANT * T);
                       double fv = solvent * inst.molar_volume;
                       double eff = phi * (dk_dr * dr_dvar * gas - dke_dr * dr_dvar * aq / fv);
                       j_gas += eff;
@@ -678,7 +678,7 @@ namespace miam
                     {
                       double kc_dummy, dk_dr_unused, dk_dN;
                       inst.cond_rate_provider.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr_unused, dk_dN);
-                      double dke_dN = dk_dN / (hlc * miam::GAS_CONSTANT * T);
+                      double dke_dN = dk_dN / (hlc * micm::constants::GAS_CONSTANT * T);
                       double fv = solvent * inst.molar_volume;
                       double eff = phi * (dk_dN * dN_dvar * gas - dke_dN * dN_dvar * aq / fv);
                       j_gas += eff;
@@ -717,7 +717,7 @@ namespace miam
                         double& j_aq)
                     {
                       double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
-                      double ke = kc / (hlc * miam::GAS_CONSTANT * T);
+                      double ke = kc / (hlc * micm::constants::GAS_CONSTANT * T);
                       double fv = solvent * inst.molar_volume;
                       double R = kc * gas - ke * aq / fv;
                       j_gas += R * dphi_dvar;

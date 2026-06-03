@@ -34,7 +34,7 @@
 #include <miam/miam.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
-#include <miam/util/constants.hpp>
+#include <micm/util/constants.hpp>
 
 #include <micm/CPU.hpp>
 
@@ -79,7 +79,7 @@ namespace
   // -- CO2(g) at 400 ppm: ideal-gas concentration in mol m-3 air ---------------
   constexpr double ppm_CO2 = 400.0e-6;
   constexpr double P_CO2 = ppm_CO2 * P;                   // Pa
-  constexpr double CO2g_eq = P_CO2 / (GAS_CONSTANT * T);  // ~0.01635 mol m-3 air
+  constexpr double CO2g_eq = P_CO2 / (micm::constants::GAS_CONSTANT * T);  // ~0.01635 mol m-3 air
 
   // -- Kinetic rate constants (reasonable defaults; user should tune) ----------
   // CO2_aq + H2O <-> H+ + HCO3- :  k1_f/k1_r = K1_miam
@@ -370,7 +370,7 @@ TEST(AqueousCarbonicAcid, KineticODE)
 
   // Henry's Law
   const double f_v_final = h2o_final * Mw_water / rho_water;
-  const double henry_expected = K_H * GAS_CONSTANT * T * f_v_final * co2_g_final;
+  const double henry_expected = K_H * micm::constants::GAS_CONSTANT * T * f_v_final * co2_g_final;
   ASSERT_GT(henry_expected, 0.0) << "Expected positive Henry-law CO2(aq) concentration";
   EXPECT_NEAR(co2_aq_final, henry_expected, 0.05 * henry_expected)
       << std::format("Henry's-law equilibrium mismatch: CO2_aq={} expected={}", co2_aq_final, henry_expected);
@@ -497,7 +497,7 @@ TEST(AqueousCarbonicAcid, DAEConstraints)
   // constraint residuals vanish at t = 0, giving the Newton projection a
   // reliable starting point.
   const double f_v_0 = C_H2O * Mw_water / rho_water;
-  const double CO2aq_0 = K_H * GAS_CONSTANT * T * f_v_0 * CO2g_eq;  // Henry's Law
+  const double CO2aq_0 = K_H * micm::constants::GAS_CONSTANT * T * f_v_0 * CO2g_eq;  // Henry's Law
   const double H_0 = std::sqrt(Kw_miam) * C_H2O;                    // pure-water [H+]
 
   state.variables_[0][i_CO2g] = CO2g_eq;   // 400 ppm
@@ -587,7 +587,7 @@ TEST(AqueousCarbonicAcid, DAEConstraints)
 
   // Henry's Law constraint residual: K_H * R * T * f_v * [CO2_g] - [CO2_aq] = 0
   double f_v = H2O_val * Mw_water / rho_water;
-  double hl_expected = K_H * GAS_CONSTANT * T * f_v * CO2g_val;
+  double hl_expected = K_H * micm::constants::GAS_CONSTANT * T * f_v * CO2g_val;
   if (hl_expected > 1.0e-30)
     EXPECT_NEAR(CO2aq_val / hl_expected, 1.0, 1.0e-4) << "Henry's-law constraint residual too large";
 
