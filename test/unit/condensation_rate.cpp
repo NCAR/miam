@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <miam/math/condensation_rate.hpp>
+
 #include <micm/util/constants.hpp>
 
 #include <gtest/gtest.h>

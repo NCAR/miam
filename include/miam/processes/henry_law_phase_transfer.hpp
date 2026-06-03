@@ -5,7 +5,6 @@
 
 #include <miam/math/condensation_rate.hpp>
 #include <miam/representations/aerosol_property.hpp>
-#include <micm/util/constants.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 #include <miam/util/uuid.hpp>
@@ -13,6 +12,7 @@
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
+#include <micm/util/constants.hpp>
 #include <micm/util/matrix.hpp>
 
 #include <cmath>
