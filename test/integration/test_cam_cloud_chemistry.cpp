@@ -255,7 +255,7 @@ TEST(CamCloudChemistry, Step1_SingleHLC)
   auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
   model.AddConstraints(hl_so2, mass_so2);
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
                     .SetSystem(system)
@@ -347,7 +347,7 @@ TEST(CamCloudChemistry, Step1b_KwOnly)
   auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
   model.AddConstraints(eq_kw, charge);
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
                     .SetSystem(system)
@@ -450,7 +450,7 @@ TEST(CamCloudChemistry, Step1c_KwNaiveIC)
   params.constraint_init_tolerance_ = 1e-20;
   params.max_number_of_steps_ = 1500;
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(params)
                     .SetSystem(system)
                     .AddExternalModel(model)
@@ -588,7 +588,7 @@ TEST(CamCloudChemistry, Step2_HLC_Plus_Dissociation)
   auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
   model.AddConstraints(hl_so2, eq_kw, eq_ka1, mass_S, charge);
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
                     .SetSystem(system)
@@ -843,7 +843,7 @@ TEST(CamCloudChemistry, Step3_FullEquilibrium)
                        eq_kw, eq_ka1, eq_ka2,
                        mass_S, mass_H2O2, mass_O3, charge);
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
                     .SetSystem(system)
@@ -1084,7 +1084,7 @@ TEST(CamCloudChemistry, Step3b_NaiveInitialConditions)
                        eq_kw, eq_ka1, eq_ka2,
                        mass_S, mass_H2O2, mass_O3, charge);
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
                     .SetSystem(system)
@@ -1353,7 +1353,7 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
                        eq_kw, eq_ka1, eq_ka2,
                        mass_S, mass_H2O2, mass_O3, charge);
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
                     .SetSystem(system)
@@ -1674,7 +1674,7 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
                        eq_kw, eq_ka1, eq_ka2,
                        mass_S, mass_H2O2, mass_O3, charge);
 
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
                     .SetSystem(system)

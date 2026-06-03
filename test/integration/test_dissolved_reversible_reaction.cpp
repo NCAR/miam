@@ -86,7 +86,7 @@ TEST(DissolvedReversibleReactionIntegration, SimpleAtoB)
   double B_eq = A0 * K_eq / (1.0 + K_eq);
   
   // Build solver
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
                   .AddExternalModel(model)
@@ -223,7 +223,7 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsReactant)
   double C_eq = C0 - B_eq;
   
   // Build solver
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
                   .AddExternalModel(model)
@@ -373,7 +373,7 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsProduct) {
   double B_eq = k_forward / (k_forward + k_reverse) * A0;  // ≈ 0
   
   // Build solver
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
                   .AddExternalModel(model)
@@ -539,7 +539,7 @@ TEST(DissolvedReversibleReactionIntegration, MultiPhaseInstances) {
   double tau_large = 1.0 / k_total_large;  // 3.33 s
   
   // Build solver
-  auto system = System(gas_phase, model);
+  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                   .SetSystem(system)
                   .AddExternalModel(model)
