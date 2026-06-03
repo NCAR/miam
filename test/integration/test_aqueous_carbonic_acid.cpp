@@ -36,8 +36,9 @@
 #include <miam/processes/constants/henrys_law_constant.hpp>
 #include <miam/util/constants.hpp>
 
-#include <gtest/gtest.h>
 #include <micm/CPU.hpp>
+
+#include <gtest/gtest.h>
 
 #include <cmath>
 #include <format>
@@ -51,10 +52,10 @@ using namespace miam;
 namespace
 {
   // -- Physical constants ------------------------------------------------------
-  constexpr double T = 298.15;                 // K
-  constexpr double P = 101325.0;               // Pa
-  constexpr double Mw_water = 0.018;           // kg mol-1
-  constexpr double rho_water = 1000.0;         // kg m-3
+  constexpr double T = 298.15;          // K
+  constexpr double P = 101325.0;        // Pa
+  constexpr double Mw_water = 0.018;    // kg mol-1
+  constexpr double rho_water = 1000.0;  // kg m-3
 
   // -- Cloud liquid water content ----------------------------------------------
   constexpr double C_H2O = 0.017;     // mol m-3 air (LWC ~0.3 g m-3)
@@ -77,7 +78,7 @@ namespace
 
   // -- CO2(g) at 400 ppm: ideal-gas concentration in mol m-3 air ---------------
   constexpr double ppm_CO2 = 400.0e-6;
-  constexpr double P_CO2 = ppm_CO2 * P;                    // Pa
+  constexpr double P_CO2 = ppm_CO2 * P;                   // Pa
   constexpr double CO2g_eq = P_CO2 / (GAS_CONSTANT * T);  // ~0.01635 mol m-3 air
 
   // -- Kinetic rate constants (reasonable defaults; user should tune) ----------
@@ -145,17 +146,20 @@ namespace
   }
 
   // -- Diagnostic output -------------------------------------------------------
-  void PrintConditions(const std::string& label, double CO2g, double CO2_aq,
-                       double HCO3, double CO3, double H, double OH, double H2O)
+  void PrintConditions(
+      const std::string& label,
+      double CO2g,
+      double CO2_aq,
+      double HCO3,
+      double CO3,
+      double H,
+      double OH,
+      double H2O)
   {
-    std::cout << std::format("{} (mol m-3 air):\n", label)
-              << std::format("  CO2_g  = {:10.3e}\n", CO2g)
-              << std::format("  CO2_aq = {:10.3e}\n", CO2_aq)
-              << std::format("  HCO3-  = {:10.3e}\n", HCO3)
-              << std::format("  CO3--  = {:10.3e}\n", CO3)
-              << std::format("  H+     = {:10.3e}\n", H)
-              << std::format("  OH-    = {:10.3e}\n", OH)
-              << std::format("  H2O    = {:10.3e}\n", H2O);
+    std::cout << std::format("{} (mol m-3 air):\n", label) << std::format("  CO2_g  = {:10.3e}\n", CO2g)
+              << std::format("  CO2_aq = {:10.3e}\n", CO2_aq) << std::format("  HCO3-  = {:10.3e}\n", HCO3)
+              << std::format("  CO3--  = {:10.3e}\n", CO3) << std::format("  H+     = {:10.3e}\n", H)
+              << std::format("  OH-    = {:10.3e}\n", OH) << std::format("  H2O    = {:10.3e}\n", H2O);
   }
 
   void PrintEquilibriumStatus(double CO2_aq, double HCO3, double CO3, double H, double OH, double H2O)
@@ -235,22 +239,23 @@ TEST(AqueousCarbonicAcid, KineticODE)
 
   // -- ODE-specific processes --
   // Henry's Law kinetic phase transfer: CO2(g) <-> CO2(aq)
-  auto transfer =
-      HenryLawPhaseTransferBuilder()
-          .SetCondensedPhase(sys.aqueous_phase)
-          .SetGasSpecies(sys.CO2_g)
-          .SetCondensedSpecies(sys.CO2_aq)
-          .SetSolvent(sys.H2O)
-          .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = K_H }))
-          .SetDiffusionCoefficient(D_CO2)
-          .SetAccommodationCoefficient(alpha)
-          .Build();
+  auto transfer = HenryLawPhaseTransferBuilder()
+                      .SetCondensedPhase(sys.aqueous_phase)
+                      .SetGasSpecies(sys.CO2_g)
+                      .SetCondensedSpecies(sys.CO2_aq)
+                      .SetSolvent(sys.H2O)
+                      .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = K_H }))
+                      .SetDiffusionCoefficient(D_CO2)
+                      .SetAccommodationCoefficient(alpha)
+                      .Build();
 
   // HCO3- <-> H+ + CO3--  (full stiff rate; stable for pure-ODE Rosenbrock)
-  auto rxn2 = DissolvedReversibleReaction{
-    [](const Conditions&) { return k2_f; }, [](const Conditions&) { return k2_r; },
-    { sys.HCO3m }, { sys.Hp, sys.CO3mm }, sys.H2O, sys.aqueous_phase
-  };
+  auto rxn2 = DissolvedReversibleReaction{ [](const Conditions&) { return k2_f; },
+                                           [](const Conditions&) { return k2_r; },
+                                           { sys.HCO3m },
+                                           { sys.Hp, sys.CO3mm },
+                                           sys.H2O,
+                                           sys.aqueous_phase };
 
   // H2O <-> H+ + OH-  (H2O as reactant AND solvent gives correct Kw_miam)
   auto rxn_w = DissolvedReversibleReaction{ [](const Conditions&) { return kw_f; },
@@ -302,9 +307,15 @@ TEST(AqueousCarbonicAcid, KineticODE)
   sys.droplet.SetDefaultParameters(state);
 
   std::cout << "\n=== KineticODE ===\n";
-  PrintConditions("Initial", state.variables_[0][i_CO2g], state.variables_[0][i_CO2aq],
-                  state.variables_[0][i_HCO3], state.variables_[0][i_CO3],
-                  state.variables_[0][i_H], state.variables_[0][i_OH], state.variables_[0][i_H2O]);
+  PrintConditions(
+      "Initial",
+      state.variables_[0][i_CO2g],
+      state.variables_[0][i_CO2aq],
+      state.variables_[0][i_HCO3],
+      state.variables_[0][i_CO3],
+      state.variables_[0][i_H],
+      state.variables_[0][i_OH],
+      state.variables_[0][i_H2O]);
 
   // -- Integrate to equilibrium --
   // 3000 s >> tau_1 = 1/k1_f = 10 s; sufficient for all modes to equilibrate.
@@ -314,12 +325,22 @@ TEST(AqueousCarbonicAcid, KineticODE)
   ASSERT_EQ(ode_result.state_, SolverState::Converged) << "ODE solver failed";
   std::cout << "Solver steps: " << ode_result.stats_.number_of_steps_ << "\n";
 
-  PrintConditions("Final", state.variables_[0][i_CO2g], state.variables_[0][i_CO2aq],
-                  state.variables_[0][i_HCO3], state.variables_[0][i_CO3],
-                  state.variables_[0][i_H], state.variables_[0][i_OH], state.variables_[0][i_H2O]);
-  PrintEquilibriumStatus(state.variables_[0][i_CO2aq], state.variables_[0][i_HCO3],
-                         state.variables_[0][i_CO3], state.variables_[0][i_H],
-                         state.variables_[0][i_OH], state.variables_[0][i_H2O]);
+  PrintConditions(
+      "Final",
+      state.variables_[0][i_CO2g],
+      state.variables_[0][i_CO2aq],
+      state.variables_[0][i_HCO3],
+      state.variables_[0][i_CO3],
+      state.variables_[0][i_H],
+      state.variables_[0][i_OH],
+      state.variables_[0][i_H2O]);
+  PrintEquilibriumStatus(
+      state.variables_[0][i_CO2aq],
+      state.variables_[0][i_HCO3],
+      state.variables_[0][i_CO3],
+      state.variables_[0][i_H],
+      state.variables_[0][i_OH],
+      state.variables_[0][i_H2O]);
 
   // -- Verify equilibrium --
   const double co2_g_final = state.variables_[0][i_CO2g];
@@ -391,39 +412,36 @@ TEST(AqueousCarbonicAcid, DAEConstraints)
 
   // CO3--: K2 equilibrium  HCO3- <-> H+ + CO3--
   //   G = K2_miam * [HCO3-] * [H2O] / ([H2O]+δ) - [H+] * [CO3--] * [H2O] / ([H2O]+δ)^2 = 0
-  auto k2_constraint =
-      DissolvedEquilibriumConstraintBuilder()
-          .SetPhase(sys.aqueous_phase)
-          .SetReactants({ sys.HCO3m })
-          .SetProducts({ sys.Hp, sys.CO3mm })
-          .SetAlgebraicSpecies(sys.CO3mm)
-          .SetSolvent(sys.H2O)
-          .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = K2_miam }))
-          .Build();
+  auto k2_constraint = DissolvedEquilibriumConstraintBuilder()
+                           .SetPhase(sys.aqueous_phase)
+                           .SetReactants({ sys.HCO3m })
+                           .SetProducts({ sys.Hp, sys.CO3mm })
+                           .SetAlgebraicSpecies(sys.CO3mm)
+                           .SetSolvent(sys.H2O)
+                           .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = K2_miam }))
+                           .Build();
 
   // CO2(aq): Henry's Law equilibrium with CO2(g)
   //   G = K_H * R * T * f_v * [CO2_g] - [CO2_aq] = 0
-  auto hl_constraint =
-      HenryLawEquilibriumConstraintBuilder()
-          .SetCondensedPhase(sys.aqueous_phase)
-          .SetGasSpecies(sys.CO2_g)
-          .SetCondensedSpecies(sys.CO2_aq)
-          .SetSolvent(sys.H2O)
-          .SetHenryLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = K_H }))
-          .Build();
+  auto hl_constraint = HenryLawEquilibriumConstraintBuilder()
+                           .SetCondensedPhase(sys.aqueous_phase)
+                           .SetGasSpecies(sys.CO2_g)
+                           .SetCondensedSpecies(sys.CO2_aq)
+                           .SetSolvent(sys.H2O)
+                           .SetHenryLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = K_H }))
+                           .Build();
 
   // OH-: water autodissociation equilibrium
   //   H2O(reactant) <-> H+ + OH-,  K_miam = Kw_miam = Kw_lit / c_H2O^2
   //   (H2O as explicit reactant AND solvent gives the correct Kw_miam)
-  auto kw_constraint =
-      DissolvedEquilibriumConstraintBuilder()
-          .SetPhase(sys.aqueous_phase)
-          .SetReactants({ sys.H2O })
-          .SetProducts({ sys.Hp, sys.OHm })
-          .SetAlgebraicSpecies(sys.OHm)
-          .SetSolvent(sys.H2O)
-          .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = Kw_miam }))
-          .Build();
+  auto kw_constraint = DissolvedEquilibriumConstraintBuilder()
+                           .SetPhase(sys.aqueous_phase)
+                           .SetReactants({ sys.H2O })
+                           .SetProducts({ sys.Hp, sys.OHm })
+                           .SetAlgebraicSpecies(sys.OHm)
+                           .SetSolvent(sys.H2O)
+                           .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = Kw_miam }))
+                           .Build();
 
   // H+: charge balance  [H+] - [OH-] - [HCO3-] - 2[CO3--] = 0
   auto charge_balance = LinearConstraintBuilder()
@@ -443,8 +461,8 @@ TEST(AqueousCarbonicAcid, DAEConstraints)
   // -- DAE Solver --
   auto system = System(sys.gas_phase);
   auto params = RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters();
-  params.h_start_ = 1.0e-4;          // small initial step; Rosenbrock will grow it adaptively
-  params.h_max_ = 1.0;               // cap step size: k1_r*h_max ~1.3e7, well-conditioned in debug+release
+  params.h_start_ = 1.0e-4;               // small initial step; Rosenbrock will grow it adaptively
+  params.h_max_ = 1.0;                    // cap step size: k1_r*h_max ~1.3e7, well-conditioned in debug+release
   params.max_number_of_steps_ = 1000000;  // allow enough internal steps to cover 3000 s
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(params)
                     .SetSystem(system)
@@ -486,8 +504,8 @@ TEST(AqueousCarbonicAcid, DAEConstraints)
   state.variables_[0][i_CO2aq] = CO2aq_0;  // algebraic -- consistent with HL
   state.variables_[0][i_HCO3] = 0.0;
   state.variables_[0][i_CO3] = 0.0;
-  state.variables_[0][i_H] = H_0;          // algebraic -- consistent with Kw + CB
-  state.variables_[0][i_OH] = H_0;         // algebraic -- consistent with Kw
+  state.variables_[0][i_H] = H_0;   // algebraic -- consistent with Kw + CB
+  state.variables_[0][i_OH] = H_0;  // algebraic -- consistent with Kw
   state.variables_[0][i_H2O] = C_H2O;
 
   state.conditions_[0].temperature_ = T;
@@ -495,9 +513,15 @@ TEST(AqueousCarbonicAcid, DAEConstraints)
   sys.droplet.SetDefaultParameters(state);
 
   std::cout << "\n=== DAEConstraints ===\n";
-  PrintConditions("Initial", state.variables_[0][i_CO2g], state.variables_[0][i_CO2aq],
-                  state.variables_[0][i_HCO3], state.variables_[0][i_CO3],
-                  state.variables_[0][i_H], state.variables_[0][i_OH], state.variables_[0][i_H2O]);
+  PrintConditions(
+      "Initial",
+      state.variables_[0][i_CO2g],
+      state.variables_[0][i_CO2aq],
+      state.variables_[0][i_HCO3],
+      state.variables_[0][i_CO3],
+      state.variables_[0][i_H],
+      state.variables_[0][i_OH],
+      state.variables_[0][i_H2O]);
 
   // -- Integrate to equilibrium --
   solver.UpdateStateParameters(state);
@@ -506,12 +530,22 @@ TEST(AqueousCarbonicAcid, DAEConstraints)
   ASSERT_EQ(result.state_, SolverState::Converged) << "DAE solver failed";
   std::cout << "Solver steps: " << result.stats_.number_of_steps_ << "\n";
 
-  PrintConditions("Final", state.variables_[0][i_CO2g], state.variables_[0][i_CO2aq],
-                  state.variables_[0][i_HCO3], state.variables_[0][i_CO3],
-                  state.variables_[0][i_H], state.variables_[0][i_OH], state.variables_[0][i_H2O]);
-  PrintEquilibriumStatus(state.variables_[0][i_CO2aq], state.variables_[0][i_HCO3],
-                         state.variables_[0][i_CO3], state.variables_[0][i_H],
-                         state.variables_[0][i_OH], state.variables_[0][i_H2O]);
+  PrintConditions(
+      "Final",
+      state.variables_[0][i_CO2g],
+      state.variables_[0][i_CO2aq],
+      state.variables_[0][i_HCO3],
+      state.variables_[0][i_CO3],
+      state.variables_[0][i_H],
+      state.variables_[0][i_OH],
+      state.variables_[0][i_H2O]);
+  PrintEquilibriumStatus(
+      state.variables_[0][i_CO2aq],
+      state.variables_[0][i_HCO3],
+      state.variables_[0][i_CO3],
+      state.variables_[0][i_H],
+      state.variables_[0][i_OH],
+      state.variables_[0][i_H2O]);
 
   // -- Verify general equilibrium --
 

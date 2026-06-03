@@ -2,9 +2,9 @@
 
 #include <micm/system/conditions.hpp>
 
-#include <cmath>
-
 #include <gtest/gtest.h>
+
+#include <cmath>
 
 using namespace miam;
 

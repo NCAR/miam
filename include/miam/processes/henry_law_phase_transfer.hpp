@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include <miam/representations/aerosol_property.hpp>
 #include <miam/math/condensation_rate.hpp>
+#include <miam/representations/aerosol_property.hpp>
 #include <miam/util/constants.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>

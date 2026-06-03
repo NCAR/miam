@@ -3,11 +3,11 @@
 
 #include <miam/constraints/linear_constraint.hpp>
 #include <miam/constraints/linear_constraint_builder.hpp>
-#include <micm/util/jacobian_verification.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
+#include <micm/util/jacobian_verification.hpp>
 #include <micm/util/matrix.hpp>
 #include <micm/util/sparse_matrix.hpp>
 #include <micm/util/sparse_matrix_standard_ordering.hpp>
@@ -45,11 +45,7 @@ namespace
 TEST(LinearConstraint, AlgebraicVariableNamesGlobal)
 {
   // Mass conservation: [A_g] + Σ [A_aq_i] = total
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } },
-      100.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } }, 100.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -63,11 +59,7 @@ TEST(LinearConstraint, AlgebraicVariableNamesGlobal)
 
 TEST(LinearConstraint, SpeciesDependenciesGlobal)
 {
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } },
-      100.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } }, 100.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -83,11 +75,7 @@ TEST(LinearConstraint, SpeciesDependenciesGlobal)
 
 TEST(LinearConstraint, NonZeroJacobianGlobal)
 {
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } },
-      100.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } }, 100.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("LARGE");
@@ -109,11 +97,7 @@ TEST(LinearConstraint, NonZeroJacobianGlobal)
 TEST(LinearConstraint, ResidualGlobal)
 {
   // G = 1.0*[A_g] + 1.0*[A_aq_LARGE] + 1.0*[A_aq_SMALL] - 100.0
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } },
-      100.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } }, 100.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("LARGE");
@@ -149,11 +133,7 @@ TEST(LinearConstraint, ResidualGlobal)
 
 TEST(LinearConstraint, JacobianGlobal)
 {
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } },
-      100.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } }, 100.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("LARGE");
@@ -192,10 +172,7 @@ TEST(LinearConstraint, AlgebraicVariableNamesPerInstance)
 {
   // Charge balance: [H+] - [A-] - [B-] = 0, H+ algebraic
   LinearConstraint constraint(
-      aqueous_phase,
-      hp,
-      { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 }, { aqueous_phase, bm, -1.0 } },
-      0.0);
+      aqueous_phase, hp, { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 }, { aqueous_phase, bm, -1.0 } }, 0.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -210,10 +187,7 @@ TEST(LinearConstraint, AlgebraicVariableNamesPerInstance)
 TEST(LinearConstraint, SpeciesDependenciesPerInstance)
 {
   LinearConstraint constraint(
-      aqueous_phase,
-      hp,
-      { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 }, { aqueous_phase, bm, -1.0 } },
-      0.0);
+      aqueous_phase, hp, { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 }, { aqueous_phase, bm, -1.0 } }, 0.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -234,10 +208,7 @@ TEST(LinearConstraint, ResidualPerInstance)
 {
   // Charge balance: G_i = [H+_i] - [A-_i] - [B-_i] = 0
   LinearConstraint constraint(
-      aqueous_phase,
-      hp,
-      { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 }, { aqueous_phase, bm, -1.0 } },
-      0.0);
+      aqueous_phase, hp, { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 }, { aqueous_phase, bm, -1.0 } }, 0.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("LARGE");
@@ -274,10 +245,7 @@ TEST(LinearConstraint, ResidualPerInstance)
 TEST(LinearConstraint, JacobianPerInstance)
 {
   LinearConstraint constraint(
-      aqueous_phase,
-      hp,
-      { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 }, { aqueous_phase, bm, -1.0 } },
-      0.0);
+      aqueous_phase, hp, { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 }, { aqueous_phase, bm, -1.0 } }, 0.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("LARGE");
@@ -325,14 +293,10 @@ TEST(LinearConstraint, JacobianPerInstance)
 TEST(LinearConstraint, BuilderValidation)
 {
   // Missing algebraic species
-  EXPECT_THROW(
-      LinearConstraintBuilder().AddTerm(aqueous_phase, hp, 1.0).Build(),
-      std::runtime_error);
+  EXPECT_THROW(LinearConstraintBuilder().AddTerm(aqueous_phase, hp, 1.0).Build(), std::runtime_error);
 
   // Missing terms
-  EXPECT_THROW(
-      LinearConstraintBuilder().SetAlgebraicSpecies(aqueous_phase, hp).Build(),
-      std::runtime_error);
+  EXPECT_THROW(LinearConstraintBuilder().SetAlgebraicSpecies(aqueous_phase, hp).Build(), std::runtime_error);
 
   // Valid build with constant
   auto constraint = LinearConstraintBuilder()
@@ -349,11 +313,7 @@ TEST(LinearConstraint, BuilderValidation)
 
 TEST(LinearConstraint, UpdateConstraintParametersNoOp)
 {
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 } },
-      0.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0 } }, 0.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   auto update_fn = constraint.UpdateConstraintParametersFunction<micm::Matrix<double>>(phase_prefixes, param_indices);
@@ -368,11 +328,7 @@ TEST(LinearConstraint, UpdateConstraintParametersNoOp)
 TEST(LinearConstraint, ResidualWithNonUnitCoefficients)
 {
   // G = 2.0*[A_g] + 0.5*[A_aq] - 10.0
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 2.0 }, { aqueous_phase, A_aq, 0.5 } },
-      10.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 2.0 }, { aqueous_phase, A_aq, 0.5 } }, 10.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -471,14 +427,13 @@ namespace
     // Compare analytical vs FD
     auto cmp = micm::CompareJacobianToFiniteDifference(jacobian, fd_jac, num_vars, 1e-5, 1e-5);
     EXPECT_TRUE(cmp.passed_) << "FD mismatch: block=" << cmp.worst_block_ << " row=" << cmp.worst_row_
-                            << " col=" << cmp.worst_col_ << " +J(analytical)=" << cmp.worst_analytical_
-                            << " +J(fd)=" << cmp.worst_fd_;
+                             << " col=" << cmp.worst_col_ << " +J(analytical)=" << cmp.worst_analytical_
+                             << " +J(fd)=" << cmp.worst_fd_;
 
     // Verify no significant FD signal outside the declared sparsity pattern
     auto spc = micm::CheckJacobianSparsityCompleteness(jacobian, fd_jac, num_vars);
-    EXPECT_TRUE(spc.passed_) << "Missing sparsity entry: block=" << spc.worst_block_
-                            << " row=" << spc.worst_row_ << " col=" << spc.worst_col_
-                            << " fd=" << spc.worst_fd_;
+    EXPECT_TRUE(spc.passed_) << "Missing sparsity entry: block=" << spc.worst_block_ << " row=" << spc.worst_row_
+                             << " col=" << spc.worst_col_ << " fd=" << spc.worst_fd_;
   }
 }  // namespace
 
@@ -486,11 +441,7 @@ namespace
 
 TEST(LinearConstraint, ResidualGlobalMultipleCells)
 {
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } },
-      100.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } }, 100.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("LARGE");
@@ -504,13 +455,21 @@ TEST(LinearConstraint, ResidualGlobalMultipleCells)
   std::size_t num_cells = 4;
   DMP state_variables{ num_cells, 3, 0.0 };
   // Cell 0: balanced (sum = 100)
-  state_variables[0][0] = 50.0;  state_variables[0][1] = 30.0;  state_variables[0][2] = 20.0;
+  state_variables[0][0] = 50.0;
+  state_variables[0][1] = 30.0;
+  state_variables[0][2] = 20.0;
   // Cell 1: excess (sum = 110)
-  state_variables[1][0] = 60.0;  state_variables[1][1] = 30.0;  state_variables[1][2] = 20.0;
+  state_variables[1][0] = 60.0;
+  state_variables[1][1] = 30.0;
+  state_variables[1][2] = 20.0;
   // Cell 2: deficit (sum = 80)
-  state_variables[2][0] = 40.0;  state_variables[2][1] = 25.0;  state_variables[2][2] = 15.0;
+  state_variables[2][0] = 40.0;
+  state_variables[2][1] = 25.0;
+  state_variables[2][2] = 15.0;
   // Cell 3: zero concentrations (sum = 0)
-  state_variables[3][0] = 0.0;   state_variables[3][1] = 0.0;   state_variables[3][2] = 0.0;
+  state_variables[3][0] = 0.0;
+  state_variables[3][1] = 0.0;
+  state_variables[3][2] = 0.0;
 
   auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
   DMP residual{ num_cells, 3, 0.0 };
@@ -533,11 +492,7 @@ TEST(LinearConstraint, ResidualGlobalMultipleCells)
 
 TEST(LinearConstraint, JacobianFDGlobalMultipleCells)
 {
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } },
-      100.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } }, 100.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("LARGE");
@@ -550,9 +505,15 @@ TEST(LinearConstraint, JacobianFDGlobalMultipleCells)
 
   std::size_t num_cells = 3;
   DMP state_variables{ num_cells, 3, 0.0 };
-  state_variables[0][0] = 50.0;  state_variables[0][1] = 30.0;  state_variables[0][2] = 20.0;
-  state_variables[1][0] = 10.0;  state_variables[1][1] = 80.0;  state_variables[1][2] = 5.0;
-  state_variables[2][0] = 1.0;   state_variables[2][1] = 2.0;   state_variables[2][2] = 3.0;
+  state_variables[0][0] = 50.0;
+  state_variables[0][1] = 30.0;
+  state_variables[0][2] = 20.0;
+  state_variables[1][0] = 10.0;
+  state_variables[1][1] = 80.0;
+  state_variables[1][2] = 5.0;
+  state_variables[2][0] = 1.0;
+  state_variables[2][1] = 2.0;
+  state_variables[2][2] = 3.0;
 
   CheckConstraintFDJacobian(constraint, phase_prefixes, state_indices, state_variables);
 }
@@ -563,10 +524,7 @@ TEST(LinearConstraint, JacobianGlobalNonUnitCoefficients)
 {
   // G = 2.0*[A_g] + 0.5*[A_aq_LARGE] + 3.0*[A_aq_SMALL] - 42.0
   LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 2.0 }, { aqueous_phase, A_aq, 0.5 }, { aqueous_phase, B_aq, 3.0 } },
-      42.0);
+      gas_phase, A_g, { { gas_phase, A_g, 2.0 }, { aqueous_phase, A_aq, 0.5 }, { aqueous_phase, B_aq, 3.0 } }, 42.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -580,7 +538,9 @@ TEST(LinearConstraint, JacobianGlobalNonUnitCoefficients)
   auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, state_indices, jacobian);
 
   DMP state_variables{ 1, 3, 0.0 };
-  state_variables[0][0] = 5.0;  state_variables[0][1] = 10.0;  state_variables[0][2] = 7.0;
+  state_variables[0][0] = 5.0;
+  state_variables[0][1] = 10.0;
+  state_variables[0][2] = 7.0;
   jac_fn(state_variables, no_params, jacobian);
 
   // jac -= dG/dy, so jac[0,0] = -2.0, jac[0,1] = -0.5, jac[0,2] = -3.0
@@ -598,10 +558,7 @@ TEST(LinearConstraint, ResidualPerInstanceMultipleCells)
 {
   // Charge balance: G_i = [H+_i] - [A-_i] - [B-_i] = 0
   LinearConstraint constraint(
-      aqueous_phase,
-      hp,
-      { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 }, { aqueous_phase, bm, -1.0 } },
-      0.0);
+      aqueous_phase, hp, { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 }, { aqueous_phase, bm, -1.0 } }, 0.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("LARGE");
@@ -619,14 +576,26 @@ TEST(LinearConstraint, ResidualPerInstanceMultipleCells)
   DMP state_variables{ num_cells, 6, 0.0 };
 
   // Cell 0: LARGE balanced, SMALL imbalanced
-  state_variables[0][0] = 1.0e-4;  state_variables[0][1] = 5.0e-5;  state_variables[0][2] = 5.0e-5;
-  state_variables[0][3] = 2.0e-4;  state_variables[0][4] = 1.0e-4;  state_variables[0][5] = 5.0e-5;
+  state_variables[0][0] = 1.0e-4;
+  state_variables[0][1] = 5.0e-5;
+  state_variables[0][2] = 5.0e-5;
+  state_variables[0][3] = 2.0e-4;
+  state_variables[0][4] = 1.0e-4;
+  state_variables[0][5] = 5.0e-5;
   // Cell 1: both balanced
-  state_variables[1][0] = 3.0e-3;  state_variables[1][1] = 1.0e-3;  state_variables[1][2] = 2.0e-3;
-  state_variables[1][3] = 5.0e-4;  state_variables[1][4] = 3.0e-4;  state_variables[1][5] = 2.0e-4;
+  state_variables[1][0] = 3.0e-3;
+  state_variables[1][1] = 1.0e-3;
+  state_variables[1][2] = 2.0e-3;
+  state_variables[1][3] = 5.0e-4;
+  state_variables[1][4] = 3.0e-4;
+  state_variables[1][5] = 2.0e-4;
   // Cell 2: both imbalanced
-  state_variables[2][0] = 1.0e-5;  state_variables[2][1] = 2.0e-5;  state_variables[2][2] = 3.0e-5;
-  state_variables[2][3] = 4.0e-5;  state_variables[2][4] = 1.0e-5;  state_variables[2][5] = 1.0e-5;
+  state_variables[2][0] = 1.0e-5;
+  state_variables[2][1] = 2.0e-5;
+  state_variables[2][2] = 3.0e-5;
+  state_variables[2][3] = 4.0e-5;
+  state_variables[2][4] = 1.0e-5;
+  state_variables[2][5] = 1.0e-5;
 
   auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
   DMP residual{ num_cells, 6, 0.0 };
@@ -648,10 +617,7 @@ TEST(LinearConstraint, ResidualPerInstanceMultipleCells)
 TEST(LinearConstraint, JacobianFDPerInstanceMultipleCells)
 {
   LinearConstraint constraint(
-      aqueous_phase,
-      hp,
-      { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 }, { aqueous_phase, bm, -1.0 } },
-      0.0);
+      aqueous_phase, hp, { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 }, { aqueous_phase, bm, -1.0 } }, 0.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("LARGE");
@@ -667,12 +633,24 @@ TEST(LinearConstraint, JacobianFDPerInstanceMultipleCells)
 
   std::size_t num_cells = 3;
   DMP state_variables{ num_cells, 6, 0.0 };
-  state_variables[0][0] = 1.0e-4;  state_variables[0][1] = 5.0e-5;  state_variables[0][2] = 5.0e-5;
-  state_variables[0][3] = 2.0e-4;  state_variables[0][4] = 1.0e-4;  state_variables[0][5] = 5.0e-5;
-  state_variables[1][0] = 3.0e-3;  state_variables[1][1] = 1.0e-3;  state_variables[1][2] = 2.0e-3;
-  state_variables[1][3] = 5.0e-4;  state_variables[1][4] = 3.0e-4;  state_variables[1][5] = 2.0e-4;
-  state_variables[2][0] = 1.0e-5;  state_variables[2][1] = 2.0e-5;  state_variables[2][2] = 3.0e-5;
-  state_variables[2][3] = 4.0e-5;  state_variables[2][4] = 1.0e-5;  state_variables[2][5] = 1.0e-5;
+  state_variables[0][0] = 1.0e-4;
+  state_variables[0][1] = 5.0e-5;
+  state_variables[0][2] = 5.0e-5;
+  state_variables[0][3] = 2.0e-4;
+  state_variables[0][4] = 1.0e-4;
+  state_variables[0][5] = 5.0e-5;
+  state_variables[1][0] = 3.0e-3;
+  state_variables[1][1] = 1.0e-3;
+  state_variables[1][2] = 2.0e-3;
+  state_variables[1][3] = 5.0e-4;
+  state_variables[1][4] = 3.0e-4;
+  state_variables[1][5] = 2.0e-4;
+  state_variables[2][0] = 1.0e-5;
+  state_variables[2][1] = 2.0e-5;
+  state_variables[2][2] = 3.0e-5;
+  state_variables[2][3] = 4.0e-5;
+  state_variables[2][4] = 1.0e-5;
+  state_variables[2][5] = 1.0e-5;
 
   CheckConstraintFDJacobian(constraint, phase_prefixes, state_indices, state_variables);
 }
@@ -683,10 +661,7 @@ TEST(LinearConstraint, JacobianPerInstanceNonUnitCoefficients)
 {
   // G_i = 2.0*[H+_i] - 0.5*[A-_i] + 3.0*[B-_i] - 1.0
   LinearConstraint constraint(
-      aqueous_phase,
-      hp,
-      { { aqueous_phase, hp, 2.0 }, { aqueous_phase, am, -0.5 }, { aqueous_phase, bm, 3.0 } },
-      1.0);
+      aqueous_phase, hp, { { aqueous_phase, hp, 2.0 }, { aqueous_phase, am, -0.5 }, { aqueous_phase, bm, 3.0 } }, 1.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -705,8 +680,12 @@ TEST(LinearConstraint, JacobianPerInstanceNonUnitCoefficients)
   auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, si, jacobian);
 
   DMP state_variables{ 1, 6, 0.0 };
-  state_variables[0][0] = 1.0;  state_variables[0][1] = 2.0;  state_variables[0][2] = 3.0;
-  state_variables[0][3] = 4.0;  state_variables[0][4] = 5.0;  state_variables[0][5] = 6.0;
+  state_variables[0][0] = 1.0;
+  state_variables[0][1] = 2.0;
+  state_variables[0][2] = 3.0;
+  state_variables[0][3] = 4.0;
+  state_variables[0][4] = 5.0;
+  state_variables[0][5] = 6.0;
 
   jac_fn(state_variables, no_params, jacobian);
 
@@ -732,11 +711,7 @@ TEST(LinearConstraint, JacobianPerInstanceNonUnitCoefficients)
 
 TEST(LinearConstraint, ThreeInstances)
 {
-  LinearConstraint constraint(
-      aqueous_phase,
-      hp,
-      { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 } },
-      0.0);
+  LinearConstraint constraint(aqueous_phase, hp, { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 } }, 0.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("A");
@@ -744,20 +719,29 @@ TEST(LinearConstraint, ThreeInstances)
   phase_prefixes["AQUEOUS"].insert("C");
 
   std::unordered_map<std::string, std::size_t> si;
-  si["A.AQUEOUS.H+"] = 0;  si["A.AQUEOUS.A-"] = 1;
-  si["B.AQUEOUS.H+"] = 2;  si["B.AQUEOUS.A-"] = 3;
-  si["C.AQUEOUS.H+"] = 4;  si["C.AQUEOUS.A-"] = 5;
+  si["A.AQUEOUS.H+"] = 0;
+  si["A.AQUEOUS.A-"] = 1;
+  si["B.AQUEOUS.H+"] = 2;
+  si["B.AQUEOUS.A-"] = 3;
+  si["C.AQUEOUS.H+"] = 4;
+  si["C.AQUEOUS.A-"] = 5;
 
   // Check residual
   DMP state_variables{ 2, 6, 0.0 };
   // Cell 0
-  state_variables[0][0] = 1.0;  state_variables[0][1] = 0.5;
-  state_variables[0][2] = 2.0;  state_variables[0][3] = 2.0;
-  state_variables[0][4] = 3.0;  state_variables[0][5] = 4.0;
+  state_variables[0][0] = 1.0;
+  state_variables[0][1] = 0.5;
+  state_variables[0][2] = 2.0;
+  state_variables[0][3] = 2.0;
+  state_variables[0][4] = 3.0;
+  state_variables[0][5] = 4.0;
   // Cell 1
-  state_variables[1][0] = 10.0;  state_variables[1][1] = 10.0;
-  state_variables[1][2] = 20.0;  state_variables[1][3] = 15.0;
-  state_variables[1][4] = 30.0;  state_variables[1][5] = 25.0;
+  state_variables[1][0] = 10.0;
+  state_variables[1][1] = 10.0;
+  state_variables[1][2] = 20.0;
+  state_variables[1][3] = 15.0;
+  state_variables[1][4] = 30.0;
+  state_variables[1][5] = 25.0;
 
   auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ 2, 6, 0.0 };
@@ -782,11 +766,7 @@ TEST(LinearConstraint, ThreeInstances)
 TEST(LinearConstraint, GlobalWithManyInstances)
 {
   // Gas-phase algebraic variable = total of gas + all aq instances
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } },
-      50.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } }, 50.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("M1");
@@ -802,7 +782,11 @@ TEST(LinearConstraint, GlobalWithManyInstances)
   si["M4.AQUEOUS.A_aq"] = 4;
 
   DMP sv{ 1, 5, 0.0 };
-  sv[0][0] = 10.0;  sv[0][1] = 10.0;  sv[0][2] = 10.0;  sv[0][3] = 10.0;  sv[0][4] = 10.0;
+  sv[0][0] = 10.0;
+  sv[0][1] = 10.0;
+  sv[0][2] = 10.0;
+  sv[0][3] = 10.0;
+  sv[0][4] = 10.0;
 
   auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ 1, 5, 0.0 };
@@ -825,11 +809,7 @@ TEST(LinearConstraint, GlobalWithManyInstances)
 
 TEST(LinearConstraint, JacobianAccumulates)
 {
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 2.0 }, { aqueous_phase, A_aq, 0.5 } },
-      10.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 2.0 }, { aqueous_phase, A_aq, 0.5 } }, 10.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -842,7 +822,8 @@ TEST(LinearConstraint, JacobianAccumulates)
   auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, si, jacobian);
 
   DMP sv{ 1, 2, 0.0 };
-  sv[0][0] = 1.0;  sv[0][1] = 2.0;
+  sv[0][0] = 1.0;
+  sv[0][1] = 2.0;
 
   // First call
   jac_fn(sv, no_params, jacobian);
@@ -862,11 +843,7 @@ TEST(LinearConstraint, JacobianAccumulates)
 
 TEST(LinearConstraint, ResidualSetsNotAccumulates)
 {
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 } },
-      10.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0 } }, 10.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
 
@@ -892,18 +869,10 @@ TEST(LinearConstraint, ResidualSetsNotAccumulates)
 TEST(LinearConstraint, MultipleConstraintsCombined)
 {
   // Constraint 1: mass conservation [A_g] + [A_aq] = 100
-  LinearConstraint mass_cons(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } },
-      100.0);
+  LinearConstraint mass_cons(gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } }, 100.0);
 
   // Constraint 2: charge balance [H+] - [A-] = 0, per instance
-  LinearConstraint charge_bal(
-      aqueous_phase,
-      hp,
-      { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 } },
-      0.0);
+  LinearConstraint charge_bal(aqueous_phase, hp, { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -1.0 } }, 0.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -919,10 +888,10 @@ TEST(LinearConstraint, MultipleConstraintsCombined)
   auto rf2 = charge_bal.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
 
   DMP sv{ 1, 4, 0.0 };
-  sv[0][0] = 60.0;   // A_g
-  sv[0][1] = 40.0;   // A_aq
-  sv[0][2] = 1.0e-3; // H+
-  sv[0][3] = 1.0e-3; // A-
+  sv[0][0] = 60.0;    // A_g
+  sv[0][1] = 40.0;    // A_aq
+  sv[0][2] = 1.0e-3;  // H+
+  sv[0][3] = 1.0e-3;  // A-
 
   DMP residual{ 1, 4, 0.0 };
   rf1(sv, no_params, residual);
@@ -934,8 +903,7 @@ TEST(LinearConstraint, MultipleConstraintsCombined)
   EXPECT_NEAR(residual[0][2], 0.0, 1e-15);
 
   // Combined Jacobian
-  auto jacobian = BuildConstraintJacobian(
-      { std::cref(mass_cons), std::cref(charge_bal) }, phase_prefixes, si, 1);
+  auto jacobian = BuildConstraintJacobian({ std::cref(mass_cons), std::cref(charge_bal) }, phase_prefixes, si, 1);
 
   auto jf1 = mass_cons.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, si, jacobian);
   auto jf2 = charge_bal.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, param_indices, si, jacobian);
@@ -955,11 +923,7 @@ TEST(LinearConstraint, MultipleConstraintsCombined)
 TEST(LinearConstraint, JacobianFDGlobalAlgWithInstancedTerms)
 {
   // G = [A_g] + [A_aq_M1] + [A_aq_M2] + [A_aq_M3] - 200.0
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } },
-      200.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } }, 200.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("M1");
@@ -990,11 +954,7 @@ TEST(LinearConstraint, JacobianFDGlobalAlgWithInstancedTerms)
 TEST(LinearConstraint, PerInstanceWithGasTerms)
 {
   // G_i = [A_aq_i] + [A_g] - 10.0   (algebraic in aqueous, depends on gas)
-  LinearConstraint constraint(
-      aqueous_phase,
-      A_aq,
-      { { aqueous_phase, A_aq, 1.0 }, { gas_phase, A_g, 1.0 } },
-      10.0);
+  LinearConstraint constraint(aqueous_phase, A_aq, { { aqueous_phase, A_aq, 1.0 }, { gas_phase, A_g, 1.0 } }, 10.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -1053,18 +1013,11 @@ TEST(LinearConstraint, PerInstanceWithGasTerms)
 TEST(LinearConstraint, KitchenSinkFDCheck)
 {
   // Mass: [A_g] + [A_aq_M1] + [A_aq_M2] = 100
-  LinearConstraint mass_cons(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } },
-      100.0);
+  LinearConstraint mass_cons(gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } }, 100.0);
 
   // Charge: [H+_i] - 0.5*[A-_i] - 2.0*[B-_i] = 0
   LinearConstraint charge_bal(
-      aqueous_phase,
-      hp,
-      { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -0.5 }, { aqueous_phase, bm, -2.0 } },
-      0.0);
+      aqueous_phase, hp, { { aqueous_phase, hp, 1.0 }, { aqueous_phase, am, -0.5 }, { aqueous_phase, bm, -2.0 } }, 0.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("M1");
@@ -1085,11 +1038,23 @@ TEST(LinearConstraint, KitchenSinkFDCheck)
   std::size_t nc = 2;
   DMP sv{ nc, 9, 0.0 };
   sv[0][0] = 40.0;
-  sv[0][1] = 30.0;  sv[0][2] = 1.0e-3;  sv[0][3] = 1.5e-3;  sv[0][4] = 0.5e-4;
-  sv[0][5] = 30.0;  sv[0][6] = 2.0e-3;  sv[0][7] = 3.0e-3;  sv[0][8] = 2.5e-4;
+  sv[0][1] = 30.0;
+  sv[0][2] = 1.0e-3;
+  sv[0][3] = 1.5e-3;
+  sv[0][4] = 0.5e-4;
+  sv[0][5] = 30.0;
+  sv[0][6] = 2.0e-3;
+  sv[0][7] = 3.0e-3;
+  sv[0][8] = 2.5e-4;
   sv[1][0] = 50.0;
-  sv[1][1] = 25.0;  sv[1][2] = 5.0e-4;  sv[1][3] = 8.0e-4;  sv[1][4] = 1.0e-4;
-  sv[1][5] = 25.0;  sv[1][6] = 3.0e-4;  sv[1][7] = 5.0e-4;  sv[1][8] = 4.0e-5;
+  sv[1][1] = 25.0;
+  sv[1][2] = 5.0e-4;
+  sv[1][3] = 8.0e-4;
+  sv[1][4] = 1.0e-4;
+  sv[1][5] = 25.0;
+  sv[1][6] = 3.0e-4;
+  sv[1][7] = 5.0e-4;
+  sv[1][8] = 4.0e-5;
 
   // FD check each constraint individually
   CheckConstraintFDJacobian(mass_cons, phase_prefixes, si, sv);
@@ -1135,11 +1100,7 @@ TEST(LinearConstraint, SingleTerm)
 TEST(LinearConstraint, LargeCoefficientRange)
 {
   // G = 1e6 * [A_g] + 1e-6 * [A_aq] - 500
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0e6 }, { aqueous_phase, A_aq, 1.0e-6 } },
-      500.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0e6 }, { aqueous_phase, A_aq, 1.0e-6 } }, 500.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1149,8 +1110,8 @@ TEST(LinearConstraint, LargeCoefficientRange)
   si["DROP.AQUEOUS.A_aq"] = 1;
 
   DMP sv{ 1, 2, 0.0 };
-  sv[0][0] = 5.0e-4;   // 1e6 * 5e-4 = 500
-  sv[0][1] = 1.0e6;    // 1e-6 * 1e6 = 1
+  sv[0][0] = 5.0e-4;  // 1e6 * 5e-4 = 500
+  sv[0][1] = 1.0e6;   // 1e-6 * 1e6 = 1
 
   auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   DMP residual{ 1, 2, 0.0 };
@@ -1165,11 +1126,7 @@ TEST(LinearConstraint, LargeCoefficientRange)
 
 TEST(LinearConstraint, CopiedConstraintProducesSameResults)
 {
-  LinearConstraint original(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 2.0 }, { aqueous_phase, A_aq, 0.5 } },
-      10.0);
+  LinearConstraint original(gas_phase, A_g, { { gas_phase, A_g, 2.0 }, { aqueous_phase, A_aq, 0.5 } }, 10.0);
 
   auto copy = original.CopyWithNewUuid();
   EXPECT_NE(copy.uuid_, original.uuid_);
@@ -1182,7 +1139,8 @@ TEST(LinearConstraint, CopiedConstraintProducesSameResults)
   si["MODE1.AQUEOUS.A_aq"] = 1;
 
   DMP sv{ 1, 2, 0.0 };
-  sv[0][0] = 3.0;  sv[0][1] = 8.0;
+  sv[0][0] = 3.0;
+  sv[0][1] = 8.0;
 
   auto rf_orig = original.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
   auto rf_copy = copy.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, si);
@@ -1202,11 +1160,7 @@ TEST(LinearConstraint, CopiedConstraintProducesSameResults)
 TEST(LinearConstraint, ResidualAllZero)
 {
   // G = [A_g] + [A_aq] - 100.0; when all species = 0: G = -100.0
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } },
-      100.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } }, 100.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -1227,11 +1181,7 @@ TEST(LinearConstraint, ResidualAllZero)
 TEST(LinearConstraint, ResidualNegativeCoefficients)
 {
   // G = [A_g] - 2.0*[A_aq] - 5.0; verify sign handling for negative coefficient
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, -2.0 } },
-      5.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, -2.0 } }, 5.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -1256,10 +1206,7 @@ TEST(LinearConstraint, JacobianFDNegativeCoefficients)
 {
   // FD Jacobian check when coefficients include negative values and mixed signs
   LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 3.0 }, { aqueous_phase, A_aq, -1.5 }, { aqueous_phase, B_aq, 0.5 } },
-      20.0);
+      gas_phase, A_g, { { gas_phase, A_g, 3.0 }, { aqueous_phase, A_aq, -1.5 }, { aqueous_phase, B_aq, 0.5 } }, 20.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1270,7 +1217,9 @@ TEST(LinearConstraint, JacobianFDNegativeCoefficients)
   state_indices["DROP.AQUEOUS.B_aq"] = 2;
 
   DMP vars{ 1, 3, 0.0 };
-  vars[0][0] = 4.0;  vars[0][1] = 2.0;  vars[0][2] = 1.0;
+  vars[0][0] = 4.0;
+  vars[0][1] = 2.0;
+  vars[0][2] = 1.0;
 
   CheckConstraintFDJacobian(constraint, phase_prefixes, state_indices, vars);
 }
@@ -1278,11 +1227,7 @@ TEST(LinearConstraint, JacobianFDNegativeCoefficients)
 TEST(LinearConstraint, JacobianFDAtZeroConcentrations)
 {
   // At all-zero concentrations, the linear Jacobian should still be exact (constant)
-  LinearConstraint constraint(
-      gas_phase,
-      A_g,
-      { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } },
-      50.0);
+  LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } }, 50.0);
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
