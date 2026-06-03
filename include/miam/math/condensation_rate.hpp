@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <miam/util/constants.hpp>
+#include <micm/util/constants.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 
@@ -95,7 +95,7 @@ namespace miam
     {
       if (r_eff <= 0 || N <= 0 || T <= 0)
         return 0.0;
-      double c_bar = std::sqrt(8.0 * miam::GAS_CONSTANT * T / (std::numbers::pi * molecular_weight));
+      double c_bar = std::sqrt(8.0 * micm::constants::GAS_CONSTANT * T / (std::numbers::pi * molecular_weight));
       double lambda = 3.0 * diffusion_coefficient / c_bar;
       double Kn = lambda / r_eff;
       double denom = Kn * Kn + (1.0 + 0.283 * accommodation_coefficient) * Kn + 0.75 * accommodation_coefficient;
@@ -113,7 +113,7 @@ namespace miam
         dk_dN = 0.0;
         return;
       }
-      double c_bar = std::sqrt(8.0 * miam::GAS_CONSTANT * T / (std::numbers::pi * molecular_weight));
+      double c_bar = std::sqrt(8.0 * micm::constants::GAS_CONSTANT * T / (std::numbers::pi * molecular_weight));
       double lambda = 3.0 * diffusion_coefficient / c_bar;
       double Kn = lambda / r_eff;
       double denom = Kn * Kn + (1.0 + 0.283 * accommodation_coefficient) * Kn + 0.75 * accommodation_coefficient;

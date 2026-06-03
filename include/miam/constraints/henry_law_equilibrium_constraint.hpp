@@ -4,7 +4,7 @@
 #pragma once
 
 #include <miam/math/condensation_rate.hpp>
-#include <miam/util/constants.hpp>
+#include <micm/util/constants.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 #include <miam/util/uuid.hpp>
@@ -193,7 +193,7 @@ namespace miam
             for (const auto& hlc_rt_idx : hlc_rt_indices)
               params.ForEachRow(
                   [hlc_fn](const micm::Conditions& cond, double& hlc_rt)
-                  { hlc_rt = hlc_fn(cond) * miam::GAS_CONSTANT * cond.temperature_; },
+                  { hlc_rt = hlc_fn(cond) * micm::constants::GAS_CONSTANT * cond.temperature_; },
                   conditions,
                   params.GetColumnView(hlc_rt_idx));
           },

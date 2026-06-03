@@ -411,7 +411,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionBasicRates)
   auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
   double kc_eff = phi_val * kc;
-  double ke_eff = kc_eff / (hlc * GAS_CONSTANT * T);
+  double ke_eff = kc_eff / (hlc * micm::constants::GAS_CONSTANT * T);
   double f_v = solvent_conc * solvent_molecular_weight / solvent_density;
   double expected_net = kc_eff * gas_conc - ke_eff * aq_conc / f_v;
 
@@ -471,7 +471,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionMultipleCells)
   auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
   double kc_eff = phi_val * kc;
-  double ke_eff = kc_eff / (hlc * GAS_CONSTANT * T);
+  double ke_eff = kc_eff / (hlc * micm::constants::GAS_CONSTANT * T);
   double f_v = solvent * solvent_molecular_weight / solvent_density;
 
   for (std::size_t i = 0; i < num_cells; ++i)
@@ -581,7 +581,7 @@ TEST(HenryLawPhaseTransfer, JacobianFunctionDirectEntries)
 
   auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
-  double ke = kc / (hlc * GAS_CONSTANT * T);
+  double ke = kc / (hlc * micm::constants::GAS_CONSTANT * T);
   double fv = solvent_conc * solvent_molecular_weight / solvent_density;
 
   // Stored as -J (MICM convention). -J[gas,gas] = +φ · k_cond
@@ -991,12 +991,12 @@ TEST(HenryLawPhaseTransfer, ForcingMultiplePhaseInstances)
   auto crp = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
 
   double kc1 = crp.ComputeValue(r1, N1, T);
-  double ke1 = kc1 / (hlc * GAS_CONSTANT * T);
+  double ke1 = kc1 / (hlc * micm::constants::GAS_CONSTANT * T);
   double fv1 = solvent1 * solvent_molecular_weight / solvent_density;
   double net1 = phi1 * kc1 * gas - phi1 * ke1 * aq1 / fv1;
 
   double kc2 = crp.ComputeValue(r2, N2, T);
-  double ke2 = kc2 / (hlc * GAS_CONSTANT * T);
+  double ke2 = kc2 / (hlc * micm::constants::GAS_CONSTANT * T);
   double fv2 = solvent2 * solvent_molecular_weight / solvent_density;
   double net2 = phi2 * kc2 * gas - phi2 * ke2 * aq2 / fv2;
 
@@ -1072,11 +1072,11 @@ TEST(HenryLawPhaseTransfer, JacobianMultiplePhaseInstances)
   auto crp = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
 
   double kc1 = crp.ComputeValue(r1, N1, T);
-  double ke1 = kc1 / (hlc * GAS_CONSTANT * T);
+  double ke1 = kc1 / (hlc * micm::constants::GAS_CONSTANT * T);
   double fv1 = solvent1 * solvent_molecular_weight / solvent_density;
 
   double kc2 = crp.ComputeValue(r2, N2, T);
-  double ke2 = kc2 / (hlc * GAS_CONSTANT * T);
+  double ke2 = kc2 / (hlc * micm::constants::GAS_CONSTANT * T);
   double fv2 = solvent2 * solvent_molecular_weight / solvent_density;
 
   // -J[gas,gas] = phi1*kc1 + phi2*kc2  (both instances contribute)
@@ -1269,10 +1269,10 @@ TEST(HenryLawPhaseTransfer, ForcingMultiCellsMultiInstances)
 
   auto crp = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc1 = crp.ComputeValue(r1, N1, T);
-  double ke1 = kc1 / (hlc * GAS_CONSTANT * T);
+  double ke1 = kc1 / (hlc * micm::constants::GAS_CONSTANT * T);
   double fv1 = 55000.0 * solvent_molecular_weight / solvent_density;
   double kc2 = crp.ComputeValue(r2, N2, T);
-  double ke2 = kc2 / (hlc * GAS_CONSTANT * T);
+  double ke2 = kc2 / (hlc * micm::constants::GAS_CONSTANT * T);
   double fv2 = 45000.0 * solvent_molecular_weight / solvent_density;
 
   for (std::size_t c = 0; c < num_cells; ++c)
@@ -1432,11 +1432,11 @@ TEST(HenryLawPhaseTransfer, ForcingMultipleTransferProcesses)
   double fv = h2o * solvent_molecular_weight / solvent_density;
 
   double kc_co2 = crp_CO2.ComputeValue(r, N, T);
-  double ke_co2 = kc_co2 / (HLC_CO2 * GAS_CONSTANT * T);
+  double ke_co2 = kc_co2 / (HLC_CO2 * micm::constants::GAS_CONSTANT * T);
   double net_co2 = phi * kc_co2 * co2_g - phi * ke_co2 * co2_aq / fv;
 
   double kc_so2 = crp_SO2.ComputeValue(r, N, T);
-  double ke_so2 = kc_so2 / (HLC_SO2 * GAS_CONSTANT * T);
+  double ke_so2 = kc_so2 / (HLC_SO2 * micm::constants::GAS_CONSTANT * T);
   double net_so2 = phi * kc_so2 * so2_g - phi * ke_so2 * so2_aq / fv;
 
   EXPECT_NEAR(forcing[0][0], -net_co2, std::abs(net_co2) * 1e-10);
@@ -2043,7 +2043,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionZeroGasConcentration)
   auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff, N, T);
   double kc_eff = phi * kc;
-  double ke_eff = kc_eff / (HLC_ref * GAS_CONSTANT * T);
+  double ke_eff = kc_eff / (HLC_ref * micm::constants::GAS_CONSTANT * T);
   double f_v = 55000.0 * solvent_molecular_weight / solvent_density;
   double expected_net = 0.0 - ke_eff * 1.0e-5 / f_v;  // condensation term = 0
 

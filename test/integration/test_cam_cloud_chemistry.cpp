@@ -20,7 +20,7 @@
 #include <miam/miam.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
-#include <miam/util/constants.hpp>
+#include <micm/util/constants.hpp>
 
 #include <micm/CPU.hpp>
 #include <micm/util/jacobian_verification.hpp>
@@ -273,7 +273,7 @@ TEST(CamCloudChemistry, Step1_SingleHLC)
 
   // Analytical equilibrium: aq = α*g, g + aq = total → g = total/(1+α)
   double hlc_T = HLC_ref * std::exp(C_hlc * (1.0 / T - 1.0 / T0));
-  double alpha = hlc_T * GAS_CONSTANT * T * f_v;
+  double alpha = hlc_T * micm::constants::GAS_CONSTANT * T * f_v;
   double g_eq = total_so2 / (1.0 + alpha);
   double aq_eq = total_so2 * alpha / (1.0 + alpha);
 
@@ -600,7 +600,7 @@ TEST(CamCloudChemistry, Step2_HLC_Plus_Dissociation)
   // Substituting everything into the charge balance gives a fixed-point
   // on H⁺ that converges with simple damping.
   double hlc_T = (1.23 * M_ATM_TO_MOL_M3_PA) * std::exp(3120.0 * (1.0 / T - 1.0 / T0));
-  double alpha = hlc_T * GAS_CONSTANT * T * f_v;
+  double alpha = hlc_T * micm::constants::GAS_CONSTANT * T * f_v;
   double Ka1_T = (1.7e-2 / c_H2O_M) * std::exp(2090.0 * (1.0 / T0 - 1.0 / T));
   double Kw_T = (1.0e-14 / (c_H2O_M * c_H2O_M)) * std::exp(6710.0 * (1.0 / T0 - 1.0 / T));
 
@@ -856,9 +856,9 @@ TEST(CamCloudChemistry, Step3_FullEquilibrium)
   double hlc_SO2_T = (1.23 * M_ATM_TO_MOL_M3_PA) * std::exp(3120.0 * (1.0 / T - 1.0 / T0));
   double hlc_H2O2_T = (7.4e4 * M_ATM_TO_MOL_M3_PA) * std::exp(6621.0 * (1.0 / T - 1.0 / T0));
   double hlc_O3_T = (1.15e-2 * M_ATM_TO_MOL_M3_PA) * std::exp(2560.0 * (1.0 / T - 1.0 / T0));
-  double alpha_SO2 = hlc_SO2_T * GAS_CONSTANT * T * f_v;
-  double alpha_H2O2 = hlc_H2O2_T * GAS_CONSTANT * T * f_v;
-  double alpha_O3 = hlc_O3_T * GAS_CONSTANT * T * f_v;
+  double alpha_SO2 = hlc_SO2_T * micm::constants::GAS_CONSTANT * T * f_v;
+  double alpha_H2O2 = hlc_H2O2_T * micm::constants::GAS_CONSTANT * T * f_v;
+  double alpha_O3 = hlc_O3_T * micm::constants::GAS_CONSTANT * T * f_v;
   double Ka1_T = (1.7e-2 / c_H2O_M) * std::exp(2090.0 * (1.0 / T0 - 1.0 / T));
   double Ka2_T = (6.0e-8 / c_H2O_M) * std::exp(1120.0 * (1.0 / T0 - 1.0 / T));
   double Kw_T = (1.0e-14 / (c_H2O_M * c_H2O_M)) * std::exp(6710.0 * (1.0 / T0 - 1.0 / T));
@@ -1359,9 +1359,9 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
   double hlc_SO2_T = (1.23 * M_ATM_TO_MOL_M3_PA) * std::exp(3120.0 * (1.0 / T - 1.0 / T0));
   double hlc_H2O2_T = (7.4e4 * M_ATM_TO_MOL_M3_PA) * std::exp(6621.0 * (1.0 / T - 1.0 / T0));
   double hlc_O3_T = (1.15e-2 * M_ATM_TO_MOL_M3_PA) * std::exp(2560.0 * (1.0 / T - 1.0 / T0));
-  double alpha_SO2 = hlc_SO2_T * GAS_CONSTANT * T * f_v;
-  double alpha_H2O2 = hlc_H2O2_T * GAS_CONSTANT * T * f_v;
-  double alpha_O3 = hlc_O3_T * GAS_CONSTANT * T * f_v;
+  double alpha_SO2 = hlc_SO2_T * micm::constants::GAS_CONSTANT * T * f_v;
+  double alpha_H2O2 = hlc_H2O2_T * micm::constants::GAS_CONSTANT * T * f_v;
+  double alpha_O3 = hlc_O3_T * micm::constants::GAS_CONSTANT * T * f_v;
   double Ka1_T = (1.7e-2 / c_H2O_M) * std::exp(2090.0 * (1.0 / T0 - 1.0 / T));
   double Ka2_T = (6.0e-8 / c_H2O_M) * std::exp(1120.0 * (1.0 / T0 - 1.0 / T));
   double Kw_T = (1.0e-14 / (c_H2O_M * c_H2O_M)) * std::exp(6710.0 * (1.0 / T0 - 1.0 / T));
