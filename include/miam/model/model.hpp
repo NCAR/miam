@@ -3,12 +3,11 @@
 
 #pragma once
 
-#include <miam/aerosol_property.hpp>
 #include <miam/constraints/dissolved_equilibrium_constraint.hpp>
 #include <miam/constraints/henry_law_equilibrium_constraint.hpp>
 #include <miam/constraints/linear_constraint.hpp>
-#include <miam/process.hpp>
-#include <miam/representation.hpp>
+#include <miam/processes.hpp>
+#include <miam/representations.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 

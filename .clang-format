@@ -29,12 +29,15 @@ IncludeCategories:
   # MIAM project headers
   - Regex:           '<(miam)\/'
     Priority:        2
+  # MUSICA-owned project headers
+  - Regex:           '<(micm)[[:alnum:].(-|_)*]+>'
+    Priority:        3
   # External libraries headers
   - Regex:           '<[[:alnum:].(-|_)*]+\/'
-    Priority:        3
+    Priority:        4
   # System headers
   - Regex:           '<[[:alnum:].(-|_)*]+>'
-    Priority:        4
+    Priority:        5
   # Main, local, private headers
   - Regex:           '".*'
     Priority:        1

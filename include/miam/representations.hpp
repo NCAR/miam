@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <miam/representations/aerosol_property.hpp>
 #include <miam/representations/single_moment_mode.hpp>
 #include <miam/representations/two_moment_mode.hpp>
 #include <miam/representations/uniform_section.hpp>

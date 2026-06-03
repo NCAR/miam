@@ -7,5 +7,5 @@ configure_file(version.hpp.in ${PROJECT_SOURCE_DIR}/include/miam/version.hpp @ON
 
 target_sources(miam
 PRIVATE
-    stub.cpp
+  stub.cpp
 )

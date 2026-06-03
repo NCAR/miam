@@ -1,7 +1,7 @@
 // Copyright (C) 2026 University Corporation for Atmospheric Research
 // SPDX-License-Identifier: Apache-2.0
 
-#include <miam/process_set.hpp>
+#include <miam/processes/process_set.hpp>
 #include <miam/processes/dissolved_reversible_reaction.hpp>
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>

@@ -3,7 +3,7 @@
 
 #include "../representation_policy.hpp"
 
-#include <miam/aerosol_property.hpp>
+#include <miam/representations/aerosol_property.hpp>
 #include <miam/representations/two_moment_mode.hpp>
 
 #include <micm/util/matrix.hpp>
