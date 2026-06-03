@@ -3,11 +3,11 @@
 
 #pragma once
 
-#include <micm/util/constants.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 
 #include <micm/Util.hpp>
+#include <micm/util/constants.hpp>
 
 #include <cmath>
 #include <functional>

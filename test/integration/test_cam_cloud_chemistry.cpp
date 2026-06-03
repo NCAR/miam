@@ -20,9 +20,9 @@
 #include <miam/miam.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
-#include <micm/util/constants.hpp>
 
 #include <micm/CPU.hpp>
+#include <micm/util/constants.hpp>
 #include <micm/util/jacobian_verification.hpp>
 
 #include <gtest/gtest.h>

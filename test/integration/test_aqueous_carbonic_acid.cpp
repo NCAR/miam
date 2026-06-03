@@ -34,9 +34,9 @@
 #include <miam/miam.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
-#include <micm/util/constants.hpp>
 
 #include <micm/CPU.hpp>
+#include <micm/util/constants.hpp>
 
 #include <gtest/gtest.h>
 
@@ -78,7 +78,7 @@ namespace
 
   // -- CO2(g) at 400 ppm: ideal-gas concentration in mol m-3 air ---------------
   constexpr double ppm_CO2 = 400.0e-6;
-  constexpr double P_CO2 = ppm_CO2 * P;                   // Pa
+  constexpr double P_CO2 = ppm_CO2 * P;                                    // Pa
   constexpr double CO2g_eq = P_CO2 / (micm::constants::GAS_CONSTANT * T);  // ~0.01635 mol m-3 air
 
   // -- Kinetic rate constants (reasonable defaults; user should tune) ----------
@@ -498,7 +498,7 @@ TEST(AqueousCarbonicAcid, DAEConstraints)
   // reliable starting point.
   const double f_v_0 = C_H2O * Mw_water / rho_water;
   const double CO2aq_0 = K_H * micm::constants::GAS_CONSTANT * T * f_v_0 * CO2g_eq;  // Henry's Law
-  const double H_0 = std::sqrt(Kw_miam) * C_H2O;                    // pure-water [H+]
+  const double H_0 = std::sqrt(Kw_miam) * C_H2O;                                     // pure-water [H+]
 
   state.variables_[0][i_CO2g] = CO2g_eq;   // 400 ppm
   state.variables_[0][i_CO2aq] = CO2aq_0;  // algebraic -- consistent with HL
