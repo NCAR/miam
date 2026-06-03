@@ -13,7 +13,6 @@
 #include <unordered_map>
 
 using namespace miam;
-using namespace miam;
 
 TEST(SingleMomentMode, StateSize)
 {

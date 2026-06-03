@@ -154,15 +154,15 @@ namespace
               analytical_jac, fd_jac, num_species, atol, rtol)
         : CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
               analytical_jac, fd_jac, num_species);
-    EXPECT_TRUE(comparison.passed) << "Process Jacobian mismatch: row=" << comparison.worst_row
-                                   << " col=" << comparison.worst_col
-                                   << " analytical=" << comparison.worst_analytical
-                                   << " fd=" << comparison.worst_fd;
+    EXPECT_TRUE(comparison.passed_) << "Process Jacobian mismatch: row=" << comparison.worst_row_
+                                   << " col=" << comparison.worst_col_
+                                   << " analytical=" << comparison.worst_analytical_
+                                   << " fd=" << comparison.worst_fd_;
     auto sparsity = CheckJacobianSparsityCompleteness<DenseMatrix, SparseMatrixFD>(
         analytical_jac, fd_jac, num_species);
-    EXPECT_TRUE(sparsity.passed) << "Missing sparsity at row=" << sparsity.worst_row
-                                 << " col=" << sparsity.worst_col
-                                 << " fd_value=" << sparsity.worst_fd;
+    EXPECT_TRUE(sparsity.passed_) << "Missing sparsity at row=" << sparsity.worst_row_
+                                 << " col=" << sparsity.worst_col_
+                                 << " fd_value=" << sparsity.worst_fd_;
   }
 
   void VerifyConstraintJacobian(
@@ -195,15 +195,15 @@ namespace
               analytical_jac, fd_jac, num_species, atol, rtol)
         : CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrixFD>(
               analytical_jac, fd_jac, num_species);
-    EXPECT_TRUE(comparison.passed) << "Constraint Jacobian mismatch: row=" << comparison.worst_row
-                                   << " col=" << comparison.worst_col
-                                   << " analytical=" << comparison.worst_analytical
-                                   << " fd=" << comparison.worst_fd;
+    EXPECT_TRUE(comparison.passed_) << "Constraint Jacobian mismatch: row=" << comparison.worst_row_
+                                   << " col=" << comparison.worst_col_
+                                   << " analytical=" << comparison.worst_analytical_
+                                   << " fd=" << comparison.worst_fd_;
     auto sparsity = CheckJacobianSparsityCompleteness<DenseMatrix, SparseMatrixFD>(
         analytical_jac, fd_jac, num_species);
-    EXPECT_TRUE(sparsity.passed) << "Missing constraint sparsity at row=" << sparsity.worst_row
-                                 << " col=" << sparsity.worst_col
-                                 << " fd_value=" << sparsity.worst_fd;
+    EXPECT_TRUE(sparsity.passed_) << "Missing constraint sparsity at row=" << sparsity.worst_row_
+                                 << " col=" << sparsity.worst_col_
+                                 << " fd_value=" << sparsity.worst_fd_;
   }
 
 }  // namespace

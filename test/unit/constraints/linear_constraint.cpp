@@ -470,15 +470,15 @@ namespace
 
     // Compare analytical vs FD
     auto cmp = micm::CompareJacobianToFiniteDifference(jacobian, fd_jac, num_vars, 1e-5, 1e-5);
-    EXPECT_TRUE(cmp.passed) << "FD mismatch: block=" << cmp.worst_block << " row=" << cmp.worst_row
-                            << " col=" << cmp.worst_col << " +J(analytical)=" << cmp.worst_analytical
-                            << " +J(fd)=" << cmp.worst_fd;
+    EXPECT_TRUE(cmp.passed_) << "FD mismatch: block=" << cmp.worst_block_ << " row=" << cmp.worst_row_
+                            << " col=" << cmp.worst_col_ << " +J(analytical)=" << cmp.worst_analytical_
+                            << " +J(fd)=" << cmp.worst_fd_;
 
     // Verify no significant FD signal outside the declared sparsity pattern
     auto spc = micm::CheckJacobianSparsityCompleteness(jacobian, fd_jac, num_vars);
-    EXPECT_TRUE(spc.passed) << "Missing sparsity entry: block=" << spc.worst_block
-                            << " row=" << spc.worst_row << " col=" << spc.worst_col
-                            << " fd=" << spc.worst_fd;
+    EXPECT_TRUE(spc.passed_) << "Missing sparsity entry: block=" << spc.worst_block_
+                            << " row=" << spc.worst_row_ << " col=" << spc.worst_col_
+                            << " fd=" << spc.worst_fd_;
   }
 }  // namespace
 

@@ -266,7 +266,7 @@ TEST(AqueousCarbonicAcid, KineticODE)
   model.AddProcesses({ sys.rxn1, rxn2, rxn_w });
 
   // -- ODE Solver --
-  auto system = System(sys.gas_phase, model);
+  auto system = System(sys.gas_phase);
   auto ode_params = RosenbrockSolverParameters::ThreeStageRosenbrockParameters();
   ode_params.h_start_ = 1.0e-4;  // small initial step; Rosenbrock will grow it adaptively
   ode_params.h_max_ = 5.0;       // cap step size: k2_r*h_max ~3e13, acceptable for rtol=0.05
@@ -441,7 +441,7 @@ TEST(AqueousCarbonicAcid, DAEConstraints)
   model.AddConstraints(hl_constraint, k2_constraint, kw_constraint, charge_balance);
 
   // -- DAE Solver --
-  auto system = System(sys.gas_phase, model);
+  auto system = System(sys.gas_phase);
   auto params = RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters();
   params.h_start_ = 1.0e-4;          // small initial step; Rosenbrock will grow it adaptively
   params.h_max_ = 1.0;               // cap step size: k1_r*h_max ~1.3e7, well-conditioned in debug+release

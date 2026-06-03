@@ -152,7 +152,7 @@ For **kinetic process** Jacobians:
 
    auto result = CompareJacobianToFiniteDifference<DenseMatrix, SparseMatrix>(
        analytical_jac, fd_jac, num_species, /*atol=*/1e-5, /*rtol=*/1e-4);
-   EXPECT_TRUE(result.passed);
+   EXPECT_TRUE(result.passed_);
 
 For **constraint** Jacobians, the pattern is similar but uses
 ``ConstraintResidualFunction`` and ``ConstraintJacobianFunction``.  See
@@ -166,7 +166,7 @@ pattern silently drops that derivative to zero:
 
    auto sparsity = CheckJacobianSparsityCompleteness<DenseMatrix, SparseMatrix>(
        analytical_jac, fd_jac, num_species);
-   EXPECT_TRUE(sparsity.passed);
+   EXPECT_TRUE(sparsity.passed_);
 
 Strategy 2: Test sub-systems in isolation
 ------------------------------------------
