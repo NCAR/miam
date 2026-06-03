@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <miam/aerosol_property.hpp>
+#include <miam/representations/aerosol_property.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 

@@ -3,7 +3,7 @@
 
 #include "../representation_policy.hpp"
 
-#include <miam/aerosol_property.hpp>
+#include <miam/representations/aerosol_property.hpp>
 #include <miam/representations/uniform_section.hpp>
 
 #include <micm/util/matrix.hpp>

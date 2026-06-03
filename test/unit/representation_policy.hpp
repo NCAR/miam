@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <miam/aerosol_property.hpp>
+#include <miam/representations/aerosol_property.hpp>
 
 #include <micm/system/phase.hpp>
 #include <micm/util/matrix.hpp>
