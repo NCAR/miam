@@ -35,6 +35,15 @@ namespace miam
   ///          - If the algebraic species is in an instanced phase, one constraint is generated
   ///            per phase instance. Each constraint refers only to that instance's variables
   ///            (plus any non-instanced terms that are shared).
+  ///
+  ///          Limitation with multiple representations:
+  ///          When diagnose_from_state_ is false, the same constant_ is broadcast to every
+  ///          representation instance. A LinearConstraint with a fixed constant_ therefore
+  ///          cannot encode different conserved totals across representations (e.g., two
+  ///          droplets initialized to different amounts). In that case either set
+  ///          diagnose_from_state_ = true so the solver diagnoses a per-instance constant
+  ///          from the initial state, or omit the constraint if the system is already fully
+  ///          determined by the remaining equilibrium and charge constraints.
   class LinearConstraint
   {
    public:
