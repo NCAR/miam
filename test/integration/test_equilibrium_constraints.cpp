@@ -168,9 +168,10 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
 // Same chemistry as Test 1 (A → B kinetics, B <-> C equilibrium), but with
 // two differently-sized droplet representations (SMALL, LARGE) with different
 // initial concentrations. Only the equilibrium constraint is used (no mass
-// conservation constraint, since a single constant cannot serve instances with
-// different totals). The kinetics naturally conserve A+B, and C is purely
-// algebraic via the equilibrium relation C = K_eq * B.
+// conservation constraint). The system is fully determined: 1 algebraic
+// variable (C) and 1 equilibrium equation (C = K_eq * B) per instance.
+// The kinetics naturally conserve A+B, and C is purely algebraic via the
+// equilibrium relation C = K_eq * B.
 //
 // Analytical solution per instance (A0 = initial [A] for that instance):
 //   A(t) = A0 * exp(-k*t)
