@@ -17,18 +17,26 @@ jobs:
     strategy:
       matrix:
         build_type: [Release]
-        architecture: [x64]
+
+    defaults:
+      run:
+        shell: msys2 {0}
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up MinGW
-        uses: egor-tensin/setup-mingw@v2
+      - name: Set up MSYS2 / MinGW-w64
+        uses: msys2/setup-msys2@v2
         with:
-          platform: ${{ matrix.architecture }}
-          version: 12.2.0 # https://github.com/egor-tensin/setup-mingw/issues/14
+          msystem: UCRT64
+          update: true
+          # Provides a current GCC (>= 13) with libstdc++ <format> support
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
 
-      - name: Run Cmake 
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -G "MinGW Makefiles"
+      - name: Run Cmake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -G "Ninja"
 
       - name: Build
         run: cmake --build build --config ${{ matrix.build_type }} --parallel 10

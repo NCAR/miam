@@ -58,9 +58,6 @@ endif()
 # Tests
 
 if(PROJECT_IS_TOP_LEVEL AND MIAM_ENABLE_TESTS)
-  enable_testing()
-  add_subdirectory(test)
-
   if(MIAM_ENABLE_COVERAGE)
     include(CodeCoverage)
     append_coverage_compiler_flags()
@@ -72,6 +69,9 @@ if(PROJECT_IS_TOP_LEVEL AND MIAM_ENABLE_TESTS)
         LCOV_ARGS --ignore-errors mismatch --ignore-errors unused
     )
   endif()
+
+  enable_testing()
+  add_subdirectory(test)
 endif()
 
 ################################################################################
