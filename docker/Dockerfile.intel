@@ -22,15 +22,15 @@ ENV CC=icx
 ENV CXX=icpx
 ENV FC=ifort
 
-# Micm
-COPY . /micm/
+# miam
+COPY . /miam/
 
 # build the library and run the tests
 RUN mkdir /build \
       && cd /build \ 
       && cmake \
         -D CMAKE_BUILD_TYPE=release \
-        ../micm \
+        ../miam \
       && make -j 8 install
 
 WORKDIR /build
