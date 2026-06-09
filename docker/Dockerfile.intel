@@ -1,0 +1,36 @@
+# versions and sizes from here: https://hub.docker.com/r/intel/oneapi-hpckit/tags
+FROM docker.io/intel/oneapi-hpckit:latest
+
+# Based off of this: https://dgpu-docs.intel.com/driver/installation.html#repository-public-key-used-for-package-and-repository-signing
+# however those docs (at the time of this writing are incorrect) and this is the correct url
+# community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/Cannot-update-any-packages-using-intel-oneapi-hpckit-latest/m-p/1603192#M36169
+RUN wget -qO - https://repositories.intel.com/gpu/intel-graphics.key | \
+  gpg --yes --dearmor --output /usr/share/keyrings/intel-graphics-archive-keyring.gpg
+
+RUN apt update \
+    && apt -y install \
+      build-essential \
+      ca-certificates \
+      cmake \
+      cmake-curses-gui \
+      vim \
+      zlib1g-dev \
+    && apt clean 
+
+# set compilers
+ENV CC=icx
+ENV CXX=icpx
+ENV FC=ifort
+
+# Micm
+COPY . /micm/
+
+# build the library and run the tests
+RUN mkdir /build \
+      && cd /build \ 
+      && cmake \
+        -D CMAKE_BUILD_TYPE=release \
+        ../micm \
+      && make -j 8 install
+
+WORKDIR /build
