@@ -1,0 +1,49 @@
+# nvidia rate limits requests. You can get around this by restarting docker if for 
+# some reason you have to build this image many times
+# https://stackoverflow.com/a/75757516/5217293
+#
+# Container versions, and sizes, can be found at https://catalog.ngc.nvidia.com/orgs/nvidia/containers/nvhpc/tags
+#
+# For local testing, you can install the NVIDIA container toolkit:
+# see instructions here: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
+#
+# One-time configuration for podman:
+# sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+#
+# Then run the container with:
+# podman run --device nvidia.com/gpu=all -it miam bash
+from nvcr.io/nvidia/nvhpc:25.1-devel-cuda12.6-ubuntu24.04
+
+RUN apt update \
+    && apt -y install \
+      build-essential \
+      ca-certificates \
+      cmake \
+      cmake-curses-gui \
+      curl \
+      less \
+      vim \
+      zlib1g-dev \
+    && apt clean 
+
+# set compilers
+ENV CXX=nvc++
+ENV CC=nvc
+ENV FC=nvfortran
+
+# miam
+COPY . /miam/
+
+# copy headers needed for cublas to /usr/include
+RUN cp -r /opt/nvidia/hpc_sdk/*/25.1/cuda/include/* /usr/include/
+
+# build the library and run the tests
+RUN mkdir /build \
+      && cd /build \
+      && cmake \
+        -D CMAKE_BUILD_TYPE=debug \
+        -D CMAKE_CXX_FLAGS="--diag_suppress not_used_in_template_function_params,nodiscard_return_type" \
+        ../miam \
+      && make -j 4
+
+WORKDIR /build

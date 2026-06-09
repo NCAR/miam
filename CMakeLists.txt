@@ -1,3 +1,5 @@
+################################################################################
+# Preamble
 cmake_minimum_required(VERSION 3.24)
 
 project(miam VERSION 0.0.0 
@@ -38,48 +40,27 @@ set(MIAM_INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR})
 set(MIAM_LIB_DIR ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
 
 ################################################################################
-# Include third party libraries
+# Dependencies
 
-include(dependencies)  # finds cmake/dependencies.cmake
+include(dependencies)
 
 ################################################################################
-# MIAM library
-
-add_library(miam)
-add_library(musica::miam ALIAS miam)
+# MIAM library and docs
 
 add_subdirectory(src)
 
-target_compile_features(miam PUBLIC cxx_std_20)
+if(MIAM_BUILD_DOCS)
+  add_subdirectory(docs)
+endif()
 
-target_include_directories(miam
-  PUBLIC
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:${MIAM_INSTALL_INCLUDE_DIR}>
-)
 
-target_link_libraries(miam
-  PUBLIC
-    musica::micm
-)
+################################################################################
+# Tests
 
-set_target_properties(miam PROPERTIES
-  ARCHIVE_OUTPUT_DIRECTORY ${MIAM_LIB_DIR}
-  LIBRARY_OUTPUT_DIRECTORY ${MIAM_LIB_DIR}
-  VERSION ${PROJECT_VERSION}
-  SOVERSION ${PROJECT_VERSION_MAJOR}
-)
-
-if(MIAM_ENABLE_TESTS)
-  enable_testing()
-  add_subdirectory(test)
-
+if(PROJECT_IS_TOP_LEVEL AND MIAM_ENABLE_TESTS)
   if(MIAM_ENABLE_COVERAGE)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(miam PUBLIC --coverage)
-    target_link_options(miam PUBLIC --coverage)
-
     include(CodeCoverage)
+    append_coverage_compiler_flags()
     setup_target_for_coverage_lcov(
         NAME coverage
         EXECUTABLE ctest
@@ -87,13 +68,16 @@ if(MIAM_ENABLE_TESTS)
         BASE_DIRECTORY ${PROJECT_SOURCE_DIR}/src
         LCOV_ARGS --ignore-errors mismatch --ignore-errors unused
     )
-    else()
-      message(FATAL_ERROR "Coverage is only supported with GCC or Clang")
-    endif()
   endif()
+
+  enable_testing()
+  add_subdirectory(test)
 endif()
 
-if(MIAM_BUILD_DOCS)
-  add_subdirectory(docs)
-endif()
+################################################################################
+# Packaging
 
+# only include packaging if we are the top level project being built
+if(PROJECT_IS_TOP_LEVEL)
+  add_subdirectory(packaging)
+endif()

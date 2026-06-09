@@ -24,6 +24,8 @@ jobs:
           - Dockerfile.coverage
           - Dockerfile.docs
           - Dockerfile.memcheck
+          - Dockerfile.intel
+          - Dockerfile.nvhpc
         build_type: [Release]
     steps:
       - uses: actions/checkout@v4
