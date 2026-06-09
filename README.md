@@ -3,7 +3,14 @@ MIAM
 
 Model-Independent Aerosol Module
 
+[![GitHub Releases](https://img.shields.io/github/release/NCAR/miam.svg)](https://github.com/NCAR/miam/releases)
 [![License](https://img.shields.io/github/license/NCAR/miam.svg)](https://github.com/NCAR/miam/blob/main/LICENSE)
+[![Docker builds](https://github.com/NCAR/miam/actions/workflows/docker_and_coverage.yml/badge.svg)](https://github.com/NCAR/miam/actions/workflows/docker_and_coverage.yml)
+[![Windows](https://github.com/NCAR/miam/actions/workflows/windows.yml/badge.svg)](https://github.com/NCAR/miam/actions/workflows/windows.yml)
+[![Mac](https://github.com/NCAR/miam/actions/workflows/mac.yml/badge.svg)](https://github.com/NCAR/miam/actions/workflows/mac.yml)
+[![Ubuntu](https://github.com/NCAR/miam/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/NCAR/miam/actions/workflows/ubuntu.yml)
+[![codecov](https://codecov.io/gh/NCAR/miam/branch/main/graph/badge.svg?token=ATGO4DKTMY)](https://codecov.io/gh/NCAR/miam)
+
 
 Copyright (C) 2026 University Corporation for Atmospheric Research
 
