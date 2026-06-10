@@ -35,4 +35,4 @@ Condensation Rate
 UUID Generation
 ===============
 
-.. doxygenfunction:: miam::generate_uuid_v4
+.. doxygenfunction:: miam::GenerateUuid
