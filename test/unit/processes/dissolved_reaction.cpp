@@ -1191,12 +1191,12 @@ TEST(DissolvedReaction, JacobianFunctionSolventFloorZeroSolvent)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { s } } };
 
   double k = 1.0;
-  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; }, { a, b }, { c }, s, phase };
+  DissolvedReaction reaction{ { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a, b }, { c }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
 
-  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> svi{
     { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.C", 2 }, { "DROP.AQUEOUS.S", 3 }
@@ -1273,13 +1273,13 @@ TEST(DissolvedReaction, ForcingFunctionCappedUncappedRegime)
   double k = 1.0e-6;    // very slow
   double t_half = 1.0;  // short half-life → r_max = [A] / t_half = large compared to r
 
-  DissolvedReaction uncapped{ [k](const micm::Conditions&) { return k; }, { a }, { b }, s, phase };
-  DissolvedReaction capped{ [k](const micm::Conditions&) { return k; }, { a }, { b }, s, phase, 1.0e-20, t_half };
+  DissolvedReaction uncapped{ { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a }, { b }, s, phase };
+  DissolvedReaction capped{ { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
-  std::string k_param = phase.name_ + "." + uncapped.uuid_ + ".k";
-  std::string k_param_c = phase.name_ + "." + capped.uuid_ + ".k";
+  std::string k_param = "DROP." + phase.name_ + "." + uncapped.uuid_ + ".k";
+  std::string k_param_c = "DROP." + phase.name_ + "." + capped.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi_u{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> spi_c{ { k_param_c, 0 } };
   std::unordered_map<std::string, std::size_t> svi{ { "DROP.AQUEOUS.A", 0 },
@@ -1320,11 +1320,11 @@ TEST(DissolvedReaction, ForcingFunctionCappedSaturatedRegime)
   double k = 1.0e6;        // very fast reaction
   double t_half = 1000.0;  // long half-life → r_max = [A] / t_half = small
 
-  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; }, { a }, { b }, s, phase, 1.0e-20, t_half };
+  DissolvedReaction reaction{ { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
-  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> svi{ { "DROP.AQUEOUS.A", 0 },
                                                     { "DROP.AQUEOUS.B", 1 },
@@ -1361,11 +1361,11 @@ TEST(DissolvedReaction, JacobianFDCappedUncappedRegime)
   double k = 1.0e-5;    // slow reaction, uncapped
   double t_half = 0.1;  // r_max = [A]/t_half >> r
 
-  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; }, { a }, { b }, s, phase, 1.0e-20, t_half };
+  DissolvedReaction reaction{ { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
-  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> svi{ { "DROP.AQUEOUS.A", 0 },
                                                     { "DROP.AQUEOUS.B", 1 },
@@ -1392,11 +1392,11 @@ TEST(DissolvedReaction, JacobianFDCappedSaturatedRegime)
   double k = 1.0e5;  // fast reaction, deeply capped
   double t_half = 1000.0;
 
-  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; }, { a }, { b }, s, phase, 1.0e-20, t_half };
+  DissolvedReaction reaction{ { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
-  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> svi{ { "DROP.AQUEOUS.A", 0 },
                                                     { "DROP.AQUEOUS.B", 1 },
@@ -1428,11 +1428,11 @@ TEST(DissolvedReaction, JacobianFDCappedBimolecular)
   double k = 50.0;       // moderately fast
   double t_half = 10.0;  // r_max = min(A,B) / t_half
 
-  DissolvedReaction reaction{ [k](const micm::Conditions&) { return k; }, { a, b }, { c }, s, phase, 1.0e-20, t_half };
+  DissolvedReaction reaction{ { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a, b }, { c }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
-  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> svi{
     { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.C", 2 }, { "DROP.AQUEOUS.S", 3 }

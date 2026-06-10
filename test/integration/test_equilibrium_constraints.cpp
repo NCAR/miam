@@ -205,7 +205,8 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(S)
-                      .AddRateConstant("DROPLET", rate)
+                      .AddRateConstant("SMALL", rate)
+                      .AddRateConstant("LARGE", rate)
                       .Build();
 
   // Equilibrium constraint: C = K_eq * B (C is algebraic)
