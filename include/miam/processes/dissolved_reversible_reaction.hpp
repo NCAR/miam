@@ -56,10 +56,14 @@ namespace miam
     double solvent_floor_{
       1.0e-20
     };  ///< Floor [mol m⁻³] added to [S] in ([S]+δ)^n denominator to prevent singularity as [S] → 0
+    std::map<std::string, std::function<double(const micm::Conditions& conditions)>>
+        forward_rate_constants_{};  ///< Per-prefix forward rates; when non-empty, overrides forward_rate_constant_
+    std::map<std::string, std::function<double(const micm::Conditions& conditions)>>
+        reverse_rate_constants_{};  ///< Per-prefix reverse rates; when non-empty, overrides reverse_rate_constant_
 
     DissolvedReversibleReaction() = delete;
 
-    /// @brief Constructor
+    /// @brief Constructor — shared rates (all instances use the same forward and reverse rate functions)
     DissolvedReversibleReaction(
         std::function<double(const micm::Conditions& conditions)> forward_rate_constant,
         std::function<double(const micm::Conditions& conditions)> reverse_rate_constant,
@@ -79,10 +83,33 @@ namespace miam
     {
     }
 
+    /// @brief Constructor — per-representation rates (each prefix gets its own forward and reverse rate functions)
+    DissolvedReversibleReaction(
+        std::map<std::string, std::function<double(const micm::Conditions& conditions)>> forward_rate_constants,
+        std::map<std::string, std::function<double(const micm::Conditions& conditions)>> reverse_rate_constants,
+        const std::vector<micm::Species>& reactants,
+        const std::vector<micm::Species>& products,
+        micm::Species solvent,
+        micm::Phase phase,
+        double solvent_floor = 1.0e-20)
+        : reactants_(reactants),
+          products_(products),
+          solvent_(solvent),
+          phase_(phase),
+          uuid_(GenerateUuid()),
+          solvent_floor_(solvent_floor),
+          forward_rate_constants_(std::move(forward_rate_constants)),
+          reverse_rate_constants_(std::move(reverse_rate_constants))
+    {
+    }
+
     /// @brief Create a copy of this reaction with a new UUID
     /// @return A new DissolvedReversibleReaction with the same properties but a unique UUID
     DissolvedReversibleReaction CopyWithNewUuid() const
     {
+      if (!forward_rate_constants_.empty())
+        return DissolvedReversibleReaction(
+            forward_rate_constants_, reverse_rate_constants_, reactants_, products_, solvent_, phase_, solvent_floor_);
       return DissolvedReversibleReaction(
           forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_);
     }
@@ -93,11 +120,24 @@ namespace miam
     /// @return Set of unique parameter names for this process
     std::set<std::string> ProcessParameterNames(const std::map<std::string, std::set<std::string>>& phase_prefixes) const
     {
-      // The conditions are shared by the whole system, so we just need one value each for the forward and reverse rate
-      // constants. We can use the phase name and uuid to create unique parameter names.
       std::set<std::string> parameter_names;
-      parameter_names.insert(phase_.name_ + "." + uuid_ + ".k_forward");
-      parameter_names.insert(phase_.name_ + "." + uuid_ + ".k_reverse");
+      if (forward_rate_constants_.empty())
+      {
+        // Shared mode: one slot each for all instances
+        parameter_names.insert(phase_.name_ + "." + uuid_ + ".k_forward");
+        parameter_names.insert(phase_.name_ + "." + uuid_ + ".k_reverse");
+      }
+      else
+      {
+        // Per-prefix mode: one slot per representation prefix
+        auto phase_it = phase_prefixes.find(phase_.name_);
+        if (phase_it != phase_prefixes.end())
+          for (const auto& prefix : phase_it->second)
+          {
+            parameter_names.insert(prefix + "." + phase_.name_ + "." + uuid_ + ".k_forward");
+            parameter_names.insert(prefix + "." + phase_.name_ + "." + uuid_ + ".k_reverse");
+          }
+      }
       return parameter_names;
     }
 
@@ -234,47 +274,88 @@ namespace miam
         const auto& state_parameter_indices  // acts like std::unordered_map<std::string, std::size_t>
     ) const
     {
-      // throw an error if the expected parameters don't exist
-      std::string forward_param = phase_.name_ + "." + uuid_ + ".k_forward";
-      std::string reverse_param = phase_.name_ + "." + uuid_ + ".k_reverse";
-      if (state_parameter_indices.find(forward_param) == state_parameter_indices.end())
-      {
-        throw MiamException(
-            MIAM_ERROR_CATEGORY_INTERNAL,
-            MIAM_INTERNAL_MISSING_STATE_PARAMETER,
-            "Internal Error: UpdateStateParametersFunction: Forward rate constant parameter " + forward_param +
-                " not found in state_parameter_indices");
-      }
-      if (state_parameter_indices.find(reverse_param) == state_parameter_indices.end())
-      {
-        throw MiamException(
-            MIAM_ERROR_CATEGORY_INTERNAL,
-            MIAM_INTERNAL_MISSING_STATE_PARAMETER,
-            "Internal Error: UpdateStateParametersFunction: Reverse rate constant parameter " + reverse_param +
-                " not found in state_parameter_indices");
-      }
-      std::size_t forward_index = state_parameter_indices.at(forward_param);
-      std::size_t reverse_index = state_parameter_indices.at(reverse_param);
-
-      // Set up dummy arguments to build the function
       DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
       std::vector<micm::Conditions> conditions_vector;
 
-      // return a function that updates the forward and reverse rate constant parameters based on the current conditions
-      return DenseMatrixPolicy::Function(
-          [this, forward_index, reverse_index](auto&& conditions, auto&& params)
-          {
-            params.ForEachRow(
-                [&](const micm::Conditions& condition, double& parameter) { parameter = forward_rate_constant_(condition); },
-                conditions,
-                params.GetColumnView(forward_index));
-            params.ForEachRow(
-                [&](const micm::Conditions& condition, double& parameter) { parameter = reverse_rate_constant_(condition); },
-                conditions,
-                params.GetColumnView(reverse_index));
-          },
-          conditions_vector,
-          state_parameters);
+      if (forward_rate_constants_.empty())
+      {
+        // Shared mode: existing single-slot path
+        std::string forward_param = phase_.name_ + "." + uuid_ + ".k_forward";
+        std::string reverse_param = phase_.name_ + "." + uuid_ + ".k_reverse";
+        if (state_parameter_indices.find(forward_param) == state_parameter_indices.end())
+          throw MiamException(
+              MIAM_ERROR_CATEGORY_INTERNAL, MIAM_INTERNAL_MISSING_STATE_PARAMETER,
+              "Internal Error: UpdateStateParametersFunction: " + forward_param + " not found");
+        if (state_parameter_indices.find(reverse_param) == state_parameter_indices.end())
+          throw MiamException(
+              MIAM_ERROR_CATEGORY_INTERNAL, MIAM_INTERNAL_MISSING_STATE_PARAMETER,
+              "Internal Error: UpdateStateParametersFunction: " + reverse_param + " not found");
+        std::size_t forward_index = state_parameter_indices.at(forward_param);
+        std::size_t reverse_index = state_parameter_indices.at(reverse_param);
+        return DenseMatrixPolicy::Function(
+            [this, forward_index, reverse_index](auto&& conditions, auto&& params)
+            {
+              params.ForEachRow(
+                  [&](const micm::Conditions& c, double& p) { p = forward_rate_constant_(c); },
+                  conditions,
+                  params.GetColumnView(forward_index));
+              params.ForEachRow(
+                  [&](const micm::Conditions& c, double& p) { p = reverse_rate_constant_(c); },
+                  conditions,
+                  params.GetColumnView(reverse_index));
+            },
+            conditions_vector,
+            state_parameters);
+      }
+      else
+      {
+        // Per-prefix mode: one slot per representation
+        auto phase_it = phase_prefixes.find(phase_.name_);
+        if (phase_it == phase_prefixes.end())
+          throw MiamException(
+              MIAM_ERROR_CATEGORY_INTERNAL, MIAM_INTERNAL_MISSING_PHASE_PREFIX,
+              "Internal Error: UpdateStateParametersFunction: Phase " + phase_.name_ + " not found");
+
+        using RateFn = std::function<double(const micm::Conditions&)>;
+        std::vector<std::pair<std::size_t, RateFn>> fwd_slots, rev_slots;
+        for (const auto& prefix : phase_it->second)
+        {
+          std::string fwd_param = prefix + "." + phase_.name_ + "." + uuid_ + ".k_forward";
+          std::string rev_param = prefix + "." + phase_.name_ + "." + uuid_ + ".k_reverse";
+          if (state_parameter_indices.find(fwd_param) == state_parameter_indices.end())
+            throw MiamException(
+                MIAM_ERROR_CATEGORY_INTERNAL, MIAM_INTERNAL_MISSING_STATE_PARAMETER,
+                "Internal Error: UpdateStateParametersFunction: " + fwd_param + " not found");
+          if (state_parameter_indices.find(rev_param) == state_parameter_indices.end())
+            throw MiamException(
+                MIAM_ERROR_CATEGORY_INTERNAL, MIAM_INTERNAL_MISSING_STATE_PARAMETER,
+                "Internal Error: UpdateStateParametersFunction: " + rev_param + " not found");
+          auto fwd_it = forward_rate_constants_.find(prefix);
+          auto rev_it = reverse_rate_constants_.find(prefix);
+          if (fwd_it == forward_rate_constants_.end())
+            throw MiamException(
+                MIAM_ERROR_CATEGORY_CONFIGURATION, MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+                "DissolvedReversibleReaction: No forward rate for prefix '" + prefix + "'");
+          if (rev_it == reverse_rate_constants_.end())
+            throw MiamException(
+                MIAM_ERROR_CATEGORY_CONFIGURATION, MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+                "DissolvedReversibleReaction: No reverse rate for prefix '" + prefix + "'");
+          fwd_slots.push_back({ state_parameter_indices.at(fwd_param), fwd_it->second });
+          rev_slots.push_back({ state_parameter_indices.at(rev_param), rev_it->second });
+        }
+        return DenseMatrixPolicy::Function(
+            [fwd_slots, rev_slots](auto&& conditions, auto&& params)
+            {
+              for (const auto& [idx, fn] : fwd_slots)
+                params.ForEachRow(
+                    [&](const micm::Conditions& c, double& p) { p = fn(c); }, conditions, params.GetColumnView(idx));
+              for (const auto& [idx, fn] : rev_slots)
+                params.ForEachRow(
+                    [&](const micm::Conditions& c, double& p) { p = fn(c); }, conditions, params.GetColumnView(idx));
+            },
+            conditions_vector,
+            state_parameters);
+      }
     }
 
     /// @brief Returns a function that calculates the forcing terms for this process
@@ -305,11 +386,11 @@ namespace miam
     ) const
     {
       StateVariableIndices variable_indices = GetStateVariableIndices(phase_prefixes, state_variable_indices);
-      auto [forward_index, reverse_index] = GetParameterIndices(state_parameter_indices);
+      auto [forward_indices, reverse_indices] = GetParameterIndices(phase_prefixes, state_parameter_indices);
       DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
       DenseMatrixPolicy dummy_state_variables{ 1, state_variable_indices.size(), 0.0 };
       return DenseMatrixPolicy::Function(
-          [this, variable_indices, forward_index, reverse_index](
+          [this, variable_indices, forward_indices, reverse_indices](
               auto&& state_parameters, auto&& state_variables, auto&& forcing_terms)
           {
             auto forward_rate = forcing_terms.GetRowVariable();
@@ -332,8 +413,8 @@ namespace miam
                     forward_rate = forward_rate_constant * solvent / std::pow(solvent + eps, n_r);
                     reverse_rate = reverse_rate_constant * solvent / std::pow(solvent + eps, n_p);
                   },
-                  state_parameters.GetConstColumnView(forward_index),
-                  state_parameters.GetConstColumnView(reverse_index),
+                  state_parameters.GetConstColumnView(forward_indices[i_phase]),
+                  state_parameters.GetConstColumnView(reverse_indices[i_phase]),
                   state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                   forward_rate,
                   reverse_rate);
@@ -407,11 +488,11 @@ namespace miam
     {
       StateVariableIndices variable_indices = GetStateVariableIndices(phase_prefixes, state_variable_indices);
       JacobianIndices jacobian_indices = GetJacobianIndices(variable_indices, jacobian);
-      auto [forward_index, reverse_index] = GetParameterIndices(state_parameter_indices);
+      auto [forward_indices, reverse_indices] = GetParameterIndices(phase_prefixes, state_parameter_indices);
       DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
       DenseMatrixPolicy dummy_state_variables{ 1, state_variable_indices.size(), 0.0 };
       return SparseMatrixPolicy::Function(
-          [this, variable_indices, jacobian_indices, forward_index, reverse_index](
+          [this, variable_indices, jacobian_indices, forward_indices, reverse_indices](
               auto&& state_parameters, auto&& state_variables, auto&& jacobian_values)
           {
             auto d_forward_rate_d_ind = jacobian_values.GetBlockVariable();
@@ -431,7 +512,7 @@ namespace miam
                 jacobian_values.ForEachBlock(
                     [&](const double& forward_rate_constant, const double& solvent, double& partial)
                     { partial = forward_rate_constant * solvent / std::pow(solvent + eps, n_r); },
-                    state_parameters.GetConstColumnView(forward_index),
+                    state_parameters.GetConstColumnView(forward_indices[i_phase]),
                     state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                     d_forward_rate_d_ind);
                 // add contributions to the partial from the other reactants
@@ -468,7 +549,7 @@ namespace miam
                 jacobian_values.ForEachBlock(
                     [&](const double& reverse_rate_constant, const double& solvent, double& partial)
                     { partial = reverse_rate_constant * solvent / std::pow(solvent + eps, n_p); },
-                    state_parameters.GetConstColumnView(reverse_index),
+                    state_parameters.GetConstColumnView(reverse_indices[i_phase]),
                     state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                     d_reverse_rate_d_ind);
                 // add contributions to the partial from the other products
@@ -512,8 +593,8 @@ namespace miam
                     reverse_partial = reverse_rate_constant * (eps + (1.0 - static_cast<int>(n_p)) * solvent) /
                                       std::pow(solvent + eps, n_p + 1);
                   },
-                  state_parameters.GetConstColumnView(forward_index),
-                  state_parameters.GetConstColumnView(reverse_index),
+                  state_parameters.GetConstColumnView(forward_indices[i_phase]),
+                  state_parameters.GetConstColumnView(reverse_indices[i_phase]),
                   state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                   d_forward_rate_d_ind,
                   d_reverse_rate_d_ind);
@@ -586,30 +667,56 @@ namespace miam
           indices_;  // Index in sparse matrix for each dependent/independent pair (num_pairs x num_prefixes)
     };
 
-    /// @brief Helper function to return parameter indices for the forward and reverse rate constants
-    std::pair<std::size_t, std::size_t> GetParameterIndices(
+    /// @brief Returns per-instance forward and reverse parameter indices in prefix-sorted order
+    std::pair<std::vector<std::size_t>, std::vector<std::size_t>> GetParameterIndices(
+        const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const auto& state_parameter_indices  // acts like std::unordered_map<std::string, std::size_t>
     ) const
     {
-      std::string forward_param = phase_.name_ + "." + uuid_ + ".k_forward";
-      std::string reverse_param = phase_.name_ + "." + uuid_ + ".k_reverse";
-      if (state_parameter_indices.find(forward_param) == state_parameter_indices.end())
+      std::vector<std::size_t> forward_indices, reverse_indices;
+      if (forward_rate_constants_.empty())
       {
-        throw MiamException(
-            MIAM_ERROR_CATEGORY_INTERNAL,
-            MIAM_INTERNAL_MISSING_STATE_PARAMETER,
-            "Internal Error: GetParameterIndices: Forward rate constant parameter " + forward_param +
-                " not found in state_parameter_indices");
+        // Shared mode: fill N copies of the single shared slot
+        std::string fwd_param = phase_.name_ + "." + uuid_ + ".k_forward";
+        std::string rev_param = phase_.name_ + "." + uuid_ + ".k_reverse";
+        if (state_parameter_indices.find(fwd_param) == state_parameter_indices.end())
+          throw MiamException(
+              MIAM_ERROR_CATEGORY_INTERNAL, MIAM_INTERNAL_MISSING_STATE_PARAMETER,
+              "Internal Error: GetParameterIndices: " + fwd_param + " not found");
+        if (state_parameter_indices.find(rev_param) == state_parameter_indices.end())
+          throw MiamException(
+              MIAM_ERROR_CATEGORY_INTERNAL, MIAM_INTERNAL_MISSING_STATE_PARAMETER,
+              "Internal Error: GetParameterIndices: " + rev_param + " not found");
+        auto phase_it = phase_prefixes.find(phase_.name_);
+        std::size_t n = (phase_it != phase_prefixes.end()) ? phase_it->second.size() : 0;
+        forward_indices.assign(n, state_parameter_indices.at(fwd_param));
+        reverse_indices.assign(n, state_parameter_indices.at(rev_param));
       }
-      if (state_parameter_indices.find(reverse_param) == state_parameter_indices.end())
+      else
       {
-        throw MiamException(
-            MIAM_ERROR_CATEGORY_INTERNAL,
-            MIAM_INTERNAL_MISSING_STATE_PARAMETER,
-            "Internal Error: GetParameterIndices: Reverse rate constant parameter " + reverse_param +
-                " not found in state_parameter_indices");
+        // Per-prefix mode: one slot per prefix
+        auto phase_it = phase_prefixes.find(phase_.name_);
+        if (phase_it == phase_prefixes.end())
+          throw MiamException(
+              MIAM_ERROR_CATEGORY_INTERNAL, MIAM_INTERNAL_MISSING_PHASE_PREFIX,
+              "Internal Error: GetParameterIndices: Phase " + phase_.name_ + " not found");
+        for (const auto& prefix : phase_it->second)
+        {
+          std::string fwd_param = prefix + "." + phase_.name_ + "." + uuid_ + ".k_forward";
+          std::string rev_param = prefix + "." + phase_.name_ + "." + uuid_ + ".k_reverse";
+          if (state_parameter_indices.find(fwd_param) == state_parameter_indices.end())
+            throw MiamException(
+                MIAM_ERROR_CATEGORY_INTERNAL, MIAM_INTERNAL_MISSING_STATE_PARAMETER,
+                "Internal Error: GetParameterIndices: " + fwd_param + " not found");
+          if (state_parameter_indices.find(rev_param) == state_parameter_indices.end())
+            throw MiamException(
+                MIAM_ERROR_CATEGORY_INTERNAL, MIAM_INTERNAL_MISSING_STATE_PARAMETER,
+                "Internal Error: GetParameterIndices: " + rev_param + " not found");
+          forward_indices.push_back(state_parameter_indices.at(fwd_param));
+          reverse_indices.push_back(state_parameter_indices.at(rev_param));
+        }
       }
-      return { state_parameter_indices.at(forward_param), state_parameter_indices.at(reverse_param) };
+      return { forward_indices, reverse_indices };
     }
 
     /// @brief Helper function to return variable indices for all species involved in the reaction

@@ -208,36 +208,23 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
   auto H2O = MakeCondensedSpecies("H2O", solvent_molecular_weight, solvent_density);
 
   Phase gas_phase{ "GAS", { { A_g } } };
-  Phase aqueous_small{ "AQ_SMALL", { { A_aq }, { H2O } } };
-  Phase aqueous_large{ "AQ_LARGE", { { A_aq }, { H2O } } };
+  Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
 
-  auto small_drop = SingleMomentMode{ "SMALL", { aqueous_small }, 1.0e-6, 1.2 };
-  auto large_drop = SingleMomentMode{ "LARGE", { aqueous_large }, 1.0e-5, 1.4 };
+  auto small_drop = SingleMomentMode{ "SMALL", { aqueous_phase }, 1.0e-6, 1.2 };
+  auto large_drop = SingleMomentMode{ "LARGE", { aqueous_phase }, 1.0e-5, 1.4 };
 
-  // Build two transfer processes — one for each phase
-  auto transfer_small = HenryLawPhaseTransferBuilder()
-                            .SetCondensedPhase(aqueous_small)
-                            .SetGasSpecies(A_g)
-                            .SetCondensedSpecies(A_aq)
-                            .SetSolvent(H2O)
-                            .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
-                            .SetDiffusionCoefficient(D_g)
-                            .SetAccommodationCoefficient(alpha)
-                            .Build();
-
-  auto transfer_large = HenryLawPhaseTransferBuilder()
-                            .SetCondensedPhase(aqueous_large)
-                            .SetGasSpecies(A_g)
-                            .SetCondensedSpecies(A_aq)
-                            .SetSolvent(H2O)
-                            .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
-                            .SetDiffusionCoefficient(D_g)
-                            .SetAccommodationCoefficient(alpha)
-                            .Build();
+  auto transfer = HenryLawPhaseTransferBuilder()
+                      .SetCondensedPhase(aqueous_phase)
+                      .SetGasSpecies(A_g)
+                      .SetCondensedSpecies(A_aq)
+                      .SetSolvent(H2O)
+                      .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                      .SetDiffusionCoefficient(D_g)
+                      .SetAccommodationCoefficient(alpha)
+                      .Build();
 
   auto model = Model{ .name_ = "CLOUD", .representations_ = { small_drop, large_drop } };
-  model.AddProcesses({ transfer_small });
-  model.AddProcesses({ transfer_large });
+  model.AddProcesses({ transfer });
 
   auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
@@ -249,10 +236,10 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
   State state = solver.GetState();
 
   std::size_t i_gas = state.variable_map_.at("A_g");
-  std::size_t i_aq_small = state.variable_map_.at("SMALL.AQ_SMALL.A_aq");
-  std::size_t i_h2o_small = state.variable_map_.at("SMALL.AQ_SMALL.H2O");
-  std::size_t i_aq_large = state.variable_map_.at("LARGE.AQ_LARGE.A_aq");
-  std::size_t i_h2o_large = state.variable_map_.at("LARGE.AQ_LARGE.H2O");
+  std::size_t i_aq_small = state.variable_map_.at("SMALL.AQUEOUS.A_aq");
+  std::size_t i_h2o_small = state.variable_map_.at("SMALL.AQUEOUS.H2O");
+  std::size_t i_aq_large = state.variable_map_.at("LARGE.AQUEOUS.A_aq");
+  std::size_t i_h2o_large = state.variable_map_.at("LARGE.AQUEOUS.H2O");
 
   double gas_0 = 1.0e-2;
   double solvent = 0.017;
@@ -443,10 +430,9 @@ TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
   double solvent = 0.017;
 
   // Run HLPT for a given particle radius, return (gas, aq) after fixed time
-  auto run_with_radius =
-      [&](double r_mean, const std::string& prefix, const std::string& phase_name) -> std::pair<double, double>
+  auto run_with_radius = [&](double r_mean, const std::string& prefix) -> std::pair<double, double>
   {
-    Phase aqueous_phase{ phase_name, { { A_aq }, { H2O } } };
+    Phase aqueous_phase{ "AQUEOUS", { { A_aq }, { H2O } } };
 
     auto droplet = SingleMomentMode{
       prefix, { aqueous_phase }, r_mean, 1.01  // nearly monodisperse
@@ -475,8 +461,8 @@ TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
     State state = solver.GetState();
 
     std::size_t i_gas = state.variable_map_.at("A_g");
-    std::size_t i_aq = state.variable_map_.at(prefix + "." + phase_name + ".A_aq");
-    std::size_t i_h2o = state.variable_map_.at(prefix + "." + phase_name + ".H2O");
+    std::size_t i_aq = state.variable_map_.at(prefix + ".AQUEOUS.A_aq");
+    std::size_t i_h2o = state.variable_map_.at(prefix + ".AQUEOUS.H2O");
 
     state.variables_[0][i_gas] = gas_0;
     state.variables_[0][i_aq] = 0.0;
@@ -505,10 +491,10 @@ TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
   };
 
   // Small particles (transition regime): r ~ 50 nm
-  auto [gas_small, aq_small] = run_with_radius(5.0e-8, "SMALL", "AQ_S");
+  auto [gas_small, aq_small] = run_with_radius(5.0e-8, "SMALL");
 
   // Large particles (near continuum): r ~ 10 μm
-  auto [gas_large, aq_large] = run_with_radius(1.0e-5, "LARGE", "AQ_L");
+  auto [gas_large, aq_large] = run_with_radius(1.0e-5, "LARGE");
 
   // Both should show condensation
   EXPECT_GT(aq_small, 0.0) << "Small particles should absorb gas";

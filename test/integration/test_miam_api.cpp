@@ -1,6 +1,7 @@
 #include <miam/miam.hpp>
 
 #include <micm/CPU.hpp>
+#include <micm/process/rate_constant/rate_constant_functions.hpp>
 
 #include <gtest/gtest.h>
 

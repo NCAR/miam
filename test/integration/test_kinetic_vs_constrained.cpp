@@ -33,7 +33,13 @@ namespace
     auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
     auto rate = [k](const Conditions& conditions) { return k; };
-    auto reaction = DissolvedReaction{ rate, { A }, { B }, S, aqueous_phase };
+    auto reaction = DissolvedReactionBuilder{}
+                        .SetPhase(aqueous_phase)
+                        .SetReactants({ A })
+                        .SetProducts({ B })
+                        .SetSolvent(S)
+                        .AddRateConstant("DROPLET", rate)
+                        .Build();
 
     auto forward_rate = [k_f](const Conditions& conditions) { return k_f; };
     auto reverse_rate = [k_r](const Conditions& conditions) { return k_r; };
@@ -117,7 +123,13 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
     auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
     auto rate = [k](const Conditions& conditions) { return k; };
-    auto reaction = DissolvedReaction{ rate, { A }, { B }, S, aqueous_phase };
+    auto reaction = DissolvedReactionBuilder{}
+                        .SetPhase(aqueous_phase)
+                        .SetReactants({ A })
+                        .SetProducts({ B })
+                        .SetSolvent(S)
+                        .AddRateConstant("DROPLET", rate)
+                        .Build();
 
     auto forward_rate = [k_f](const Conditions& conditions) { return k_f; };
     auto reverse_rate = [k_r](const Conditions& conditions) { return k_r; };
@@ -175,7 +187,13 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
     auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
     auto rate = [k](const Conditions& conditions) { return k; };
-    auto reaction = DissolvedReaction{ rate, { A }, { B }, S, aqueous_phase };
+    auto reaction = DissolvedReactionBuilder{}
+                        .SetPhase(aqueous_phase)
+                        .SetReactants({ A })
+                        .SetProducts({ B })
+                        .SetSolvent(S)
+                        .AddRateConstant("DROPLET", rate)
+                        .Build();
 
     auto equil = DissolvedEquilibriumConstraintBuilder()
                      .SetPhase(aqueous_phase)
