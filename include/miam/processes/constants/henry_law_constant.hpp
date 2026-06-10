@@ -10,7 +10,7 @@
 namespace miam
 {
   /// @brief Parameters for a Henry's Law constant
-  struct HenrysLawConstantParameters
+  struct HenryLawConstantParameters
   {
     /// @brief Henry's Law constant at reference temperature [mol m⁻³ Pa⁻¹]
     double HLC_ref_{ 1.0 };
@@ -23,20 +23,20 @@ namespace miam
   /// @brief A Henry's Law constant dependent on temperature
   /// @details Calculates Henry's Law constant as:
   ///          HLC(T) = HLC_ref * exp( C * ( 1 / T - 1 / T0 ) )
-  class HenrysLawConstant
+  class HenryLawConstant
   {
    public:
-    const HenrysLawConstantParameters parameters_;
+    const HenryLawConstantParameters parameters_;
 
     /// @brief Default constructor
-    HenrysLawConstant()
+    HenryLawConstant()
         : parameters_()
     {
     }
 
     /// @brief Constructor with parameters
     /// @param parameters A set of Henry's Law constant parameters
-    HenrysLawConstant(const HenrysLawConstantParameters& parameters)
+    HenryLawConstant(const HenryLawConstantParameters& parameters)
         : parameters_(parameters)
     {
     }

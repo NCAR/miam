@@ -4,7 +4,7 @@
 // Test that the README example compiles, runs, and produces expected output.
 
 #include <miam/miam.hpp>
-#include <miam/processes/constants/henrys_law_constant.hpp>
+#include <miam/processes/constants/henry_law_constant.hpp>
 
 #include <micm/CPU.hpp>
 
@@ -41,7 +41,7 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
                           .SetGasSpecies(co2)
                           .SetCondensedSpecies(co2)
                           .SetSolvent(h2o)
-                          .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 3.4e-2 }))  // mol m-3 Pa-1 at 298 K
+                          .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 3.4e-2 }))  // mol m-3 Pa-1 at 298 K
                           .SetDiffusionCoefficient(1.5e-5)                                  // m2 s-1
                           .SetAccommodationCoefficient(5.0e-6)  // Set artificially low to see transfer over 10 time steps
                           .Build();

@@ -56,7 +56,7 @@ namespace miam
     }
 
     /// @brief Sets the Henry's Law constant
-    HenryLawPhaseTransferBuilder& SetHenrysLawConstant(const auto& henry_law_constant)
+    HenryLawPhaseTransferBuilder& SetHenryLawConstant(const auto& henry_law_constant)
     {
       henry_law_constant_ = [henry_law_constant](const micm::Conditions& conditions)
       { return henry_law_constant.Calculate(conditions); };
