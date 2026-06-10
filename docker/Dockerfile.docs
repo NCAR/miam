@@ -1,7 +1,8 @@
+# Build the musica documentation.
+# After building, run with:
+#   docker run --rm -p 8123:8123 -it docs
+# then navigate to localhost:8123
 FROM fedora:latest
-
-ARG MIAM_GIT_TAG=main
-ARG BUILD_TYPE=Release
 
 RUN dnf -y update \
     && dnf -y install \
@@ -24,10 +25,13 @@ RUN pip3 install -r /miam/docs/requirements.txt
 RUN cd miam \
     && cmake -S . \
              -B build \
-             -D CMAKE_BUILD_TYPE=${BUILD_TYPE} \
              -D MIAM_BUILD_DOCS=ON \
              -D MIAM_ENABLE_TESTS=OFF \
     && cd build \
     && make docs
 
-WORKDIR miam/build
+RUN cd miam/build && make docs
+
+WORKDIR /miam/build/docs/sphinx
+
+CMD ["python", "-m", "http.server", "8123"]
