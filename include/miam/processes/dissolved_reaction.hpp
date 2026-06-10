@@ -62,12 +62,12 @@ namespace miam
   {
    public:
     std::map<std::string, std::function<double(const micm::Conditions& conditions)>>
-        rate_constants_;  ///< Rate constant functions keyed by representation prefix
-    std::vector<micm::Species> reactants_;                                     ///< Reactant species
-    std::vector<micm::Species> products_;                                      ///< Product species
-    micm::Species solvent_;                                                    ///< Solvent species
-    micm::Phase phase_;                                                        ///< Phase in which the reaction occurs
-    std::string uuid_;                                                         ///< Unique identifier for the reaction
+        rate_constants_;                    ///< Rate constant functions keyed by representation prefix
+    std::vector<micm::Species> reactants_;  ///< Reactant species
+    std::vector<micm::Species> products_;   ///< Product species
+    micm::Species solvent_;                 ///< Solvent species
+    micm::Phase phase_;                     ///< Phase in which the reaction occurs
+    std::string uuid_;                      ///< Unique identifier for the reaction
     double solvent_floor_{
       1.0e-20
     };  ///< Floor [mol m⁻³] added to [S] in ([S]+δ)^n denominator to prevent singularity as [S] → 0
