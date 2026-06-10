@@ -312,8 +312,8 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
 
   auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
 
-  auto small_droplet = UniformSection{ "SMALL", { aqueous_phase } };
-  auto large_droplet = UniformSection{ "LARGE", { aqueous_phase } };
+  auto small_droplet = UniformSection{ "DROPLET_SMALL", { aqueous_phase } };
+  auto large_droplet = UniformSection{ "DROPLET_LARGE", { aqueous_phase } };
 
   double k_small = 0.1;
   double k_large = 0.2;
@@ -326,8 +326,8 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .AddRateConstant("SMALL", rate_small)
-                      .AddRateConstant("LARGE", rate_large)
+                      .AddRateConstant("DROPLET_SMALL", rate_small)
+                      .AddRateConstant("DROPLET_LARGE", rate_large)
                       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { small_droplet, large_droplet } };
@@ -347,13 +347,13 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
 
   State state = solver.GetState();
 
-  std::size_t i_A_small = state.variable_map_.at("SMALL.AQUEOUS.A");
-  std::size_t i_B_small = state.variable_map_.at("SMALL.AQUEOUS.B");
-  std::size_t i_C_small = state.variable_map_.at("SMALL.AQUEOUS.C");
+  std::size_t i_A_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS.A");
+  std::size_t i_B_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS.B");
+  std::size_t i_C_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS.C");
 
-  std::size_t i_A_large = state.variable_map_.at("LARGE.AQUEOUS.A");
-  std::size_t i_B_large = state.variable_map_.at("LARGE.AQUEOUS.B");
-  std::size_t i_C_large = state.variable_map_.at("LARGE.AQUEOUS.C");
+  std::size_t i_A_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS.A");
+  std::size_t i_B_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS.B");
+  std::size_t i_C_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS.C");
 
   state.variables_[0][i_A_small] = A0_small;
   state.variables_[0][i_B_small] = 0.0;
