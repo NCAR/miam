@@ -31,11 +31,13 @@ TEST(DissolvedReactionIntegration, SimpleFirstOrderDecay)
   auto rate = [k](const Conditions& conditions) { return k; };
 
   // A -> B with solvent C
-  auto reaction = DissolvedReaction{ rate,
-                                     { A },  // reactants
-                                     { B },  // products
-                                     C,      // solvent
-                                     aqueous_phase };
+  auto reaction = DissolvedReactionBuilder{}
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A })
+                      .SetProducts({ B })
+                      .SetSolvent(C)
+                      .AddRateConstant("DROPLET", rate)
+                      .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -124,11 +126,13 @@ TEST(DissolvedReactionIntegration, SolventAsReactant)
 
   // A + C -> B with solvent C
   // rate = k / [C]^(2-1) * [A] * [C] = k * [A]
-  auto reaction = DissolvedReaction{ rate,
-                                     { A, C },  // reactants
-                                     { B },     // products
-                                     C,         // solvent
-                                     aqueous_phase };
+  auto reaction = DissolvedReactionBuilder{}
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A, C })
+                      .SetProducts({ B })
+                      .SetSolvent(C)
+                      .AddRateConstant("DROPLET", rate)
+                      .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -218,11 +222,13 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
 
   // A -> B + C with solvent C
   // rate = k * [A] (1 reactant, no solvent normalization)
-  auto reaction = DissolvedReaction{ rate,
-                                     { A },     // reactants
-                                     { B, C },  // products (solvent is a product)
-                                     C,         // solvent
-                                     aqueous_phase };
+  auto reaction = DissolvedReactionBuilder{}
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A })
+                      .SetProducts({ B, C })
+                      .SetSolvent(C)
+                      .AddRateConstant("DROPLET", rate)
+                      .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -304,12 +310,10 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
   auto B = Species{ "B" };
   auto C = Species{ "C" };  // solvent
 
-  auto small_aqueous = Phase{ "AQUEOUS_SMALL", { { A }, { B }, { C } } };
-  auto large_aqueous = Phase{ "AQUEOUS_LARGE", { { A }, { B }, { C } } };
+  auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
 
-  auto small_droplet = UniformSection{ "DROPLET_SMALL", { small_aqueous } };
-
-  auto large_droplet = UniformSection{ "DROPLET_LARGE", { large_aqueous } };
+  auto small_droplet = UniformSection{ "DROPLET_SMALL", { aqueous_phase } };
+  auto large_droplet = UniformSection{ "DROPLET_LARGE", { aqueous_phase } };
 
   double k_small = 0.1;
   double k_large = 0.2;
@@ -317,12 +321,17 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
   auto rate_small = [k_small](const Conditions& conditions) { return k_small; };
   auto rate_large = [k_large](const Conditions& conditions) { return k_large; };
 
-  auto reaction_small = DissolvedReaction{ rate_small, { A }, { B }, C, small_aqueous };
-
-  auto reaction_large = DissolvedReaction{ rate_large, { A }, { B }, C, large_aqueous };
+  auto reaction = DissolvedReactionBuilder{}
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A })
+                      .SetProducts({ B })
+                      .SetSolvent(C)
+                      .AddRateConstant("DROPLET_SMALL", rate_small)
+                      .AddRateConstant("DROPLET_LARGE", rate_large)
+                      .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { small_droplet, large_droplet } };
-  model.AddProcesses({ reaction_small, reaction_large });
+  model.AddProcesses({ reaction });
 
   Phase gas_phase{ "GAS", {} };
 
@@ -338,13 +347,13 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
 
   State state = solver.GetState();
 
-  std::size_t i_A_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS_SMALL.A");
-  std::size_t i_B_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS_SMALL.B");
-  std::size_t i_C_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS_SMALL.C");
+  std::size_t i_A_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS.A");
+  std::size_t i_B_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS.B");
+  std::size_t i_C_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS.C");
 
-  std::size_t i_A_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS_LARGE.A");
-  std::size_t i_B_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS_LARGE.B");
-  std::size_t i_C_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS_LARGE.C");
+  std::size_t i_A_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS.A");
+  std::size_t i_B_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS.B");
+  std::size_t i_C_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS.C");
 
   state.variables_[0][i_A_small] = A0_small;
   state.variables_[0][i_B_small] = 0.0;
@@ -430,11 +439,13 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
 
   // A + B -> C with solvent S
   // rate = k / [S] * [A] * [B]
-  auto reaction = DissolvedReaction{ rate,
-                                     { A, B },  // reactants
-                                     { C },     // products
-                                     S,         // solvent
-                                     aqueous_phase };
+  auto reaction = DissolvedReactionBuilder{}
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A, B })
+                      .SetProducts({ C })
+                      .SetSolvent(S)
+                      .AddRateConstant("DROPLET", rate)
+                      .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -537,15 +548,15 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
   double t_half = 10.0;  // seconds
 
   // A + B -> C with min_halflife cap
-  auto reaction = DissolvedReaction{
-    rate,
-    { A, B },  // reactants: two species so soft-min is tested
-    { C },     // products
-    S,         // solvent
-    aqueous_phase,
-    1.0e-20,  // solvent_damping_epsilon (default)
-    t_half    // min_halflife — triggers the capped code path
-  };
+  auto reaction = DissolvedReactionBuilder{}
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A, B })
+                      .SetProducts({ C })
+                      .SetSolvent(S)
+                      .SetSolventFloor(1.0e-20)
+                      .SetMinHalflife(t_half)
+                      .AddRateConstant("DROPLET", rate)
+                      .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });

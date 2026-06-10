@@ -53,11 +53,13 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
 
   // Kinetic process: A → B (dissolved reaction)
   auto rate = [k](const Conditions& conditions) { return k; };
-  auto reaction = DissolvedReaction{ rate,
-                                     { A },  // reactants
-                                     { B },  // products
-                                     S,      // solvent
-                                     aqueous_phase };
+  auto reaction = DissolvedReactionBuilder{}
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A })
+                      .SetProducts({ B })
+                      .SetSolvent(S)
+                      .AddRateConstant("DROPLET", rate)
+                      .Build();
 
   // Equilibrium constraint: B <-> C, K_eq, algebraic species = C
   // Residual: G = K_eq * [B] - [C] = 0
@@ -198,7 +200,14 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
   double A0_large = 2.0;
 
   auto rate = [k](const Conditions& conditions) { return k; };
-  auto reaction = DissolvedReaction{ rate, { A }, { B }, S, aqueous_phase };
+  auto reaction = DissolvedReactionBuilder{}
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A })
+                      .SetProducts({ B })
+                      .SetSolvent(S)
+                      .AddRateConstant("SMALL", rate)
+                      .AddRateConstant("LARGE", rate)
+                      .Build();
 
   // Equilibrium constraint: C = K_eq * B (C is algebraic)
   auto equil = DissolvedEquilibriumConstraintBuilder()
@@ -316,7 +325,13 @@ TEST(EquilibriumConstraintsIntegration, InconsistentInitialConditions)
   double total = A0;
 
   auto rate = [k](const Conditions& conditions) { return k; };
-  auto reaction = DissolvedReaction{ rate, { A }, { B }, S, aqueous_phase };
+  auto reaction = DissolvedReactionBuilder{}
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A })
+                      .SetProducts({ B })
+                      .SetSolvent(S)
+                      .AddRateConstant("DROPLET", rate)
+                      .Build();
 
   auto equil = DissolvedEquilibriumConstraintBuilder()
                    .SetPhase(aqueous_phase)

@@ -1296,7 +1296,8 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
                    .SetReactants({ so2oohm, hp })
                    .SetProducts({ so4mm })
                    .SetSolvent(h2o)
-                   .SetRateConstant(
+                   .AddRateConstant(
+                       "CLOUD",
                        [](const Conditions& c) -> double
                        { return c_H2O_M * 2.4e6 * std::exp(-4430.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
                    .Build();
@@ -1307,7 +1308,8 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
                   .SetReactants({ hso3m, o3_aq })
                   .SetProducts({ so4mm, hp })
                   .SetSolvent(h2o)
-                  .SetRateConstant(
+                  .AddRateConstant(
+                      "CLOUD",
                       [](const Conditions& c) -> double
                       { return c_H2O_M * 3.75e5 * std::exp(-5530.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
                   .Build();
@@ -1318,7 +1320,8 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
                   .SetReactants({ so3mm, o3_aq })
                   .SetProducts({ so4mm })
                   .SetSolvent(h2o)
-                  .SetRateConstant(
+                  .AddRateConstant(
+                      "CLOUD",
                       [](const Conditions& c) -> double
                       { return c_H2O_M * 1.59e9 * std::exp(-5280.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
                   .Build();
@@ -1621,7 +1624,8 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
                    .SetReactants({ so2oohm, hp })
                    .SetProducts({ so4mm })
                    .SetSolvent(h2o)
-                   .SetRateConstant(
+                   .AddRateConstant(
+                       "CLOUD",
                        [](const Conditions& c) -> double
                        { return c_H2O_M * 2.4e6 * std::exp(-4430.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
                    .Build();
@@ -1631,7 +1635,8 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
                   .SetReactants({ hso3m, o3_aq })
                   .SetProducts({ so4mm, hp })
                   .SetSolvent(h2o)
-                  .SetRateConstant(
+                  .AddRateConstant(
+                      "CLOUD",
                       [](const Conditions& c) -> double
                       { return c_H2O_M * 3.75e5 * std::exp(-5530.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
                   .Build();
@@ -1641,7 +1646,8 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
                   .SetReactants({ so3mm, o3_aq })
                   .SetProducts({ so4mm })
                   .SetSolvent(h2o)
-                  .SetRateConstant(
+                  .AddRateConstant(
+                      "CLOUD",
                       [](const Conditions& c) -> double
                       { return c_H2O_M * 1.59e9 * std::exp(-5280.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
                   .Build();
@@ -1891,7 +1897,8 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
                    .SetReactants({ so2oohm, hp })
                    .SetProducts({ so4mm })
                    .SetSolvent(h2o)
-                   .SetRateConstant(
+                   .AddRateConstant(
+                       "CLOUD",
                        [](const Conditions& c) -> double
                        { return c_H2O_M * 2.4e6 * std::exp(-4430.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
                    .Build();
@@ -1901,7 +1908,8 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
                   .SetReactants({ hso3m, o3_aq })
                   .SetProducts({ so4mm, hp })
                   .SetSolvent(h2o)
-                  .SetRateConstant(
+                  .AddRateConstant(
+                      "CLOUD",
                       [](const Conditions& c) -> double
                       { return c_H2O_M * 3.75e5 * std::exp(-5530.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
                   .Build();
@@ -1911,7 +1919,8 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
                   .SetReactants({ so3mm, o3_aq })
                   .SetProducts({ so4mm })
                   .SetSolvent(h2o)
-                  .SetRateConstant(
+                  .AddRateConstant(
+                      "CLOUD",
                       [](const Conditions& c) -> double
                       { return c_H2O_M * 1.59e9 * std::exp(-5280.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
                   .Build();

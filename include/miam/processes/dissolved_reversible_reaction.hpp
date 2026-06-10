@@ -59,7 +59,7 @@ namespace miam
 
     DissolvedReversibleReaction() = delete;
 
-    /// @brief Constructor
+    /// @brief Constructor — shared rates (all instances use the same forward and reverse rate functions)
     DissolvedReversibleReaction(
         std::function<double(const micm::Conditions& conditions)> forward_rate_constant,
         std::function<double(const micm::Conditions& conditions)> reverse_rate_constant,

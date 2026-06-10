@@ -192,7 +192,13 @@ TEST(JacobianVerification, DissolvedReactionProcess)
 
   double k = 0.1;
   auto rate = [k](const Conditions&) { return k; };
-  auto reaction = DissolvedReaction{ rate, { A }, { B }, C, aqueous_phase };
+  auto reaction = DissolvedReactionBuilder{}
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A })
+                      .SetProducts({ B })
+                      .SetSolvent(C)
+                      .AddRateConstant("DROPLET", rate)
+                      .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -379,7 +385,13 @@ TEST(JacobianVerification, MultipleProcessesCombined)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   // A → B (irreversible)
-  auto reaction1 = DissolvedReaction{ [](const Conditions&) { return 0.1; }, { A }, { B }, S, aqueous_phase };
+  auto reaction1 = DissolvedReactionBuilder{}
+                       .SetPhase(aqueous_phase)
+                       .SetReactants({ A })
+                       .SetProducts({ B })
+                       .SetSolvent(S)
+                       .AddRateConstant("DROPLET", [](const Conditions&) { return 0.1; })
+                       .Build();
 
   // C ⇌ D (reversible)
   auto reaction2 = DissolvedReversibleReaction{
@@ -574,7 +586,13 @@ TEST(JacobianVerification, ProcessAndConstraintsCombined)
   double K_eq = 2.0;
   double total = 1.0;
 
-  auto reaction = DissolvedReaction{ [k](const Conditions&) { return k; }, { A }, { B }, S, aqueous_phase };
+  auto reaction = DissolvedReactionBuilder{}
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A })
+                      .SetProducts({ B })
+                      .SetSolvent(S)
+                      .AddRateConstant("DROPLET", [k](const Conditions&) { return k; })
+                      .Build();
 
   auto equil = DissolvedEquilibriumConstraintBuilder()
                    .SetPhase(aqueous_phase)
@@ -698,7 +716,13 @@ TEST(JacobianVerification, DissolvedReactionDampingRange)
 
   double k = 0.1;
   auto rate = [k](const Conditions&) { return k; };
-  auto reaction = DissolvedReaction{ rate, { A }, { B }, C, aqueous_phase };
+  auto reaction = DissolvedReactionBuilder{}
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A })
+                      .SetProducts({ B })
+                      .SetSolvent(C)
+                      .AddRateConstant("DROPLET", rate)
+                      .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -938,7 +962,13 @@ TEST(JacobianVerification, CombinedProcessAndConstraintZeroSolvent)
   double K_eq = 2.0;
   double total = 1.0;
 
-  auto reaction = DissolvedReaction{ [k](const Conditions&) { return k; }, { A }, { B }, S, aqueous_phase };
+  auto reaction = DissolvedReactionBuilder{}
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ A })
+                      .SetProducts({ B })
+                      .SetSolvent(S)
+                      .AddRateConstant("DROPLET", [k](const Conditions&) { return k; })
+                      .Build();
 
   auto equil = DissolvedEquilibriumConstraintBuilder()
                    .SetPhase(aqueous_phase)
@@ -1039,7 +1069,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSingleReactant)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .SetRateConstant([](const Conditions&) { return 0.5; })
+                      .AddRateConstant("DROPLET", [](const Conditions&) { return 0.5; })
                       .SetMinHalflife(t_half)
                       .Build();
 
@@ -1087,7 +1117,7 @@ TEST(JacobianVerification, DissolvedReactionCappedTwoReactants)
                       .SetReactants({ A, B })
                       .SetProducts({ P })
                       .SetSolvent(S)
-                      .SetRateConstant([](const Conditions&) { return 1.0; })
+                      .AddRateConstant("DROPLET", [](const Conditions&) { return 1.0; })
                       .SetMinHalflife(t_half)
                       .Build();
 
@@ -1136,7 +1166,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSolventRange)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .SetRateConstant([](const Conditions&) { return 1.0; })
+                      .AddRateConstant("DROPLET", [](const Conditions&) { return 1.0; })
                       .SetMinHalflife(1.0)
                       .Build();
 
@@ -1216,7 +1246,7 @@ TEST(JacobianVerification, DissolvedReactionCappedMultiBlock)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .SetRateConstant([](const Conditions&) { return 2.0; })
+                      .AddRateConstant("DROPLET", [](const Conditions&) { return 2.0; })
                       .SetMinHalflife(0.1)
                       .Build();
 
@@ -1283,7 +1313,7 @@ namespace
                             .SetReactants(reactants)
                             .SetProducts(products)
                             .SetSolvent(solvent)
-                            .SetRateConstant(rate_fn)
+                            .AddRateConstant("DROPLET", rate_fn)
                             .Build();
     auto model_uncapped = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model_uncapped.AddProcesses({ rxn_uncapped });
@@ -1294,7 +1324,7 @@ namespace
                           .SetReactants(reactants)
                           .SetProducts(products)
                           .SetSolvent(solvent)
-                          .SetRateConstant(rate_fn)
+                          .AddRateConstant("DROPLET", rate_fn)
                           .SetMinHalflife(min_halflife)
                           .Build();
     auto model_capped = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
