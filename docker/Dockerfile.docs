@@ -1,4 +1,4 @@
-# Build the musica documentation.
+# Build the MIAM documentation.
 # After building, run with:
 #   docker run --rm -p 8123:8123 -it docs
 # then navigate to localhost:8123
