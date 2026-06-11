@@ -26,7 +26,7 @@ Test Structure
    │   └── processes/                 # process unit tests
    │       ├── dissolved_reversible_reaction.cpp
    │       ├── henry_law_phase_transfer.cpp
-   │       └── henrys_law_constant.cpp
+   │       └── henry_law_constant.cpp
    └── integration/
        ├── CMakeLists.txt
        ├── test_dissolved_reversible_reaction.cpp

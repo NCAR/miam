@@ -13,7 +13,7 @@ Save the following as ``cloud_chem.cpp``:
 .. code-block:: c++
 
    #include <miam/miam.hpp>
-   #include <miam/processes/constants/henrys_law_constant.hpp>
+   #include <miam/processes/constants/henry_law_constant.hpp>
    #include <micm/CPU.hpp>
 
    #include <iomanip>
@@ -50,7 +50,7 @@ Save the following as ``cloud_chem.cpp``:
        .SetGasSpecies(co2)
        .SetCondensedSpecies(co2)
        .SetSolvent(h2o)
-       .SetHenrysLawConstant(HenrysLawConstant(
+       .SetHenryLawConstant(HenryLawConstant(
            { .HLC_ref_ = 3.4e-2 }))       // mol m-3 Pa-1 at 298 K
        .SetDiffusionCoefficient(1.5e-5)    // m2 s-1
        .SetAccommodationCoefficient(5.0e-6)

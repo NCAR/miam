@@ -7,7 +7,7 @@
 
 #include <miam/miam.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
-#include <miam/processes/constants/henrys_law_constant.hpp>
+#include <miam/processes/constants/henry_law_constant.hpp>
 
 #include <micm/CPU.hpp>
 #include <micm/util/jacobian_verification.hpp>
@@ -288,7 +288,7 @@ TEST(JacobianVerification, HenryLawPhaseTransferProcess)
                       .SetGasSpecies(A_g)
                       .SetCondensedSpecies(A_aq)
                       .SetSolvent(H2O)
-                      .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                      .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC_val }))
                       .SetDiffusionCoefficient(D_g)
                       .SetAccommodationCoefficient(alpha)
                       .Build();
@@ -343,7 +343,7 @@ TEST(JacobianVerification, HenryLawPhaseTransferTwoMomentMode)
                       .SetGasSpecies(A_g)
                       .SetCondensedSpecies(A_aq)
                       .SetSolvent(H2O)
-                      .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                      .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC_val }))
                       .SetDiffusionCoefficient(D_g)
                       .SetAccommodationCoefficient(alpha)
                       .Build();
@@ -540,7 +540,7 @@ TEST(JacobianVerification, HenryLawEquilibriumConstraint)
                            .SetCondensedSpecies(A_aq)
                            .SetSolvent(H2O)
                            .SetCondensedPhase(aqueous_phase)
-                           .SetHenryLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+                           .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC }))
                            .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -663,7 +663,7 @@ TEST(JacobianVerification, HenryLawEquilibriumWithConservation)
                            .SetCondensedSpecies(A_aq)
                            .SetSolvent(H2O)
                            .SetCondensedPhase(aqueous_phase)
-                           .SetHenryLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+                           .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC }))
                            .Build();
 
   double total = 1.0;

@@ -33,7 +33,7 @@
 
 #include <miam/miam.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
-#include <miam/processes/constants/henrys_law_constant.hpp>
+#include <miam/processes/constants/henry_law_constant.hpp>
 
 #include <micm/CPU.hpp>
 #include <micm/util/constants.hpp>
@@ -244,7 +244,7 @@ TEST(AqueousCarbonicAcid, KineticODE)
                       .SetGasSpecies(sys.CO2_g)
                       .SetCondensedSpecies(sys.CO2_aq)
                       .SetSolvent(sys.H2O)
-                      .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = K_H }))
+                      .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = K_H }))
                       .SetDiffusionCoefficient(D_CO2)
                       .SetAccommodationCoefficient(alpha)
                       .Build();
@@ -428,7 +428,7 @@ TEST(AqueousCarbonicAcid, DAEConstraints)
                            .SetGasSpecies(sys.CO2_g)
                            .SetCondensedSpecies(sys.CO2_aq)
                            .SetSolvent(sys.H2O)
-                           .SetHenryLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = K_H }))
+                           .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = K_H }))
                            .Build();
 
   // OH-: water autodissociation equilibrium

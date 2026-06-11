@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <miam/miam.hpp>
-#include <miam/processes/constants/henrys_law_constant.hpp>
+#include <miam/processes/constants/henry_law_constant.hpp>
 
 #include <micm/CPU.hpp>
 #include <micm/util/constants.hpp>
@@ -83,7 +83,7 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
                       .SetGasSpecies(A_g)
                       .SetCondensedSpecies(A_aq)
                       .SetSolvent(H2O)
-                      .SetHenrysLawConstant(miam::HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                      .SetHenryLawConstant(miam::HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC_val }))
                       .SetDiffusionCoefficient(D_g)
                       .SetAccommodationCoefficient(alpha)
                       .Build();
@@ -218,7 +218,7 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
                       .SetGasSpecies(A_g)
                       .SetCondensedSpecies(A_aq)
                       .SetSolvent(H2O)
-                      .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                      .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC_val }))
                       .SetDiffusionCoefficient(D_g)
                       .SetAccommodationCoefficient(alpha)
                       .Build();
@@ -321,7 +321,7 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
 
   auto droplet = SingleMomentMode{ "DROP", { aqueous_phase }, 5.0e-6, 1.2 };
 
-  HenrysLawConstantParameters hlc_params{ .HLC_ref_ = HLC_ref, .C_ = C, .T0_ = T0 };
+  HenryLawConstantParameters hlc_params{ .HLC_ref_ = HLC_ref, .C_ = C, .T0_ = T0 };
 
   auto build_transfer = [&]()
   {
@@ -330,7 +330,7 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
         .SetGasSpecies(A_g)
         .SetCondensedSpecies(A_aq)
         .SetSolvent(H2O)
-        .SetHenrysLawConstant(HenrysLawConstant(hlc_params))
+        .SetHenryLawConstant(HenryLawConstant(hlc_params))
         .SetDiffusionCoefficient(D_g)
         .SetAccommodationCoefficient(alpha)
         .Build();
@@ -443,7 +443,7 @@ TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(H2O)
-                        .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                        .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC_val }))
                         .SetDiffusionCoefficient(D_g)
                         .SetAccommodationCoefficient(alpha)
                         .Build();

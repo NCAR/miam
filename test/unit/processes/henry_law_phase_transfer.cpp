@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <miam/math/condensation_rate.hpp>
-#include <miam/processes/constants/henrys_law_constant.hpp>
+#include <miam/processes/constants/henry_law_constant.hpp>
 #include <miam/processes/henry_law_phase_transfer.hpp>
 #include <miam/processes/henry_law_phase_transfer_builder.hpp>
 
@@ -1864,18 +1864,18 @@ TEST(HenryLawPhaseTransfer, JacobianFDKitchenSink)
 
 TEST(HenryLawPhaseTransferBuilder, BuildSuccess)
 {
-  HenrysLawConstantParameters hlc_params;
+  HenryLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
   hlc_params.C_ = 2400.0;
   hlc_params.T0_ = 298.15;
-  HenrysLawConstant hlc(hlc_params);
+  HenryLawConstant hlc(hlc_params);
 
   auto process = HenryLawPhaseTransferBuilder()
                      .SetCondensedPhase(MakeAqueousPhase())
                      .SetGasSpecies(MakeGasSpecies())
                      .SetCondensedSpecies(MakeCondensedSpecies())
                      .SetSolvent(MakeSolvent())
-                     .SetHenrysLawConstant(hlc)
+                     .SetHenryLawConstant(hlc)
                      .SetDiffusionCoefficient(D_g)
                      .SetAccommodationCoefficient(alpha)
                      .Build();
@@ -1891,16 +1891,16 @@ TEST(HenryLawPhaseTransferBuilder, BuildSuccess)
 
 TEST(HenryLawPhaseTransferBuilder, MissingCondensedPhaseThrows)
 {
-  HenrysLawConstantParameters hlc_params;
+  HenryLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
-  HenrysLawConstant hlc(hlc_params);
+  HenryLawConstant hlc(hlc_params);
 
   EXPECT_THROW(
       HenryLawPhaseTransferBuilder()
           .SetGasSpecies(MakeGasSpecies())
           .SetCondensedSpecies(MakeCondensedSpecies())
           .SetSolvent(MakeSolvent())
-          .SetHenrysLawConstant(hlc)
+          .SetHenryLawConstant(hlc)
           .SetDiffusionCoefficient(D_g)
           .SetAccommodationCoefficient(alpha)
           .Build(),
@@ -1909,16 +1909,16 @@ TEST(HenryLawPhaseTransferBuilder, MissingCondensedPhaseThrows)
 
 TEST(HenryLawPhaseTransferBuilder, MissingGasSpeciesThrows)
 {
-  HenrysLawConstantParameters hlc_params;
+  HenryLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
-  HenrysLawConstant hlc(hlc_params);
+  HenryLawConstant hlc(hlc_params);
 
   EXPECT_THROW(
       HenryLawPhaseTransferBuilder()
           .SetCondensedPhase(MakeAqueousPhase())
           .SetCondensedSpecies(MakeCondensedSpecies())
           .SetSolvent(MakeSolvent())
-          .SetHenrysLawConstant(hlc)
+          .SetHenryLawConstant(hlc)
           .SetDiffusionCoefficient(D_g)
           .SetAccommodationCoefficient(alpha)
           .Build(),
@@ -1941,9 +1941,9 @@ TEST(HenryLawPhaseTransferBuilder, MissingHLCThrows)
 
 TEST(HenryLawPhaseTransferBuilder, MissingDiffusionCoefficientThrows)
 {
-  HenrysLawConstantParameters hlc_params;
+  HenryLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
-  HenrysLawConstant hlc(hlc_params);
+  HenryLawConstant hlc(hlc_params);
 
   EXPECT_THROW(
       HenryLawPhaseTransferBuilder()
@@ -1951,7 +1951,7 @@ TEST(HenryLawPhaseTransferBuilder, MissingDiffusionCoefficientThrows)
           .SetGasSpecies(MakeGasSpecies())
           .SetCondensedSpecies(MakeCondensedSpecies())
           .SetSolvent(MakeSolvent())
-          .SetHenrysLawConstant(hlc)
+          .SetHenryLawConstant(hlc)
           .SetAccommodationCoefficient(alpha)
           .Build(),
       std::runtime_error);
@@ -1959,9 +1959,9 @@ TEST(HenryLawPhaseTransferBuilder, MissingDiffusionCoefficientThrows)
 
 TEST(HenryLawPhaseTransferBuilder, MissingAccommodationCoefficientThrows)
 {
-  HenrysLawConstantParameters hlc_params;
+  HenryLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
-  HenrysLawConstant hlc(hlc_params);
+  HenryLawConstant hlc(hlc_params);
 
   EXPECT_THROW(
       HenryLawPhaseTransferBuilder()
@@ -1969,7 +1969,7 @@ TEST(HenryLawPhaseTransferBuilder, MissingAccommodationCoefficientThrows)
           .SetGasSpecies(MakeGasSpecies())
           .SetCondensedSpecies(MakeCondensedSpecies())
           .SetSolvent(MakeSolvent())
-          .SetHenrysLawConstant(hlc)
+          .SetHenryLawConstant(hlc)
           .SetDiffusionCoefficient(D_g)
           .Build(),
       std::runtime_error);
@@ -1977,18 +1977,18 @@ TEST(HenryLawPhaseTransferBuilder, MissingAccommodationCoefficientThrows)
 
 TEST(HenryLawPhaseTransferBuilder, BuiltProcessHLCWorks)
 {
-  HenrysLawConstantParameters hlc_params;
+  HenryLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
   hlc_params.C_ = 2400.0;
   hlc_params.T0_ = 298.15;
-  HenrysLawConstant hlc(hlc_params);
+  HenryLawConstant hlc(hlc_params);
 
   auto process = HenryLawPhaseTransferBuilder()
                      .SetCondensedPhase(MakeAqueousPhase())
                      .SetGasSpecies(MakeGasSpecies())
                      .SetCondensedSpecies(MakeCondensedSpecies())
                      .SetSolvent(MakeSolvent())
-                     .SetHenrysLawConstant(hlc)
+                     .SetHenryLawConstant(hlc)
                      .SetDiffusionCoefficient(D_g)
                      .SetAccommodationCoefficient(alpha)
                      .Build();

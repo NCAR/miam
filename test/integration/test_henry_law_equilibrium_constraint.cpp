@@ -4,7 +4,7 @@
 // Integration tests for HenryLawEquilibriumConstraint with the MICM DAE solver.
 
 #include <miam/miam.hpp>
-#include <miam/processes/constants/henrys_law_constant.hpp>
+#include <miam/processes/constants/henry_law_constant.hpp>
 
 #include <micm/CPU.hpp>
 
@@ -75,7 +75,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
                            .SetCondensedSpecies(A_aq)
                            .SetSolvent(H2O)
                            .SetCondensedPhase(aqueous_phase)
-                           .SetHenryLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+                           .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC }))
                            .Build();
 
   // Mass conservation: [Precursor] + [A_g] + [A_aq] = total, A_g algebraic (global)
@@ -213,7 +213,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
                            .SetCondensedSpecies(A_aq)
                            .SetSolvent(H2O)
                            .SetCondensedPhase(aqueous_phase)
-                           .SetHenryLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+                           .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC }))
                            .Build();
 
   double P0 = 1.0;
