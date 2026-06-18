@@ -12,11 +12,25 @@
 #include <micm/system/conditions.hpp>
 
 #include <functional>
+#include <map>
+#include <set>
+#include <string>
 
 namespace miam
 {
   /// @brief A dissolved reversible reaction builder
   /// @details Builder class for constructing DissolvedReversibleReaction objects.
+  ///
+  ///          Forward and reverse rate constants are configured per representation prefix (via
+  ///          AddForwardRateConstant / AddReverseRateConstant), mirroring DissolvedReactionBuilder,
+  ///          because the kinetics may differ between aerosol representations. The equilibrium
+  ///          constant, by contrast, is an intrinsic thermodynamic property and is set once for the
+  ///          whole reaction (via SetEquilibriumConstant).
+  ///
+  ///          For each representation prefix, exactly two of {forward rate constant, reverse rate
+  ///          constant, equilibrium constant} must be determinable; the third is derived. Because
+  ///          the equilibrium constant is shared, supplying it plus either a forward or reverse rate
+  ///          constant per prefix is the common case.
   class DissolvedReversibleReactionBuilder
   {
    public:
@@ -60,31 +74,33 @@ namespace miam
       return *this;
     }
 
-    /// @brief Sets the forward rate constant function
-    DissolvedReversibleReactionBuilder& SetForwardRateConstant(const auto& forward_rate_constant)
+    /// @brief Adds a forward rate constant for a specific representation prefix
+    DissolvedReversibleReactionBuilder& AddForwardRateConstant(const std::string& prefix, const auto& forward_rate_constant)
     {
-      forward_rate_constant_ = [forward_rate_constant](const micm::Conditions& conditions)
+      forward_rate_constants_[prefix] = [forward_rate_constant](const micm::Conditions& conditions)
       { return forward_rate_constant.Calculate(conditions); };
       return *this;
     }
 
-    /// @brief Sets the reverse rate constant function
-    DissolvedReversibleReactionBuilder& SetReverseRateConstant(const auto& reverse_rate_constant)
+    /// @brief Adds a reverse rate constant for a specific representation prefix
+    DissolvedReversibleReactionBuilder& AddReverseRateConstant(const std::string& prefix, const auto& reverse_rate_constant)
     {
-      reverse_rate_constant_ = [reverse_rate_constant](const micm::Conditions& conditions)
+      reverse_rate_constants_[prefix] = [reverse_rate_constant](const micm::Conditions& conditions)
       { return reverse_rate_constant.Calculate(conditions); };
       return *this;
     }
 
-    /// @brief Sets the reverse rate constant from Arrhenius parameters
-    DissolvedReversibleReactionBuilder& SetReverseRateConstant(const micm::ArrheniusRateConstantParameters& params)
+    /// @brief Adds a reverse rate constant from Arrhenius parameters for a specific representation prefix
+    DissolvedReversibleReactionBuilder& AddReverseRateConstant(
+        const std::string& prefix,
+        const micm::ArrheniusRateConstantParameters& params)
     {
-      reverse_rate_constant_ = [params](const micm::Conditions& conditions)
+      reverse_rate_constants_[prefix] = [params](const micm::Conditions& conditions)
       { return micm::CalculateArrhenius(params, conditions.temperature_, conditions.pressure_); };
       return *this;
     }
 
-    /// @brief Sets the equilibrium constant function
+    /// @brief Sets the (shared, intrinsic) equilibrium constant function
     DissolvedReversibleReactionBuilder& SetEquilibriumConstant(const auto& equilibrium_constant)
     {
       equilibrium_constant_ = [equilibrium_constant](const micm::Conditions& conditions)
@@ -95,22 +111,6 @@ namespace miam
     /// @brief Builds and returns the DissolvedReversibleReaction object
     DissolvedReversibleReaction Build() const
     {
-      // Check that exactly two of the three rate constant/equilibrium constant functions are set
-      int num_set = 0;
-      if (forward_rate_constant_)
-        ++num_set;
-      if (reverse_rate_constant_)
-        ++num_set;
-      if (equilibrium_constant_)
-        ++num_set;
-      if (num_set != 2)
-      {
-        throw MiamException(
-            MIAM_ERROR_CATEGORY_CONFIGURATION,
-            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
-            "DissolvedReversibleReactionBuilder requires exactly two of forward rate constant, reverse rate constant, or "
-            "equilibrium constant to be set.");
-      }
       if (reactants_.empty())
       {
         throw MiamException(
@@ -139,36 +139,60 @@ namespace miam
             MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
             "DissolvedReversibleReactionBuilder requires the solvent to be set.");
       }
-      // If equilibrium constant is set, compute the missing rate constant
-      if (equilibrium_constant_)
+
+      // Collect the set of representation prefixes that have at least one rate constant configured
+      std::set<std::string> prefixes;
+      for (const auto& [prefix, fn] : forward_rate_constants_)
+        prefixes.insert(prefix);
+      for (const auto& [prefix, fn] : reverse_rate_constants_)
+        prefixes.insert(prefix);
+      if (prefixes.empty())
       {
-        if (!forward_rate_constant_)
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_CONFIGURATION,
+            MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+            "DissolvedReversibleReactionBuilder requires at least one forward or reverse rate constant via "
+            "AddForwardRateConstant/AddReverseRateConstant.");
+      }
+
+      // For each prefix, require exactly two of {forward, reverse, equilibrium} and derive the third.
+      // The equilibrium constant is shared across all prefixes.
+      std::map<std::string, std::function<double(const micm::Conditions&)>> forward = forward_rate_constants_;
+      std::map<std::string, std::function<double(const micm::Conditions&)>> reverse = reverse_rate_constants_;
+      const bool has_eq = static_cast<bool>(equilibrium_constant_);
+      for (const auto& prefix : prefixes)
+      {
+        const bool has_fwd = forward.count(prefix) > 0;
+        const bool has_rev = reverse.count(prefix) > 0;
+        const int num_set = (has_fwd ? 1 : 0) + (has_rev ? 1 : 0) + (has_eq ? 1 : 0);
+        if (num_set != 2)
         {
-          // Capture the necessary functions by value to avoid dangling references
-          auto eq_const = equilibrium_constant_;
-          auto rev_const = reverse_rate_constant_;
-          forward_rate_constant_ = [eq_const, rev_const](const micm::Conditions& conditions)
-          {
-            double K_eq = eq_const(conditions);
-            double k_r = rev_const(conditions);
-            return K_eq * k_r;
-          };
+          throw MiamException(
+              MIAM_ERROR_CATEGORY_CONFIGURATION,
+              MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
+              "DissolvedReversibleReactionBuilder: for representation '" + prefix +
+                  "', exactly two of forward rate constant, reverse rate constant, or equilibrium constant must be set.");
         }
-        else if (!reverse_rate_constant_)
+        if (has_eq)
         {
-          // Capture the necessary functions by value to avoid dangling references
-          auto eq_const = equilibrium_constant_;
-          auto fwd_const = forward_rate_constant_;
-          reverse_rate_constant_ = [eq_const, fwd_const](const micm::Conditions& conditions)
+          if (!has_fwd)
           {
-            double K_eq = eq_const(conditions);
-            double k_f = fwd_const(conditions);
-            return k_f / K_eq;
-          };
+            auto eq_const = equilibrium_constant_;
+            auto rev_const = reverse.at(prefix);
+            forward[prefix] = [eq_const, rev_const](const micm::Conditions& conditions)
+            { return eq_const(conditions) * rev_const(conditions); };
+          }
+          else if (!has_rev)
+          {
+            auto eq_const = equilibrium_constant_;
+            auto fwd_const = forward.at(prefix);
+            reverse[prefix] = [eq_const, fwd_const](const micm::Conditions& conditions)
+            { return fwd_const(conditions) / eq_const(conditions); };
+          }
         }
       }
-      return DissolvedReversibleReaction(
-          forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_);
+
+      return DissolvedReversibleReaction(forward, reverse, reactants_, products_, solvent_, phase_, solvent_floor_);
     }
 
    private:
@@ -178,12 +202,12 @@ namespace miam
     std::vector<micm::Species> products_;   ///< Product species
     micm::Species solvent_;                 ///< Solvent species
     bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
-    mutable std::function<double(const micm::Conditions& conditions)>
-        forward_rate_constant_;  ///< Forward rate constant function
-    mutable std::function<double(const micm::Conditions& conditions)>
-        reverse_rate_constant_;  ///< Reverse rate constant function
-    mutable std::function<double(const micm::Conditions& conditions)>
-        equilibrium_constant_;         ///< Equilibrium constant function
+    std::map<std::string, std::function<double(const micm::Conditions& conditions)>>
+        forward_rate_constants_;  ///< Per-prefix forward rate constant functions
+    std::map<std::string, std::function<double(const micm::Conditions& conditions)>>
+        reverse_rate_constants_;  ///< Per-prefix reverse rate constant functions
+    std::function<double(const micm::Conditions& conditions)>
+        equilibrium_constant_;         ///< Shared equilibrium constant function (intrinsic, representation-independent)
     double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
   };
 }  // namespace miam

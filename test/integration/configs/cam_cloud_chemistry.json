@@ -99,9 +99,8 @@
         { "species name": "SO2OOHm", "coefficient": 1 },
         { "species name": "H2O",     "coefficient": 1 }
       ],
-      "forward rate constant": {
-        "A": 3.184e8,
-        "C": 4430.0
+      "forward rate constants": {
+        "CLOUD": { "A": 3.184e8, "C": 4430.0 }
       },
       "equilibrium constant": {
         "A": 1725.0
@@ -120,9 +119,8 @@
       "products": [
         { "species name": "SO4mm", "coefficient": 1 }
       ],
-      "rate constant": {
-        "A": 1.333e8,
-        "C": 4430.0
+      "rate constants": {
+        "CLOUD": { "A": 1.333e8, "C": 4430.0 }
       }
     },
     {
