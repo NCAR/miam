@@ -22,15 +22,12 @@ namespace miam
   /// @details Builder class for constructing DissolvedReversibleReaction objects.
   ///
   ///          Forward and reverse rate constants are configured per representation prefix (via
-  ///          AddForwardRateConstant / AddReverseRateConstant), mirroring DissolvedReactionBuilder,
-  ///          because the kinetics may differ between aerosol representations. The equilibrium
-  ///          constant, by contrast, is an intrinsic thermodynamic property and is set once for the
-  ///          whole reaction (via SetEquilibriumConstant).
+  ///          AddForwardRateConstant / AddReverseRateConstant), because the kinetics may differ 
+  ///          between aerosol representations. The equilibrium constant, by contrast, is an intrinsic
+  ///          thermodynamic property and is set once for the whole reaction (via SetEquilibriumConstant).
   ///
   ///          For each representation prefix, exactly two of {forward rate constant, reverse rate
-  ///          constant, equilibrium constant} must be determinable; the third is derived. Because
-  ///          the equilibrium constant is shared, supplying it plus either a forward or reverse rate
-  ///          constant per prefix is the common case.
+  ///          constant, equilibrium constant} must be determinable; the third is derived.
   class DissolvedReversibleReactionBuilder
   {
    public:
@@ -100,7 +97,7 @@ namespace miam
       return *this;
     }
 
-    /// @brief Sets the (shared, intrinsic) equilibrium constant function
+    /// @brief Sets the (shared) equilibrium constant function
     DissolvedReversibleReactionBuilder& SetEquilibriumConstant(const auto& equilibrium_constant)
     {
       equilibrium_constant_ = [equilibrium_constant](const micm::Conditions& conditions)
@@ -207,7 +204,7 @@ namespace miam
     std::map<std::string, std::function<double(const micm::Conditions& conditions)>>
         reverse_rate_constants_;  ///< Per-prefix reverse rate constant functions
     std::function<double(const micm::Conditions& conditions)>
-        equilibrium_constant_;         ///< Shared equilibrium constant function (intrinsic, representation-independent)
+        equilibrium_constant_;         ///< Shared equilibrium constant function (representation-independent)
     double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
   };
 }  // namespace miam
