@@ -131,47 +131,6 @@ TEST(LinearConstraint, ResidualGlobal)
   EXPECT_NEAR(residual[0][0], 10.0, 1.0e-12);
 }
 
-// ── Representation-qualified term: instanced term restricted to a single representation ──
-
-TEST(LinearConstraint, RepresentationQualifiedTermGlobal)
-{
-  // G = [A_g] + [A_aq @ LARGE only] - C   (SMALL's A_aq is deliberately excluded)
-  LinearConstraint constraint(
-      gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0, "LARGE" } }, 80.0);
-
-  std::map<std::string, std::set<std::string>> phase_prefixes;
-  phase_prefixes["AQUEOUS"].insert("LARGE");
-  phase_prefixes["AQUEOUS"].insert("SMALL");
-
-  // Dependencies and Jacobian sparsity must exclude SMALL
-  auto deps = constraint.ConstraintSpeciesDependencies(phase_prefixes);
-  EXPECT_EQ(deps.size(), 2);
-  EXPECT_TRUE(deps.count("A_g"));
-  EXPECT_TRUE(deps.count("LARGE.AQUEOUS.A_aq"));
-  EXPECT_FALSE(deps.count("SMALL.AQUEOUS.A_aq"));
-
-  std::unordered_map<std::string, std::size_t> state_indices;
-  state_indices["A_g"] = 0;
-  state_indices["LARGE.AQUEOUS.A_aq"] = 1;
-  state_indices["SMALL.AQUEOUS.A_aq"] = 2;
-
-  auto elements = constraint.NonZeroConstraintJacobianElements(phase_prefixes, state_indices);
-  EXPECT_EQ(elements.size(), 2);
-  EXPECT_TRUE(elements.count({ 0, 0 }));
-  EXPECT_TRUE(elements.count({ 0, 1 }));
-  EXPECT_FALSE(elements.count({ 0, 2 }));  // SMALL excluded
-
-  auto residual_fn = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_indices, state_indices);
-  DMP state_variables{ 1, 3, 0.0 };
-  state_variables[0][0] = 50.0;   // [A_g]
-  state_variables[0][1] = 30.0;   // LARGE [A_aq]
-  state_variables[0][2] = 999.0;  // SMALL [A_aq] — must NOT contribute
-  DMP residual{ 1, 3, 0.0 };
-  residual_fn(state_variables, no_params, residual);
-  // G = 50 + 30 - 80 = 0; SMALL's 999 is ignored
-  EXPECT_NEAR(residual[0][0], 0.0, 1.0e-12);
-}
-
 TEST(LinearConstraint, JacobianGlobal)
 {
   LinearConstraint constraint(gas_phase, A_g, { { gas_phase, A_g, 1.0 }, { aqueous_phase, A_aq, 1.0 } }, 100.0);

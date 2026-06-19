@@ -53,8 +53,6 @@ namespace miam
       micm::Phase phase;
       micm::Species species;
       double coefficient;
-      std::string representation;  ///< Optional: restrict an instanced-phase term to this single representation
-                                   ///< prefix. Empty (default) sums over all representations holding the phase.
     };
 
     micm::Phase algebraic_phase_;        ///< Phase of the algebraic variable
@@ -122,8 +120,6 @@ namespace miam
         {
           for (const auto& prefix : phase_it->second)
           {
-            if (!term.representation.empty() && term.representation != prefix)
-              continue;  // term restricted to a single representation
             species_names.insert(prefix + "." + term.phase.name_ + "." + term.species.name_);
           }
         }
@@ -154,8 +150,6 @@ namespace miam
           {
             for (const auto& prefix : phase_it->second)
             {
-              if (!term.representation.empty() && term.representation != prefix)
-                continue;  // term restricted to a single representation
               std::size_t col = state_variable_indices.at(prefix + "." + term.phase.name_ + "." + term.species.name_);
               elements.insert({ alg_row, col });
             }
@@ -180,9 +174,8 @@ namespace miam
             auto phase_it = phase_prefixes.find(term.phase.name_);
             if (phase_it != phase_prefixes.end())
             {
-              // Same instanced phase as algebraic: use this instance, unless the term pins a representation
-              const std::string& use_prefix = term.representation.empty() ? prefix : term.representation;
-              std::size_t col = state_variable_indices.at(use_prefix + "." + term.phase.name_ + "." + term.species.name_);
+              // Same instanced phase as algebraic: use only this instance
+              std::size_t col = state_variable_indices.at(prefix + "." + term.phase.name_ + "." + term.species.name_);
               elements.insert({ alg_row, col });
             }
             else
@@ -572,8 +565,6 @@ namespace miam
         {
           for (const auto& prefix : phase_it->second)
           {
-            if (!term.representation.empty() && term.representation != prefix)
-              continue;  // term restricted to a single representation
             std::size_t idx = state_variable_indices.at(prefix + "." + term.phase.name_ + "." + term.species.name_);
             resolved.push_back({ idx, term.coefficient });
           }
@@ -604,9 +595,8 @@ namespace miam
           auto phase_it = phase_prefixes.find(term.phase.name_);
           if (phase_it != phase_prefixes.end())
           {
-            // Match the instance prefix for this term's phase, unless the term pins a specific representation
-            const std::string& use_prefix = term.representation.empty() ? alg_prefix : term.representation;
-            std::size_t idx = state_variable_indices.at(use_prefix + "." + term.phase.name_ + "." + term.species.name_);
+            // Match the instance prefix for this term's phase
+            std::size_t idx = state_variable_indices.at(alg_prefix + "." + term.phase.name_ + "." + term.species.name_);
             per_instance[i_inst].push_back({ idx, term.coefficient });
           }
           else

@@ -27,20 +27,7 @@ namespace miam
 
     LinearConstraintBuilder& AddTerm(const micm::Phase& phase, const micm::Species& species, double coefficient)
     {
-      terms_.push_back({ phase, species, coefficient, "" });
-      return *this;
-    }
-
-    /// @brief Adds a term restricted to a single aerosol representation.
-    /// @details Only meaningful for instanced (condensed) phases. The term contributes only the named
-    ///          representation's variable instead of summing over all representations holding the phase.
-    LinearConstraintBuilder& AddTerm(
-        const micm::Phase& phase,
-        const micm::Species& species,
-        double coefficient,
-        const std::string& representation)
-    {
-      terms_.push_back({ phase, species, coefficient, representation });
+      terms_.push_back({ phase, species, coefficient });
       return *this;
     }
 
