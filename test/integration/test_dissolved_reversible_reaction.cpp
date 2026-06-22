@@ -57,8 +57,8 @@ TEST(DissolvedReversibleReactionIntegration, SimpleAtoB)
   auto reverse_rate = [k_reverse](const Conditions& conditions) { return k_reverse; };
 
   // Create reversible reaction: A <-> B with solvent C
-  auto reaction = DissolvedReversibleReaction{ forward_rate,
-                                               reverse_rate,
+  auto reaction = DissolvedReversibleReaction{ { { "DROPLET", forward_rate } },
+                                               { { "DROPLET", reverse_rate } },
                                                { A },  // reactants
                                                { B },  // products
                                                C,      // solvent
@@ -179,8 +179,8 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsReactant)
   auto reverse_rate = [k_reverse](const Conditions& conditions) { return k_reverse; };
 
   // Create reversible reaction: A + C <-> B with solvent C
-  auto reaction = DissolvedReversibleReaction{ forward_rate,
-                                               reverse_rate,
+  auto reaction = DissolvedReversibleReaction{ { { "DROPLET", forward_rate } },
+                                               { { "DROPLET", reverse_rate } },
                                                { A, C },  // reactants: A + C
                                                { B },     // products: B
                                                C,         // solvent
@@ -309,8 +309,8 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsProduct)
   // Create reversible reaction: A ⇌ B + C with solvent C
   // Forward: k_f/[C]^0 × [A] = k_f × [A] (no solvent dependence)
   // Reverse: k_r/[C]^1 × [B] × [C] = k_r × [B] (C cancels)
-  auto reaction = DissolvedReversibleReaction{ forward_rate,
-                                               reverse_rate,
+  auto reaction = DissolvedReversibleReaction{ { { "DROPLET", forward_rate } },
+                                               { { "DROPLET", reverse_rate } },
                                                { A },     // reactants: A
                                                { B, C },  // products: B + C
                                                C,         // solvent
@@ -440,8 +440,8 @@ TEST(DissolvedReversibleReactionIntegration, MultiPhaseInstances)
   auto reverse_rate_small = [k_reverse_small](const Conditions& conditions) { return k_reverse_small; };
 
   // Create reaction for small droplets: A ⇌ B
-  auto reaction_small = DissolvedReversibleReaction{ forward_rate_small,
-                                                     reverse_rate_small,
+  auto reaction_small = DissolvedReversibleReaction{ { { "DROPLET_SMALL", forward_rate_small } },
+                                                     { { "DROPLET_SMALL", reverse_rate_small } },
                                                      { A },  // reactants
                                                      { B },  // products
                                                      C,      // solvent
@@ -455,8 +455,8 @@ TEST(DissolvedReversibleReactionIntegration, MultiPhaseInstances)
   auto reverse_rate_large = [k_reverse_large](const Conditions& conditions) { return k_reverse_large; };
 
   // Create reaction for large droplets: A ⇌ B
-  auto reaction_large = DissolvedReversibleReaction{ forward_rate_large,
-                                                     reverse_rate_large,
+  auto reaction_large = DissolvedReversibleReaction{ { { "DROPLET_LARGE", forward_rate_large } },
+                                                     { { "DROPLET_LARGE", reverse_rate_large } },
                                                      { A },  // reactants
                                                      { B },  // products
                                                      C,      // solvent

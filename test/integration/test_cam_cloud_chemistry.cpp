@@ -1287,7 +1287,7 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
                    .SetReactants({ hso3m, h2o2_aq })
                    .SetProducts({ so2oohm, h2o })
                    .SetSolvent(h2o)
-                   .SetForwardRateConstant(EquilibriumConstant({ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 }))
+                   .AddForwardRateConstant("CLOUD", EquilibriumConstant({ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 }))
                    .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1725.0 }))
                    .Build();
 
@@ -1615,7 +1615,7 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
                    .SetReactants({ hso3m, h2o2_aq })
                    .SetProducts({ so2oohm, h2o })
                    .SetSolvent(h2o)
-                   .SetForwardRateConstant(EquilibriumConstant({ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 }))
+                   .AddForwardRateConstant("CLOUD", EquilibriumConstant({ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 }))
                    .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1725.0 }))
                    .Build();
 
@@ -1888,7 +1888,7 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
                    .SetReactants({ hso3m, h2o2_aq })
                    .SetProducts({ so2oohm, h2o })
                    .SetSolvent(h2o)
-                   .SetForwardRateConstant(EquilibriumConstant({ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 }))
+                   .AddForwardRateConstant("CLOUD", EquilibriumConstant({ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 }))
                    .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1725.0 }))
                    .Build();
 

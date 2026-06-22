@@ -136,7 +136,10 @@ TEST(MIAM, ApiExample)
                               .SetSolvent(h2o)
                               .SetEquilibriumConstant(EquilibriumConstant(
                                   EquilibriumConstantParameters{ .A_ = 1.14e-2, .C_ = 2300.0, .T0_ = 298.15 }))
-                              .SetReverseRateConstant(ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
+                              .AddReverseRateConstant("SMALL_DROP", ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
+                              .AddReverseRateConstant("LARGE_DROP", ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
+                              .AddReverseRateConstant("AITKEN", ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
+                              .AddReverseRateConstant("ACCUMULATION", ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
                               .Build();
 
   // Condensed phase reversible reaction: CO2 hydration
@@ -150,7 +153,10 @@ TEST(MIAM, ApiExample)
                            .SetSolvent(h2o)
                            .SetEquilibriumConstant(EquilibriumConstant(
                                EquilibriumConstantParameters{ .A_ = 1.70e3, .C_ = 2400.0, .T0_ = 298.15 }))
-                           .SetReverseRateConstant(ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
+                           .AddReverseRateConstant("SMALL_DROP", ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
+                           .AddReverseRateConstant("LARGE_DROP", ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
+                           .AddReverseRateConstant("AITKEN", ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
+                           .AddReverseRateConstant("ACCUMULATION", ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
                            .Build();
 
   // Condensed phase reversible reaction: H2CO3 dissociation
@@ -164,7 +170,10 @@ TEST(MIAM, ApiExample)
                                 .SetSolvent(h2o)
                                 .SetEquilibriumConstant(EquilibriumConstant(
                                     EquilibriumConstantParameters{ .A_ = 4.27e2, .C_ = 2300.0, .T0_ = 298.15 }))
-                                .SetReverseRateConstant(ArrheniusRateConstantParameters{ .A_ = 2.5e10, .C_ = 4.0e4 })
+                                .AddReverseRateConstant("SMALL_DROP", ArrheniusRateConstantParameters{ .A_ = 2.5e10, .C_ = 4.0e4 })
+                                .AddReverseRateConstant("LARGE_DROP", ArrheniusRateConstantParameters{ .A_ = 2.5e10, .C_ = 4.0e4 })
+                                .AddReverseRateConstant("AITKEN", ArrheniusRateConstantParameters{ .A_ = 2.5e10, .C_ = 4.0e4 })
+                                .AddReverseRateConstant("ACCUMULATION", ArrheniusRateConstantParameters{ .A_ = 2.5e10, .C_ = 4.0e4 })
                                 .Build();
 
   // Condensed phase reversible reaction: HCO3- dissociation
@@ -178,7 +187,10 @@ TEST(MIAM, ApiExample)
                                 .SetSolvent(h2o)
                                 .SetEquilibriumConstant(EquilibriumConstant(
                                     EquilibriumConstantParameters{ .A_ = 1.70e1, .C_ = 2300.0, .T0_ = 298.15 }))
-                                .SetReverseRateConstant(ArrheniusRateConstantParameters{ .A_ = 6.4e9, .C_ = 3.1e4 })
+                                .AddReverseRateConstant("SMALL_DROP", ArrheniusRateConstantParameters{ .A_ = 6.4e9, .C_ = 3.1e4 })
+                                .AddReverseRateConstant("LARGE_DROP", ArrheniusRateConstantParameters{ .A_ = 6.4e9, .C_ = 3.1e4 })
+                                .AddReverseRateConstant("AITKEN", ArrheniusRateConstantParameters{ .A_ = 6.4e9, .C_ = 3.1e4 })
+                                .AddReverseRateConstant("ACCUMULATION", ArrheniusRateConstantParameters{ .A_ = 6.4e9, .C_ = 3.1e4 })
                                 .Build();
 
   std::vector<DissolvedReversibleReaction> reactions{ //    co2_photo,
