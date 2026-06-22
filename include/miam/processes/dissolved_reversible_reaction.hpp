@@ -54,12 +54,12 @@ namespace miam
     std::map<std::string, std::function<double(const micm::Conditions& conditions)>>
         forward_rate_constants_;  ///< Forward rate constant functions keyed by representation prefix
     std::map<std::string, std::function<double(const micm::Conditions& conditions)>>
-        reverse_rate_constants_;             ///< Reverse rate constant functions keyed by representation prefix
-    std::vector<micm::Species> reactants_;   ///< Reactant species
-    std::vector<micm::Species> products_;    ///< Product species
-    micm::Species solvent_;                  ///< Solvent species
-    micm::Phase phase_;                      ///< Phase in which the reaction occurs
-    std::string uuid_;                       ///< Unique identifier for the reaction
+        reverse_rate_constants_;            ///< Reverse rate constant functions keyed by representation prefix
+    std::vector<micm::Species> reactants_;  ///< Reactant species
+    std::vector<micm::Species> products_;   ///< Product species
+    micm::Species solvent_;                 ///< Solvent species
+    micm::Phase phase_;                     ///< Phase in which the reaction occurs
+    std::string uuid_;                      ///< Unique identifier for the reaction
     double solvent_floor_{
       1.0e-20
     };  ///< Floor [mol m⁻³] added to [S] in ([S]+δ)^n denominator to prevent singularity as [S] → 0
@@ -277,15 +277,13 @@ namespace miam
           throw MiamException(
               MIAM_ERROR_CATEGORY_CONFIGURATION,
               MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
-              "DissolvedReversibleReaction: No forward rate constant configured for representation prefix '" + prefix +
-                  "'");
+              "DissolvedReversibleReaction: No forward rate constant configured for representation prefix '" + prefix + "'");
         auto reverse_it = reverse_rate_constants_.find(prefix);
         if (reverse_it == reverse_rate_constants_.end())
           throw MiamException(
               MIAM_ERROR_CATEGORY_CONFIGURATION,
               MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
-              "DissolvedReversibleReaction: No reverse rate constant configured for representation prefix '" + prefix +
-                  "'");
+              "DissolvedReversibleReaction: No reverse rate constant configured for representation prefix '" + prefix + "'");
         forward_slots.push_back({ state_parameter_indices.at(forward_param), forward_it->second });
         reverse_slots.push_back({ state_parameter_indices.at(reverse_param), reverse_it->second });
       }

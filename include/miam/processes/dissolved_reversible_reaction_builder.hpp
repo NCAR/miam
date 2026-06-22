@@ -22,7 +22,7 @@ namespace miam
   /// @details Builder class for constructing DissolvedReversibleReaction objects.
   ///
   ///          Forward and reverse rate constants are configured per representation prefix (via
-  ///          AddForwardRateConstant / AddReverseRateConstant), because the kinetics may differ 
+  ///          AddForwardRateConstant / AddReverseRateConstant), because the kinetics may differ
   ///          between aerosol representations. The equilibrium constant, by contrast, is an intrinsic
   ///          thermodynamic property and is set once for the whole reaction (via SetEquilibriumConstant).
   ///
