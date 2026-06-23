@@ -3,16 +3,16 @@
   "name": "CAM Cloud Chemistry",
 
   "species": [
-    { "name": "SO2",    "molecular weight [kg mol-1]": 0.06407 },
-    { "name": "H2O2",   "molecular weight [kg mol-1]": 0.03401 },
-    { "name": "O3",     "molecular weight [kg mol-1]": 0.04800 },
-    { "name": "Hp",     "molecular weight [kg mol-1]": 0.00101 },
-    { "name": "OHm",    "molecular weight [kg mol-1]": 0.01701 },
-    { "name": "HSO3m",  "molecular weight [kg mol-1]": 0.08107 },
-    { "name": "SO3mm",  "molecular weight [kg mol-1]": 0.08007 },
-    { "name": "SO4mm",  "molecular weight [kg mol-1]": 0.09607 },
+    { "name": "SO2",     "molecular weight [kg mol-1]": 0.06407 },
+    { "name": "H2O2",    "molecular weight [kg mol-1]": 0.03401 },
+    { "name": "O3",      "molecular weight [kg mol-1]": 0.04800 },
+    { "name": "Hp",      "molecular weight [kg mol-1]": 0.00101 },
+    { "name": "OHm",     "molecular weight [kg mol-1]": 0.01701 },
+    { "name": "HSO3m",   "molecular weight [kg mol-1]": 0.08107 },
+    { "name": "SO3mm",   "molecular weight [kg mol-1]": 0.08007 },
+    { "name": "SO4mm",   "molecular weight [kg mol-1]": 0.09607 },
     { "name": "SO2OOHm", "molecular weight [kg mol-1]": 0.11307 },
-    { "name": "H2O",    "molecular weight [kg mol-1]": 0.01801 }
+    { "name": "H2O",     "molecular weight [kg mol-1]": 0.01801 }
   ],
 
   "phases": [
@@ -56,7 +56,8 @@
       "solvent": "H2O",
       "Henry's law constant": {
         "HLC_ref [mol m-3 Pa-1]": 1.214e-2,
-        "C [K]": 3120.0
+        "C [K]": 3120.0,
+        "T0 [K]": 298.15
       }
     },
     {
@@ -69,7 +70,8 @@
       "solvent": "H2O",
       "Henry's law constant": {
         "HLC_ref [mol m-3 Pa-1]": 7.306e2,
-        "C [K]": 6621.0
+        "C [K]": 6621.0,
+        "T0 [K]": 298.15
       }
     },
     {
@@ -82,7 +84,8 @@
       "solvent": "H2O",
       "Henry's law constant": {
         "HLC_ref [mol m-3 Pa-1]": 1.135e-4,
-        "C [K]": 2560.0
+        "C [K]": 2560.0,
+        "T0 [K]": 298.15
       }
     },
     {
@@ -92,18 +95,18 @@
       "condensed phase": "AQUEOUS",
       "solvent": "H2O",
       "reactants": [
-        { "species name": "HSO3m", "coefficient": 1 },
-        { "species name": "H2O2",  "coefficient": 1 }
+        { "species": "HSO3m", "coefficient": 1 },
+        { "species": "H2O2",  "coefficient": 1 }
       ],
       "products": [
-        { "species name": "SO2OOHm", "coefficient": 1 },
-        { "species name": "H2O",     "coefficient": 1 }
+        { "species": "SO2OOHm", "coefficient": 1 },
+        { "species": "H2O",     "coefficient": 1 }
       ],
       "forward rate constants": {
-        "CLOUD": { "A": 3.184e8, "C": 4430.0 }
+        "CLOUD": { "type": "ARRHENIUS_REFERENCE_T", "A": 3.184e8, "C [K]": 4430.0, "T0 [K]": 298.15 }
       },
       "equilibrium constant": {
-        "A": 1725.0
+        "type": "ARRHENIUS_REFERENCE_T", "A": 1725.0, "C [K]": 0.0, "T0 [K]": 298.15
       }
     },
     {
@@ -120,7 +123,7 @@
         { "species name": "SO4mm", "coefficient": 1 }
       ],
       "rate constants": {
-        "CLOUD": { "A": 1.333e8, "C": 4430.0 }
+        "CLOUD": { "type": "ARRHENIUS_REFERENCE_T", "A": 1.333e8, "C [K]": 4430.0, "T0 [K]": 298.15 }
       }
     },
     {
@@ -129,16 +132,15 @@
       "condensed phase": "AQUEOUS",
       "solvent": "H2O",
       "reactants": [
-        { "species name": "H2O", "coefficient": 2 }
+        { "species": "H2O", "coefficient": 2 }
       ],
       "products": [
-        { "species name": "Hp",  "coefficient": 1 },
-        { "species name": "OHm", "coefficient": 1 }
+        { "species": "Hp",  "coefficient": 1 },
+        { "species": "OHm", "coefficient": 1 }
       ],
       "algebraic species": "OHm",
       "equilibrium constant": {
-        "A": 3.24e-18,
-        "C": 0.0
+        "type": "ARRHENIUS_REFERENCE_T", "A": 3.24e-18, "C [K]": 0.0, "T0 [K]": 298.15
       }
     },
     {
@@ -147,16 +149,15 @@
       "condensed phase": "AQUEOUS",
       "solvent": "H2O",
       "reactants": [
-        { "species name": "SO2", "coefficient": 1 }
+        { "species": "SO2", "coefficient": 1 }
       ],
       "products": [
-        { "species name": "Hp",    "coefficient": 1 },
-        { "species name": "HSO3m", "coefficient": 1 }
+        { "species": "Hp",    "coefficient": 1 },
+        { "species": "HSO3m", "coefficient": 1 }
       ],
       "algebraic species": "HSO3m",
       "equilibrium constant": {
-        "A": 3.06e-4,
-        "C": 2090.0
+        "type": "ARRHENIUS_REFERENCE_T", "A": 3.06e-4, "C [K]": 2090.0, "T0 [K]": 298.15
       }
     },
     {
@@ -165,22 +166,20 @@
       "condensed phase": "AQUEOUS",
       "solvent": "H2O",
       "reactants": [
-        { "species name": "HSO3m", "coefficient": 1 }
+        { "species": "HSO3m", "coefficient": 1 }
       ],
       "products": [
-        { "species name": "Hp",    "coefficient": 1 },
-        { "species name": "SO3mm", "coefficient": 1 }
+        { "species": "Hp",    "coefficient": 1 },
+        { "species": "SO3mm", "coefficient": 1 }
       ],
       "algebraic species": "SO3mm",
       "equilibrium constant": {
-        "A": 1.08e-9,
-        "C": 1120.0
+        "type": "ARRHENIUS_REFERENCE_T", "A": 1.08e-9, "C [K]": 1120.0, "T0 [K]": 298.15
       }
     },
     {
-      "__comment": "Mass conservation: total S in reversible pool (includes SO2OOH-)",
+      "__comment": "Mass conservation: total sulfur in reversible pool (includes SO2OOH-)",
       "type": "LINEAR_CONSTRAINT",
-      "name": "sulfur conservation",
       "algebraic phase": "gas",
       "algebraic species": "SO2",
       "diagnose from state": true,
@@ -195,7 +194,6 @@
     {
       "__comment": "Mass conservation: total H2O2",
       "type": "LINEAR_CONSTRAINT",
-      "name": "H2O2 conservation",
       "algebraic phase": "gas",
       "algebraic species": "H2O2",
       "diagnose from state": true,
@@ -207,7 +205,6 @@
     {
       "__comment": "Mass conservation: total O3",
       "type": "LINEAR_CONSTRAINT",
-      "name": "O3 conservation",
       "algebraic phase": "gas",
       "algebraic species": "O3",
       "diagnose from state": true,
@@ -219,7 +216,6 @@
     {
       "__comment": "Charge balance: H+ = OH- + HSO3- + 2 SO3-- + 2 SO4-- + SO2OOH-",
       "type": "LINEAR_CONSTRAINT",
-      "name": "charge balance",
       "algebraic phase": "AQUEOUS",
       "algebraic species": "Hp",
       "constant [mol m-3]": 0.0,
