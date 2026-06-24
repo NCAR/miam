@@ -79,6 +79,16 @@ namespace miam
       return *this;
     }
 
+    /// @brief Adds a forward rate constant from Arrhenius parameters for a specific representation prefix
+    DissolvedReversibleReactionBuilder& AddForwardRateConstant(
+        const std::string& prefix,
+        const micm::ArrheniusRateConstantParameters& params)
+    {
+      forward_rate_constants_[prefix] = [params](const micm::Conditions& conditions)
+      { return micm::CalculateArrhenius(params, conditions.temperature_, conditions.pressure_); };
+      return *this;
+    }
+
     /// @brief Adds a reverse rate constant for a specific representation prefix
     DissolvedReversibleReactionBuilder& AddReverseRateConstant(const std::string& prefix, const auto& reverse_rate_constant)
     {
