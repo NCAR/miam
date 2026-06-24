@@ -57,7 +57,7 @@ namespace miam
     double Calculate(const double& temperature) const
     {
       // HLC = HLC_ref * exp( C * (1/T - 1/T0) ) = HLC_ref * exp( -C * (1/T0 - 1/T) ),
-      // i.e. the same van 't Hoff kernel with C negated (solubility rises as T falls).
+      // van 't Hoff kernel with C negated
       return CalculateVantHoff({ parameters_.HLC_ref_, -parameters_.C_, parameters_.T0_ }, temperature);
     }
   };
