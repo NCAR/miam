@@ -17,6 +17,15 @@ if(MIAM_ENABLE_TESTS)
   # Don't run clang-tidy on google test
   set_target_properties(gtest PROPERTIES CXX_CLANG_TIDY "")
   set_target_properties(gtest_main PROPERTIES CXX_CLANG_TIDY "")
+
+  # GoogleTest builds with warnings-as-errors.
+  # Suppress Clang's C++20 char8_t conversion warning in GoogleTest only.
+  foreach(_gtest_target IN ITEMS gtest gtest_main)
+    if(TARGET ${_gtest_target})
+      target_compile_options(${_gtest_target} PRIVATE
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-character-conversion>)
+    endif()
+  endforeach()
 endif()
 
 ################################################################################
