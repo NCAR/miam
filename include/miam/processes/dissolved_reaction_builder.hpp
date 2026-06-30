@@ -7,6 +7,8 @@
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 
+#include <micm/process/rate_constant/arrhenius_rate_constant.hpp>
+#include <micm/process/rate_constant/rate_constant_functions.hpp>
 #include <micm/system/conditions.hpp>
 
 #include <functional>
@@ -76,6 +78,16 @@ namespace miam
         std::function<double(const micm::Conditions&)> rate_constant)
     {
       rate_constants_[prefix] = std::move(rate_constant);
+      return *this;
+    }
+
+    /// @brief Adds an Arrhenius rate constant for a specific representation prefix
+    DissolvedReactionBuilder& AddRateConstant(
+        const std::string& prefix,
+        const micm::ArrheniusRateConstantParameters& params)
+    {
+      rate_constants_[prefix] = [params](const micm::Conditions& conditions)
+      { return micm::CalculateArrhenius(params, conditions.temperature_, conditions.pressure_); };
       return *this;
     }
 

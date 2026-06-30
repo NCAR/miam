@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <miam/processes/constants/vant_hoff.hpp>
+
 #include <micm/system/conditions.hpp>
 
 #include <cmath>
@@ -61,7 +63,8 @@ namespace miam
     /// @return An equilibrium constant
     double Calculate(const double& temperature) const
     {
-      return parameters_.A_ * std::exp(parameters_.C_ * (1.0 / parameters_.T0_ - 1.0 / temperature));
+      // K_eq = A * exp( C * (1/T0 - 1/T) ) — the van 't Hoff form used directly.
+      return CalculateVantHoff({ parameters_.A_, parameters_.C_, parameters_.T0_ }, temperature);
     }
   };
 }  // namespace miam

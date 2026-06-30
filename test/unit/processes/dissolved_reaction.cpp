@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <miam/processes/dissolved_reaction.hpp>
+#include <miam/processes/dissolved_reaction_builder.hpp>
 
+#include <micm/process/rate_constant/arrhenius_rate_constant.hpp>
+#include <micm/process/rate_constant/rate_constant_functions.hpp>
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
@@ -1458,4 +1461,35 @@ TEST(DissolvedReaction, JacobianFDCappedBimolecular)
   vars[0][3] = 50.0;
 
   CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
+}
+
+// Verify the builder's ArrheniusRateConstantParameters overload produces a rate function
+// numerically equal to micm::CalculateArrhenius for the same parameters.
+TEST(DissolvedReaction, BuilderArrheniusRateConstantOverload)
+{
+  auto a = micm::Species{ "A" };
+  auto b = micm::Species{ "B" };
+  auto s = micm::Species{ "S" };
+  auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
+
+  micm::ArrheniusRateConstantParameters params{ .A_ = 1.333e8, .C_ = 4430.0 };
+
+  auto reaction = DissolvedReactionBuilder{}
+                      .SetPhase(phase)
+                      .SetReactants({ a })
+                      .SetProducts({ b })
+                      .SetSolvent(s)
+                      .AddRateConstant("CLOUD", params)
+                      .Build();
+
+  ASSERT_EQ(reaction.rate_constants_.count("CLOUD"), 1u);
+
+  micm::Conditions conditions{};
+  for (double temperature : { 250.0, 287.45, 320.0 })
+  {
+    conditions.temperature_ = temperature;
+    conditions.pressure_ = 101325.0;
+    const double expected = micm::CalculateArrhenius(params, conditions.temperature_, conditions.pressure_);
+    EXPECT_DOUBLE_EQ(reaction.rate_constants_.at("CLOUD")(conditions), expected);
+  }
 }

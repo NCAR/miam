@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <miam/processes/constants/vant_hoff.hpp>
+
 #include <micm/system/conditions.hpp>
 
 #include <cmath>
@@ -54,7 +56,9 @@ namespace miam
     /// @return A Henry's Law constant [mol m⁻³ Pa⁻¹]
     double Calculate(const double& temperature) const
     {
-      return parameters_.HLC_ref_ * std::exp(parameters_.C_ * (1.0 / temperature - 1.0 / parameters_.T0_));
+      // HLC = HLC_ref * exp( C * (1/T - 1/T0) ) = HLC_ref * exp( -C * (1/T0 - 1/T) ),
+      // van 't Hoff kernel with C negated
+      return CalculateVantHoff({ parameters_.HLC_ref_, -parameters_.C_, parameters_.T0_ }, temperature);
     }
   };
 }  // namespace miam
