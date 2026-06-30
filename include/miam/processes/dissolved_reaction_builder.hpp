@@ -82,9 +82,7 @@ namespace miam
     }
 
     /// @brief Adds an Arrhenius rate constant for a specific representation prefix
-    DissolvedReactionBuilder& AddRateConstant(
-        const std::string& prefix,
-        const micm::ArrheniusRateConstantParameters& params)
+    DissolvedReactionBuilder& AddRateConstant(const std::string& prefix, const micm::ArrheniusRateConstantParameters& params)
     {
       rate_constants_[prefix] = [params](const micm::Conditions& conditions)
       { return micm::CalculateArrhenius(params, conditions.temperature_, conditions.pressure_); };
