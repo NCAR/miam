@@ -50,9 +50,15 @@ of **mol m⁻³ of air**. This includes the solvent (e.g. cloud liquid water).
 
 ### Dissolved-phase rate expression
 
-For a dissolved reaction with *n*_r reactants, MIAM computes the rate as:
+MIAM computes the rate of a dissolved reaction as:
 
 > *r* = *k* / [S]^(*n*_r − 1) × ∏[R_i]
+
+where:
+- *n*_r is the **number of reactants** in the reaction
+- *n*_p is the **number of products** in the reaction (used in the
+  equilibrium-constant conversion below)
+- [S] is the solvent concentration and [R_i] are the reactant concentrations
 
 The solvent-normalization factor [S]^(*n*_r − 1) absorbs the concentration
 dimensions, so *k* is always in units of s⁻¹ regardless of reaction order.
