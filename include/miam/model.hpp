@@ -609,7 +609,9 @@ namespace miam
           if (prefixes.size() != expected_count_it->second)
           {
             throw std::runtime_error(
-                "Internal Error: PhaseStatePrefixes: Non-unique state variable prefixes detected for phase " + phase_name);
+                "PhaseStatePrefixes: Non-unique state variable prefixes detected for phase " + phase_name +
+                 ". Check your representation and phase names for duplicates."
+            );
           }
         }
       }

@@ -227,30 +227,18 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
   auto H2O = MakeCondensedSpecies("H2O", solvent_molecular_weight, solvent_density);
 
   Phase gas_phase{ "GAS", { { A_g } } };
-  Phase aqueous_small{ "AQ_SMALL", { { A_aq }, { H2O } } };
-  Phase aqueous_large{ "AQ_LARGE", { { A_aq }, { H2O } } };
+  Phase aqueous{ "AQUEOUS", { { A_aq }, { H2O } } };
 
   auto small_drop = representation::SingleMomentMode{
-    "SMALL", { aqueous_small }, 1.0e-6, 1.2
+    "SMALL", { aqueous }, 1.0e-6, 1.2
   };
   auto large_drop = representation::SingleMomentMode{
-    "LARGE", { aqueous_large }, 1.0e-5, 1.4
+    "LARGE", { aqueous }, 1.0e-5, 1.4
   };
 
-  // Build two transfer processes — one for each phase
-  auto transfer_small = process::HenryLawPhaseTransferBuilder()
-      .SetCondensedPhase(aqueous_small)
-      .SetGasSpecies(A_g)
-      .SetCondensedSpecies(A_aq)
-      .SetSolvent(H2O)
-      .SetHenrysLawConstant(process::constant::HenrysLawConstant(
-          process::constant::HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
-      .SetDiffusionCoefficient(D_g)
-      .SetAccommodationCoefficient(alpha)
-      .Build();
-
-  auto transfer_large = process::HenryLawPhaseTransferBuilder()
-      .SetCondensedPhase(aqueous_large)
+  // Build one transfer process that gets applied to both phase instances
+  auto transfer = process::HenryLawPhaseTransferBuilder()
+      .SetCondensedPhase(aqueous)
       .SetGasSpecies(A_g)
       .SetCondensedSpecies(A_aq)
       .SetSolvent(H2O)
@@ -264,8 +252,7 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
     .name_ = "CLOUD",
     .representations_ = { small_drop, large_drop }
   };
-  model.AddProcesses({ transfer_small });
-  model.AddProcesses({ transfer_large });
+  model.AddProcesses({ transfer });
 
   auto system = System(gas_phase, model);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
@@ -284,10 +271,10 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
   };
 
   std::size_t i_gas = find_idx("A_g");
-  std::size_t i_aq_small = find_idx("SMALL.AQ_SMALL.A_aq");
-  std::size_t i_h2o_small = find_idx("SMALL.AQ_SMALL.H2O");
-  std::size_t i_aq_large = find_idx("LARGE.AQ_LARGE.A_aq");
-  std::size_t i_h2o_large = find_idx("LARGE.AQ_LARGE.H2O");
+  std::size_t i_aq_small = find_idx("SMALL.AQUEOUS.A_aq");
+  std::size_t i_h2o_small = find_idx("SMALL.AQUEOUS.H2O");
+  std::size_t i_aq_large = find_idx("LARGE.AQUEOUS.A_aq");
+  std::size_t i_h2o_large = find_idx("LARGE.AQUEOUS.H2O");
 
   double gas_0 = 1.0e-2;
   double solvent = 0.017;

@@ -339,7 +339,7 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
 }
 
 // ============================================================================
-// Test 4: Multi-Phase Instances (two droplet populations, different rates)
+// Test 4: Multi-Phase Instances (two droplet populations)
 // ============================================================================
 TEST(DissolvedReactionIntegration, MultiPhaseInstances)
 {
@@ -347,46 +347,35 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
   auto B = Species{ "B" };
   auto C = Species{ "C" };  // solvent
 
-  auto small_aqueous = Phase{ "AQUEOUS_SMALL", { { A }, { B }, { C } } };
-  auto large_aqueous = Phase{ "AQUEOUS_LARGE", { { A }, { B }, { C } } };
+  auto aqueous = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
 
   auto small_droplet = representation::UniformSection{
     "DROPLET_SMALL",
-    { small_aqueous }
+    { aqueous }
   };
-
   auto large_droplet = representation::UniformSection{
     "DROPLET_LARGE",
-    { large_aqueous }
+    { aqueous }
   };
 
-  double k_small = 0.1;
-  double k_large = 0.2;
 
-  auto rate_small = [k_small](const Conditions& conditions) { return k_small; };
-  auto rate_large = [k_large](const Conditions& conditions) { return k_large; };
-
-  auto reaction_small = process::DissolvedReaction{
-    rate_small,
+  double k = 0.1;
+  
+  auto k_calc = [k](const Conditions& conditions) { return k; };
+  
+  auto reaction = process::DissolvedReaction{
+    k_calc,
     { A },
     { B },
     C,
-    small_aqueous
-  };
-
-  auto reaction_large = process::DissolvedReaction{
-    rate_large,
-    { A },
-    { B },
-    C,
-    large_aqueous
+    aqueous
   };
 
   auto model = Model{
     .name_ = "AEROSOL",
     .representations_ = { small_droplet, large_droplet }
   };
-  model.AddProcesses({ reaction_small, reaction_large });
+  model.AddProcesses({ reaction });
 
   Phase gas_phase{ "GAS", {} };
 
@@ -403,18 +392,18 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
   State state = solver.GetState();
 
   std::size_t i_A_small = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_SMALL.AQUEOUS_SMALL.A") - state.variable_names_.begin();
+                                     "DROPLET_SMALL.AQUEOUS.A") - state.variable_names_.begin();
   std::size_t i_B_small = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_SMALL.AQUEOUS_SMALL.B") - state.variable_names_.begin();
+                                     "DROPLET_SMALL.AQUEOUS.B") - state.variable_names_.begin();
   std::size_t i_C_small = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_SMALL.AQUEOUS_SMALL.C") - state.variable_names_.begin();
+                                     "DROPLET_SMALL.AQUEOUS.C") - state.variable_names_.begin();
 
   std::size_t i_A_large = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_LARGE.AQUEOUS_LARGE.A") - state.variable_names_.begin();
+                                     "DROPLET_LARGE.AQUEOUS.A") - state.variable_names_.begin();
   std::size_t i_B_large = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_LARGE.AQUEOUS_LARGE.B") - state.variable_names_.begin();
+                                     "DROPLET_LARGE.AQUEOUS.B") - state.variable_names_.begin();
   std::size_t i_C_large = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_LARGE.AQUEOUS_LARGE.C") - state.variable_names_.begin();
+                                     "DROPLET_LARGE.AQUEOUS.C") - state.variable_names_.begin();
 
   state.variables_[0][i_A_small] = A0_small;
   state.variables_[0][i_B_small] = 0.0;
@@ -453,11 +442,11 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
     double A_num_lg = state.variables_[0][i_A_large];
     double B_num_lg = state.variables_[0][i_B_large];
 
-    double A_ana_sm = A0_small * std::exp(-k_small * time);
-    double B_ana_sm = A0_small * (1.0 - std::exp(-k_small * time));
+    double A_ana_sm = A0_small * std::exp(-k * time);
+    double B_ana_sm = A0_small * (1.0 - std::exp(-k * time));
 
-    double A_ana_lg = A0_large * std::exp(-k_large * time);
-    double B_ana_lg = A0_large * (1.0 - std::exp(-k_large * time));
+    double A_ana_lg = A0_large * std::exp(-k * time);
+    double B_ana_lg = A0_large * (1.0 - std::exp(-k * time));
 
     EXPECT_NEAR(A_num_sm, A_ana_sm, tolerance)
       << "Small droplet A mismatch at t = " << time << " s";
@@ -478,11 +467,11 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
     EXPECT_NEAR(state.variables_[0][i_C_large], 1.0e-4, tolerance);
   }
 
-  // Large droplets should decay faster (k_large > k_small)
+  // Large droplets should decay at the same rate
   double A_final_small = state.variables_[0][i_A_small];
   double A_final_large = state.variables_[0][i_A_large];
-  EXPECT_LT(A_final_large / A0_large, A_final_small / A0_small)
-    << "Large droplets should have decayed more";
+  EXPECT_NEAR(A_final_large / A0_large, A_final_small / A0_small, A0_large * 1.0e-5)
+    << "Large and small droplet species concetrations should change at the same rate";
 }
 
 // ============================================================================

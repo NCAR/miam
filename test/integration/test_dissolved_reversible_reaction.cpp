@@ -460,88 +460,67 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsProduct) {
 }
 
 // Test 4: Multi-Phase Instances
-// Tests two independent droplet populations with same reaction but different parameters
+// Tests two independent droplet populations with same phase
 TEST(DissolvedReversibleReactionIntegration, MultiPhaseInstances) {
-  // Two independent droplet populations:
-  // - Small droplets: faster reaction
-  // - Large droplets: even faster reaction (same K_eq but faster kinetics)
   
   auto A = Species{ "A" };
   auto B = Species{ "B" };
   auto C = Species{ "C" };  // solvent
   
   // Define aqueous phases for both droplet sizes
-  auto small_aqueous = Phase{ "AQUEOUS_SMALL", { { A }, { B }, { C } } };
-  auto large_aqueous = Phase{ "AQUEOUS_LARGE", { { A }, { B }, { C } } };
+  auto aqueous = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
   
   // Define representations
   auto small_droplet = representation::UniformSection{
     "DROPLET_SMALL",
-    { small_aqueous }
+    { aqueous }
   };
   
   auto large_droplet = representation::UniformSection{
     "DROPLET_LARGE",
-    { large_aqueous }
+    { aqueous }
   };
   
   // Rate constants for small droplets
-  double k_forward_small = 0.1;   // s^-1
-  double k_reverse_small = 0.05;  // s^-1
+  double k_forward = 0.1;   // s^-1
+  double k_reverse = 0.05;  // s^-1
   
-  auto forward_rate_small = [k_forward_small](const Conditions& conditions) { return k_forward_small; };
-  auto reverse_rate_small = [k_reverse_small](const Conditions& conditions) { return k_reverse_small; };
+  auto k_forward_calc = [k_forward](const Conditions& conditions) { return k_forward; };
+  auto k_reverse_calc = [k_reverse](const Conditions& conditions) { return k_reverse; };
   
   // Create reaction for small droplets: A ⇌ B
-  auto reaction_small = process::DissolvedReversibleReaction{
-    forward_rate_small,
-    reverse_rate_small,
+  auto reaction = process::DissolvedReversibleReaction{
+    k_forward_calc,
+    k_reverse_calc,
     { A },  // reactants
     { B },  // products
     C,      // solvent
-    small_aqueous
+    aqueous
   };
-  
-  // Rate constants for large droplets (2x faster, same K_eq)
-  double k_forward_large = 0.2;   // s^-1
-  double k_reverse_large = 0.1;   // s^-1
-  
-  auto forward_rate_large = [k_forward_large](const Conditions& conditions) { return k_forward_large; };
-  auto reverse_rate_large = [k_reverse_large](const Conditions& conditions) { return k_reverse_large; };
-  
-  // Create reaction for large droplets: A ⇌ B
-  auto reaction_large = process::DissolvedReversibleReaction{
-    forward_rate_large,
-    reverse_rate_large,
-    { A },  // reactants
-    { B },  // products
-    C,      // solvent
-    large_aqueous
-  };
-  
+    
   // Create model with both representations
   auto model = Model{
     .name_ = "AEROSOL",
     .representations_ = { small_droplet, large_droplet }
   };
-  model.AddProcesses({ reaction_small, reaction_large });
+  model.AddProcesses({ reaction });
   
   Phase gas_phase{ "GAS", {} };
   
   // Test parameters for small droplets
   double A0_small = 1.0;  // mol/m^3
-  double K_eq_small = k_forward_small / k_reverse_small;  // 2.0
+  double K_eq_small = k_forward / k_reverse;  // 2.0
   double A_eq_small = A0_small / (1.0 + K_eq_small);
   double B_eq_small = A0_small * K_eq_small / (1.0 + K_eq_small);
-  double k_total_small = k_forward_small + k_reverse_small;  // 0.15 s^-1
+  double k_total_small = k_forward + k_reverse;  // 0.15 s^-1
   double tau_small = 1.0 / k_total_small;  // 6.67 s
   
   // Test parameters for large droplets
   double A0_large = 0.5;  // mol/m^3
-  double K_eq_large = k_forward_large / k_reverse_large;  // 2.0 (same as small)
+  double K_eq_large = k_forward / k_reverse;  // 2.0
   double A_eq_large = A0_large / (1.0 + K_eq_large);
   double B_eq_large = A0_large * K_eq_large / (1.0 + K_eq_large);
-  double k_total_large = k_forward_large + k_reverse_large;  // 0.3 s^-1
+  double k_total_large = k_forward + k_reverse;  // 0.3 s^-1
   double tau_large = 1.0 / k_total_large;  // 3.33 s
   
   // Build solver
@@ -557,19 +536,19 @@ TEST(DissolvedReversibleReactionIntegration, MultiPhaseInstances) {
   
   // Find variable indices for small droplets
   std::size_t i_A_small = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_SMALL.AQUEOUS_SMALL.A") - state.variable_names_.begin();
+                                     "DROPLET_SMALL.AQUEOUS.A") - state.variable_names_.begin();
   std::size_t i_B_small = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_SMALL.AQUEOUS_SMALL.B") - state.variable_names_.begin();
+                                     "DROPLET_SMALL.AQUEOUS.B") - state.variable_names_.begin();
   std::size_t i_C_small = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_SMALL.AQUEOUS_SMALL.C") - state.variable_names_.begin();
+                                     "DROPLET_SMALL.AQUEOUS.C") - state.variable_names_.begin();
   
   // Find variable indices for large droplets
   std::size_t i_A_large = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_LARGE.AQUEOUS_LARGE.A") - state.variable_names_.begin();
+                                     "DROPLET_LARGE.AQUEOUS.A") - state.variable_names_.begin();
   std::size_t i_B_large = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_LARGE.AQUEOUS_LARGE.B") - state.variable_names_.begin();
+                                     "DROPLET_LARGE.AQUEOUS.B") - state.variable_names_.begin();
   std::size_t i_C_large = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_LARGE.AQUEOUS_LARGE.C") - state.variable_names_.begin();
+                                     "DROPLET_LARGE.AQUEOUS.C") - state.variable_names_.begin();
   
   // Set initial conditions
   state.variables_[0][i_A_small] = A0_small;

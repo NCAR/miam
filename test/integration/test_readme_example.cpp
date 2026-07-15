@@ -29,15 +29,22 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   Phase gas_phase{ "GAS", { { co2 } } };
   Phase aqueous_phase{ "AQUEOUS", { { co2 }, { h2o } } };
 
-  // Cloud droplets with a single-moment log-normal distribution
-  auto cloud = representation::SingleMomentMode{
-    "CLOUD",
+  // Small cloud droplets with a single-moment log-normal distribution
+  auto cloud_small = representation::SingleMomentMode{
+    "CLOUD_SMALL",
+    { aqueous_phase },
+    5.0e-7,  // geometric mean radius [m]
+    1.4      // geometric standard deviation
+  };
+  auto cloud_large = representation::SingleMomentMode{
+    "CLOUD_LARGE",
     { aqueous_phase },
     5.0e-6,  // geometric mean radius [m]
     1.2      // geometric standard deviation
   };
 
   // Henry's Law phase transfer: CO2(g) <-> CO2(aq)
+  // (gets applied to both aqueous phase instances (in small and large droplets)
   auto co2_transfer = process::HenryLawPhaseTransferBuilder()
     .SetCondensedPhase(aqueous_phase)
     .SetGasSpecies(co2)
@@ -52,7 +59,7 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   // Create model and add processes
   auto cloud_model = Model{
     .name_ = "CLOUD",
-    .representations_ = { cloud }
+    .representations_ = { cloud_small, cloud_large }
   };
   cloud_model.AddProcesses({ co2_transfer });
 
@@ -72,9 +79,11 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   state.conditions_[0].pressure_ = 101325.0;    // Pa
   state.conditions_[0].CalculateIdealAirDensity();
 
-  state[co2] = 1.0e-3;                                  // mol m-3 air
-  state[cloud.Species(aqueous_phase, h2o)] = 0.017;      // mol m-3 air (cloud LWC ~ 0.3 g m-3)
-  cloud.SetDefaultParameters(state);
+  state[co2] = 1.0e-3;                                     // mol m-3 air
+  state[cloud_small.Species(aqueous_phase, h2o)] = 0.017;  // mol m-3 air (cloud LWC ~ 0.3 g m-3)
+  state[cloud_large.Species(aqueous_phase, h2o)] = 0.023;  // mol m-3 air (cloud LWC ~ 0.4 g m-3)
+  cloud_small.SetDefaultParameters(state);
+  cloud_large.SetDefaultParameters(state);
 
   // Capture output
   std::stringstream buffer;
@@ -114,14 +123,18 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   EXPECT_LT(co2_g_final, 1.0e-3) << "Gas CO2 should decrease from initial value";
 
   // 3. Aqueous CO2 should increase from zero
-  double co2_aq_final = state.variables_[0][state.variable_map_["CLOUD.AQUEOUS.CO2"]];
-  EXPECT_GT(co2_aq_final, 0.0) << "Aqueous CO2 should increase from zero";
+  double co2_aq_small_final = state.variables_[0][state.variable_map_["CLOUD_SMALL.AQUEOUS.CO2"]];
+  EXPECT_GT(co2_aq_small_final, 0.0) << "Aqueous CO2 (small drops) should increase from zero";
+  double co2_aq_large_final = state.variables_[0][state.variable_map_["CLOUD_LARGE.AQUEOUS.CO2"]];
+  EXPECT_GT(co2_aq_large_final, 0.0) << "Aqueous CO2 (large drops) should increase from zero";
 
   // 4. Mass conservation: gas + aqueous should equal initial total
-  EXPECT_NEAR(co2_g_final + co2_aq_final, 1.0e-3, 1.0e-6)
+  EXPECT_NEAR(co2_g_final + co2_aq_small_final + co2_aq_large_final, 1.0e-3, 1.0e-6)
       << "Mass conservation violated";
 
   // 5. Water (solvent) should be essentially unchanged
-  double h2o_final = state.variables_[0][state.variable_map_["CLOUD.AQUEOUS.H2O"]];
-  EXPECT_NEAR(h2o_final, 0.017, 1.0e-6) << "Solvent should be approximately conserved";
+  double h2o_small_final = state.variables_[0][state.variable_map_["CLOUD_SMALL.AQUEOUS.H2O"]];
+  EXPECT_NEAR(h2o_small_final, 0.017, 1.0e-6) << "Solvent (small drops) should be approximately conserved";
+  double h2o_large_final = state.variables_[0][state.variable_map_["CLOUD_LARGE.AQUEOUS.H2O"]];
+  EXPECT_NEAR(h2o_large_final, 0.023, 1.0e-6) << "Solvent (large drops) should be approximately conserved";
 }
