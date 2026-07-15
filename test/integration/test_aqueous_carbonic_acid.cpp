@@ -58,7 +58,7 @@ namespace
   constexpr double rho_water = 1000.0;  // kg m-3
 
   // -- Cloud liquid water content ----------------------------------------------
-  constexpr double C_H2O = 0.017;     // mol m-3 air (LWC ~0.3 g m-3)
+  constexpr double C_H2O = 0.017;    // mol m-3 air (LWC ~0.3 g m-3)
   constexpr double c_H2O_M = 55.51;  // mol/L (pure-water molar conc., 1000 g/L / 18.015 g/mol)
 
   // -- Henry's Law constant (CO2) -----------------------------------------------
