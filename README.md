@@ -50,9 +50,15 @@ of **mol m⁻³ of air**. This includes the solvent (e.g. cloud liquid water).
 
 ### Dissolved-phase rate expression
 
-For a dissolved reaction with *n*_r reactants, MIAM computes the rate as:
+MIAM computes the rate of a dissolved reaction as:
 
 > *r* = *k* / [S]^(*n*_r − 1) × ∏[R_i]
+
+where:
+- *n*_r is the **number of reactants** in the reaction
+- *n*_p is the **number of products** in the reaction (used in the
+  equilibrium-constant conversion below)
+- [S] is the solvent concentration and [R_i] are the reactant concentrations
 
 The solvent-normalization factor [S]^(*n*_r − 1) absorbs the concentration
 dimensions, so *k* is always in units of s⁻¹ regardless of reaction order.
@@ -66,15 +72,15 @@ molar (mol L⁻¹) units. To convert to MIAM's *k* and *K*_eq:
 >
 > *K*_eq,MIAM = *K*_lit / *c*_H₂O^(*n*_p − *n*_r)
 
-where *c*_H₂O = 55.556 mol L⁻¹ is the molar concentration of pure liquid
-water (a **fixed** unit-conversion constant, not the cloud water state
-variable), and *K*_lit includes all species — including water — in molar
-concentration units.
+where *c*_H₂O = 55.51 mol L⁻¹ is the molar concentration of pure liquid
+water (1000 g L⁻¹ ÷ 18.015 g mol⁻¹ — a **fixed** unit-conversion constant,
+not the cloud water state variable), and *K*_lit includes all species —
+including water — in molar concentration units.
 
 Examples:
 - Unimolecular (*n*_r = 1): *k*_MIAM = *k*_lit
-- Bimolecular (*n*_r = 2): *k*_MIAM = *k*_lit × 55.556
-- Dissociation A → B + C (*n*_r = 1, *n*_p = 2): *K*_eq = *K*_lit / 55.556
+- Bimolecular (*n*_r = 2): *k*_MIAM = *k*_lit × 55.51
+- Dissociation A → B + C (*n*_r = 1, *n*_p = 2): *K*_eq = *K*_lit / 55.51
 
 # Getting Started
 

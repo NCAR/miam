@@ -15,7 +15,8 @@ namespace miam
   /// @details The pre-exponential factor A_ is the equilibrium constant at the
   ///          reference temperature T0_ in MIAM's solvent-normalized units.
   ///          To convert from a literature value K_lit in molar units:
-  ///          A_ = K_lit / c_H2O^(n_p - n_r), where c_H2O = 55.556 mol/L.
+  ///          A_ = K_lit / c_H2O^(n_p - n_r), where c_H2O = 55.51 mol/L
+  ///          (1000 g/L ÷ 18.015 g/mol).
   ///          After this conversion, A_ is always dimensionless.
   struct EquilibriumConstantParameters
   {

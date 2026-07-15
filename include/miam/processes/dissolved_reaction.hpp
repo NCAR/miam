@@ -47,7 +47,7 @@ namespace miam
   ///          so \f$ k \f$ always has units of s⁻¹. To convert from a literature
   ///          rate constant \f$ k_{lit} \f$ in molar units:
   ///          \f$ k = k_{lit} \times c_{H_2O}^{n_r - 1} \f$
-  ///          where \f$ c_{H_2O} = 55.556 \f$ mol/L.
+  ///          where \f$ c_{H_2O} = 55.51 \f$ mol/L (1000 g/L ÷ 18.015 g/mol).
   ///
   ///          Partial derivatives used in the Jacobian:
   ///          \f[
