@@ -129,7 +129,7 @@ transfer:
 
 ```c++
 #include <miam/miam.hpp>
-#include <miam/processes/constants/henrys_law_constant.hpp>
+#include <miam/processes/constants/henry_law_constant.hpp>
 #include <micm/CPU.hpp>
 
 #include <iomanip>
@@ -152,30 +152,37 @@ int main()
   Phase gas_phase{ "GAS", { { co2 } } };
   Phase aqueous_phase{ "AQUEOUS", { { co2 }, { h2o } } };
 
-  // Cloud droplets with a single-moment log-normal distribution
-  auto cloud = SingleMomentMode{
-    "CLOUD",
+  // Small cloud droplets with a single-moment log-normal distribution
+  auto cloud_small = SingleMomentMode{
+    "CLOUD_SMALL",
+    { aqueous_phase },
+    5.0e-7,  // geometric mean radius [m]
+    1.4      // geometric standard deviation
+  };
+  auto cloud_large = SingleMomentMode{
+    "CLOUD_LARGE",
     { aqueous_phase },
     5.0e-6,  // geometric mean radius [m]
     1.2      // geometric standard deviation
   };
 
   // Henry's Law phase transfer: CO2(g) <-> CO2(aq)
+  // (gets applied to both aqueous phase instances (in small and large droplets)
   auto co2_transfer = HenryLawPhaseTransferBuilder()
     .SetCondensedPhase(aqueous_phase)
     .SetGasSpecies(co2)
     .SetCondensedSpecies(co2)
     .SetSolvent(h2o)
-    .SetHenrysLawConstant(HenrysLawConstant(
+    .SetHenryLawConstant(HenryLawConstant(
         { .HLC_ref_ = 3.4e-2 }))       // mol m-3 Pa-1 at 298 K
     .SetDiffusionCoefficient(1.5e-5)    // m2 s-1
-    .SetAccommodationCoefficient(5.0e-6)
+    .SetAccommodationCoefficient(5.0e-6) // Set artificially low to see transfer over 10 time steps
     .Build();
 
   // Create model and add processes
   auto cloud_model = Model{
     .name_ = "CLOUD",
-    .representations_ = { cloud }
+    .representations_ = { cloud_small, cloud_large }
   };
   cloud_model.AddProcesses({ co2_transfer });
 
@@ -195,16 +202,17 @@ int main()
   state.conditions_[0].pressure_ = 101325.0;    // Pa
   state.conditions_[0].CalculateIdealAirDensity();
 
-  state[co2] = 1.0e-3;                                  // mol m-3 air
-  state[cloud.Species(aqueous_phase, h2o)] = 0.017;      // mol m-3 air (cloud LWC ~ 0.3 g m-3)
-  cloud.SetDefaultParameters(state);
+  state[co2] = 1.0e-3;                                     // mol m-3 air
+  state[cloud_small.Species(aqueous_phase, h2o)] = 0.017;  // mol m-3 air (cloud LWC ~ 0.3 g m-3)
+  state[cloud_large.Species(aqueous_phase, h2o)] = 0.023;  // mol m-3 air (cloud LWC ~ 0.4 g m-3)
+  cloud_small.SetDefaultParameters(state);
+  cloud_large.SetDefaultParameters(state);
 
-  // Integrate
   state.PrintHeader();
   state.PrintState(0);
   for (int i = 1; i <= 10; ++i)
   {
-    solver.CalculateRateConstants(state);
+    solver.UpdateStateParameters(state);
     auto result = solver.Solve(0.1, state);  // 100 ms steps
     state.PrintState(i * 100);
   }
@@ -223,10 +231,18 @@ Henry's Law equilibrium. With realistic cloud liquid water content
 (~0.017 mol m⁻³), only a trace fraction of the gas dissolves:
 
 ```
-  time,                CO2,  CLOUD.AQUEOUS.CO2,  CLOUD.AQUEOUS.H2O
-     0,           1.00e-03,           0.00e+00,           1.70e-02
-   ...
-  1000,           ~1.00e-03,          ~1.0e-08,           1.70e-02
+  time,  CLOUD_LARGE.AQUEOUS.CO2,  CLOUD_LARGE.AQUEOUS.H2O,                      CO2,  CLOUD_SMALL.AQUEOUS.CO2,  CLOUD_SMALL.AQUEOUS.H2O
+     0,                 0.00e+00,                 2.30e-02,                 1.00e-03,                 0.00e+00,                 1.70e-02
+   100,                 1.01e-08,                 2.30e-02,                 1.00e-03,                 2.54e-08,                 1.70e-02
+   200,                 1.73e-08,                 2.30e-02,                 1.00e-03,                 2.58e-08,                 1.70e-02
+   300,                 2.24e-08,                 2.30e-02,                 1.00e-03,                 2.58e-08,                 1.70e-02
+   400,                 2.60e-08,                 2.30e-02,                 1.00e-03,                 2.58e-08,                 1.70e-02
+   500,                 2.86e-08,                 2.30e-02,                 1.00e-03,                 2.58e-08,                 1.70e-02
+   600,                 3.04e-08,                 2.30e-02,                 1.00e-03,                 2.58e-08,                 1.70e-02
+   700,                 3.17e-08,                 2.30e-02,                 1.00e-03,                 2.58e-08,                 1.70e-02
+   800,                 3.26e-08,                 2.30e-02,                 1.00e-03,                 2.58e-08,                 1.70e-02
+   900,                 3.33e-08,                 2.30e-02,                 1.00e-03,                 2.58e-08,                 1.70e-02
+  1000,                 3.38e-08,                 2.30e-02,                 1.00e-03,                 2.58e-08,                 1.70e-02
 ```
 
 See the [MIAM documentation](https://miam.readthedocs.io/) for the full API

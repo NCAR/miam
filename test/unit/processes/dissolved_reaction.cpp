@@ -89,7 +89,7 @@ TEST(DissolvedReaction, SpeciesUsedWithSinglePrefix)
 
   auto rate = [](const micm::Conditions& conditions) { return 0.1; };
 
-  DissolvedReaction reaction{ { { "SMALL_DROP", rate } },
+  DissolvedReaction reaction{ { rate },
                               { a },    // reactants
                               { b },    // products
                               solvent,  // solvent
@@ -118,7 +118,7 @@ TEST(DissolvedReaction, SpeciesUsedWithMultiplePrefixes)
 
   auto rate = [](const micm::Conditions& conditions) { return 0.1; };
 
-  DissolvedReaction reaction{ { { "SMALL_DROP", rate }, { "LARGE_DROP", rate } },
+  DissolvedReaction reaction{ { rate },
                               { a, b },  // reactants
                               { c },     // products
                               solvent,   // solvent
@@ -152,7 +152,7 @@ TEST(DissolvedReaction, SpeciesUsedWithNoMatchingPhase)
 
   auto rate = [](const micm::Conditions& conditions) { return 0.1; };
 
-  DissolvedReaction reaction{ { { "DROP", rate } }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["ORGANIC"].insert("AEROSOL_MODE");
@@ -170,7 +170,7 @@ TEST(DissolvedReaction, SpeciesUsedDuplicateHandling)
 
   auto rate = [](const micm::Conditions& conditions) { return 0.1; };
 
-  DissolvedReaction reaction{ { { "MODE1", rate } },
+  DissolvedReaction reaction{ { rate },
                               { a },  // reactants
                               { b },  // products
                               a,      // solvent (same as reactant)
@@ -206,7 +206,7 @@ TEST(DissolvedReaction, NonZeroJacobianElementsBasic)
 
   auto rate = [](const micm::Conditions& conditions) { return 0.1; };
 
-  DissolvedReaction reaction{ { { "MODE1", rate } },
+  DissolvedReaction reaction{ { rate },
                               { a },     // 1 reactant
                               { b, c },  // 2 products
                               solvent,
@@ -258,7 +258,7 @@ TEST(DissolvedReaction, NonZeroJacobianElementsMultipleReactants)
 
   auto rate = [](const micm::Conditions& conditions) { return 0.1; };
 
-  DissolvedReaction reaction{ { { "DROP", rate } },
+  DissolvedReaction reaction{ { rate },
                               { a, b },  // 2 reactants
                               { c },     // 1 product
                               solvent,
@@ -295,7 +295,7 @@ TEST(DissolvedReaction, NonZeroJacobianElementsMultiplePrefixes)
   auto rate = [](const micm::Conditions& conditions) { return 0.1; };
 
   // A -> B with solvent S
-  DissolvedReaction reaction{ { { "SMALL_DROP", rate }, { "LARGE_DROP", rate } }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL_DROP");
@@ -332,12 +332,12 @@ TEST(DissolvedReaction, UpdateStateParametersFunctionBasic)
   double k = 0.1;
   auto rate = [k](const micm::Conditions& conditions) { return k; };
 
-  DissolvedReaction reaction{ { { "MODE1", rate } }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
 
-  std::string k_param = "MODE1." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
 
   std::unordered_map<std::string, std::size_t> state_parameter_indices;
   state_parameter_indices[k_param] = 0;
@@ -371,12 +371,12 @@ TEST(DissolvedReaction, UpdateStateParametersFunctionTemperatureDependent)
 
   auto rate = [](const micm::Conditions& conditions) { return 0.1 * std::exp(-3000.0 / conditions.temperature_); };
 
-  DissolvedReaction reaction{ { { "DROPLET", rate } }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROPLET");
 
-  std::string k_param = "DROPLET." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
 
   std::unordered_map<std::string, std::size_t> state_parameter_indices;
   state_parameter_indices[k_param] = 0;
@@ -413,7 +413,7 @@ TEST(DissolvedReaction, UpdateStateParametersFunctionMissingParameter)
 
   auto rate = [](const micm::Conditions& conditions) { return 0.1; };
 
-  DissolvedReaction reaction{ { { "MODE1", rate } }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -443,12 +443,12 @@ TEST(DissolvedReaction, ForcingFunctionBasicRates)
   auto rate = [k](const micm::Conditions& conditions) { return k; };
 
   // A -> B with solvent S
-  DissolvedReaction reaction{ { { "MODE1", rate } }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
 
-  std::string k_param = "MODE1." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
 
   std::unordered_map<std::string, std::size_t> state_parameter_indices;
   state_parameter_indices[k_param] = 0;
@@ -499,7 +499,7 @@ TEST(DissolvedReaction, ForcingFunctionSolventNormalization)
   auto rate = [k](const micm::Conditions& conditions) { return k; };
 
   // A + B -> C with solvent S
-  DissolvedReaction reaction{ { { "DROP", rate } },
+  DissolvedReaction reaction{ { rate },
                               { a, b },  // 2 reactants
                               { c },     // 1 product
                               solvent,
@@ -508,7 +508,7 @@ TEST(DissolvedReaction, ForcingFunctionSolventNormalization)
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
 
-  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
 
   std::unordered_map<std::string, std::size_t> state_parameter_indices;
   state_parameter_indices[k_param] = 0;
@@ -559,7 +559,7 @@ TEST(DissolvedReaction, ForcingFunctionMultipleProducts)
   auto rate = [k](const micm::Conditions& conditions) { return k; };
 
   // A -> B + C with solvent S
-  DissolvedReaction reaction{ { { "DROP", rate } },
+  DissolvedReaction reaction{ { rate },
                               { a },     // 1 reactant
                               { b, c },  // 2 products
                               solvent,
@@ -568,7 +568,7 @@ TEST(DissolvedReaction, ForcingFunctionMultipleProducts)
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
 
-  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
 
   std::unordered_map<std::string, std::size_t> state_parameter_indices;
   state_parameter_indices[k_param] = 0;
@@ -617,12 +617,12 @@ TEST(DissolvedReaction, ForcingFunctionMultipleCells)
   double k = 0.1;
   auto rate = [k](const micm::Conditions& conditions) { return k; };
 
-  DissolvedReaction reaction{ { { "MODE1", rate } }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
 
-  std::string k_param = "MODE1." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
 
   std::unordered_map<std::string, std::size_t> state_parameter_indices;
   state_parameter_indices[k_param] = 0;
@@ -673,18 +673,16 @@ TEST(DissolvedReaction, ForcingFunctionMultiplePhaseInstances)
   double k = 0.1;
   auto rate = [k](const micm::Conditions& conditions) { return k; };
 
-  DissolvedReaction reaction{ { { "SMALL_DROP", rate }, { "LARGE_DROP", rate } }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL_DROP");
   phase_prefixes["AQUEOUS"].insert("LARGE_DROP");
 
-  std::string k_small = "SMALL_DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
-  std::string k_large = "LARGE_DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_label = phase.name_ + "." + reaction.uuid_ + ".k";
 
   std::unordered_map<std::string, std::size_t> state_parameter_indices;
-  state_parameter_indices[k_small] = 0;
-  state_parameter_indices[k_large] = 1;
+  state_parameter_indices[k_label] = 0;
 
   std::unordered_map<std::string, std::size_t> state_variable_indices;
   state_variable_indices["SMALL_DROP.AQUEOUS.A"] = 0;
@@ -697,9 +695,8 @@ TEST(DissolvedReaction, ForcingFunctionMultiplePhaseInstances)
   auto forcing_func =
       reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
 
-  MatrixPolicy state_parameters(1, 2);
+  MatrixPolicy state_parameters(1, 1);
   state_parameters[0][0] = k;
-  state_parameters[0][1] = k;
 
   MatrixPolicy state_variables(1, 6);
   // Small drop
@@ -747,12 +744,12 @@ TEST(DissolvedReaction, JacobianFunctionBasicPartials)
   auto rate = [k](const micm::Conditions& conditions) { return k; };
 
   // A -> B with solvent S
-  DissolvedReaction reaction{ { { "MODE1", rate } }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
 
-  std::string k_param = "MODE1." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
 
   std::unordered_map<std::string, std::size_t> state_parameter_indices;
   state_parameter_indices[k_param] = 0;
@@ -815,7 +812,7 @@ TEST(DissolvedReaction, JacobianFunctionMultipleReactants)
   auto rate = [k](const micm::Conditions& conditions) { return k; };
 
   // A + B -> C with solvent S
-  DissolvedReaction reaction{ { { "DROP", rate } },
+  DissolvedReaction reaction{ { rate },
                               { a, b },  // 2 reactants
                               { c },     // 1 product
                               solvent,
@@ -824,7 +821,7 @@ TEST(DissolvedReaction, JacobianFunctionMultipleReactants)
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
 
-  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
 
   std::unordered_map<std::string, std::size_t> state_parameter_indices;
   state_parameter_indices[k_param] = 0;
@@ -903,7 +900,7 @@ TEST(DissolvedReaction, JacobianFunctionSolventPartial)
 
   // A + C -> B with solvent C (solvent is a reactant)
   // n_r = 2, rate = k / [C]^1 * [A] * [C] = k * [A]
-  DissolvedReaction reaction{ { { "MODE1", rate } },
+  DissolvedReaction reaction{ { rate },
                               { a, c },  // 2 reactants (C is also solvent)
                               { b },     // 1 product
                               c,         // solvent = reactant C
@@ -912,7 +909,7 @@ TEST(DissolvedReaction, JacobianFunctionSolventPartial)
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
 
-  std::string k_param = "MODE1." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
 
   std::unordered_map<std::string, std::size_t> state_parameter_indices;
   state_parameter_indices[k_param] = 0;
@@ -976,12 +973,12 @@ TEST(DissolvedReaction, JacobianFDUnimolecular)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
 
   double k = 0.1;
-  DissolvedReaction reaction{ { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a }, { b }, s, phase };
+  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
 
-  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> svi{ { "DROP.AQUEOUS.A", 0 },
                                                     { "DROP.AQUEOUS.B", 1 },
@@ -1007,12 +1004,12 @@ TEST(DissolvedReaction, JacobianFDBimolecular)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { s } } };
 
   double k = 1.0;
-  DissolvedReaction reaction{ { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a, b }, { c }, s, phase };
+  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a, b }, { c }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
 
-  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> svi{
     { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.C", 2 }, { "DROP.AQUEOUS.S", 3 }
@@ -1038,12 +1035,12 @@ TEST(DissolvedReaction, JacobianFDMultiCell)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
 
   double k = 0.5;
-  DissolvedReaction reaction{ { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a }, { b }, s, phase };
+  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
 
-  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> svi{ { "DROP.AQUEOUS.A", 0 },
                                                     { "DROP.AQUEOUS.B", 1 },
@@ -1074,8 +1071,7 @@ TEST(DissolvedReaction, JacobianFDMultiPhaseInstance)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
 
   double k = 0.2;
-  DissolvedReaction reaction{ { { "SMALL", [k](const micm::Conditions&) { return k; } },
-                                { "LARGE", [k](const micm::Conditions&) { return k; } } },
+  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } },
                               { a },
                               { b },
                               s,
@@ -1085,16 +1081,14 @@ TEST(DissolvedReaction, JacobianFDMultiPhaseInstance)
   phase_prefixes["AQUEOUS"].insert("SMALL");
   phase_prefixes["AQUEOUS"].insert("LARGE");
 
-  std::string k_small = "SMALL." + phase.name_ + "." + reaction.uuid_ + ".k";
-  std::string k_large = "LARGE." + phase.name_ + "." + reaction.uuid_ + ".k";
-  std::unordered_map<std::string, std::size_t> spi{ { k_small, 0 }, { k_large, 1 } };
+  std::string k_label = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::unordered_map<std::string, std::size_t> spi{ { k_label, 0 } };
   std::unordered_map<std::string, std::size_t> svi{ { "SMALL.AQUEOUS.A", 0 }, { "SMALL.AQUEOUS.B", 1 },
                                                     { "SMALL.AQUEOUS.S", 2 }, { "LARGE.AQUEOUS.A", 3 },
                                                     { "LARGE.AQUEOUS.B", 4 }, { "LARGE.AQUEOUS.S", 5 } };
 
-  MatrixPolicy params(1, 2);
+  MatrixPolicy params(1, 1);
   params[0][0] = k;
-  params[0][1] = k;
   MatrixPolicy vars(1, 6);
   vars[0][0] = 2.0e-3;
   vars[0][1] = 0.0;
@@ -1115,12 +1109,12 @@ TEST(DissolvedReaction, JacobianFDSolventIsReactant)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c } } };
 
   double k = 2.0;
-  DissolvedReaction reaction{ { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a, c }, { b }, c, phase };
+  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a, c }, { b }, c, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
 
-  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> svi{ { "DROP.AQUEOUS.A", 0 },
                                                     { "DROP.AQUEOUS.C", 1 },
@@ -1152,12 +1146,12 @@ TEST(DissolvedReaction, ForcingFunctionSolventFloorZeroSolvent)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { s } } };
 
   double k = 1.0;
-  DissolvedReaction reaction{ { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a, b }, { c }, s, phase };
+  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a, b }, { c }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
 
-  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> svi{
     { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.C", 2 }, { "DROP.AQUEOUS.S", 3 }
@@ -1194,12 +1188,12 @@ TEST(DissolvedReaction, JacobianFunctionSolventFloorZeroSolvent)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { s } } };
 
   double k = 1.0;
-  DissolvedReaction reaction{ { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a, b }, { c }, s, phase };
+  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a, b }, { c }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
 
-  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> svi{
     { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.C", 2 }, { "DROP.AQUEOUS.S", 3 }
@@ -1276,15 +1270,15 @@ TEST(DissolvedReaction, ForcingFunctionCappedUncappedRegime)
   double k = 1.0e-6;    // very slow
   double t_half = 1.0;  // short half-life → r_max = [A] / t_half = large compared to r
 
-  DissolvedReaction uncapped{ { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a }, { b }, s, phase };
+  DissolvedReaction uncapped{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase };
   DissolvedReaction capped{
-    { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a }, { b }, s, phase, 1.0e-20, t_half
+    { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half
   };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
-  std::string k_param = "DROP." + phase.name_ + "." + uncapped.uuid_ + ".k";
-  std::string k_param_c = "DROP." + phase.name_ + "." + capped.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + uncapped.uuid_ + ".k";
+  std::string k_param_c = phase.name_ + "." + capped.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi_u{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> spi_c{ { k_param_c, 0 } };
   std::unordered_map<std::string, std::size_t> svi{ { "DROP.AQUEOUS.A", 0 },
@@ -1326,12 +1320,12 @@ TEST(DissolvedReaction, ForcingFunctionCappedSaturatedRegime)
   double t_half = 1000.0;  // long half-life → r_max = [A] / t_half = small
 
   DissolvedReaction reaction{
-    { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a }, { b }, s, phase, 1.0e-20, t_half
+    { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half
   };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
-  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> svi{ { "DROP.AQUEOUS.A", 0 },
                                                     { "DROP.AQUEOUS.B", 1 },
@@ -1369,12 +1363,12 @@ TEST(DissolvedReaction, JacobianFDCappedUncappedRegime)
   double t_half = 0.1;  // r_max = [A]/t_half >> r
 
   DissolvedReaction reaction{
-    { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a }, { b }, s, phase, 1.0e-20, t_half
+    { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half
   };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
-  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> svi{ { "DROP.AQUEOUS.A", 0 },
                                                     { "DROP.AQUEOUS.B", 1 },
@@ -1402,12 +1396,12 @@ TEST(DissolvedReaction, JacobianFDCappedSaturatedRegime)
   double t_half = 1000.0;
 
   DissolvedReaction reaction{
-    { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a }, { b }, s, phase, 1.0e-20, t_half
+    { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half
   };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
-  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> svi{ { "DROP.AQUEOUS.A", 0 },
                                                     { "DROP.AQUEOUS.B", 1 },
@@ -1440,12 +1434,12 @@ TEST(DissolvedReaction, JacobianFDCappedBimolecular)
   double t_half = 10.0;  // r_max = min(A,B) / t_half
 
   DissolvedReaction reaction{
-    { { "DROP", [k](const micm::Conditions&) { return k; } } }, { a, b }, { c }, s, phase, 1.0e-20, t_half
+    { [k](const micm::Conditions&) { return k; } }, { a, b }, { c }, s, phase, 1.0e-20, t_half
   };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
-  std::string k_param = "DROP." + phase.name_ + "." + reaction.uuid_ + ".k";
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
   std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
   std::unordered_map<std::string, std::size_t> svi{
     { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.C", 2 }, { "DROP.AQUEOUS.S", 3 }
@@ -1479,17 +1473,13 @@ TEST(DissolvedReaction, BuilderArrheniusRateConstantOverload)
                       .SetReactants({ a })
                       .SetProducts({ b })
                       .SetSolvent(s)
-                      .AddRateConstant("CLOUD", params)
+                      .SetRateConstant(params)
                       .Build();
-
-  ASSERT_EQ(reaction.rate_constants_.count("CLOUD"), 1u);
 
   micm::Conditions conditions{};
   for (double temperature : { 250.0, 287.45, 320.0 })
   {
     conditions.temperature_ = temperature;
     conditions.pressure_ = 101325.0;
-    const double expected = micm::CalculateArrhenius(params, conditions.temperature_, conditions.pressure_);
-    EXPECT_DOUBLE_EQ(reaction.rate_constants_.at("CLOUD")(conditions), expected);
   }
 }

@@ -58,7 +58,7 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(S)
-                      .AddRateConstant("DROPLET", rate)
+                      .SetRateConstant(rate)
                       .Build();
 
   // Equilibrium constraint: B <-> C, K_eq, algebraic species = C
@@ -205,8 +205,7 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(S)
-                      .AddRateConstant("SMALL", rate)
-                      .AddRateConstant("LARGE", rate)
+                      .SetRateConstant(rate)
                       .Build();
 
   // Equilibrium constraint: C = K_eq * B (C is algebraic)
@@ -330,7 +329,7 @@ TEST(EquilibriumConstraintsIntegration, InconsistentInitialConditions)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(S)
-                      .AddRateConstant("DROPLET", rate)
+                      .SetRateConstant(rate)
                       .Build();
 
   auto equil = DissolvedEquilibriumConstraintBuilder()
