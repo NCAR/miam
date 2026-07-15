@@ -42,7 +42,7 @@ namespace
   constexpr double M_ATM_TO_MOL_M3_PA = 1000.0 / 101325.0;
 
   // Pure water molar concentration (unit conversion constant, NOT the state variable)
-  constexpr double c_H2O_M = 55.556;  // mol/L (molar conc. of pure liquid water)
+  constexpr double c_H2O_M = 55.51;  // mol/L (molar conc. of pure liquid water, 1000 g/L / 18.015 g/mol)
 
   // Realistic cloud liquid water content
   constexpr double C_H2O = 0.017;                                         // mol/m³ air (cloud LWC ~ 0.3 g m⁻³)

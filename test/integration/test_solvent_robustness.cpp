@@ -37,7 +37,7 @@ using DenseMatrix = micm::Matrix<double>;
 namespace
 {
   constexpr double M_ATM_TO_MOL_M3_PA = 1000.0 / 101325.0;
-  constexpr double c_H2O_M = 55.556;
+  constexpr double c_H2O_M = 55.51;  // mol/L (1000 g/L / 18.015 g/mol)
   constexpr double water_molecular_weight = 0.018;
   constexpr double water_density = 1000.0;
   constexpr double T0 = 298.15;

@@ -40,7 +40,7 @@ namespace miam
   ///          solvent-normalization conversion from literature molar units:
   ///          \f$ k_f = k_{f,lit} \times c_{H_2O}^{n_r - 1} \f$,
   ///          \f$ k_r = k_{r,lit} \times c_{H_2O}^{n_p - 1} \f$
-  ///          where \f$ c_{H_2O} = 55.556 \f$ mol/L.
+  ///          where \f$ c_{H_2O} = 55.51 \f$ mol/L (1000 g/L ÷ 18.015 g/mol).
   ///          \f$ K_{eq} \f$ is dimensionless:
   ///          \f$ K_{eq} = K_{lit} / c_{H_2O}^{n_p - n_r} \f$.
   ///

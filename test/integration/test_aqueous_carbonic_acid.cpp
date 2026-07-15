@@ -28,7 +28,7 @@
 // UNIT CONVENTIONS (mol m-3 air, same as test_cam_cloud_chemistry.cpp):
 //   C_H2O = 0.017 mol m-3 air  (cloud LWC ~0.3 g m-3)
 //   f_v   = C_H2O * Mw/rho     (volume fraction of liquid water ~3.06e-7)
-//   K_miam = K_lit[M] / c_H2O^(n_p - n_r),  c_H2O = 55.556 mol/L
+//   K_miam = K_lit[M] / c_H2O^(n_p - n_r),  c_H2O = 55.51 mol/L
 //   K_miam_water = Kw_lit / c_H2O^2  (H2O appears as explicit reactant AND solvent)
 
 #include <miam/miam.hpp>
@@ -59,7 +59,7 @@ namespace
 
   // -- Cloud liquid water content ----------------------------------------------
   constexpr double C_H2O = 0.017;     // mol m-3 air (LWC ~0.3 g m-3)
-  constexpr double c_H2O_M = 55.556;  // mol/L (pure-water molar conc.)
+  constexpr double c_H2O_M = 55.51;  // mol/L (pure-water molar conc., 1000 g/L / 18.015 g/mol)
 
   // -- Henry's Law constant (CO2) -----------------------------------------------
   // K_H = 3.4e-2 M/atm = 3.4e-2 * 1000/101325 mol m-3_liq Pa-1
