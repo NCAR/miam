@@ -61,13 +61,12 @@ namespace miam
   class DissolvedReaction
   {
    public:
-    std::function<double(const micm::Conditions& conditions)>
-        rate_constant_;                     ///< Rate constant function
-    std::vector<micm::Species> reactants_;  ///< Reactant species
-    std::vector<micm::Species> products_;   ///< Product species
-    micm::Species solvent_;                 ///< Solvent species
-    micm::Phase phase_;                     ///< Phase in which the reaction occurs
-    std::string uuid_;                      ///< Unique identifier for the reaction
+    std::function<double(const micm::Conditions& conditions)> rate_constant_;  ///< Rate constant function
+    std::vector<micm::Species> reactants_;                                     ///< Reactant species
+    std::vector<micm::Species> products_;                                      ///< Product species
+    micm::Species solvent_;                                                    ///< Solvent species
+    micm::Phase phase_;                                                        ///< Phase in which the reaction occurs
+    std::string uuid_;                                                         ///< Unique identifier for the reaction
     double solvent_floor_{
       1.0e-20
     };  ///< Floor [mol m⁻³] added to [S] in ([S]+δ)^n denominator to prevent singularity as [S] → 0
@@ -110,11 +109,11 @@ namespace miam
     /// @return Set of unique parameter names for this process
     std::set<std::string> ProcessParameterNames(const std::map<std::string, std::set<std::string>>& phase_prefixes) const
     {
-        std::set<std::string> parameter_names;
-        // The conditions are shared by the whole system, so we just need one value for the rate
-        // constant. We can use the phase name and uuid to create a unique parameter name.
-        parameter_names.insert(phase_.name_ + "." + uuid_ + ".k");
-        return parameter_names;
+      std::set<std::string> parameter_names;
+      // The conditions are shared by the whole system, so we just need one value for the rate
+      // constant. We can use the phase name and uuid to create a unique parameter name.
+      parameter_names.insert(phase_.name_ + "." + uuid_ + ".k");
+      return parameter_names;
     }
 
     /// @brief Returns participating species' unique state names
@@ -236,33 +235,32 @@ namespace miam
         const auto& state_parameter_indices  // acts like std::unordered_map<std::string, std::size_t>
     ) const
     {
-        std::string k_param = phase_.name_ + "." + uuid_ + ".k";
-        if (state_parameter_indices.find(k_param) == state_parameter_indices.end())
-        {
-          throw MiamException(
-              MIAM_ERROR_CATEGORY_INTERNAL,
-              MIAM_INTERNAL_MISSING_STATE_PARAMETER,
-              "Internal Error: UpdateStateParametersFunction: Rate constant parameter " + k_param +
-              " not found in state_parameter_indices");
-        }
-        std::size_t k_index = state_parameter_indices.at(k_param);
+      std::string k_param = phase_.name_ + "." + uuid_ + ".k";
+      if (state_parameter_indices.find(k_param) == state_parameter_indices.end())
+      {
+        throw MiamException(
+            MIAM_ERROR_CATEGORY_INTERNAL,
+            MIAM_INTERNAL_MISSING_STATE_PARAMETER,
+            "Internal Error: UpdateStateParametersFunction: Rate constant parameter " + k_param +
+                " not found in state_parameter_indices");
+      }
+      std::size_t k_index = state_parameter_indices.at(k_param);
 
-        // Set up dummy arguments to build the function
-        DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-        std::vector<micm::Conditions> conditions_vector;
+      // Set up dummy arguments to build the function
+      DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
+      std::vector<micm::Conditions> conditions_vector;
 
-        // return a function that updates the rate constant parameter based on the current conditions
-        return DenseMatrixPolicy::Function(
-            [this, k_index](auto&& conditions, auto&& params)
-            {
-              params.ForEachRow(
-                  [&](const micm::Conditions& condition, double& parameter)
-                  { parameter = rate_constant_(condition); },
-                  conditions,
-                  params.GetColumnView(k_index));
-            },
-            conditions_vector,
-            state_parameters);
+      // return a function that updates the rate constant parameter based on the current conditions
+      return DenseMatrixPolicy::Function(
+          [this, k_index](auto&& conditions, auto&& params)
+          {
+            params.ForEachRow(
+                [&](const micm::Conditions& condition, double& parameter) { parameter = rate_constant_(condition); },
+                conditions,
+                params.GetColumnView(k_index));
+          },
+          conditions_vector,
+          state_parameters);
     }
 
     /// @brief Returns a function that calculates the forcing terms for this process
@@ -775,7 +773,7 @@ namespace miam
             MIAM_ERROR_CATEGORY_INTERNAL,
             MIAM_INTERNAL_MISSING_STATE_PARAMETER,
             "Internal Error: GetParameterIndex: Rate constant parameter " + k_param +
-            " not found in state_parameter_indices");
+                " not found in state_parameter_indices");
       }
       return state_parameter_indices.at(k_param);
     }

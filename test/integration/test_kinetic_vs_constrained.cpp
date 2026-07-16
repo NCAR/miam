@@ -43,9 +43,7 @@ namespace
 
     auto forward_rate = [k_f](const Conditions& conditions) { return k_f; };
     auto reverse_rate = [k_r](const Conditions& conditions) { return k_r; };
-    auto reversible = DissolvedReversibleReaction{
-      { forward_rate }, { reverse_rate }, { B }, { C }, S, aqueous_phase
-    };
+    auto reversible = DissolvedReversibleReaction{ { forward_rate }, { reverse_rate }, { B }, { C }, S, aqueous_phase };
 
     auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model.AddProcesses({ reaction });
@@ -135,9 +133,7 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
 
     auto forward_rate = [k_f](const Conditions& conditions) { return k_f; };
     auto reverse_rate = [k_r](const Conditions& conditions) { return k_r; };
-    auto reversible = DissolvedReversibleReaction{
-      { forward_rate }, { reverse_rate }, { B }, { C }, S, aqueous_phase
-    };
+    auto reversible = DissolvedReversibleReaction{ { forward_rate }, { reverse_rate }, { B }, { C }, S, aqueous_phase };
 
     auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model.AddProcesses({ reaction });

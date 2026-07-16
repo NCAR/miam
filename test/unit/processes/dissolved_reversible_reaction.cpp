@@ -210,12 +210,10 @@ TEST(DissolvedReversibleReaction, SpeciesUsedComplexReaction)
   auto forward_rate = [](const micm::Conditions& conditions) { return 1.0; };
   auto reverse_rate = [](const micm::Conditions& conditions) { return 2.0; };
 
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate },
                                         { a, b },  // 2 reactants
                                         { c, d },  // 2 products
-                                        solvent,
-                                        phase };
+                                        solvent,          phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["LIQUID"].insert("REP1");
@@ -334,12 +332,7 @@ TEST(DissolvedReversibleReaction, NonZeroJacobianElementsMultiplePrefixes)
   auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
   auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
 
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
-                                        { h2o },
-                                        { hp, ohm },
-                                        h2o,
-                                        aqueous_phase };
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   // Two representations of the same phase
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -379,9 +372,7 @@ TEST(DissolvedReversibleReaction, NonZeroJacobianElementsComplexReaction)
   auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-10; };
   auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
 
-  DissolvedReversibleReaction reaction{
-    { forward_rate }, { reverse_rate }, { hco3m }, { hp, co32m }, h2o, aqueous_phase
-  };
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { hco3m }, { hp, co32m }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE");
@@ -426,9 +417,7 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionBasic)
   auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
   auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
 
-  DissolvedReversibleReaction reaction{
-    { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase
-  };
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -478,9 +467,7 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionTemperatureDepend
   auto reverse_rate = [](const micm::Conditions& conditions)
   { return 1.0e11 * std::exp(-2000.0 / conditions.temperature_); };
 
-  DissolvedReversibleReaction reaction{
-    { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase
-  };
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROPLET");
@@ -537,9 +524,7 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionMissingParameter)
   auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
   auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
 
-  DissolvedReversibleReaction reaction{
-    { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase
-  };
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -571,9 +556,7 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionMultipleCells)
   };
   auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e2; };
 
-  DissolvedReversibleReaction reaction{
-    { forward_rate }, { reverse_rate }, { co2, h2o }, { h2co3 }, h2o, aqueous_phase
-  };
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { co2, h2o }, { h2co3 }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("CLOUD");
@@ -774,12 +757,10 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleReactantsProducts)
   auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
 
   // A + B <-> C + D
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate },
                                         { a, b },  // 2 reactants
                                         { c, d },  // 2 products
-                                        solvent,
-                                        phase };
+                                        solvent,          phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["LIQUID"].insert("REP1");
@@ -847,9 +828,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleCells)
   auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
   auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
 
-  DissolvedReversibleReaction reaction{
-    { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase
-  };
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -918,12 +897,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultiplePhaseInstances)
   auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
   auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
 
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
-                                        { h2o },
-                                        { hp, ohm },
-                                        h2o,
-                                        aqueous_phase };
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   // Two phase instances (e.g., small and large drops)
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1294,9 +1268,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleCells)
   auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
   auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
 
-  DissolvedReversibleReaction reaction{
-    { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase
-  };
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -1376,12 +1348,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultiplePhaseInstances)
   auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
   auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
 
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
-                                        { h2o },
-                                        { hp, ohm },
-                                        h2o,
-                                        aqueous_phase };
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   // Two phase instances
   std::map<std::string, std::set<std::string>> phase_prefixes;

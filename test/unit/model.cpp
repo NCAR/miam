@@ -126,16 +126,12 @@ TEST(Model, SpeciesUsedWithMultipleProcesses)
   auto h2o_forward = [](const micm::Conditions& conditions) { return 1.0e-14; };
   auto h2o_reverse = [](const micm::Conditions& conditions) { return 1.0e11; };
 
-  DissolvedReversibleReaction h2o_dissociation{
-    { h2o_forward }, { h2o_reverse }, { h2o }, { hp, ohm }, h2o, aqueous_phase
-  };
+  DissolvedReversibleReaction h2o_dissociation{ { h2o_forward }, { h2o_reverse }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   auto co2_forward = [](const micm::Conditions& conditions) { return 1.0e-3; };
   auto co2_reverse = [](const micm::Conditions& conditions) { return 1.0e2; };
 
-  DissolvedReversibleReaction co2_hydration{
-    { co2_forward }, { co2_reverse }, { co2, h2o }, { h2co3 }, h2o, aqueous_phase
-  };
+  DissolvedReversibleReaction co2_hydration{ { co2_forward }, { co2_reverse }, { co2, h2o }, { h2co3 }, h2o, aqueous_phase };
 
   Model model;
   model.name_ = "TEST_MODEL";
@@ -169,12 +165,7 @@ TEST(Model, SpeciesUsedMixedRepresentationTypes)
   auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-3; };
   auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e2; };
 
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
-                                        { co2, h2o },
-                                        { h2co3 },
-                                        h2o,
-                                        aqueous_phase };
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { co2, h2o }, { h2co3 }, h2o, aqueous_phase };
 
   Model model;
   model.name_ = "TEST_MODEL";
@@ -210,13 +201,9 @@ TEST(Model, AddProcesses)
   auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
   auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
 
-  DissolvedReversibleReaction reaction1{
-    { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase
-  };
+  DissolvedReversibleReaction reaction1{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
-  DissolvedReversibleReaction reaction2{
-    { reverse_rate }, { forward_rate }, { hp, ohm }, { h2o }, h2o, aqueous_phase
-  };
+  DissolvedReversibleReaction reaction2{ { reverse_rate }, { forward_rate }, { hp, ohm }, { h2o }, h2o, aqueous_phase };
 
   Model model;
   model.name_ = "TEST_MODEL";
@@ -264,9 +251,7 @@ TEST(Model, SpeciesUsedWithDifferentPhasesInReactions)
   auto reverse_rate = [](const micm::Conditions& conditions) { return 2.0; };
 
   // Reaction only in aqueous phase
-  DissolvedReversibleReaction aqueous_reaction{
-    { forward_rate }, { reverse_rate }, { h2o }, { hp }, h2o, aqueous_phase
-  };
+  DissolvedReversibleReaction aqueous_reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp }, h2o, aqueous_phase };
 
   Model model;
   model.name_ = "TEST_MODEL";
@@ -322,9 +307,7 @@ TEST(Model, NonZeroJacobianElementsWithSingleProcess)
   auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
 
   // H2O <-> H+ + OH-
-  DissolvedReversibleReaction reaction{
-    { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase
-  };
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   Model model;
   model.name_ = "TEST_MODEL";
@@ -366,16 +349,12 @@ TEST(Model, NonZeroJacobianElementsWithMultipleProcesses)
   auto h2o_forward = [](const micm::Conditions& conditions) { return 1.0e-14; };
   auto h2o_reverse = [](const micm::Conditions& conditions) { return 1.0e11; };
 
-  DissolvedReversibleReaction h2o_dissociation{
-    { h2o_forward }, { h2o_reverse }, { h2o }, { hp, ohm }, h2o, aqueous_phase
-  };
+  DissolvedReversibleReaction h2o_dissociation{ { h2o_forward }, { h2o_reverse }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   auto co2_forward = [](const micm::Conditions& conditions) { return 1.0e-3; };
   auto co2_reverse = [](const micm::Conditions& conditions) { return 1.0e2; };
 
-  DissolvedReversibleReaction co2_hydration{
-    { co2_forward }, { co2_reverse }, { co2, h2o }, { h2co3 }, h2o, aqueous_phase
-  };
+  DissolvedReversibleReaction co2_hydration{ { co2_forward }, { co2_reverse }, { co2, h2o }, { h2co3 }, h2o, aqueous_phase };
 
   Model model;
   model.name_ = "TEST_MODEL";
@@ -420,12 +399,7 @@ TEST(Model, NonZeroJacobianElementsWithMultipleRepresentations)
   auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
   auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
 
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
-                                        { h2o },
-                                        { hp, ohm },
-                                        h2o,
-                                        aqueous_phase };
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   Model model;
   model.name_ = "TEST_MODEL";
@@ -467,12 +441,7 @@ TEST(Model, NonZeroJacobianElementsMixedTypes)
   auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-3; };
   auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e2; };
 
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
-                                        { co2, h2o },
-                                        { h2co3 },
-                                        h2o,
-                                        aqueous_phase };
+  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { co2, h2o }, { h2co3 }, h2o, aqueous_phase };
 
   Model model;
   model.name_ = "TEST_MODEL";
