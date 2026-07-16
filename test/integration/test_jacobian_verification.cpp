@@ -7,7 +7,7 @@
 
 #include <miam/miam.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
-#include <miam/processes/constants/henry_law_constant.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
 
 #include <micm/CPU.hpp>
 #include <micm/util/jacobian_verification.hpp>
@@ -41,7 +41,7 @@ namespace
     IndexMaps result;
     auto var_names = model.StateVariableNames();
     // Include species used by processes/constraints that aren't part of any
-    // representation (e.g. gas-phase species used by HenryLawPhaseTransfer)
+    // representation (e.g. gas-phase species used by HenrysLawPhaseTransfer)
     auto species_used = model.SpeciesUsed();
     for (const auto& name : species_used)
       var_names.insert(name);
@@ -262,8 +262,8 @@ TEST(JacobianVerification, DissolvedReversibleReactionProcess)
   VerifyProcessJacobian(model, maps, variables, parameters, conditions);
 }
 
-/// @brief HenryLawPhaseTransfer process Jacobian with SingleMomentMode
-TEST(JacobianVerification, HenryLawPhaseTransferProcess)
+/// @brief HenrysLawPhaseTransfer process Jacobian with SingleMomentMode
+TEST(JacobianVerification, HenrysLawPhaseTransferProcess)
 {
   double gas_molecular_weight = 0.044;
   double solvent_molecular_weight = 0.018;
@@ -283,12 +283,12 @@ TEST(JacobianVerification, HenryLawPhaseTransferProcess)
 
   auto droplet = SingleMomentMode{ "DROPLET", { aqueous_phase }, 5.0e-6, 1.2 };
 
-  auto transfer = HenryLawPhaseTransferBuilder()
+  auto transfer = HenrysLawPhaseTransferBuilder()
                       .SetCondensedPhase(aqueous_phase)
                       .SetGasSpecies(A_g)
                       .SetCondensedSpecies(A_aq)
                       .SetSolvent(H2O)
-                      .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                      .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
                       .SetDiffusionCoefficient(D_g)
                       .SetAccommodationCoefficient(alpha)
                       .Build();
@@ -317,8 +317,8 @@ TEST(JacobianVerification, HenryLawPhaseTransferProcess)
   VerifyProcessJacobian(model, maps, variables, parameters, conditions, 1.0e-4, 1.0e-3);
 }
 
-/// @brief HenryLawPhaseTransfer with TwoMomentMode (multi-instance)
-TEST(JacobianVerification, HenryLawPhaseTransferTwoMomentMode)
+/// @brief HenrysLawPhaseTransfer with TwoMomentMode (multi-instance)
+TEST(JacobianVerification, HenrysLawPhaseTransferTwoMomentMode)
 {
   double gas_molecular_weight = 0.044;
   double solvent_molecular_weight = 0.018;
@@ -338,12 +338,12 @@ TEST(JacobianVerification, HenryLawPhaseTransferTwoMomentMode)
 
   auto droplet = TwoMomentMode{ "DROPLET", { aqueous_phase }, 1.2 };
 
-  auto transfer = HenryLawPhaseTransferBuilder()
+  auto transfer = HenrysLawPhaseTransferBuilder()
                       .SetCondensedPhase(aqueous_phase)
                       .SetGasSpecies(A_g)
                       .SetCondensedSpecies(A_aq)
                       .SetSolvent(H2O)
-                      .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                      .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
                       .SetDiffusionCoefficient(D_g)
                       .SetAccommodationCoefficient(alpha)
                       .Build();
@@ -517,8 +517,8 @@ TEST(JacobianVerification, LinearConstraint)
   VerifyConstraintJacobian(model, maps, variables, parameters, conditions);
 }
 
-/// @brief HenryLawEquilibriumConstraint: A_g ⇌ A_aq, A_aq algebraic
-TEST(JacobianVerification, HenryLawEquilibriumConstraint)
+/// @brief HenrysLawEquilibriumConstraint: A_g ⇌ A_aq, A_aq algebraic
+TEST(JacobianVerification, HenrysLawEquilibriumConstraint)
 {
   double solvent_molecular_weight = 0.018;
   double solvent_density = 1000.0;
@@ -535,12 +535,12 @@ TEST(JacobianVerification, HenryLawEquilibriumConstraint)
 
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
-  auto hl_constraint = HenryLawEquilibriumConstraintBuilder()
+  auto hl_constraint = HenrysLawEquilibriumConstraintBuilder()
                            .SetGasSpecies(A_g)
                            .SetCondensedSpecies(A_aq)
                            .SetSolvent(H2O)
                            .SetCondensedPhase(aqueous_phase)
-                           .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC }))
+                           .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
                            .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -639,8 +639,8 @@ TEST(JacobianVerification, ProcessAndConstraintsCombined)
   VerifyConstraintJacobian(model, maps, variables, parameters, conditions);
 }
 
-/// @brief HenryLawEquilibriumConstraint + LinearConstraint with gas-phase species
-TEST(JacobianVerification, HenryLawEquilibriumWithConservation)
+/// @brief HenrysLawEquilibriumConstraint + LinearConstraint with gas-phase species
+TEST(JacobianVerification, HenrysLawEquilibriumWithConservation)
 {
   double solvent_molecular_weight = 0.018;
   double solvent_density = 1000.0;
@@ -658,12 +658,12 @@ TEST(JacobianVerification, HenryLawEquilibriumWithConservation)
 
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
-  auto hl_constraint = HenryLawEquilibriumConstraintBuilder()
+  auto hl_constraint = HenrysLawEquilibriumConstraintBuilder()
                            .SetGasSpecies(A_g)
                            .SetCondensedSpecies(A_aq)
                            .SetSolvent(H2O)
                            .SetCondensedPhase(aqueous_phase)
-                           .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC }))
+                           .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
                            .Build();
 
   double total = 1.0;

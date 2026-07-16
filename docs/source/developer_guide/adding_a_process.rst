@@ -124,7 +124,7 @@ Registering the New Type
 
       using ProcessVariant = std::variant<
           DissolvedReversibleReaction,
-          HenryLawPhaseTransfer,
+          HenrysLawPhaseTransfer,
           MyNewProcess        // ← add here
       >;
 

@@ -94,7 +94,7 @@ Per-Representation Derivatives
 
 The partial derivatives :math:`\partial P / \partial x_j` vary by
 representation type. For details, see
-:doc:`../science_guide/henry_law_phase_transfer` § Aerosol property
+:doc:`../science_guide/henrys_law_phase_transfer` § Aerosol property
 derivatives.
 
 .. list-table::

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <miam/miam.hpp>
-#include <miam/processes/constants/henry_law_constant.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
 
 #include <micm/CPU.hpp>
 #include <micm/util/constants.hpp>
@@ -50,7 +50,7 @@ namespace
 // ============================================================================
 // Test 1: Simple 1-species, 1-instance with analytical solution
 // ============================================================================
-TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
+TEST(HenrysLawPhaseTransferIntegration, SimpleOneInstance)
 {
   // Gas species A_g partitioning into aqueous phase as A_aq
   // Solvent is H2O
@@ -76,14 +76,12 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
   };
 
   // Build the process using the builder
-  auto hlc = [HLC_val](const Conditions& conditions) { return HLC_val; };
-
-  auto transfer = HenryLawPhaseTransferBuilder()
+  auto transfer = HenrysLawPhaseTransferBuilder()
                       .SetCondensedPhase(aqueous_phase)
                       .SetGasSpecies(A_g)
                       .SetCondensedSpecies(A_aq)
                       .SetSolvent(H2O)
-                      .SetHenryLawConstant(miam::HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                      .SetHenrysLawConstant(miam::HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
                       .SetDiffusionCoefficient(D_g)
                       .SetAccommodationCoefficient(alpha)
                       .Build();
@@ -193,7 +191,7 @@ TEST(HenryLawPhaseTransferIntegration, SimpleOneInstance)
 // ============================================================================
 // Test 2: Multi-instance mass conservation
 // ============================================================================
-TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
+TEST(HenrysLawPhaseTransferIntegration, MultiInstanceMassConservation)
 {
   // Same gas species partitions into two different droplet populations
   double gas_molecular_weight = 0.030;  // kg mol⁻¹ (like HCHO)
@@ -214,12 +212,12 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
   auto large_drop = SingleMomentMode{ "LARGE", { aqueous }, 1.0e-5, 1.4 };
 
   // Build one transfer process that gets applied to both phase instances
-  auto transfer = HenryLawPhaseTransferBuilder()
+  auto transfer = HenrysLawPhaseTransferBuilder()
                       .SetCondensedPhase(aqueous)
                       .SetGasSpecies(A_g)
                       .SetCondensedSpecies(A_aq)
                       .SetSolvent(H2O)
-                      .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                      .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
                       .SetDiffusionCoefficient(D_g)
                       .SetAccommodationCoefficient(alpha)
                       .Build();
@@ -297,7 +295,7 @@ TEST(HenryLawPhaseTransferIntegration, MultiInstanceMassConservation)
 // ============================================================================
 // Test 3: Temperature-dependent HLC
 // ============================================================================
-TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
+TEST(HenrysLawPhaseTransferIntegration, TemperatureDependentHLC)
 {
   // Verify that the equilibrium shifts with temperature via the van't Hoff
   // parameterization: HLC(T) = HLC_ref · exp(C · (1/T - 1/T0))
@@ -322,16 +320,16 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
 
   auto droplet = SingleMomentMode{ "DROP", { aqueous_phase }, 5.0e-6, 1.2 };
 
-  HenryLawConstantParameters hlc_params{ .HLC_ref_ = HLC_ref, .C_ = C, .T0_ = T0 };
+  HenrysLawConstantParameters hlc_params{ .HLC_ref_ = HLC_ref, .C_ = C, .T0_ = T0 };
 
   auto build_transfer = [&]()
   {
-    return HenryLawPhaseTransferBuilder()
+    return HenrysLawPhaseTransferBuilder()
         .SetCondensedPhase(aqueous_phase)
         .SetGasSpecies(A_g)
         .SetCondensedSpecies(A_aq)
         .SetSolvent(H2O)
-        .SetHenryLawConstant(HenryLawConstant(hlc_params))
+        .SetHenrysLawConstant(HenrysLawConstant(hlc_params))
         .SetDiffusionCoefficient(D_g)
         .SetAccommodationCoefficient(alpha)
         .Build();
@@ -407,7 +405,7 @@ TEST(HenryLawPhaseTransferIntegration, TemperatureDependentHLC)
 // ============================================================================
 // Test 4: Continuum vs. transition regime rate comparison
 // ============================================================================
-TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
+TEST(HenrysLawPhaseTransferIntegration, SmallVsLargeParticleRate)
 {
   // Compare transfer rates for small particles (transition regime, Kn >> 1)
   // vs large particles (near continuum, Kn << 1).
@@ -439,12 +437,12 @@ TEST(HenryLawPhaseTransferIntegration, SmallVsLargeParticleRate)
       prefix, { aqueous_phase }, r_mean, 1.01  // nearly monodisperse
     };
 
-    auto transfer = HenryLawPhaseTransferBuilder()
+    auto transfer = HenrysLawPhaseTransferBuilder()
                         .SetCondensedPhase(aqueous_phase)
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(H2O)
-                        .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                        .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
                         .SetDiffusionCoefficient(D_g)
                         .SetAccommodationCoefficient(alpha)
                         .Build();

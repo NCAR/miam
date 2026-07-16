@@ -21,7 +21,7 @@ Rate Constants
    :members:
    :undoc-members:
 
-.. doxygenclass:: miam::HenryLawConstant
+.. doxygenclass:: miam::HenrysLawConstant
    :members:
    :undoc-members:
 

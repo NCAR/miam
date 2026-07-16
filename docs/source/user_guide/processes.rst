@@ -62,7 +62,7 @@ provided, the forward rate constant is computed as
 
 This process does **not** require aerosol properties.
 
-HenryLawPhaseTransfer
+HenrysLawPhaseTransfer
 =====================
 
 Gas-condensed phase mass transfer governed by Henry's Law:
@@ -74,14 +74,14 @@ Gas-condensed phase mass transfer governed by Henry's Law:
 .. code-block:: c++
 
    #include <miam/miam.hpp>
-   #include <miam/processes/constants/henry_law_constant.hpp>
+   #include <miam/processes/constants/henrys_law_constant.hpp>
 
-   auto transfer = HenryLawPhaseTransferBuilder()
+   auto transfer = HenrysLawPhaseTransferBuilder()
      .SetCondensedPhase(aqueous_phase)
      .SetGasSpecies(A_gas)
      .SetCondensedSpecies(A_aq)
      .SetSolvent(H2O)
-     .SetHenryLawConstant(HenryLawConstant(
+     .SetHenrysLawConstant(HenrysLawConstant(
          { .HLC_ref_ = 3.4e-2, .C_ = 2400.0, .T0_ = 298.15 }))
      .SetDiffusionCoefficient(1.5e-5)    // m2 s-1
      .SetAccommodationCoefficient(0.05)  // dimensionless
@@ -105,7 +105,7 @@ Builder methods
        and ``density``)
    * - ``SetSolvent(species)``
      - Solvent species (must carry ``molecular weight`` and ``density``)
-   * - ``SetHenryLawConstant(obj)``
+   * - ``SetHenrysLawConstant(obj)``
      - Temperature-dependent HLC: :math:`H(T) = H_\text{ref} \exp(C(1/T - 1/T_0))`
    * - ``SetDiffusionCoefficient(D_g)``
      - Gas-phase diffusion coefficient [m² s⁻¹]
@@ -116,7 +116,7 @@ This process **requires** three aerosol properties from the
 representation: effective radius, number concentration, and phase volume
 fraction. These are provided automatically by the Model.
 
-See :doc:`../science_guide/henry_law_phase_transfer` for the full equation
+See :doc:`../science_guide/henrys_law_phase_transfer` for the full equation
 set and Jacobian derivations.
 
 Rate Constants
@@ -138,7 +138,7 @@ Temperature-dependent equilibrium constant:
 
    double value = keq.Calculate(conditions);
 
-HenryLawConstant
+HenrysLawConstant
 ------------------
 
 Temperature-dependent Henry's Law constant:
@@ -149,7 +149,7 @@ Temperature-dependent Henry's Law constant:
 
 .. code-block:: c++
 
-   HenryLawConstant hlc(
+   HenrysLawConstant hlc(
        { .HLC_ref_ = 3.4e-2, .C_ = 2400.0, .T0_ = 298.15 });
 
    double value = hlc.Calculate(conditions);  // mol m-3 Pa-1

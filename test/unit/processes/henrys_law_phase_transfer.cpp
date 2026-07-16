@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <miam/math/condensation_rate.hpp>
-#include <miam/processes/constants/henry_law_constant.hpp>
-#include <miam/processes/henry_law_phase_transfer.hpp>
-#include <miam/processes/henry_law_phase_transfer_builder.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
+#include <miam/processes/henrys_law_phase_transfer.hpp>
+#include <miam/processes/henrys_law_phase_transfer_builder.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
@@ -60,10 +60,10 @@ namespace
     return [hlc_value](const micm::Conditions& conditions) { return hlc_value; };
   }
 
-  /// Create a HenryLawPhaseTransfer process with default test settings
-  HenryLawPhaseTransfer MakeTestProcess(double hlc_value = HLC_ref)
+  /// Create a HenrysLawPhaseTransfer process with default test settings
+  HenrysLawPhaseTransfer MakeTestProcess(double hlc_value = HLC_ref)
   {
-    return HenryLawPhaseTransfer(
+    return HenrysLawPhaseTransfer(
         MakeConstantHLC(hlc_value),
         MakeGasSpecies(),
         MakeCondensedSpecies(),
@@ -123,7 +123,7 @@ namespace
 
 // ======================== ProcessParameterNames ========================
 
-TEST(HenryLawPhaseTransfer, ProcessParameterNamesSinglePrefix)
+TEST(HenrysLawPhaseTransfer, ProcessParameterNamesSinglePrefix)
 {
   auto process = MakeTestProcess();
 
@@ -136,7 +136,7 @@ TEST(HenryLawPhaseTransfer, ProcessParameterNamesSinglePrefix)
   EXPECT_TRUE(names.count("MODE1.AQUEOUS." + process.uuid_ + ".temperature"));
 }
 
-TEST(HenryLawPhaseTransfer, ProcessParameterNamesMultiplePrefixes)
+TEST(HenrysLawPhaseTransfer, ProcessParameterNamesMultiplePrefixes)
 {
   auto process = MakeTestProcess();
 
@@ -152,7 +152,7 @@ TEST(HenryLawPhaseTransfer, ProcessParameterNamesMultiplePrefixes)
   EXPECT_TRUE(names.count("MODE2.AQUEOUS." + process.uuid_ + ".temperature"));
 }
 
-TEST(HenryLawPhaseTransfer, ProcessParameterNamesNoMatchingPhase)
+TEST(HenrysLawPhaseTransfer, ProcessParameterNamesNoMatchingPhase)
 {
   auto process = MakeTestProcess();
 
@@ -165,7 +165,7 @@ TEST(HenryLawPhaseTransfer, ProcessParameterNamesNoMatchingPhase)
 
 // ======================== SpeciesUsed ========================
 
-TEST(HenryLawPhaseTransfer, SpeciesUsedSinglePrefix)
+TEST(HenrysLawPhaseTransfer, SpeciesUsedSinglePrefix)
 {
   auto process = MakeTestProcess();
 
@@ -179,7 +179,7 @@ TEST(HenryLawPhaseTransfer, SpeciesUsedSinglePrefix)
   EXPECT_TRUE(species.count("MODE1.AQUEOUS.H2O"));
 }
 
-TEST(HenryLawPhaseTransfer, SpeciesUsedMultiplePrefixes)
+TEST(HenrysLawPhaseTransfer, SpeciesUsedMultiplePrefixes)
 {
   auto process = MakeTestProcess();
 
@@ -197,7 +197,7 @@ TEST(HenryLawPhaseTransfer, SpeciesUsedMultiplePrefixes)
   EXPECT_TRUE(species.count("MODE2.AQUEOUS.H2O"));
 }
 
-TEST(HenryLawPhaseTransfer, SpeciesUsedNoMatchingPhaseThrows)
+TEST(HenrysLawPhaseTransfer, SpeciesUsedNoMatchingPhaseThrows)
 {
   auto process = MakeTestProcess();
 
@@ -209,7 +209,7 @@ TEST(HenryLawPhaseTransfer, SpeciesUsedNoMatchingPhaseThrows)
 
 // ======================== RequiredAerosolProperties ========================
 
-TEST(HenryLawPhaseTransfer, RequiredAerosolProperties)
+TEST(HenrysLawPhaseTransfer, RequiredAerosolProperties)
 {
   auto process = MakeTestProcess();
   auto required = process.RequiredAerosolProperties();
@@ -226,7 +226,7 @@ TEST(HenryLawPhaseTransfer, RequiredAerosolProperties)
 
 // ======================== NonZeroJacobianElements ========================
 
-TEST(HenryLawPhaseTransfer, NonZeroJacobianElementsSinglePrefix)
+TEST(HenrysLawPhaseTransfer, NonZeroJacobianElementsSinglePrefix)
 {
   auto process = MakeTestProcess();
 
@@ -250,7 +250,7 @@ TEST(HenryLawPhaseTransfer, NonZeroJacobianElementsSinglePrefix)
   EXPECT_TRUE(elements.count({ 1, 2 }));  // aq,solvent
 }
 
-TEST(HenryLawPhaseTransfer, NonZeroJacobianElementsWithProviders)
+TEST(HenrysLawPhaseTransfer, NonZeroJacobianElementsWithProviders)
 {
   auto process = MakeTestProcess();
 
@@ -286,7 +286,7 @@ TEST(HenryLawPhaseTransfer, NonZeroJacobianElementsWithProviders)
 
 // ======================== UpdateStateParametersFunction ========================
 
-TEST(HenryLawPhaseTransfer, UpdateStateParametersFunction)
+TEST(HenrysLawPhaseTransfer, UpdateStateParametersFunction)
 {
   auto process = MakeTestProcess();
 
@@ -313,7 +313,7 @@ TEST(HenryLawPhaseTransfer, UpdateStateParametersFunction)
   EXPECT_NEAR(state_parameters[0][1], 298.15, 1e-10);
 }
 
-TEST(HenryLawPhaseTransfer, UpdateStateParametersFunctionMultipleCells)
+TEST(HenrysLawPhaseTransfer, UpdateStateParametersFunctionMultipleCells)
 {
   auto process = MakeTestProcess();
 
@@ -346,7 +346,7 @@ TEST(HenryLawPhaseTransfer, UpdateStateParametersFunctionMultipleCells)
 
 // ======================== CopyWithNewUuid ========================
 
-TEST(HenryLawPhaseTransfer, CopyWithNewUuid)
+TEST(HenrysLawPhaseTransfer, CopyWithNewUuid)
 {
   auto process = MakeTestProcess();
   auto copy = process.CopyWithNewUuid();
@@ -360,7 +360,7 @@ TEST(HenryLawPhaseTransfer, CopyWithNewUuid)
 
 // ======================== ForcingFunction ========================
 
-TEST(HenryLawPhaseTransfer, ForcingFunctionBasicRates)
+TEST(HenrysLawPhaseTransfer, ForcingFunctionBasicRates)
 {
   auto process = MakeTestProcess();
 
@@ -420,7 +420,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionBasicRates)
   EXPECT_NEAR(forcing_terms[0][2], 0.0, 1e-30);  // solvent unchanged
 }
 
-TEST(HenryLawPhaseTransfer, ForcingFunctionMultipleCells)
+TEST(HenrysLawPhaseTransfer, ForcingFunctionMultipleCells)
 {
   auto process = MakeTestProcess();
 
@@ -484,7 +484,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionMultipleCells)
   }
 }
 
-TEST(HenryLawPhaseTransfer, ForcingFunctionMassConservation)
+TEST(HenrysLawPhaseTransfer, ForcingFunctionMassConservation)
 {
   auto process = MakeTestProcess();
 
@@ -526,7 +526,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionMassConservation)
 
 // ======================== JacobianFunction ========================
 
-TEST(HenryLawPhaseTransfer, JacobianFunctionDirectEntries)
+TEST(HenrysLawPhaseTransfer, JacobianFunctionDirectEntries)
 {
   auto process = MakeTestProcess();
 
@@ -599,7 +599,7 @@ TEST(HenryLawPhaseTransfer, JacobianFunctionDirectEntries)
   EXPECT_NEAR(jacobian[0][1][2], -expected_gas_solvent, std::abs(expected_gas_solvent) * 1e-10);
 }
 
-TEST(HenryLawPhaseTransfer, JacobianFunctionSymmetry)
+TEST(HenrysLawPhaseTransfer, JacobianFunctionSymmetry)
 {
   // J[gas,x] = -J[aq,x] for all x (mass conservation in Jacobian)
   auto process = MakeTestProcess();
@@ -648,7 +648,7 @@ TEST(HenryLawPhaseTransfer, JacobianFunctionSymmetry)
   EXPECT_NEAR(jacobian[0][0][2] + jacobian[0][1][2], 0.0, 1e-20);  // x = solvent
 }
 
-TEST(HenryLawPhaseTransfer, JacobianFunctionFiniteDifference)
+TEST(HenrysLawPhaseTransfer, JacobianFunctionFiniteDifference)
 {
   // Verify Jacobian against finite-difference approximation
   auto process = MakeTestProcess();
@@ -742,7 +742,7 @@ TEST(HenryLawPhaseTransfer, JacobianFunctionFiniteDifference)
   }
 }
 
-TEST(HenryLawPhaseTransfer, JacobianFunctionMultipleCells)
+TEST(HenrysLawPhaseTransfer, JacobianFunctionMultipleCells)
 {
   auto process = MakeTestProcess();
 
@@ -816,7 +816,7 @@ namespace
 {
   /// @brief Build a sparse Jacobian matrix with declared sparsity for a single process
   SparseMatrixPolicy BuildJacobian(
-      const HenryLawPhaseTransfer& process,
+      const HenrysLawPhaseTransfer& process,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_variable_indices,
       const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>>& providers,
@@ -831,7 +831,7 @@ namespace
 
   /// @brief Build a sparse Jacobian matrix with declared sparsity for multiple processes
   SparseMatrixPolicy BuildJacobian(
-      const std::vector<std::reference_wrapper<const HenryLawPhaseTransfer>>& processes,
+      const std::vector<std::reference_wrapper<const HenrysLawPhaseTransfer>>& processes,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_variable_indices,
       const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>>& providers,
@@ -852,7 +852,7 @@ namespace
   /// @brief Compare analytical Jacobian against central finite-difference approximation
   ///        using MICM's FiniteDifferenceJacobian / CompareJacobianToFiniteDifference mathities.
   void CheckFiniteDifferenceJacobian(
-      const HenryLawPhaseTransfer& process,
+      const HenrysLawPhaseTransfer& process,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
       const std::unordered_map<std::string, std::size_t>& state_variable_indices,
@@ -933,7 +933,7 @@ namespace
 // ---------------------------------------------------------------------------
 // Test: Multiple phase instances (MODE1 + MODE2) — forcing
 // ---------------------------------------------------------------------------
-TEST(HenryLawPhaseTransfer, ForcingMultiplePhaseInstances)
+TEST(HenrysLawPhaseTransfer, ForcingMultiplePhaseInstances)
 {
   auto process = MakeTestProcess();
 
@@ -1015,7 +1015,7 @@ TEST(HenryLawPhaseTransfer, ForcingMultiplePhaseInstances)
 // ---------------------------------------------------------------------------
 // Test: Multiple phase instances — analytical Jacobian
 // ---------------------------------------------------------------------------
-TEST(HenryLawPhaseTransfer, JacobianMultiplePhaseInstances)
+TEST(HenrysLawPhaseTransfer, JacobianMultiplePhaseInstances)
 {
   auto process = MakeTestProcess();
 
@@ -1118,7 +1118,7 @@ TEST(HenryLawPhaseTransfer, JacobianMultiplePhaseInstances)
 // ---------------------------------------------------------------------------
 // Test: Multiple phase instances — FD Jacobian check
 // ---------------------------------------------------------------------------
-TEST(HenryLawPhaseTransfer, JacobianFDMultiplePhaseInstances)
+TEST(HenrysLawPhaseTransfer, JacobianFDMultiplePhaseInstances)
 {
   auto process = MakeTestProcess();
 
@@ -1171,7 +1171,7 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultiplePhaseInstances)
 // ---------------------------------------------------------------------------
 // Test: Multiple grid cells with varying conditions — FD Jacobian check
 // ---------------------------------------------------------------------------
-TEST(HenryLawPhaseTransfer, JacobianFDMultipleCellsVaryingConditions)
+TEST(HenrysLawPhaseTransfer, JacobianFDMultipleCellsVaryingConditions)
 {
   auto process = MakeTestProcess();
 
@@ -1214,7 +1214,7 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultipleCellsVaryingConditions)
 // ---------------------------------------------------------------------------
 // Test: Multiple grid cells + multiple instances — forcing analytical
 // ---------------------------------------------------------------------------
-TEST(HenryLawPhaseTransfer, ForcingMultiCellsMultiInstances)
+TEST(HenrysLawPhaseTransfer, ForcingMultiCellsMultiInstances)
 {
   auto process = MakeTestProcess();
 
@@ -1290,7 +1290,7 @@ TEST(HenryLawPhaseTransfer, ForcingMultiCellsMultiInstances)
 // ---------------------------------------------------------------------------
 // Test: Multiple grid cells + multiple instances — FD Jacobian
 // ---------------------------------------------------------------------------
-TEST(HenryLawPhaseTransfer, JacobianFDMultiCellsMultiInstances)
+TEST(HenrysLawPhaseTransfer, JacobianFDMultiCellsMultiInstances)
 {
   auto process = MakeTestProcess();
 
@@ -1346,7 +1346,7 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultiCellsMultiInstances)
 // ---------------------------------------------------------------------------
 // Test: Two different gas species transferring into same condensed phase
 // ---------------------------------------------------------------------------
-TEST(HenryLawPhaseTransfer, ForcingMultipleTransferProcesses)
+TEST(HenrysLawPhaseTransfer, ForcingMultipleTransferProcesses)
 {
   auto gas_CO2 = micm::Species{ "CO2_g", { { "molecular weight [kg mol-1]", 0.044 } } };
   auto gas_SO2 = micm::Species{ "SO2_g", { { "molecular weight [kg mol-1]", 0.064 } } };
@@ -1360,7 +1360,7 @@ TEST(HenryLawPhaseTransfer, ForcingMultipleTransferProcesses)
   double HLC_CO2 = 3.4e-2, HLC_SO2 = 1.2;
   double D_CO2 = 1.5e-5, D_SO2 = 1.2e-5;
 
-  auto proc_CO2 = HenryLawPhaseTransfer(
+  auto proc_CO2 = HenrysLawPhaseTransfer(
       [HLC_CO2](const micm::Conditions&) { return HLC_CO2; },
       gas_CO2,
       aq_CO2,
@@ -1371,7 +1371,7 @@ TEST(HenryLawPhaseTransfer, ForcingMultipleTransferProcesses)
       0.044,
       solvent_molecular_weight,
       solvent_density);
-  auto proc_SO2 = HenryLawPhaseTransfer(
+  auto proc_SO2 = HenrysLawPhaseTransfer(
       [HLC_SO2](const micm::Conditions&) { return HLC_SO2; },
       gas_SO2,
       aq_SO2,
@@ -1452,7 +1452,7 @@ TEST(HenryLawPhaseTransfer, ForcingMultipleTransferProcesses)
 // ---------------------------------------------------------------------------
 // Test: Two different transfer processes — FD Jacobian (combined)
 // ---------------------------------------------------------------------------
-TEST(HenryLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
+TEST(HenrysLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
 {
   auto gas_CO2 = micm::Species{ "CO2_g", { { "molecular weight [kg mol-1]", 0.044 } } };
   auto gas_SO2 = micm::Species{ "SO2_g", { { "molecular weight [kg mol-1]", 0.064 } } };
@@ -1466,7 +1466,7 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
   double HLC_CO2 = 3.4e-2, HLC_SO2 = 1.2;
   double D_CO2 = 1.5e-5, D_SO2 = 1.2e-5;
 
-  auto proc_CO2 = HenryLawPhaseTransfer(
+  auto proc_CO2 = HenrysLawPhaseTransfer(
       [HLC_CO2](const micm::Conditions&) { return HLC_CO2; },
       gas_CO2,
       aq_CO2,
@@ -1477,7 +1477,7 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
       0.044,
       solvent_molecular_weight,
       solvent_density);
-  auto proc_SO2 = HenryLawPhaseTransfer(
+  auto proc_SO2 = HenrysLawPhaseTransfer(
       [HLC_SO2](const micm::Conditions&) { return HLC_SO2; },
       gas_SO2,
       aq_SO2,
@@ -1575,7 +1575,7 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
 // ---------------------------------------------------------------------------
 // Test: State-dependent providers (linear) — indirect Jacobian entries via FD
 // ---------------------------------------------------------------------------
-TEST(HenryLawPhaseTransfer, JacobianFDWithLinearProviders)
+TEST(HenrysLawPhaseTransfer, JacobianFDWithLinearProviders)
 {
   auto process = MakeTestProcess();
 
@@ -1622,7 +1622,7 @@ TEST(HenryLawPhaseTransfer, JacobianFDWithLinearProviders)
 // ---------------------------------------------------------------------------
 // Test: Linear providers — multi-cell FD check
 // ---------------------------------------------------------------------------
-TEST(HenryLawPhaseTransfer, JacobianFDLinearProvidersMultiCell)
+TEST(HenrysLawPhaseTransfer, JacobianFDLinearProvidersMultiCell)
 {
   auto process = MakeTestProcess();
 
@@ -1669,7 +1669,7 @@ TEST(HenryLawPhaseTransfer, JacobianFDLinearProvidersMultiCell)
 // ---------------------------------------------------------------------------
 // Test: Accumulation — non-zero initial forcing and Jacobian
 // ---------------------------------------------------------------------------
-TEST(HenryLawPhaseTransfer, ForcingAccumulates)
+TEST(HenrysLawPhaseTransfer, ForcingAccumulates)
 {
   auto process = MakeTestProcess();
 
@@ -1709,7 +1709,7 @@ TEST(HenryLawPhaseTransfer, ForcingAccumulates)
   EXPECT_NEAR(forcing[0][1], 2.0 * f0_aq, std::abs(f0_aq) * 1e-10);
 }
 
-TEST(HenryLawPhaseTransfer, JacobianAccumulates)
+TEST(HenrysLawPhaseTransfer, JacobianAccumulates)
 {
   auto process = MakeTestProcess();
 
@@ -1749,7 +1749,7 @@ TEST(HenryLawPhaseTransfer, JacobianAccumulates)
 // ---------------------------------------------------------------------------
 // Test: Linear providers with multiple dependencies per provider
 // ---------------------------------------------------------------------------
-TEST(HenryLawPhaseTransfer, JacobianFDMultipleDepsPerProvider)
+TEST(HenrysLawPhaseTransfer, JacobianFDMultipleDepsPerProvider)
 {
   auto process = MakeTestProcess();
 
@@ -1798,7 +1798,7 @@ TEST(HenryLawPhaseTransfer, JacobianFDMultipleDepsPerProvider)
 // ---------------------------------------------------------------------------
 // Test: Multiple instances + linear providers + multi-cell — the kitchen sink
 // ---------------------------------------------------------------------------
-TEST(HenryLawPhaseTransfer, JacobianFDKitchenSink)
+TEST(HenrysLawPhaseTransfer, JacobianFDKitchenSink)
 {
   auto process = MakeTestProcess();
 
@@ -1862,20 +1862,20 @@ TEST(HenryLawPhaseTransfer, JacobianFDKitchenSink)
 
 // ======================== Builder ========================
 
-TEST(HenryLawPhaseTransferBuilder, BuildSuccess)
+TEST(HenrysLawPhaseTransferBuilder, BuildSuccess)
 {
-  HenryLawConstantParameters hlc_params;
+  HenrysLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
   hlc_params.C_ = 2400.0;
   hlc_params.T0_ = 298.15;
-  HenryLawConstant hlc(hlc_params);
+  HenrysLawConstant hlc(hlc_params);
 
-  auto process = HenryLawPhaseTransferBuilder()
+  auto process = HenrysLawPhaseTransferBuilder()
                      .SetCondensedPhase(MakeAqueousPhase())
                      .SetGasSpecies(MakeGasSpecies())
                      .SetCondensedSpecies(MakeCondensedSpecies())
                      .SetSolvent(MakeSolvent())
-                     .SetHenryLawConstant(hlc)
+                     .SetHenrysLawConstant(hlc)
                      .SetDiffusionCoefficient(D_g)
                      .SetAccommodationCoefficient(alpha)
                      .Build();
@@ -1889,46 +1889,46 @@ TEST(HenryLawPhaseTransferBuilder, BuildSuccess)
   EXPECT_FALSE(process.uuid_.empty());
 }
 
-TEST(HenryLawPhaseTransferBuilder, MissingCondensedPhaseThrows)
+TEST(HenrysLawPhaseTransferBuilder, MissingCondensedPhaseThrows)
 {
-  HenryLawConstantParameters hlc_params;
+  HenrysLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
-  HenryLawConstant hlc(hlc_params);
+  HenrysLawConstant hlc(hlc_params);
 
   EXPECT_THROW(
-      HenryLawPhaseTransferBuilder()
+      HenrysLawPhaseTransferBuilder()
           .SetGasSpecies(MakeGasSpecies())
           .SetCondensedSpecies(MakeCondensedSpecies())
           .SetSolvent(MakeSolvent())
-          .SetHenryLawConstant(hlc)
+          .SetHenrysLawConstant(hlc)
           .SetDiffusionCoefficient(D_g)
           .SetAccommodationCoefficient(alpha)
           .Build(),
       std::runtime_error);
 }
 
-TEST(HenryLawPhaseTransferBuilder, MissingGasSpeciesThrows)
+TEST(HenrysLawPhaseTransferBuilder, MissingGasSpeciesThrows)
 {
-  HenryLawConstantParameters hlc_params;
+  HenrysLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
-  HenryLawConstant hlc(hlc_params);
+  HenrysLawConstant hlc(hlc_params);
 
   EXPECT_THROW(
-      HenryLawPhaseTransferBuilder()
+      HenrysLawPhaseTransferBuilder()
           .SetCondensedPhase(MakeAqueousPhase())
           .SetCondensedSpecies(MakeCondensedSpecies())
           .SetSolvent(MakeSolvent())
-          .SetHenryLawConstant(hlc)
+          .SetHenrysLawConstant(hlc)
           .SetDiffusionCoefficient(D_g)
           .SetAccommodationCoefficient(alpha)
           .Build(),
       std::runtime_error);
 }
 
-TEST(HenryLawPhaseTransferBuilder, MissingHLCThrows)
+TEST(HenrysLawPhaseTransferBuilder, MissingHLCThrows)
 {
   EXPECT_THROW(
-      HenryLawPhaseTransferBuilder()
+      HenrysLawPhaseTransferBuilder()
           .SetCondensedPhase(MakeAqueousPhase())
           .SetGasSpecies(MakeGasSpecies())
           .SetCondensedSpecies(MakeCondensedSpecies())
@@ -1939,67 +1939,67 @@ TEST(HenryLawPhaseTransferBuilder, MissingHLCThrows)
       std::runtime_error);
 }
 
-TEST(HenryLawPhaseTransferBuilder, MissingDiffusionCoefficientThrows)
+TEST(HenrysLawPhaseTransferBuilder, MissingDiffusionCoefficientThrows)
 {
-  HenryLawConstantParameters hlc_params;
+  HenrysLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
-  HenryLawConstant hlc(hlc_params);
+  HenrysLawConstant hlc(hlc_params);
 
   EXPECT_THROW(
-      HenryLawPhaseTransferBuilder()
+      HenrysLawPhaseTransferBuilder()
           .SetCondensedPhase(MakeAqueousPhase())
           .SetGasSpecies(MakeGasSpecies())
           .SetCondensedSpecies(MakeCondensedSpecies())
           .SetSolvent(MakeSolvent())
-          .SetHenryLawConstant(hlc)
+          .SetHenrysLawConstant(hlc)
           .SetAccommodationCoefficient(alpha)
           .Build(),
       std::runtime_error);
 }
 
-TEST(HenryLawPhaseTransferBuilder, MissingAccommodationCoefficientThrows)
+TEST(HenrysLawPhaseTransferBuilder, MissingAccommodationCoefficientThrows)
 {
-  HenryLawConstantParameters hlc_params;
+  HenrysLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
-  HenryLawConstant hlc(hlc_params);
+  HenrysLawConstant hlc(hlc_params);
 
   EXPECT_THROW(
-      HenryLawPhaseTransferBuilder()
+      HenrysLawPhaseTransferBuilder()
           .SetCondensedPhase(MakeAqueousPhase())
           .SetGasSpecies(MakeGasSpecies())
           .SetCondensedSpecies(MakeCondensedSpecies())
           .SetSolvent(MakeSolvent())
-          .SetHenryLawConstant(hlc)
+          .SetHenrysLawConstant(hlc)
           .SetDiffusionCoefficient(D_g)
           .Build(),
       std::runtime_error);
 }
 
-TEST(HenryLawPhaseTransferBuilder, BuiltProcessHLCWorks)
+TEST(HenrysLawPhaseTransferBuilder, BuiltProcessHLCWorks)
 {
-  HenryLawConstantParameters hlc_params;
+  HenrysLawConstantParameters hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
   hlc_params.C_ = 2400.0;
   hlc_params.T0_ = 298.15;
-  HenryLawConstant hlc(hlc_params);
+  HenrysLawConstant hlc(hlc_params);
 
-  auto process = HenryLawPhaseTransferBuilder()
+  auto process = HenrysLawPhaseTransferBuilder()
                      .SetCondensedPhase(MakeAqueousPhase())
                      .SetGasSpecies(MakeGasSpecies())
                      .SetCondensedSpecies(MakeCondensedSpecies())
                      .SetSolvent(MakeSolvent())
-                     .SetHenryLawConstant(hlc)
+                     .SetHenrysLawConstant(hlc)
                      .SetDiffusionCoefficient(D_g)
                      .SetAccommodationCoefficient(alpha)
                      .Build();
 
   micm::Conditions cond;
   cond.temperature_ = 298.15;
-  double result = process.henry_law_constant_(cond);
+  double result = process.henrys_law_constant_(cond);
   EXPECT_NEAR(result, HLC_ref, 1e-10);
 
   cond.temperature_ = 280.0;
-  result = process.henry_law_constant_(cond);
+  result = process.henrys_law_constant_(cond);
   double expected = HLC_ref * std::exp(2400.0 * (1.0 / 280.0 - 1.0 / 298.15));
   EXPECT_NEAR(result, expected, expected * 1e-10);
 }
@@ -2008,7 +2008,7 @@ TEST(HenryLawPhaseTransferBuilder, BuiltProcessHLCWorks)
 // Limit / Extreme tests (Phase C2)
 // ============================================================================
 
-TEST(HenryLawPhaseTransfer, ForcingFunctionZeroGasConcentration)
+TEST(HenrysLawPhaseTransfer, ForcingFunctionZeroGasConcentration)
 {
   // [A_gas]=0: condensation term = 0, only evaporation proceeds
   auto process = MakeTestProcess();
@@ -2052,7 +2052,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionZeroGasConcentration)
   EXPECT_LT(expected_net, 0.0);  // net transfer from aqueous to gas (evaporation)
 }
 
-TEST(HenryLawPhaseTransfer, ForcingFunctionZeroAqueousConcentration)
+TEST(HenrysLawPhaseTransfer, ForcingFunctionZeroAqueousConcentration)
 {
   // [A_aq]=0: evaporation term = 0, only condensation proceeds
   auto process = MakeTestProcess();
@@ -2094,7 +2094,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionZeroAqueousConcentration)
   EXPECT_GT(expected_net, 0.0);  // net transfer from gas to aqueous (condensation)
 }
 
-TEST(HenryLawPhaseTransfer, ForcingFunctionZeroNumberConcentration)
+TEST(HenrysLawPhaseTransfer, ForcingFunctionZeroNumberConcentration)
 {
   // N=0: k_cond=0 → both condensation and evaporation terms are zero
   auto process = MakeTestProcess();
@@ -2130,7 +2130,7 @@ TEST(HenryLawPhaseTransfer, ForcingFunctionZeroNumberConcentration)
   EXPECT_NEAR(forcing[0][2], 0.0, 1e-30);
 }
 
-TEST(HenryLawPhaseTransfer, JacobianFDZeroGasConcentration)
+TEST(HenrysLawPhaseTransfer, JacobianFDZeroGasConcentration)
 {
   // [A_gas]=0: FD Jacobian check at the boundary condition
   auto process = MakeTestProcess();
@@ -2159,13 +2159,13 @@ TEST(HenryLawPhaseTransfer, JacobianFDZeroGasConcentration)
   CheckFiniteDifferenceJacobian(process, phase_prefixes, spi, svi, providers, params, vars);
 }
 
-TEST(HenryLawPhaseTransfer, JacobianFDExtremeHLC)
+TEST(HenrysLawPhaseTransfer, JacobianFDExtremeHLC)
 {
   // Large HLC → strong evaporation; Small HLC → condensation dominated
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
 
-  auto make_spi = [](const HenryLawPhaseTransfer& p)
+  auto make_spi = [](const HenrysLawPhaseTransfer& p)
   {
     std::unordered_map<std::string, std::size_t> spi;
     spi["MODE1.AQUEOUS." + p.uuid_ + ".hlc"] = 0;
@@ -2198,7 +2198,7 @@ TEST(HenryLawPhaseTransfer, JacobianFDExtremeHLC)
   CheckFiniteDifferenceJacobian(process_small, phase_prefixes, make_spi(process_small), svi, providers, params, vars);
 }
 
-TEST(HenryLawPhaseTransfer, JacobianFDTemperatureExtremes)
+TEST(HenrysLawPhaseTransfer, JacobianFDTemperatureExtremes)
 {
   auto process = MakeTestProcess();
   std::map<std::string, std::set<std::string>> phase_prefixes;

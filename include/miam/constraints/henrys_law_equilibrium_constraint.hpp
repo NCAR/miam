@@ -34,10 +34,10 @@ namespace miam
   ///          water, HLC is the Henry's Law constant [mol m⁻³ Pa⁻¹], and the algebraic variable
   ///          is always the condensed-phase species (gas disallowed to avoid overconstrained
   ///          systems with multiple phase instances sharing the same gas species).
-  class HenryLawEquilibriumConstraint
+  class HenrysLawEquilibriumConstraint
   {
    public:
-    std::function<double(const micm::Conditions& conditions)> henry_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
+    std::function<double(const micm::Conditions& conditions)> henrys_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
     micm::Species gas_species_;                                                     ///< Gas-phase species
     micm::Species condensed_species_;                                               ///< Condensed-phase solute species
     micm::Species solvent_;                                                         ///< Condensed-phase solvent species
@@ -46,18 +46,18 @@ namespace miam
     double solvent_density_;           ///< Solvent density [kg m⁻³]
     std::string uuid_;                 ///< Unique identifier
 
-    HenryLawEquilibriumConstraint() = delete;
+    HenrysLawEquilibriumConstraint() = delete;
 
     /// @brief Constructor
-    HenryLawEquilibriumConstraint(
-        std::function<double(const micm::Conditions& conditions)> henry_law_constant,
+    HenrysLawEquilibriumConstraint(
+        std::function<double(const micm::Conditions& conditions)> henrys_law_constant,
         const micm::Species& gas_species,
         const micm::Species& condensed_species,
         const micm::Species& solvent,
         const micm::Phase& condensed_phase,
         double solvent_molecular_weight,
         double solvent_density)
-        : henry_law_constant_(henry_law_constant),
+        : henrys_law_constant_(henrys_law_constant),
           gas_species_(gas_species),
           condensed_species_(condensed_species),
           solvent_(solvent),
@@ -69,10 +69,10 @@ namespace miam
     }
 
     /// @brief Create a copy with a new UUID
-    HenryLawEquilibriumConstraint CopyWithNewUuid() const
+    HenrysLawEquilibriumConstraint CopyWithNewUuid() const
     {
-      return HenryLawEquilibriumConstraint(
-          henry_law_constant_,
+      return HenrysLawEquilibriumConstraint(
+          henrys_law_constant_,
           gas_species_,
           condensed_species_,
           solvent_,
@@ -182,7 +182,7 @@ namespace miam
           hlc_rt_indices.push_back(
               state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc_rt"));
       }
-      auto hlc_fn = henry_law_constant_;
+      auto hlc_fn = henrys_law_constant_;
 
       DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
       std::vector<micm::Conditions> conditions_vector;
@@ -357,7 +357,7 @@ namespace miam
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
             MIAM_INTERNAL_MISSING_STATE_VARIABLE,
-            "HenryLawEquilibriumConstraint: Gas species " + gas_species_.name_ + " not found in state_variable_indices");
+            "HenrysLawEquilibriumConstraint: Gas species " + gas_species_.name_ + " not found in state_variable_indices");
       indices.gas_idx_ = gas_it->second;
 
       auto phase_it = phase_prefixes.find(condensed_phase_.name_);
@@ -366,7 +366,7 @@ namespace miam
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
             MIAM_INTERNAL_MISSING_PHASE_PREFIX,
-            "HenryLawEquilibriumConstraint: Phase " + condensed_phase_.name_ + " not found in phase_prefixes");
+            "HenrysLawEquilibriumConstraint: Phase " + condensed_phase_.name_ + " not found in phase_prefixes");
       }
       const auto& prefixes = phase_it->second;
       indices.number_of_phase_instances_ = prefixes.size();

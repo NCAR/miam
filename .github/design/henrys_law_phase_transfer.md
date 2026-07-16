@@ -1332,7 +1332,7 @@ auto UpdateStateParametersFunction(
                 params.ForEachRow(
                     [&](const micm::Conditions& cond, double& hlc, double& T)
                     {
-                        hlc = henry_law_constant_(cond);
+                        hlc = henrys_law_constant_(cond);
                         T = cond.temperature_;
                     },
                     conditions,
@@ -2113,7 +2113,7 @@ and the provider can short-circuit.
    Model integration (Step 5) cover this:
    - Step 0: Define `MiamProcessSet` and the common interface; refactor
      `DissolvedReversibleReaction` to satisfy it.
-   - Step 4–5: `HenryLawPhaseTransfer` implements the same interface;
+   - Step 4–5: `HenrysLawPhaseTransfer` implements the same interface;
      Model's single loop handles both process types identically.
 
 2. **Provider GroupView compatibility** *(resolved)*: The providers receive
@@ -2231,7 +2231,7 @@ and the provider can short-circuit.
 | PR A | 0     | Common process interface + refactor DissolvedReversibleReaction |
 | PR B | 1     | Aerosol property providers on representations |
 | PR C | 2–3   | Henry's Law constant + mass transfer utilities |
-| PR D | 4     | Core HenryLawPhaseTransfer process |
+| PR D | 4     | Core HenrysLawPhaseTransfer process |
 | PR E | 5–6   | Builder, model integration, integration tests |
 | PR F | 7     | Documentation |
 
@@ -2267,7 +2267,7 @@ methods.
 Henry's Law constant: `HLC(T) = HLC_ref · exp(C · (1/T - 1/T_ref))`, where
 `HLC_ref` is the Henry's Law constant at reference temperature `T_ref` and `C`
 is a parameter defining the temperature dependence.
-The process stores a `henry_law_constant_` callable (same pattern as
+The process stores a `henrys_law_constant_` callable (same pattern as
 `DissolvedReversibleReaction`'s `forward_rate_constant_`), which is invoked by
 `UpdateStateParametersFunction` each time conditions change. The computed value
 is written to a state parameter column (`hlc`) for each phase instance.
@@ -2282,7 +2282,7 @@ and all derivatives (`dk_cond/dr_eff`, `dk_cond/dN`) — same provider pattern a
 aerosol properties. Helper functions (mean free path, Fuchs-Sutugin factor) are
 internal implementation details, not part of the public interface.
 
-### Step 4 — HenryLawPhaseTransfer Process
+### Step 4 — HenrysLawPhaseTransfer Process
 
 Core process struct implementing the common interface:
 `RequiredAerosolProperties()` returns `{phase_name → {EffectiveRadius,

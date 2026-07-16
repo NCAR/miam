@@ -4,7 +4,7 @@
 // Test that the README example compiles, runs, and produces expected output.
 
 #include <miam/miam.hpp>
-#include <miam/processes/constants/henry_law_constant.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
 
 #include <micm/CPU.hpp>
 
@@ -17,7 +17,7 @@
 using namespace micm;
 using namespace miam;
 
-TEST(ReadmeExample, HenryLawPhaseTransfer)
+TEST(ReadmeExample, HenrysLawPhaseTransfer)
 {
   // Define species with physical properties required for mass transfer
   auto co2 = Species{ "CO2", { { "molecular weight [kg mol-1]", 0.044 }, { "density [kg m-3]", 1800.0 } } };
@@ -43,12 +43,12 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
 
   // Henry's Law phase transfer: CO2(g) <-> CO2(aq)
   // (gets applied to both aqueous phase instances (in small and large droplets))
-  auto co2_transfer = HenryLawPhaseTransferBuilder()
+  auto co2_transfer = HenrysLawPhaseTransferBuilder()
                           .SetCondensedPhase(aqueous_phase)
                           .SetGasSpecies(co2)
                           .SetCondensedSpecies(co2)
                           .SetSolvent(h2o)
-                          .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 3.4e-2 }))  // mol m-3 Pa-1 at 298 K
+                          .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 3.4e-2 }))  // mol m-3 Pa-1 at 298 K
                           .SetDiffusionCoefficient(1.5e-5)                                // m2 s-1
                           .SetAccommodationCoefficient(5.0e-6)  // Set artificially low to see transfer over 10 time steps
                           .Build();

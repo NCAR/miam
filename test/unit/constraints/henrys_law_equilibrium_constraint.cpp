@@ -1,8 +1,8 @@
 // Copyright (C) 2026 University Corporation for Atmospheric Research
 // SPDX-License-Identifier: Apache-2.0
 
-#include <miam/constraints/henry_law_equilibrium_constraint.hpp>
-#include <miam/constraints/henry_law_equilibrium_constraint_builder.hpp>
+#include <miam/constraints/henrys_law_equilibrium_constraint.hpp>
+#include <miam/constraints/henrys_law_equilibrium_constraint_builder.hpp>
 #include <miam/math/condensation_rate.hpp>
 
 #include <micm/system/conditions.hpp>
@@ -55,15 +55,15 @@ namespace
 
 // ── ConstraintAlgebraicVariableNames ──
 
-TEST(HenryLawEquilibriumConstraint, AlgebraicVariableNamesSinglePrefix)
+TEST(HenrysLawEquilibriumConstraint, AlgebraicVariableNamesSinglePrefix)
 {
   auto hlc = [](const micm::Conditions&) { return 5.0e3; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -74,15 +74,15 @@ TEST(HenryLawEquilibriumConstraint, AlgebraicVariableNamesSinglePrefix)
   EXPECT_TRUE(names.count("DROP.AQUEOUS.A_aq"));
 }
 
-TEST(HenryLawEquilibriumConstraint, AlgebraicVariableNamesMultiplePrefixes)
+TEST(HenrysLawEquilibriumConstraint, AlgebraicVariableNamesMultiplePrefixes)
 {
   auto hlc = [](const micm::Conditions&) { return 5.0e3; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -97,15 +97,15 @@ TEST(HenryLawEquilibriumConstraint, AlgebraicVariableNamesMultiplePrefixes)
 
 // ── ConstraintSpeciesDependencies ──
 
-TEST(HenryLawEquilibriumConstraint, SpeciesDependencies)
+TEST(HenrysLawEquilibriumConstraint, SpeciesDependencies)
 {
   auto hlc = [](const micm::Conditions&) { return 5.0e3; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -119,15 +119,15 @@ TEST(HenryLawEquilibriumConstraint, SpeciesDependencies)
   EXPECT_TRUE(deps.count("DROP.AQUEOUS.H2O"));   // solvent
 }
 
-TEST(HenryLawEquilibriumConstraint, SpeciesDependenciesMultipleInstances)
+TEST(HenrysLawEquilibriumConstraint, SpeciesDependenciesMultipleInstances)
 {
   auto hlc = [](const micm::Conditions&) { return 5.0e3; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -146,15 +146,15 @@ TEST(HenryLawEquilibriumConstraint, SpeciesDependenciesMultipleInstances)
 
 // ── NonZeroConstraintJacobianElements ──
 
-TEST(HenryLawEquilibriumConstraint, NonZeroJacobianElements)
+TEST(HenrysLawEquilibriumConstraint, NonZeroJacobianElements)
 {
   auto hlc = [](const micm::Conditions&) { return 5.0e3; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -175,19 +175,19 @@ TEST(HenryLawEquilibriumConstraint, NonZeroJacobianElements)
 
 // ── ConstraintResidualFunction ──
 
-TEST(HenryLawEquilibriumConstraint, ResidualSingleInstance)
+TEST(HenrysLawEquilibriumConstraint, ResidualSingleInstance)
 {
   // G = HLC * R * T * f_v * [A_g] - [A_aq]
   // f_v = [H2O] * Mw / rho
   double HLC = 5.0e3;
   double T = 298.15;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -229,17 +229,17 @@ TEST(HenryLawEquilibriumConstraint, ResidualSingleInstance)
 
 // ── ConstraintResidualFunction — multiple instances ──
 
-TEST(HenryLawEquilibriumConstraint, ResidualMultipleInstances)
+TEST(HenrysLawEquilibriumConstraint, ResidualMultipleInstances)
 {
   double HLC = 3.0e3;
   double T = 300.0;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -287,17 +287,17 @@ TEST(HenryLawEquilibriumConstraint, ResidualMultipleInstances)
 
 // ── ConstraintJacobianFunction ──
 
-TEST(HenryLawEquilibriumConstraint, JacobianSingleInstance)
+TEST(HenrysLawEquilibriumConstraint, JacobianSingleInstance)
 {
   double HLC = 5.0e3;
   double T = 298.15;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -356,16 +356,16 @@ TEST(HenryLawEquilibriumConstraint, JacobianSingleInstance)
 
 // ── UpdateConstraintParameters — temperature-dependent HLC ──
 
-TEST(HenryLawEquilibriumConstraint, UpdateConstraintParametersTemperatureDep)
+TEST(HenrysLawEquilibriumConstraint, UpdateConstraintParametersTemperatureDep)
 {
   // HLC(T) = 1000.0 / T  =>  HLC*R*T = 1000 * R  (temperature-independent)
   auto hlc = [](const micm::Conditions& c) { return 1000.0 / c.temperature_; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -392,7 +392,7 @@ TEST(HenryLawEquilibriumConstraint, UpdateConstraintParametersTemperatureDep)
 
 // ── Builder ──
 
-TEST(HenryLawEquilibriumConstraint, BuilderValidation)
+TEST(HenrysLawEquilibriumConstraint, BuilderValidation)
 {
   struct FakeHLC
   {
@@ -404,21 +404,21 @@ TEST(HenryLawEquilibriumConstraint, BuilderValidation)
 
   // Missing gas species
   EXPECT_THROW(
-      HenryLawEquilibriumConstraintBuilder()
+      HenrysLawEquilibriumConstraintBuilder()
           .SetCondensedSpecies(A_aq)
           .SetSolvent(h2o)
           .SetCondensedPhase(aqueous_phase)
-          .SetHenryLawConstant(FakeHLC{})
+          .SetHenrysLawConstant(FakeHLC{})
           .Build(),
       std::runtime_error);
 
   // Valid build
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(FakeHLC{})
+                        .SetHenrysLawConstant(FakeHLC{})
                         .Build();
   EXPECT_EQ(constraint.gas_species_.name_, "A_g");
   EXPECT_EQ(constraint.condensed_species_.name_, "A_aq");
@@ -434,7 +434,7 @@ namespace
   using SMP = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
 
   SMP BuildConstraintJacobian(
-      const HenryLawEquilibriumConstraint& constraint,
+      const HenrysLawEquilibriumConstraint& constraint,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_indices,
       std::size_t num_blocks)
@@ -448,7 +448,7 @@ namespace
 
   /// @brief Initialize HLC*R*T values into a state parameter matrix; returns the matrix
   DMP InitHlcRt(
-      const HenryLawEquilibriumConstraint& constraint,
+      const HenrysLawEquilibriumConstraint& constraint,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& param_idx,
       std::size_t num_cells,
@@ -464,7 +464,7 @@ namespace
   }
 
   DMP InitHlcRt(
-      const HenryLawEquilibriumConstraint& constraint,
+      const HenrysLawEquilibriumConstraint& constraint,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& param_idx,
       const std::vector<micm::Conditions>& conditions)
@@ -479,7 +479,7 @@ namespace
   /// @brief Compare analytical constraint Jacobian against central finite-difference approximation
   ///        using MICM's FiniteDifferenceJacobian / CompareJacobianToFiniteDifference utilities.
   void CheckConstraintFDJacobian(
-      const HenryLawEquilibriumConstraint& constraint,
+      const HenrysLawEquilibriumConstraint& constraint,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& param_idx,
       const std::unordered_map<std::string, std::size_t>& state_indices,
@@ -523,17 +523,17 @@ namespace
 
 // ── FD Jacobian: single instance ──
 
-TEST(HenryLawEquilibriumConstraint, JacobianFDSingleInstance)
+TEST(HenrysLawEquilibriumConstraint, JacobianFDSingleInstance)
 {
   double HLC = 5.0e3;
   double T = 298.15;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -557,17 +557,17 @@ TEST(HenryLawEquilibriumConstraint, JacobianFDSingleInstance)
 
 // ── FD Jacobian: multiple instances ──
 
-TEST(HenryLawEquilibriumConstraint, JacobianFDMultipleInstances)
+TEST(HenrysLawEquilibriumConstraint, JacobianFDMultipleInstances)
 {
   double HLC = 3.0e3;
   double T = 300.0;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -596,17 +596,17 @@ TEST(HenryLawEquilibriumConstraint, JacobianFDMultipleInstances)
 
 // ── Multiple grid cells: residual ──
 
-TEST(HenryLawEquilibriumConstraint, ResidualMultipleCells)
+TEST(HenrysLawEquilibriumConstraint, ResidualMultipleCells)
 {
   double HLC = 5.0e3;
   double T = 298.15;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -651,17 +651,17 @@ TEST(HenryLawEquilibriumConstraint, ResidualMultipleCells)
 
 // ── Multiple cells + multiple instances + FD ──
 
-TEST(HenryLawEquilibriumConstraint, MultiInstanceMultiCellFD)
+TEST(HenrysLawEquilibriumConstraint, MultiInstanceMultiCellFD)
 {
   double HLC = 4.0e3;
   double T = 290.0;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -706,17 +706,17 @@ TEST(HenryLawEquilibriumConstraint, MultiInstanceMultiCellFD)
 
 // ── Three instances ──
 
-TEST(HenryLawEquilibriumConstraint, ThreeInstancesFD)
+TEST(HenrysLawEquilibriumConstraint, ThreeInstancesFD)
 {
   double HLC = 2.0e3;
   double T = 310.0;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -758,17 +758,17 @@ TEST(HenryLawEquilibriumConstraint, ThreeInstancesFD)
 
 // ── Jacobian accumulates ──
 
-TEST(HenryLawEquilibriumConstraint, JacobianAccumulates)
+TEST(HenrysLawEquilibriumConstraint, JacobianAccumulates)
 {
   double HLC = 5.0e3;
   double T = 298.15;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -805,17 +805,17 @@ TEST(HenryLawEquilibriumConstraint, JacobianAccumulates)
 
 // ── Residual sets (does not accumulate) ──
 
-TEST(HenryLawEquilibriumConstraint, ResidualSetsNotAccumulates)
+TEST(HenrysLawEquilibriumConstraint, ResidualSetsNotAccumulates)
 {
   double HLC = 5.0e3;
   double T = 298.15;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -846,16 +846,16 @@ TEST(HenryLawEquilibriumConstraint, ResidualSetsNotAccumulates)
 
 // ── Temperature-dependent HLC with multi-cell ──
 
-TEST(HenryLawEquilibriumConstraint, TemperatureDependentHlcMultiCell)
+TEST(HenrysLawEquilibriumConstraint, TemperatureDependentHlcMultiCell)
 {
   // HLC(T) = 5000 * exp(2400 * (1/T - 1/298.15))
   auto hlc = [](const micm::Conditions& c) { return 5000.0 * std::exp(2400.0 * (1.0 / c.temperature_ - 1.0 / 298.15)); };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -906,16 +906,16 @@ TEST(HenryLawEquilibriumConstraint, TemperatureDependentHlcMultiCell)
 
 // ── Cross-instance isolation ──
 
-TEST(HenryLawEquilibriumConstraint, CrossInstanceJacobianIsolation)
+TEST(HenrysLawEquilibriumConstraint, CrossInstanceJacobianIsolation)
 {
   double HLC = 5.0e3;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -954,17 +954,17 @@ TEST(HenryLawEquilibriumConstraint, CrossInstanceJacobianIsolation)
 
 // ── Analytical Jacobian: multiple instances, verify all entries ──
 
-TEST(HenryLawEquilibriumConstraint, JacobianMultipleInstancesAnalytical)
+TEST(HenrysLawEquilibriumConstraint, JacobianMultipleInstancesAnalytical)
 {
   double HLC = 3.0e3;
   double T = 300.0;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1017,17 +1017,17 @@ TEST(HenryLawEquilibriumConstraint, JacobianMultipleInstancesAnalytical)
 
 // ── Large HLC ──
 
-TEST(HenryLawEquilibriumConstraint, LargeHLC)
+TEST(HenrysLawEquilibriumConstraint, LargeHLC)
 {
   double HLC = 1.0e8;
   double T = 298.15;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1060,17 +1060,17 @@ TEST(HenryLawEquilibriumConstraint, LargeHLC)
 
 // ── CopyWithNewUuid preserves behavior ──
 
-TEST(HenryLawEquilibriumConstraint, CopiedConstraintProducesSameResults)
+TEST(HenrysLawEquilibriumConstraint, CopiedConstraintProducesSameResults)
 {
   double HLC = 5.0e3;
   double T = 298.15;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto original = HenryLawEquilibriumConstraintBuilder()
+  auto original = HenrysLawEquilibriumConstraintBuilder()
                       .SetGasSpecies(A_g)
                       .SetCondensedSpecies(A_aq)
                       .SetSolvent(h2o)
                       .SetCondensedPhase(aqueous_phase)
-                      .SetHenryLawConstant(hlc)
+                      .SetHenrysLawConstant(hlc)
                       .Build();
 
   auto copy = original.CopyWithNewUuid();
@@ -1107,17 +1107,17 @@ TEST(HenryLawEquilibriumConstraint, CopiedConstraintProducesSameResults)
 
 // ── Equilibrium check: G=0 when at equilibrium ──
 
-TEST(HenryLawEquilibriumConstraint, ResidualZeroAtEquilibrium)
+TEST(HenrysLawEquilibriumConstraint, ResidualZeroAtEquilibrium)
 {
   double HLC = 5.0e3;
   double T = 298.15;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1151,15 +1151,15 @@ TEST(HenryLawEquilibriumConstraint, ResidualZeroAtEquilibrium)
 
 // ── Kitchen-sink: multi-instance, multi-cell, T-dependent, FD ──
 
-TEST(HenryLawEquilibriumConstraint, KitchenSinkFD)
+TEST(HenrysLawEquilibriumConstraint, KitchenSinkFD)
 {
   auto hlc = [](const micm::Conditions& c) { return 3000.0 * std::exp(1500.0 * (1.0 / c.temperature_ - 1.0 / 298.15)); };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1228,12 +1228,12 @@ namespace
   {
     double HLC = 5.0e3;
     auto hlc_fn = [HLC](const micm::Conditions&) { return HLC; };
-    auto constraint = HenryLawEquilibriumConstraintBuilder()
+    auto constraint = HenrysLawEquilibriumConstraintBuilder()
                           .SetGasSpecies(A_g)
                           .SetCondensedSpecies(A_aq)
                           .SetSolvent(h2o)
                           .SetCondensedPhase(aqueous_phase)
-                          .SetHenryLawConstant(hlc_fn)
+                          .SetHenrysLawConstant(hlc_fn)
                           .Build();
 
     std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1348,21 +1348,21 @@ namespace
   }
 }  // namespace
 
-TEST(HenryLawEquilibriumConstraint, VectorMatrix_L1_4cells)
+TEST(HenrysLawEquilibriumConstraint, VectorMatrix_L1_4cells)
 {
   using VDM = micm::VectorMatrix<double, 1>;
   using VSM = micm::SparseMatrix<double, micm::SparseMatrixVectorOrderingCompressedSparseRow<1>>;
   TestHLConstraintVectorMatrix<VDM, VSM>(4, 298.15, true);
 }
 
-TEST(HenryLawEquilibriumConstraint, VectorMatrix_L2_4cells)
+TEST(HenrysLawEquilibriumConstraint, VectorMatrix_L2_4cells)
 {
   using VDM = micm::VectorMatrix<double, 2>;
   using VSM = micm::SparseMatrix<double, micm::SparseMatrixVectorOrderingCompressedSparseRow<2>>;
   TestHLConstraintVectorMatrix<VDM, VSM>(4, 298.15, true);
 }
 
-TEST(HenryLawEquilibriumConstraint, VectorMatrix_L4_4cells)
+TEST(HenrysLawEquilibriumConstraint, VectorMatrix_L4_4cells)
 {
   using VDM = micm::VectorMatrix<double, 4>;
   using VSM = micm::SparseMatrix<double, micm::SparseMatrixVectorOrderingCompressedSparseRow<4>>;
@@ -1373,18 +1373,18 @@ TEST(HenryLawEquilibriumConstraint, VectorMatrix_L4_4cells)
 // Limit / Extreme tests (Phase D2)
 // ============================================================================
 
-TEST(HenryLawEquilibriumConstraint, ResidualZeroGasConcentration)
+TEST(HenrysLawEquilibriumConstraint, ResidualZeroGasConcentration)
 {
   // G = HLC*R*T*f_v*[A_g] - [A_aq]; with [A_g]=0: G = -[A_aq]
   double HLC = 5.0e3;
   double T = 298.15;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1411,18 +1411,18 @@ TEST(HenryLawEquilibriumConstraint, ResidualZeroGasConcentration)
   EXPECT_NEAR(residual[0][1], -A_aq_conc, 1.0e-12);
 }
 
-TEST(HenryLawEquilibriumConstraint, ResidualZeroAqueousConcentration)
+TEST(HenrysLawEquilibriumConstraint, ResidualZeroAqueousConcentration)
 {
   // G = HLC*R*T*f_v*[A_g] - [A_aq]; with [A_aq]=0: G = HLC*R*T*f_v*[A_g]
   double HLC = 5.0e3;
   double T = 298.15;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1453,17 +1453,17 @@ TEST(HenryLawEquilibriumConstraint, ResidualZeroAqueousConcentration)
   EXPECT_GT(residual[0][1], 0.0);  // positive: equilibrium favors aqueous phase
 }
 
-TEST(HenryLawEquilibriumConstraint, JacobianFDZeroConcentrations)
+TEST(HenrysLawEquilibriumConstraint, JacobianFDZeroConcentrations)
 {
   double HLC = 5.0e3;
   double T = 298.15;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1496,16 +1496,16 @@ TEST(HenryLawEquilibriumConstraint, JacobianFDZeroConcentrations)
   }
 }
 
-TEST(HenryLawEquilibriumConstraint, JacobianFDTemperatureExtremes)
+TEST(HenrysLawEquilibriumConstraint, JacobianFDTemperatureExtremes)
 {
   double HLC = 5.0e3;
   auto hlc = [HLC](const micm::Conditions&) { return HLC; };
-  auto constraint = HenryLawEquilibriumConstraintBuilder()
+  auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenryLawConstant(hlc)
+                        .SetHenrysLawConstant(hlc)
                         .Build();
 
   std::map<std::string, std::set<std::string>> phase_prefixes;

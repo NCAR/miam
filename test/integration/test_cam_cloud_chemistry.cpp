@@ -19,7 +19,7 @@
 
 #include <miam/miam.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
-#include <miam/processes/constants/henry_law_constant.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
 
 #include <micm/CPU.hpp>
 #include <micm/util/constants.hpp>
@@ -227,12 +227,12 @@ TEST(CamCloudChemistry, Step1_SingleHLC)
   Phase aqueous_phase{ "AQUEOUS", { so2_aq, h2o } };
   auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
 
-  auto hl_so2 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
                     .SetGasSpecies(so2_g)
                     .SetCondensedSpecies(so2_aq)
                     .SetSolvent(h2o)
                     .SetCondensedPhase(aqueous_phase)
-                    .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = HLC_ref, .C_ = C_hlc }))
+                    .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = HLC_ref, .C_ = C_hlc }))
                     .Build();
 
   // Mass conservation: [SO2_g] + [SO2_aq] = total  (SO2_g algebraic)
@@ -515,12 +515,12 @@ TEST(CamCloudChemistry, Step2_HLC_Plus_Dissociation)
   double HLC_ref = 1.23 * M_ATM_TO_MOL_M3_PA;
   double C_hlc = 3120.0;
 
-  auto hl_so2 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
                     .SetGasSpecies(so2_g)
                     .SetCondensedSpecies(so2_aq)
                     .SetSolvent(h2o)
                     .SetCondensedPhase(aqueous_phase)
-                    .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = HLC_ref, .C_ = C_hlc }))
+                    .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = HLC_ref, .C_ = C_hlc }))
                     .Build();
 
   // Kw: H2O ⇌ H+ + OH-
@@ -728,28 +728,28 @@ TEST(CamCloudChemistry, Step3_FullEquilibrium)
   auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
 
   // --- Henry's Law constraints ---
-  auto hl_so2 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
                     .SetGasSpecies(so2_g)
                     .SetCondensedSpecies(so2_aq)
                     .SetSolvent(h2o)
                     .SetCondensedPhase(aqueous_phase)
-                    .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
+                    .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
                     .Build();
 
-  auto hl_h2o2 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_h2o2 = HenrysLawEquilibriumConstraintBuilder()
                      .SetGasSpecies(h2o2_g)
                      .SetCondensedSpecies(h2o2_aq)
                      .SetSolvent(h2o)
                      .SetCondensedPhase(aqueous_phase)
-                     .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
+                     .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
                      .Build();
 
-  auto hl_o3 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_o3 = HenrysLawEquilibriumConstraintBuilder()
                    .SetGasSpecies(o3_g)
                    .SetCondensedSpecies(o3_aq)
                    .SetSolvent(h2o)
                    .SetCondensedPhase(aqueous_phase)
-                   .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
+                   .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
                    .Build();
 
   // --- Dissociation equilibria ---
@@ -972,28 +972,28 @@ TEST(CamCloudChemistry, Step3b_NaiveInitialConditions)
   Phase aqueous_phase{ "AQUEOUS", { h2o, so2_aq, h2o2_aq, o3_aq, hp, ohm, hso3m, so3mm, so4mm } };
   auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
 
-  auto hl_so2 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
                     .SetGasSpecies(so2_g)
                     .SetCondensedSpecies(so2_aq)
                     .SetSolvent(h2o)
                     .SetCondensedPhase(aqueous_phase)
-                    .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
+                    .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
                     .Build();
 
-  auto hl_h2o2 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_h2o2 = HenrysLawEquilibriumConstraintBuilder()
                      .SetGasSpecies(h2o2_g)
                      .SetCondensedSpecies(h2o2_aq)
                      .SetSolvent(h2o)
                      .SetCondensedPhase(aqueous_phase)
-                     .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
+                     .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
                      .Build();
 
-  auto hl_o3 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_o3 = HenrysLawEquilibriumConstraintBuilder()
                    .SetGasSpecies(o3_g)
                    .SetCondensedSpecies(o3_aq)
                    .SetSolvent(h2o)
                    .SetCondensedPhase(aqueous_phase)
-                   .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
+                   .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
                    .Build();
 
   auto eq_kw = DissolvedEquilibriumConstraintBuilder()
@@ -1179,28 +1179,28 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
   auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
 
   // --- Henry's Law constraints ---
-  auto hl_so2 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
                     .SetGasSpecies(so2_g)
                     .SetCondensedSpecies(so2_aq)
                     .SetSolvent(h2o)
                     .SetCondensedPhase(aqueous_phase)
-                    .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
+                    .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
                     .Build();
 
-  auto hl_h2o2 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_h2o2 = HenrysLawEquilibriumConstraintBuilder()
                      .SetGasSpecies(h2o2_g)
                      .SetCondensedSpecies(h2o2_aq)
                      .SetSolvent(h2o)
                      .SetCondensedPhase(aqueous_phase)
-                     .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
+                     .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
                      .Build();
 
-  auto hl_o3 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_o3 = HenrysLawEquilibriumConstraintBuilder()
                    .SetGasSpecies(o3_g)
                    .SetCondensedSpecies(o3_aq)
                    .SetSolvent(h2o)
                    .SetCondensedPhase(aqueous_phase)
-                   .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
+                   .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
                    .Build();
 
   // --- Dissociation equilibria ---
@@ -1513,28 +1513,28 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
   auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
 
   // Same constraints as Step 4
-  auto hl_so2 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
                     .SetGasSpecies(so2_g)
                     .SetCondensedSpecies(so2_aq)
                     .SetSolvent(h2o)
                     .SetCondensedPhase(aqueous_phase)
-                    .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
+                    .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
                     .Build();
 
-  auto hl_h2o2 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_h2o2 = HenrysLawEquilibriumConstraintBuilder()
                      .SetGasSpecies(h2o2_g)
                      .SetCondensedSpecies(h2o2_aq)
                      .SetSolvent(h2o)
                      .SetCondensedPhase(aqueous_phase)
-                     .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
+                     .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
                      .Build();
 
-  auto hl_o3 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_o3 = HenrysLawEquilibriumConstraintBuilder()
                    .SetGasSpecies(o3_g)
                    .SetCondensedSpecies(o3_aq)
                    .SetSolvent(h2o)
                    .SetCondensedPhase(aqueous_phase)
-                   .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
+                   .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
                    .Build();
 
   auto eq_kw = DissolvedEquilibriumConstraintBuilder()
@@ -1788,28 +1788,28 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
   auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
 
   // Same constraints as Step 4
-  auto hl_so2 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
                     .SetGasSpecies(so2_g)
                     .SetCondensedSpecies(so2_aq)
                     .SetSolvent(h2o)
                     .SetCondensedPhase(aqueous_phase)
-                    .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
+                    .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
                     .Build();
 
-  auto hl_h2o2 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_h2o2 = HenrysLawEquilibriumConstraintBuilder()
                      .SetGasSpecies(h2o2_g)
                      .SetCondensedSpecies(h2o2_aq)
                      .SetSolvent(h2o)
                      .SetCondensedPhase(aqueous_phase)
-                     .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
+                     .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
                      .Build();
 
-  auto hl_o3 = HenryLawEquilibriumConstraintBuilder()
+  auto hl_o3 = HenrysLawEquilibriumConstraintBuilder()
                    .SetGasSpecies(o3_g)
                    .SetCondensedSpecies(o3_aq)
                    .SetSolvent(h2o)
                    .SetCondensedPhase(aqueous_phase)
-                   .SetHenryLawConstant(HenryLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
+                   .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
                    .Build();
 
   auto eq_kw = DissolvedEquilibriumConstraintBuilder()

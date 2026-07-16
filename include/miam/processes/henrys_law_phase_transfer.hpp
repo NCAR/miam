@@ -35,10 +35,10 @@ namespace miam
   ///
   ///          where k_evap = k_cond / (HLC · R · T), f_v = [solvent] · solvent_molecular_weight / solvent_density  [m³
   ///          mol⁻¹], and φ_p is the phase volume fraction.
-  class HenryLawPhaseTransfer
+  class HenrysLawPhaseTransfer
   {
    public:
-    std::function<double(const micm::Conditions& conditions)> henry_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
+    std::function<double(const micm::Conditions& conditions)> henrys_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
     micm::Species gas_species_;                                                     ///< Gas-phase species
     micm::Species condensed_species_;                                               ///< Condensed-phase solute species
     micm::Species solvent_;                                                         ///< Condensed-phase solvent species
@@ -50,11 +50,11 @@ namespace miam
     double solvent_density_;            ///< Solvent density [kg m⁻³]
     std::string uuid_;                  ///< Unique identifier
 
-    HenryLawPhaseTransfer() = delete;
+    HenrysLawPhaseTransfer() = delete;
 
     /// @brief Constructor
-    HenryLawPhaseTransfer(
-        std::function<double(const micm::Conditions& conditions)> henry_law_constant,
+    HenrysLawPhaseTransfer(
+        std::function<double(const micm::Conditions& conditions)> henrys_law_constant,
         const micm::Species& gas_species,
         const micm::Species& condensed_species,
         const micm::Species& solvent,
@@ -64,7 +64,7 @@ namespace miam
         double gas_molecular_weight,
         double solvent_molecular_weight,
         double solvent_density)
-        : henry_law_constant_(henry_law_constant),
+        : henrys_law_constant_(henrys_law_constant),
           gas_species_(gas_species),
           condensed_species_(condensed_species),
           solvent_(solvent),
@@ -79,10 +79,10 @@ namespace miam
     }
 
     /// @brief Create a copy with a new UUID
-    HenryLawPhaseTransfer CopyWithNewUuid() const
+    HenrysLawPhaseTransfer CopyWithNewUuid() const
     {
-      return HenryLawPhaseTransfer(
-          henry_law_constant_,
+      return HenrysLawPhaseTransfer(
+          henrys_law_constant_,
           gas_species_,
           condensed_species_,
           solvent_,
@@ -268,7 +268,7 @@ namespace miam
               params.ForEachRow(
                   [&](const micm::Conditions& cond, double& hlc, double& T)
                   {
-                    hlc = henry_law_constant_(cond);
+                    hlc = henrys_law_constant_(cond);
                     T = cond.temperature_;
                   },
                   conditions,
