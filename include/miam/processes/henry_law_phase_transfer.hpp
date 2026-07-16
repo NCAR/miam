@@ -35,7 +35,7 @@ namespace miam
   ///
   ///          where k_evap = k_cond / (HLC · R · T), f_v = [solvent] · solvent_molecular_weight / solvent_density  [m³
   ///          mol⁻¹], and φ_p is the phase volume fraction.
-  class HenryLawPhaseTransfer
+  class HenrysLawPhaseTransfer
   {
    public:
     std::function<double(const micm::Conditions& conditions)> henry_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
@@ -50,10 +50,10 @@ namespace miam
     double solvent_density_;            ///< Solvent density [kg m⁻³]
     std::string uuid_;                  ///< Unique identifier
 
-    HenryLawPhaseTransfer() = delete;
+    HenrysLawPhaseTransfer() = delete;
 
     /// @brief Constructor
-    HenryLawPhaseTransfer(
+    HenrysLawPhaseTransfer(
         std::function<double(const micm::Conditions& conditions)> henry_law_constant,
         const micm::Species& gas_species,
         const micm::Species& condensed_species,
@@ -79,9 +79,9 @@ namespace miam
     }
 
     /// @brief Create a copy with a new UUID
-    HenryLawPhaseTransfer CopyWithNewUuid() const
+    HenrysLawPhaseTransfer CopyWithNewUuid() const
     {
-      return HenryLawPhaseTransfer(
+      return HenrysLawPhaseTransfer(
           henry_law_constant_,
           gas_species_,
           condensed_species_,

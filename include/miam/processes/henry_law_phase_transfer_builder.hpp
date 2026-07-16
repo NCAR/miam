@@ -17,14 +17,14 @@
 
 namespace miam
 {
-  /// @brief Builder for HenryLawPhaseTransfer processes
-  class HenryLawPhaseTransferBuilder
+  /// @brief Builder for HenrysLawPhaseTransfer processes
+  class HenrysLawPhaseTransferBuilder
   {
    public:
-    HenryLawPhaseTransferBuilder() = default;
+    HenrysLawPhaseTransferBuilder() = default;
 
     /// @brief Sets the condensed phase in which the solute dissolves
-    HenryLawPhaseTransferBuilder& SetCondensedPhase(const micm::Phase& phase)
+    HenrysLawPhaseTransferBuilder& SetCondensedPhase(const micm::Phase& phase)
     {
       condensed_phase_ = phase;
       condensed_phase_is_set_ = true;
@@ -32,7 +32,7 @@ namespace miam
     }
 
     /// @brief Sets the gas-phase species
-    HenryLawPhaseTransferBuilder& SetGasSpecies(const micm::Species& species)
+    HenrysLawPhaseTransferBuilder& SetGasSpecies(const micm::Species& species)
     {
       gas_species_ = species;
       gas_species_is_set_ = true;
@@ -40,7 +40,7 @@ namespace miam
     }
 
     /// @brief Sets the condensed-phase solute species
-    HenryLawPhaseTransferBuilder& SetCondensedSpecies(const micm::Species& species)
+    HenrysLawPhaseTransferBuilder& SetCondensedSpecies(const micm::Species& species)
     {
       condensed_species_ = species;
       condensed_species_is_set_ = true;
@@ -48,7 +48,7 @@ namespace miam
     }
 
     /// @brief Sets the condensed-phase solvent species
-    HenryLawPhaseTransferBuilder& SetSolvent(const micm::Species& solvent)
+    HenrysLawPhaseTransferBuilder& SetSolvent(const micm::Species& solvent)
     {
       solvent_ = solvent;
       solvent_is_set_ = true;
@@ -56,7 +56,7 @@ namespace miam
     }
 
     /// @brief Sets the Henry's Law constant
-    HenryLawPhaseTransferBuilder& SetHenryLawConstant(const auto& henry_law_constant)
+    HenrysLawPhaseTransferBuilder& SetHenrysLawConstant(const auto& henry_law_constant)
     {
       henry_law_constant_ = [henry_law_constant](const micm::Conditions& conditions)
       { return henry_law_constant.Calculate(conditions); };
@@ -64,7 +64,7 @@ namespace miam
     }
 
     /// @brief Sets the gas-phase diffusion coefficient [m² s⁻¹]
-    HenryLawPhaseTransferBuilder& SetDiffusionCoefficient(double diffusion_coefficient)
+    HenrysLawPhaseTransferBuilder& SetDiffusionCoefficient(double diffusion_coefficient)
     {
       if (diffusion_coefficient <= 0)
       {
@@ -79,7 +79,7 @@ namespace miam
     }
 
     /// @brief Sets the mass accommodation coefficient [dimensionless, 0–1]
-    HenryLawPhaseTransferBuilder& SetAccommodationCoefficient(double accommodation_coefficient)
+    HenrysLawPhaseTransferBuilder& SetAccommodationCoefficient(double accommodation_coefficient)
     {
       if (accommodation_coefficient <= 0)
       {
@@ -93,64 +93,64 @@ namespace miam
       return *this;
     }
 
-    /// @brief Builds and returns the HenryLawPhaseTransfer object
-    HenryLawPhaseTransfer Build() const
+    /// @brief Builds and returns the HenrysLawPhaseTransfer object
+    HenrysLawPhaseTransfer Build() const
     {
       if (!condensed_phase_is_set_)
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
             MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
-            "HenryLawPhaseTransferBuilder requires the condensed phase to be set.");
+            "HenrysLawPhaseTransferBuilder requires the condensed phase to be set.");
       }
       if (!gas_species_is_set_)
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
             MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
-            "HenryLawPhaseTransferBuilder requires the gas species to be set.");
+            "HenrysLawPhaseTransferBuilder requires the gas species to be set.");
       }
       if (!condensed_species_is_set_)
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
             MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
-            "HenryLawPhaseTransferBuilder requires the condensed species to be set.");
+            "HenrysLawPhaseTransferBuilder requires the condensed species to be set.");
       }
       if (!solvent_is_set_)
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
             MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
-            "HenryLawPhaseTransferBuilder requires the solvent to be set.");
+            "HenrysLawPhaseTransferBuilder requires the solvent to be set.");
       }
       if (!henry_law_constant_)
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
             MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
-            "HenryLawPhaseTransferBuilder requires the Henry's Law constant to be set.");
+            "HenrysLawPhaseTransferBuilder requires the Henry's Law constant to be set.");
       }
       if (!diffusion_coefficient_is_set_)
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
             MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
-            "HenryLawPhaseTransferBuilder requires the diffusion coefficient to be set.");
+            "HenrysLawPhaseTransferBuilder requires the diffusion coefficient to be set.");
       }
       if (!accommodation_coefficient_is_set_)
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
             MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
-            "HenryLawPhaseTransferBuilder requires the accommodation coefficient to be set.");
+            "HenrysLawPhaseTransferBuilder requires the accommodation coefficient to be set.");
       }
 
       double gas_molecular_weight = gas_species_.GetProperty<double>("molecular weight [kg mol-1]");
       double solvent_molecular_weight = solvent_.GetProperty<double>("molecular weight [kg mol-1]");
       double solvent_density = solvent_.GetProperty<double>("density [kg m-3]");
 
-      return HenryLawPhaseTransfer(
+      return HenrysLawPhaseTransfer(
           henry_law_constant_,
           gas_species_,
           condensed_species_,

@@ -286,16 +286,16 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
 // Test 2: Kinetic HL phase transfer vs HL equilibrium constraint
 //
 // Kinetic system (ODE):
-//   A_g <-> A_aq via HenryLawPhaseTransfer (kinetic rate-based mass transfer)
+//   A_g <-> A_aq via HenrysLawPhaseTransfer (kinetic rate-based mass transfer)
 //
 // Constrained system (DAE):
-//   A_g <-> A_aq via HenryLawEquilibriumConstraint (algebraic equilibrium)
+//   A_g <-> A_aq via HenrysLawEquilibriumConstraint (algebraic equilibrium)
 //   [A_g] + [A_aq] = total (mass conservation, A_g algebraic)
 //
 // At steady state, both should give:
 //   [A_aq] / ([A_g] * R * T) = HLC * f_v  (adjusted Henry's Law)
 // ============================================================================
-TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
+TEST(KineticVsConstrained, HenrysLawPhaseTransferVsEquilibriumConstraint)
 {
   double T = 298.15;
   double HLC = 3.4e-2;                  // mol m⁻³ Pa⁻¹
@@ -326,12 +326,12 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
   {
     auto droplet = SingleMomentMode{ "DROPLET", { aqueous_phase }, 5.0e-6, 1.2 };
 
-    auto transfer = HenryLawPhaseTransferBuilder()
+    auto transfer = HenrysLawPhaseTransferBuilder()
                         .SetCondensedPhase(aqueous_phase)
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(H2O)
-                        .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC }))
+                        .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
                         .SetDiffusionCoefficient(D_g)
                         .SetAccommodationCoefficient(accommodation)
                         .Build();
@@ -377,12 +377,12 @@ TEST(KineticVsConstrained, HenryLawPhaseTransferVsEquilibriumConstraint)
     // Use UniformSection for the constrained system — no kinetic mass transfer
     auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
-    auto hl_constraint = HenryLawEquilibriumConstraintBuilder()
+    auto hl_constraint = HenrysLawEquilibriumConstraintBuilder()
                              .SetGasSpecies(A_g)
                              .SetCondensedSpecies(A_aq)
                              .SetSolvent(H2O)
                              .SetCondensedPhase(aqueous_phase)
-                             .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC }))
+                             .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
                              .Build();
 
     auto mass_cons = LinearConstraintBuilder()

@@ -15,7 +15,7 @@
 //   Solver: ThreeStageRosenbrock (ODE).
 //
 // Test 2 - DAEConstraints:
-//   CO2(aq) is algebraic via HenryLawEquilibriumConstraint (instantly in
+//   CO2(aq) is algebraic via HenrysLawEquilibriumConstraint (instantly in
 //   equilibrium with CO2(g)).  H+ is algebraic via charge balance
 //   (LinearConstraint).  OH- is algebraic via Kw equilibrium
 //   (DissolvedEquilibriumConstraint).  HCO3- and CO3-- are differential,
@@ -227,7 +227,7 @@ namespace
 // Test 1: Fully kinetic ODE system
 //
 // All aqueous species (CO2_aq, HCO3-, CO3--, H+, OH-) are differential.
-// HenryLawPhaseTransfer drives CO2 dissolution; three DissolvedReversibleReactions
+// HenrysLawPhaseTransfer drives CO2 dissolution; three DissolvedReversibleReactions
 // drive the aqueous equilibria.  The ThreeStageRosenbrock ODE solver is used.
 //
 // Verification: at t = 3000 s (>> tau_1 ~10 s), all equilibrium ratios (K1, K2,
@@ -239,12 +239,12 @@ TEST(AqueousCarbonicAcid, KineticODE)
 
   // -- ODE-specific processes --
   // Henry's Law kinetic phase transfer: CO2(g) <-> CO2(aq)
-  auto transfer = HenryLawPhaseTransferBuilder()
+  auto transfer = HenrysLawPhaseTransferBuilder()
                       .SetCondensedPhase(sys.aqueous_phase)
                       .SetGasSpecies(sys.CO2_g)
                       .SetCondensedSpecies(sys.CO2_aq)
                       .SetSolvent(sys.H2O)
-                      .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = K_H }))
+                      .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = K_H }))
                       .SetDiffusionCoefficient(D_CO2)
                       .SetAccommodationCoefficient(alpha)
                       .Build();
@@ -388,7 +388,7 @@ TEST(AqueousCarbonicAcid, KineticODE)
 // Test 2: DAE system - CO2(aq), CO3--, OH-, and H+ as algebraic variables
 //
 // CO2(g) is held at 400 ppm (no gas-phase processes).
-// CO2(aq) is algebraic via HenryLawEquilibriumConstraint (instant HL equilibrium).
+// CO2(aq) is algebraic via HenrysLawEquilibriumConstraint (instant HL equilibrium).
 // CO3-- is algebraic via DissolvedEquilibriumConstraint (K2): HCO3- <-> H+ + CO3--.
 // OH- is algebraic via DissolvedEquilibriumConstraint (Kw): H2O <-> H+ + OH-.
 // H+ is algebraic via a LinearConstraint encoding the charge balance:
@@ -423,12 +423,12 @@ TEST(AqueousCarbonicAcid, DAEConstraints)
 
   // CO2(aq): Henry's Law equilibrium with CO2(g)
   //   G = K_H * R * T * f_v * [CO2_g] - [CO2_aq] = 0
-  auto hl_constraint = HenryLawEquilibriumConstraintBuilder()
+  auto hl_constraint = HenrysLawEquilibriumConstraintBuilder()
                            .SetCondensedPhase(sys.aqueous_phase)
                            .SetGasSpecies(sys.CO2_g)
                            .SetCondensedSpecies(sys.CO2_aq)
                            .SetSolvent(sys.H2O)
-                           .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = K_H }))
+                           .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = K_H }))
                            .Build();
 
   // OH-: water autodissociation equilibrium

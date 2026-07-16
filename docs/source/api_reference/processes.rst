@@ -13,14 +13,14 @@ DissolvedReversibleReaction
    :members:
    :undoc-members:
 
-HenryLawPhaseTransfer
+HenrysLawPhaseTransfer
 =====================
 
-.. doxygenclass:: miam::HenryLawPhaseTransfer
+.. doxygenclass:: miam::HenrysLawPhaseTransfer
    :members:
    :undoc-members:
 
-.. doxygenclass:: miam::HenryLawPhaseTransferBuilder
+.. doxygenclass:: miam::HenrysLawPhaseTransferBuilder
    :members:
    :undoc-members:
 

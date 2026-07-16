@@ -92,7 +92,7 @@ MIAM currently provides two process types:
    * - ``DissolvedReversibleReaction``
      - Equilibrium reactions within a condensed phase
        (e.g., H₂O ⇌ OH⁻ + H⁺). Does not require aerosol properties.
-   * - ``HenryLawPhaseTransfer``
+   * - ``HenrysLawPhaseTransfer``
      - Gas ⇌ condensed-phase mass transfer governed by Henry's Law.
        Requires effective radius, number concentration, and phase volume
        fraction from the representation.

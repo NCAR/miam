@@ -1,7 +1,7 @@
 // Copyright (C) 2026 University Corporation for Atmospheric Research
 // SPDX-License-Identifier: Apache-2.0
 //
-// Integration tests for HenryLawEquilibriumConstraint with the MICM DAE solver.
+// Integration tests for HenrysLawEquilibriumConstraint with the MICM DAE solver.
 
 #include <miam/miam.hpp>
 #include <miam/processes/constants/henry_law_constant.hpp>
@@ -34,7 +34,7 @@ using namespace miam;
 //   A_g(t)   = (total - P(t)) / (1 + α)
 //   A_aq(t)  = α * (total - P(t)) / (1 + α)
 // ============================================================================
-TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
+TEST(HenrysLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
 {
   // Physical parameters
   double T = 298.15;                                                   // K
@@ -70,12 +70,12 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
                         .Build();
 
   // HL equilibrium constraint: A_g <-> A_aq (A_aq algebraic, per instance)
-  auto hl_constraint = HenryLawEquilibriumConstraintBuilder()
+  auto hl_constraint = HenrysLawEquilibriumConstraintBuilder()
                            .SetGasSpecies(A_g)
                            .SetCondensedSpecies(A_aq)
                            .SetSolvent(H2O)
                            .SetCondensedPhase(aqueous_phase)
-                           .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC }))
+                           .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
                            .Build();
 
   // Mass conservation: [Precursor] + [A_g] + [A_aq] = total, A_g algebraic (global)
@@ -177,7 +177,7 @@ TEST(HenryLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
 // Each mode has its own A_aq and H2O.
 // The HL constraint generates one algebraic equation per instance.
 // ============================================================================
-TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
+TEST(HenrysLawEquilibriumConstraintIntegration, MultipleInstances)
 {
   double T = 298.15;
   double HLC = 4.0e-4;
@@ -208,12 +208,12 @@ TEST(HenryLawEquilibriumConstraintIntegration, MultipleInstances)
                         .SetPhase(gas_phase)
                         .Build();
 
-  auto hl_constraint = HenryLawEquilibriumConstraintBuilder()
+  auto hl_constraint = HenrysLawEquilibriumConstraintBuilder()
                            .SetGasSpecies(A_g)
                            .SetCondensedSpecies(A_aq)
                            .SetSolvent(H2O)
                            .SetCondensedPhase(aqueous_phase)
-                           .SetHenryLawConstant(HenryLawConstant(HenryLawConstantParameters{ .HLC_ref_ = HLC }))
+                           .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
                            .Build();
 
   double P0 = 1.0;

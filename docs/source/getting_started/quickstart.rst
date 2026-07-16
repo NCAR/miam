@@ -45,12 +45,12 @@ Save the following as ``cloud_chem.cpp``:
      };
 
      // Henry's Law phase transfer: CO2(g) <-> CO2(aq)
-     auto co2_transfer = HenryLawPhaseTransferBuilder()
+     auto co2_transfer = HenrysLawPhaseTransferBuilder()
        .SetCondensedPhase(aqueous_phase)
        .SetGasSpecies(co2)
        .SetCondensedSpecies(co2)
        .SetSolvent(h2o)
-       .SetHenryLawConstant(HenryLawConstant(
+       .SetHenrysLawConstant(HenrysLawConstant(
            { .HLC_ref_ = 3.4e-2 }))       // mol m-3 Pa-1 at 298 K
        .SetDiffusionCoefficient(1.5e-5)    // m2 s-1
        .SetAccommodationCoefficient(5.0e-6)
@@ -132,7 +132,7 @@ What happens
    The model derives effective radius, number concentration, and phase
    volume fraction from these parameters and the species concentrations.
 
-3. A **HenryLawPhaseTransfer** process is configured with a Henry's Law
+3. A **HenrysLawPhaseTransfer** process is configured with a Henry's Law
    constant, gas-phase diffusion coefficient, and mass accommodation
    coefficient. The builder extracts molecular weights and densities from
    the species objects.

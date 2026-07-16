@@ -34,7 +34,7 @@ namespace miam
   ///          water, HLC is the Henry's Law constant [mol m⁻³ Pa⁻¹], and the algebraic variable
   ///          is always the condensed-phase species (gas disallowed to avoid overconstrained
   ///          systems with multiple phase instances sharing the same gas species).
-  class HenryLawEquilibriumConstraint
+  class HenrysLawEquilibriumConstraint
   {
    public:
     std::function<double(const micm::Conditions& conditions)> henry_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
@@ -46,10 +46,10 @@ namespace miam
     double solvent_density_;           ///< Solvent density [kg m⁻³]
     std::string uuid_;                 ///< Unique identifier
 
-    HenryLawEquilibriumConstraint() = delete;
+    HenrysLawEquilibriumConstraint() = delete;
 
     /// @brief Constructor
-    HenryLawEquilibriumConstraint(
+    HenrysLawEquilibriumConstraint(
         std::function<double(const micm::Conditions& conditions)> henry_law_constant,
         const micm::Species& gas_species,
         const micm::Species& condensed_species,
@@ -69,9 +69,9 @@ namespace miam
     }
 
     /// @brief Create a copy with a new UUID
-    HenryLawEquilibriumConstraint CopyWithNewUuid() const
+    HenrysLawEquilibriumConstraint CopyWithNewUuid() const
     {
-      return HenryLawEquilibriumConstraint(
+      return HenrysLawEquilibriumConstraint(
           henry_law_constant_,
           gas_species_,
           condensed_species_,
@@ -357,7 +357,7 @@ namespace miam
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
             MIAM_INTERNAL_MISSING_STATE_VARIABLE,
-            "HenryLawEquilibriumConstraint: Gas species " + gas_species_.name_ + " not found in state_variable_indices");
+            "HenrysLawEquilibriumConstraint: Gas species " + gas_species_.name_ + " not found in state_variable_indices");
       indices.gas_idx_ = gas_it->second;
 
       auto phase_it = phase_prefixes.find(condensed_phase_.name_);
@@ -366,7 +366,7 @@ namespace miam
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
             MIAM_INTERNAL_MISSING_PHASE_PREFIX,
-            "HenryLawEquilibriumConstraint: Phase " + condensed_phase_.name_ + " not found in phase_prefixes");
+            "HenrysLawEquilibriumConstraint: Phase " + condensed_phase_.name_ + " not found in phase_prefixes");
       }
       const auto& prefixes = phase_it->second;
       indices.number_of_phase_instances_ = prefixes.size();

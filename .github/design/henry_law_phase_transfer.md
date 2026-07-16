@@ -2113,7 +2113,7 @@ and the provider can short-circuit.
    Model integration (Step 5) cover this:
    - Step 0: Define `MiamProcessSet` and the common interface; refactor
      `DissolvedReversibleReaction` to satisfy it.
-   - Step 4–5: `HenryLawPhaseTransfer` implements the same interface;
+   - Step 4–5: `HenrysLawPhaseTransfer` implements the same interface;
      Model's single loop handles both process types identically.
 
 2. **Provider GroupView compatibility** *(resolved)*: The providers receive
@@ -2231,7 +2231,7 @@ and the provider can short-circuit.
 | PR A | 0     | Common process interface + refactor DissolvedReversibleReaction |
 | PR B | 1     | Aerosol property providers on representations |
 | PR C | 2–3   | Henry's Law constant + mass transfer utilities |
-| PR D | 4     | Core HenryLawPhaseTransfer process |
+| PR D | 4     | Core HenrysLawPhaseTransfer process |
 | PR E | 5–6   | Builder, model integration, integration tests |
 | PR F | 7     | Documentation |
 
@@ -2282,7 +2282,7 @@ and all derivatives (`dk_cond/dr_eff`, `dk_cond/dN`) — same provider pattern a
 aerosol properties. Helper functions (mean free path, Fuchs-Sutugin factor) are
 internal implementation details, not part of the public interface.
 
-### Step 4 — HenryLawPhaseTransfer Process
+### Step 4 — HenrysLawPhaseTransfer Process
 
 Core process struct implementing the common interface:
 `RequiredAerosolProperties()` returns `{phase_name → {EffectiveRadius,
