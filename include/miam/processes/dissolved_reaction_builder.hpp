@@ -73,8 +73,7 @@ namespace miam
     }
 
     /// @brief Sets the rate constant function
-    DissolvedReactionBuilder& SetRateConstant(
-        std::function<double(const micm::Conditions&)> rate_constant)
+    DissolvedReactionBuilder& SetRateConstant(std::function<double(const micm::Conditions&)> rate_constant)
     {
       rate_constant_ = std::move(rate_constant);
       return *this;
@@ -130,14 +129,13 @@ namespace miam
     }
 
    private:
-    micm::Phase phase_;                     ///< Phase in which the reaction occurs
-    bool phase_is_set_ = false;             ///< Flag to track if the phase has been set
-    std::vector<micm::Species> reactants_;  ///< Reactant species
-    std::vector<micm::Species> products_;   ///< Product species
-    micm::Species solvent_;                 ///< Solvent species
-    bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
-    std::function<double(const micm::Conditions& conditions)>
-        rate_constant_;                     ///< Rate constant
+    micm::Phase phase_;                                                        ///< Phase in which the reaction occurs
+    bool phase_is_set_ = false;                                                ///< Flag to track if the phase has been set
+    std::vector<micm::Species> reactants_;                                     ///< Reactant species
+    std::vector<micm::Species> products_;                                      ///< Product species
+    micm::Species solvent_;                                                    ///< Solvent species
+    bool solvent_is_set_ = false;                                              ///< Flag to track if the solvent has been set
+    std::function<double(const micm::Conditions& conditions)> rate_constant_;  ///< Rate constant
     double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
     double min_halflife_{ 0.0 };       ///< Minimum half-life for rate capping [s]
   };

@@ -608,8 +608,7 @@ namespace miam
                 MIAM_ERROR_CATEGORY_INTERNAL,
                 MIAM_INTERNAL_DUPLICATE_STATE_PREFIX,
                 "PhaseStatePrefixes: Non-unique state variable prefixes detected for phase " + phase_name +
-                ". Check your aerosol representation and phase names for duplicates."
-              );
+                    ". Check your aerosol representation and phase names for duplicates.");
           }
         }
       }

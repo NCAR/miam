@@ -1071,11 +1071,7 @@ TEST(DissolvedReaction, JacobianFDMultiPhaseInstance)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
 
   double k = 0.2;
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } },
-                              { a },
-                              { b },
-                              s,
-                              phase };
+  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -1271,9 +1267,7 @@ TEST(DissolvedReaction, ForcingFunctionCappedUncappedRegime)
   double t_half = 1.0;  // short half-life → r_max = [A] / t_half = large compared to r
 
   DissolvedReaction uncapped{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase };
-  DissolvedReaction capped{
-    { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half
-  };
+  DissolvedReaction capped{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1319,9 +1313,7 @@ TEST(DissolvedReaction, ForcingFunctionCappedSaturatedRegime)
   double k = 1.0e6;        // very fast reaction
   double t_half = 1000.0;  // long half-life → r_max = [A] / t_half = small
 
-  DissolvedReaction reaction{
-    { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half
-  };
+  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1362,9 +1354,7 @@ TEST(DissolvedReaction, JacobianFDCappedUncappedRegime)
   double k = 1.0e-5;    // slow reaction, uncapped
   double t_half = 0.1;  // r_max = [A]/t_half >> r
 
-  DissolvedReaction reaction{
-    { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half
-  };
+  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1395,9 +1385,7 @@ TEST(DissolvedReaction, JacobianFDCappedSaturatedRegime)
   double k = 1.0e5;  // fast reaction, deeply capped
   double t_half = 1000.0;
 
-  DissolvedReaction reaction{
-    { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half
-  };
+  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1433,9 +1421,7 @@ TEST(DissolvedReaction, JacobianFDCappedBimolecular)
   double k = 50.0;       // moderately fast
   double t_half = 10.0;  // r_max = min(A,B) / t_half
 
-  DissolvedReaction reaction{
-    { [k](const micm::Conditions&) { return k; } }, { a, b }, { c }, s, phase, 1.0e-20, t_half
-  };
+  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a, b }, { c }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");

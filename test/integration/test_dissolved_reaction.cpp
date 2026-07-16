@@ -47,10 +47,10 @@ TEST(DissolvedReactionIntegration, SimpleFirstOrderDecay)
 
   auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                  .SetSystem(system)
-                  .AddExternalModel(model)
-                  .SetIgnoreUnusedSpecies(true)
-                  .Build();
+                    .SetSystem(system)
+                    .AddExternalModel(model)
+                    .SetIgnoreUnusedSpecies(true)
+                    .Build();
 
   State state = solver.GetState();
 
@@ -144,10 +144,10 @@ TEST(DissolvedReactionIntegration, SolventAsReactant)
 
   auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                  .SetSystem(system)
-                  .AddExternalModel(model)
-                  .SetIgnoreUnusedSpecies(true)
-                  .Build();
+                    .SetSystem(system)
+                    .AddExternalModel(model)
+                    .SetIgnoreUnusedSpecies(true)
+                    .Build();
 
   State state = solver.GetState();
 
@@ -241,10 +241,10 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
 
   auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                  .SetSystem(system)
-                  .AddExternalModel(model)
-                  .SetIgnoreUnusedSpecies(true)
-                  .Build();
+                    .SetSystem(system)
+                    .AddExternalModel(model)
+                    .SetIgnoreUnusedSpecies(true)
+                    .Build();
 
   State state = solver.GetState();
 
@@ -312,20 +312,13 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
 
   auto aqueous = Phase{ "AQUEOUS", { { A }, { B }, { C } } };
 
-  auto small_droplet = UniformSection{
-    "DROPLET_SMALL",
-    { aqueous }
-  };
-  auto large_droplet = UniformSection{
-    "DROPLET_LARGE",
-    { aqueous }
-  };
-
+  auto small_droplet = UniformSection{ "DROPLET_SMALL", { aqueous } };
+  auto large_droplet = UniformSection{ "DROPLET_LARGE", { aqueous } };
 
   double k = 0.1;
-  
+
   auto k_calc = [k](const Conditions& conditions) { return k; };
-  
+
   auto reaction = DissolvedReactionBuilder{}
                       .SetPhase(aqueous)
                       .SetReactants({ A })
@@ -334,10 +327,7 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
                       .SetRateConstant(k_calc)
                       .Build();
 
-  auto model = Model{
-    .name_ = "AEROSOL",
-    .representations_ = { small_droplet, large_droplet }
-  };
+  auto model = Model{ .name_ = "AEROSOL", .representations_ = { small_droplet, large_droplet } };
   model.AddProcesses({ reaction });
 
   Phase gas_phase{ "GAS", {} };
@@ -347,10 +337,10 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
 
   auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                  .SetSystem(system)
-                  .AddExternalModel(model)
-                  .SetIgnoreUnusedSpecies(true)
-                  .Build();
+                    .SetSystem(system)
+                    .AddExternalModel(model)
+                    .SetIgnoreUnusedSpecies(true)
+                    .Build();
 
   State state = solver.GetState();
 
@@ -389,8 +379,7 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
       double dt = std::min(0.01, target_time - time);
       solver.UpdateStateParameters(state);
       auto result = solver.Solve(dt, state);
-      ASSERT_EQ(result.state_, SolverState::Converged)
-        << "Solver failed at t = " << time << " s";
+      ASSERT_EQ(result.state_, SolverState::Converged) << "Solver failed at t = " << time << " s";
       time += dt;
     }
 
@@ -422,7 +411,7 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
   double A_final_small = state.variables_[0][i_A_small];
   double A_final_large = state.variables_[0][i_A_large];
   EXPECT_NEAR(A_final_large / A0_large, A_final_small / A0_small, 1.0e-5)
-    << "Large and small droplet species concetrations should change at the same rate";
+      << "Large and small droplet species concetrations should change at the same rate";
 }
 
 // ============================================================================
@@ -467,10 +456,10 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
 
   auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                  .SetSystem(system)
-                  .AddExternalModel(model)
-                  .SetIgnoreUnusedSpecies(true)
-                  .Build();
+                    .SetSystem(system)
+                    .AddExternalModel(model)
+                    .SetIgnoreUnusedSpecies(true)
+                    .Build();
 
   State state = solver.GetState();
 
@@ -574,10 +563,10 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
 
   auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                  .SetSystem(system)
-                  .AddExternalModel(model)
-                  .SetIgnoreUnusedSpecies(true)
-                  .Build();
+                    .SetSystem(system)
+                    .AddExternalModel(model)
+                    .SetIgnoreUnusedSpecies(true)
+                    .Build();
 
   // --- Sub-test 1: One reactant exactly zero ---
   {

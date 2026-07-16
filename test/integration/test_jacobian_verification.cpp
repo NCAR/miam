@@ -237,9 +237,7 @@ TEST(JacobianVerification, DissolvedReversibleReactionProcess)
   double k_f = 0.1, k_r = 0.05;
   auto forward_rate = [k_f](const Conditions&) { return k_f; };
   auto reverse_rate = [k_r](const Conditions&) { return k_r; };
-  auto reaction = DissolvedReversibleReaction{
-    { forward_rate }, { reverse_rate }, { A }, { B }, C, aqueous_phase
-  };
+  auto reaction = DissolvedReversibleReaction{ { forward_rate }, { reverse_rate }, { A }, { B }, C, aqueous_phase };
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -396,12 +394,9 @@ TEST(JacobianVerification, MultipleProcessesCombined)
                        .Build();
 
   // C ⇌ D (reversible)
-  auto reaction2 = DissolvedReversibleReaction{ { [](const Conditions&) { return 0.2; } },
-                                                { [](const Conditions&) { return 0.05; } },
-                                                { C },
-                                                { D },
-                                                S,
-                                                aqueous_phase };
+  auto reaction2 = DissolvedReversibleReaction{
+    { [](const Conditions&) { return 0.2; } }, { [](const Conditions&) { return 0.05; } }, { C }, { D }, S, aqueous_phase
+  };
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses(reaction1, reaction2);
@@ -804,9 +799,7 @@ TEST(JacobianVerification, DissolvedReversibleReactionDampingRange)
   double k_f = 0.1, k_r = 0.05;
   auto forward_rate = [k_f](const Conditions&) { return k_f; };
   auto reverse_rate = [k_r](const Conditions&) { return k_r; };
-  auto reaction = DissolvedReversibleReaction{
-    { forward_rate }, { reverse_rate }, { A }, { B }, C, aqueous_phase
-  };
+  auto reaction = DissolvedReversibleReaction{ { forward_rate }, { reverse_rate }, { A }, { B }, C, aqueous_phase };
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
