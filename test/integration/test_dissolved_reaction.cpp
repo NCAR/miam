@@ -421,7 +421,7 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
   // Large droplets should decay at the same rate
   double A_final_small = state.variables_[0][i_A_small];
   double A_final_large = state.variables_[0][i_A_large];
-  EXPECT_NEAR(A_final_large / A0_large, A_final_small / A0_small, A0_large * 1.0e-5)
+  EXPECT_NEAR(A_final_large / A0_large, A_final_small / A0_small, 1.0e-5)
     << "Large and small droplet species concetrations should change at the same rate";
 }
 

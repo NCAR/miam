@@ -248,7 +248,7 @@ namespace miam
         {
           throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
-            MIAM_INTERNAL_MISSING_PHASE_PREFIX,
+            MIAM_INTERNAL_MISSING_STATE_PARAMETER,
               "Internal Error: UpdateStateParametersFunction: Forward rate constant parameter " + forward_param +
               " not found in state_parameter_indices");
         }
@@ -256,7 +256,7 @@ namespace miam
         {
           throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
-            MIAM_INTERNAL_MISSING_PHASE_PREFIX,
+            MIAM_INTERNAL_MISSING_STATE_PARAMETER,
               "Internal Error: UpdateStateParametersFunction: Reverse rate constant parameter " + reverse_param +
               " not found in state_parameter_indices");
         }
@@ -606,7 +606,7 @@ namespace miam
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
-            MIAM_INTERNAL_MISSING_PHASE_PREFIX,
+            MIAM_INTERNAL_MISSING_STATE_PARAMETER,
             "Internal Error: GetParameterIndices: Forward rate constant parameter " + forward_param +
             " not found in state_parameter_indices");
       }
@@ -614,7 +614,7 @@ namespace miam
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
-            MIAM_INTERNAL_MISSING_PHASE_PREFIX,
+            MIAM_INTERNAL_MISSING_STATE_PARAMETER,
             "Internal Error: GetParameterIndices: Reverse rate constant parameter " + reverse_param +
             " not found in state_parameter_indices");
       }

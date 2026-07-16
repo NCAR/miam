@@ -156,6 +156,8 @@ namespace miam
       }
             
         // If equilibrium constant is set, compute the missing rate constant
+        auto fwd_rc = forward_rate_constant_;
+        auto rev_rc = reverse_rate_constant_;
         if (equilibrium_constant_)
         {
           if (!forward_rate_constant_)
@@ -163,7 +165,7 @@ namespace miam
             // Capture the necessary functions by value to avoid dangling references
             auto eq_const = equilibrium_constant_;
             auto rev_const = reverse_rate_constant_;
-            forward_rate_constant_ = [eq_const, rev_const](const micm::Conditions& conditions)
+            fwd_rc = [eq_const, rev_const](const micm::Conditions& conditions)
             {
               double K_eq = eq_const(conditions);
               double k_r = rev_const(conditions);
@@ -175,7 +177,7 @@ namespace miam
             // Capture the necessary functions by value to avoid dangling references
             auto eq_const = equilibrium_constant_;
             auto fwd_const = forward_rate_constant_;
-            reverse_rate_constant_ = [eq_const, fwd_const](const micm::Conditions& conditions)
+            rev_rc = [eq_const, fwd_const](const micm::Conditions& conditions)
             {
               double K_eq = eq_const(conditions);
               double k_f = fwd_const(conditions);
@@ -184,7 +186,7 @@ namespace miam
           }
         }
         return DissolvedReversibleReaction(
-            forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_);
+            fwd_rc, rev_rc, reactants_, products_, solvent_, phase_, solvent_floor_);
     }
 
    private:
@@ -194,11 +196,11 @@ namespace miam
     std::vector<micm::Species> products_;   ///< Product species
     micm::Species solvent_;                 ///< Solvent species
     bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
-    mutable std::function<double(const micm::Conditions& conditions)>
+    std::function<double(const micm::Conditions& conditions)>
         forward_rate_constant_;             ///< Forward rate constant function
-    mutable std::function<double(const micm::Conditions& conditions)>
+    std::function<double(const micm::Conditions& conditions)>
         reverse_rate_constant_;            ///< Reverse rate constant function
-    mutable std::function<double(const micm::Conditions& conditions)>
+    std::function<double(const micm::Conditions& conditions)>
         equilibrium_constant_;              ///< Equilibrium constant function
     double solvent_floor_{ 1.0e-20 };       ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
   };

@@ -478,8 +478,8 @@ TEST(DissolvedReversibleReactionIntegration, MultiPhaseInstances) {
   double K_eq_large = k_forward / k_reverse;  // 2.0
   double A_eq_large = A0_large / (1.0 + K_eq_large);
   double B_eq_large = A0_large * K_eq_large / (1.0 + K_eq_large);
-  double k_total_large = k_forward + k_reverse;  // 0.3 s^-1
-  double tau_large = 1.0 / k_total_large;  // 3.33 s
+  double k_total_large = k_forward + k_reverse;  // 0.15 s^-1
+  double tau_large = 1.0 / k_total_large;  // 6.67 s
   
   // Build solver
   auto system = System(gas_phase);
@@ -493,20 +493,14 @@ TEST(DissolvedReversibleReactionIntegration, MultiPhaseInstances) {
   State state = solver.GetState();
   
   // Find variable indices for small droplets
-  std::size_t i_A_small = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_SMALL.AQUEOUS.A") - state.variable_names_.begin();
-  std::size_t i_B_small = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_SMALL.AQUEOUS.B") - state.variable_names_.begin();
-  std::size_t i_C_small = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_SMALL.AQUEOUS.C") - state.variable_names_.begin();
+  std::size_t i_A_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS.A");
+  std::size_t i_B_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS.B");
+  std::size_t i_C_small = state.variable_map_.at("DROPLET_SMALL.AQUEOUS.C");
   
   // Find variable indices for large droplets
-  std::size_t i_A_large = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_LARGE.AQUEOUS.A") - state.variable_names_.begin();
-  std::size_t i_B_large = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_LARGE.AQUEOUS.B") - state.variable_names_.begin();
-  std::size_t i_C_large = std::find(state.variable_names_.begin(), state.variable_names_.end(),
-                                     "DROPLET_LARGE.AQUEOUS.C") - state.variable_names_.begin();
+  std::size_t i_A_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS.A");
+  std::size_t i_B_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS.B");
+  std::size_t i_C_large = state.variable_map_.at("DROPLET_LARGE.AQUEOUS.C");
   
   // Set initial conditions
   state.variables_[0][i_A_small] = A0_small;

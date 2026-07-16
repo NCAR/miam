@@ -46,7 +46,7 @@ TEST(ReadmeExample, HenryLawPhaseTransfer)
   };
 
   // Henry's Law phase transfer: CO2(g) <-> CO2(aq)
-  // (gets applied to both aqueous phase instances (in small and large droplets)
+  // (gets applied to both aqueous phase instances (in small and large droplets))
   auto co2_transfer = HenryLawPhaseTransferBuilder()
     .SetCondensedPhase(aqueous_phase)
     .SetGasSpecies(co2)

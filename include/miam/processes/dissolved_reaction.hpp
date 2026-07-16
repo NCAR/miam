@@ -773,7 +773,7 @@ namespace miam
       {
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
-            MIAM_INTERNAL_MISSING_PHASE_PREFIX,
+            MIAM_INTERNAL_MISSING_STATE_PARAMETER,
             "Internal Error: GetParameterIndex: Rate constant parameter " + k_param +
             " not found in state_parameter_indices");
       }
