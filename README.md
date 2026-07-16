@@ -5,7 +5,7 @@ Model-Independent Aerosol Module
 
 [![GitHub Releases](https://img.shields.io/github/release/NCAR/miam.svg)](https://github.com/NCAR/miam/releases)
 [![License](https://img.shields.io/github/license/NCAR/miam.svg)](https://github.com/NCAR/miam/blob/main/LICENSE)
-[![Docker builds](https://github.com/NCAR/miam/actions/workflows/docker_and_coverage.yml/badge.svg)](https://github.com/NCAR/miam/actions/workflows/docker_and_coverage.yml)
+[![Docker builds](https://github.com/NCAR/miam/actions/workflows/docker_and_coverage.yaml/badge.svg)](https://github.com/NCAR/miam/actions/workflows/docker_and_coverage.yaml)
 [![Windows](https://github.com/NCAR/miam/actions/workflows/windows.yml/badge.svg)](https://github.com/NCAR/miam/actions/workflows/windows.yml)
 [![Mac](https://github.com/NCAR/miam/actions/workflows/mac.yml/badge.svg)](https://github.com/NCAR/miam/actions/workflows/mac.yml)
 [![Ubuntu](https://github.com/NCAR/miam/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/NCAR/miam/actions/workflows/ubuntu.yml)
