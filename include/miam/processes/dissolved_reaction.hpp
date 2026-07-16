@@ -61,8 +61,8 @@ namespace miam
   class DissolvedReaction
   {
    public:
-    std::map<std::string, std::function<double(const micm::Conditions& conditions)>>
-        rate_constants_;                    ///< Rate constant functions keyed by representation prefix
+    std::function<double(const micm::Conditions& conditions)>
+        rate_constant_;                     ///< Rate constant function
     std::vector<micm::Species> reactants_;  ///< Reactant species
     std::vector<micm::Species> products_;   ///< Product species
     micm::Species solvent_;                 ///< Solvent species
@@ -79,14 +79,14 @@ namespace miam
 
     /// @brief Constructor
     DissolvedReaction(
-        std::map<std::string, std::function<double(const micm::Conditions& conditions)>> rate_constants,
+        std::function<double(const micm::Conditions& conditions)> rate_constant,
         const std::vector<micm::Species>& reactants,
         const std::vector<micm::Species>& products,
         micm::Species solvent,
         micm::Phase phase,
         double solvent_floor = 1.0e-20,
         double min_halflife = 0.0)
-        : rate_constants_(std::move(rate_constants)),
+        : rate_constant_(rate_constant),
           reactants_(reactants),
           products_(products),
           solvent_(solvent),
@@ -101,7 +101,7 @@ namespace miam
     /// @return A new DissolvedReaction with the same properties but a unique UUID
     DissolvedReaction CopyWithNewUuid() const
     {
-      return DissolvedReaction(rate_constants_, reactants_, products_, solvent_, phase_, solvent_floor_, min_halflife_);
+      return DissolvedReaction(rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_, min_halflife_);
     }
 
     /// @brief Returns a set of unique parameter names for this process
@@ -110,12 +110,11 @@ namespace miam
     /// @return Set of unique parameter names for this process
     std::set<std::string> ProcessParameterNames(const std::map<std::string, std::set<std::string>>& phase_prefixes) const
     {
-      std::set<std::string> names;
-      auto it = phase_prefixes.find(phase_.name_);
-      if (it != phase_prefixes.end())
-        for (const auto& prefix : it->second)
-          names.insert(prefix + "." + phase_.name_ + "." + uuid_ + ".k");
-      return names;
+        std::set<std::string> parameter_names;
+        // The conditions are shared by the whole system, so we just need one value for the rate
+        // constant. We can use the phase name and uuid to create a unique parameter name.
+        parameter_names.insert(phase_.name_ + "." + uuid_ + ".k");
+        return parameter_names;
     }
 
     /// @brief Returns participating species' unique state names
@@ -237,39 +236,33 @@ namespace miam
         const auto& state_parameter_indices  // acts like std::unordered_map<std::string, std::size_t>
     ) const
     {
-      std::vector<std::pair<std::size_t, std::function<double(const micm::Conditions&)>>> k_slots;
-      auto phase_it = phase_prefixes.find(phase_.name_);
-      for (const auto& prefix : phase_it->second)
-      {
-        std::string k_param = prefix + "." + phase_.name_ + "." + uuid_ + ".k";
+        std::string k_param = phase_.name_ + "." + uuid_ + ".k";
         if (state_parameter_indices.find(k_param) == state_parameter_indices.end())
+        {
           throw MiamException(
               MIAM_ERROR_CATEGORY_INTERNAL,
               MIAM_INTERNAL_MISSING_STATE_PARAMETER,
-              "Internal Error: UpdateStateParametersFunction: Parameter " + k_param + " not found");
-        auto rate_it = rate_constants_.find(prefix);
-        if (rate_it == rate_constants_.end())
-          throw MiamException(
-              MIAM_ERROR_CATEGORY_CONFIGURATION,
-              MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
-              "DissolvedReaction: No rate constant configured for representation prefix '" + prefix + "'");
-        k_slots.push_back({ state_parameter_indices.at(k_param), rate_it->second });
-      }
+              "Internal Error: UpdateStateParametersFunction: Rate constant parameter " + k_param +
+              " not found in state_parameter_indices");
+        }
+        std::size_t k_index = state_parameter_indices.at(k_param);
 
-      DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-      std::vector<micm::Conditions> conditions_vector;
+        // Set up dummy arguments to build the function
+        DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
+        std::vector<micm::Conditions> conditions_vector;
 
-      return DenseMatrixPolicy::Function(
-          [k_slots](auto&& conditions, auto&& params)
-          {
-            for (const auto& [k_idx, rate_fn] : k_slots)
+        // return a function that updates the rate constant parameter based on the current conditions
+        return DenseMatrixPolicy::Function(
+            [this, k_index](auto&& conditions, auto&& params)
+            {
               params.ForEachRow(
-                  [&](const micm::Conditions& cond, double& param) { param = rate_fn(cond); },
+                  [&](const micm::Conditions& condition, double& parameter)
+                  { parameter = rate_constant_(condition); },
                   conditions,
-                  params.GetColumnView(k_idx));
-          },
-          conditions_vector,
-          state_parameters);
+                  params.GetColumnView(k_index));
+            },
+            conditions_vector,
+            state_parameters);
     }
 
     /// @brief Returns a function that calculates the forcing terms for this process
@@ -300,18 +293,18 @@ namespace miam
     ) const
     {
       StateVariableIndices variable_indices = GetStateVariableIndices(phase_prefixes, state_variable_indices);
-      std::vector<std::size_t> k_indices = GetParameterIndices(phase_prefixes, state_parameter_indices);
+      std::size_t k_index = GetParameterIndex(state_parameter_indices);
       DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
       DenseMatrixPolicy dummy_state_variables{ 1, state_variable_indices.size(), 0.0 };
 
       if (min_halflife_ > 0.0)
       {
         return ForcingFunctionCapped<DenseMatrixPolicy>(
-            variable_indices, k_indices, dummy_state_parameters, dummy_state_variables);
+            variable_indices, k_index, dummy_state_parameters, dummy_state_variables);
       }
 
       return DenseMatrixPolicy::Function(
-          [this, variable_indices, k_indices](auto&& state_parameters, auto&& state_variables, auto&& forcing_terms)
+          [this, variable_indices, k_index](auto&& state_parameters, auto&& state_variables, auto&& forcing_terms)
           {
             auto rate = forcing_terms.GetRowVariable();
             const double eps = solvent_floor_;
@@ -324,7 +317,7 @@ namespace miam
               state_parameters.ForEachRow(
                   [&](const double& rate_constant, const double& solvent, double& rate)
                   { rate = rate_constant * solvent / std::pow(solvent + eps, n_r); },
-                  state_parameters.GetConstColumnView(k_indices[i_phase]),
+                  state_parameters.GetConstColumnView(k_index),
                   state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                   rate);
               for (std::size_t r = 0; r < reactants_.size(); ++r)
@@ -380,18 +373,18 @@ namespace miam
     {
       StateVariableIndices variable_indices = GetStateVariableIndices(phase_prefixes, state_variable_indices);
       JacobianIndices jacobian_indices = GetJacobianIndices(variable_indices, jacobian);
-      std::vector<std::size_t> k_indices = GetParameterIndices(phase_prefixes, state_parameter_indices);
+      std::size_t k_index = GetParameterIndex(state_parameter_indices);
       DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
       DenseMatrixPolicy dummy_state_variables{ 1, state_variable_indices.size(), 0.0 };
 
       if (min_halflife_ > 0.0)
       {
         return JacobianFunctionCapped<DenseMatrixPolicy, SparseMatrixPolicy>(
-            variable_indices, jacobian_indices, k_indices, dummy_state_parameters, dummy_state_variables, jacobian);
+            variable_indices, jacobian_indices, k_index, dummy_state_parameters, dummy_state_variables, jacobian);
       }
 
       return SparseMatrixPolicy::Function(
-          [this, variable_indices, jacobian_indices, k_indices](
+          [this, variable_indices, jacobian_indices, k_index](
               auto&& state_parameters, auto&& state_variables, auto&& jacobian_values)
           {
             auto d_rate_d_ind = jacobian_values.GetBlockVariable();
@@ -409,7 +402,7 @@ namespace miam
                 jacobian_values.ForEachBlock(
                     [&](const double& rate_constant, const double& solvent, double& partial)
                     { partial = rate_constant * solvent / std::pow(solvent + eps, n_r); },
-                    state_parameters.GetConstColumnView(k_indices[i_phase]),
+                    state_parameters.GetConstColumnView(k_index),
                     state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                     d_rate_d_ind);
                 // add contributions to the partial from the other reactants
@@ -446,7 +439,7 @@ namespace miam
                     partial =
                         rate_constant * (eps + (1.0 - static_cast<int>(n_r)) * solvent) / std::pow(solvent + eps, n_r + 1);
                   },
-                  state_parameters.GetConstColumnView(k_indices[i_phase]),
+                  state_parameters.GetConstColumnView(k_index),
                   state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                   d_rate_d_ind);
               // add contributions to the partial from the reactants
@@ -511,12 +504,12 @@ namespace miam
     template<typename DenseMatrixPolicy>
     auto ForcingFunctionCapped(
         const StateVariableIndices& variable_indices,
-        const std::vector<std::size_t>& k_indices,
+        const std::size_t k_index,
         DenseMatrixPolicy& dummy_state_parameters,
         DenseMatrixPolicy& dummy_state_variables) const
     {
       return DenseMatrixPolicy::Function(
-          [this, variable_indices, k_indices](auto&& state_parameters, auto&& state_variables, auto&& forcing_terms)
+          [this, variable_indices, k_index](auto&& state_parameters, auto&& state_variables, auto&& forcing_terms)
           {
             auto rate = forcing_terms.GetRowVariable();
             auto accum = forcing_terms.GetRowVariable();
@@ -530,7 +523,7 @@ namespace miam
               state_parameters.ForEachRow(
                   [&](const double& rate_constant, const double& solvent, double& rate)
                   { rate = rate_constant * solvent / std::pow(solvent + eps, n_r); },
-                  state_parameters.GetConstColumnView(k_indices[i_phase]),
+                  state_parameters.GetConstColumnView(k_index),
                   state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                   rate);
               for (std::size_t r = 0; r < n_r; ++r)
@@ -601,13 +594,13 @@ namespace miam
     auto JacobianFunctionCapped(
         const StateVariableIndices& variable_indices,
         const JacobianIndices& jacobian_indices,
-        const std::vector<std::size_t>& k_indices,
+        const std::size_t k_index,
         DenseMatrixPolicy& dummy_state_parameters,
         DenseMatrixPolicy& dummy_state_variables,
         const SparseMatrixPolicy& jacobian) const
     {
       return SparseMatrixPolicy::Function(
-          [this, variable_indices, jacobian_indices, k_indices](
+          [this, variable_indices, jacobian_indices, k_index](
               auto&& state_parameters, auto&& state_variables, auto&& jacobian_values)
           {
             auto d_rate_d_ind = jacobian_values.GetBlockVariable();
@@ -626,7 +619,7 @@ namespace miam
               jacobian_values.ForEachBlock(
                   [&](const double& rate_constant, const double& solvent, double& rr)
                   { rr = rate_constant * solvent / std::pow(solvent + eps, n_r); },
-                  state_parameters.GetConstColumnView(k_indices[i_phase]),
+                  state_parameters.GetConstColumnView(k_index),
                   state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                   raw_rate);
               for (std::size_t r = 0; r < n_r; ++r)
@@ -681,7 +674,7 @@ namespace miam
                 jacobian_values.ForEachBlock(
                     [&](const double& rate_constant, const double& solvent, double& partial)
                     { partial = rate_constant * solvent / std::pow(solvent + eps, n_r); },
-                    state_parameters.GetConstColumnView(k_indices[i_phase]),
+                    state_parameters.GetConstColumnView(k_index),
                     state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                     d_rate_d_ind);
                 for (std::size_t r = 0; r < n_r; ++r)
@@ -732,7 +725,7 @@ namespace miam
                     partial =
                         rate_constant * (eps + (1.0 - static_cast<int>(n_r)) * solvent) / std::pow(solvent + eps, n_r + 1);
                   },
-                  state_parameters.GetConstColumnView(k_indices[i_phase]),
+                  state_parameters.GetConstColumnView(k_index),
                   state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
                   d_rate_d_ind);
               for (std::size_t r = 0; r < n_r; ++r)
@@ -770,30 +763,21 @@ namespace miam
           jacobian);
     }
 
-    /// @brief Returns one parameter index per phase instance, in the same prefix-sorted order as GetStateVariableIndices
-    std::vector<std::size_t> GetParameterIndices(
-        const std::map<std::string, std::set<std::string>>& phase_prefixes,
+    /// @brief Helper function to return parameter index for the rate constant
+    std::size_t GetParameterIndex(
         const auto& state_parameter_indices  // acts like std::unordered_map<std::string, std::size_t>
     ) const
     {
-      std::vector<std::size_t> indices;
-      auto phase_it = phase_prefixes.find(phase_.name_);
-      if (phase_it == phase_prefixes.end())
+      std::string k_param = phase_.name_ + "." + uuid_ + ".k";
+      if (state_parameter_indices.find(k_param) == state_parameter_indices.end())
+      {
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
-            MIAM_INTERNAL_MISSING_PHASE_PREFIX,
-            "Internal Error: GetParameterIndices: Phase " + phase_.name_ + " not found in phase_prefixes");
-      for (const auto& prefix : phase_it->second)
-      {
-        std::string k_param = prefix + "." + phase_.name_ + "." + uuid_ + ".k";
-        if (state_parameter_indices.find(k_param) == state_parameter_indices.end())
-          throw MiamException(
-              MIAM_ERROR_CATEGORY_INTERNAL,
-              MIAM_INTERNAL_MISSING_STATE_PARAMETER,
-              "Internal Error: GetParameterIndices: Parameter " + k_param + " not found in state_parameter_indices");
-        indices.push_back(state_parameter_indices.at(k_param));
+            MIAM_INTERNAL_MISSING_STATE_PARAMETER,
+            "Internal Error: GetParameterIndex: Rate constant parameter " + k_param +
+            " not found in state_parameter_indices");
       }
-      return indices;
+      return state_parameter_indices.at(k_param);
     }
 
     /// @brief Helper function to return variable indices for all species involved in the reaction

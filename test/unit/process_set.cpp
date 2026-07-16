@@ -32,8 +32,8 @@ namespace
 
     DissolvedReversibleReaction MakeReaction() const
     {
-      return DissolvedReversibleReaction{ { { "DROP", [kf = k_forward](const micm::Conditions&) { return kf; } } },
-                                          { { "DROP", [kr = k_reverse](const micm::Conditions&) { return kr; } } },
+      return DissolvedReversibleReaction{ { [kf = k_forward](const micm::Conditions&) { return kf; } },
+                                          { [kr = k_reverse](const micm::Conditions&) { return kr; } },
                                           { a },
                                           { b },
                                           solvent,
@@ -83,7 +83,7 @@ TEST(MiamProcessSet, ProcessParameterNames)
   // Names follow the pattern DROP.AQUEOUS.<uuid>.k_forward / k_reverse — just check count
   for (const auto& name : names)
   {
-    EXPECT_TRUE(name.find("DROP.AQUEOUS.") == 0);
+    EXPECT_TRUE(name.find("AQUEOUS.") == 0);
   }
 }
 

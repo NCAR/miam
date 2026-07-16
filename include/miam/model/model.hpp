@@ -607,7 +607,9 @@ namespace miam
             throw MiamException(
                 MIAM_ERROR_CATEGORY_INTERNAL,
                 MIAM_INTERNAL_DUPLICATE_STATE_PREFIX,
-                "Internal Error: PhaseStatePrefixes: Non-unique state variable prefixes detected for phase " + phase_name);
+                "PhaseStatePrefixes: Non-unique state variable prefixes detected for phase " + phase_name +
+                ". Check your aerosol representation and phase names for duplicates."
+              );
           }
         }
       }

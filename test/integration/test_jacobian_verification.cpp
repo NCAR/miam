@@ -197,7 +197,7 @@ TEST(JacobianVerification, DissolvedReactionProcess)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .AddRateConstant("DROPLET", rate)
+                      .SetRateConstant(rate)
                       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -238,7 +238,7 @@ TEST(JacobianVerification, DissolvedReversibleReactionProcess)
   auto forward_rate = [k_f](const Conditions&) { return k_f; };
   auto reverse_rate = [k_r](const Conditions&) { return k_r; };
   auto reaction = DissolvedReversibleReaction{
-    { { "DROPLET", forward_rate } }, { { "DROPLET", reverse_rate } }, { A }, { B }, C, aqueous_phase
+    { forward_rate }, { reverse_rate }, { A }, { B }, C, aqueous_phase
   };
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -392,12 +392,12 @@ TEST(JacobianVerification, MultipleProcessesCombined)
                        .SetReactants({ A })
                        .SetProducts({ B })
                        .SetSolvent(S)
-                       .AddRateConstant("DROPLET", [](const Conditions&) { return 0.1; })
+                       .SetRateConstant([](const Conditions&) { return 0.1; })
                        .Build();
 
   // C ⇌ D (reversible)
-  auto reaction2 = DissolvedReversibleReaction{ { { "DROPLET", [](const Conditions&) { return 0.2; } } },
-                                                { { "DROPLET", [](const Conditions&) { return 0.05; } } },
+  auto reaction2 = DissolvedReversibleReaction{ { [](const Conditions&) { return 0.2; } },
+                                                { [](const Conditions&) { return 0.05; } },
                                                 { C },
                                                 { D },
                                                 S,
@@ -596,7 +596,7 @@ TEST(JacobianVerification, ProcessAndConstraintsCombined)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(S)
-                      .AddRateConstant("DROPLET", [k](const Conditions&) { return k; })
+                      .SetRateConstant([k](const Conditions&) { return k; })
                       .Build();
 
   auto equil = DissolvedEquilibriumConstraintBuilder()
@@ -726,7 +726,7 @@ TEST(JacobianVerification, DissolvedReactionDampingRange)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .AddRateConstant("DROPLET", rate)
+                      .SetRateConstant(rate)
                       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -805,7 +805,7 @@ TEST(JacobianVerification, DissolvedReversibleReactionDampingRange)
   auto forward_rate = [k_f](const Conditions&) { return k_f; };
   auto reverse_rate = [k_r](const Conditions&) { return k_r; };
   auto reaction = DissolvedReversibleReaction{
-    { { "DROPLET", forward_rate } }, { { "DROPLET", reverse_rate } }, { A }, { B }, C, aqueous_phase
+    { forward_rate }, { reverse_rate }, { A }, { B }, C, aqueous_phase
   };
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -974,7 +974,7 @@ TEST(JacobianVerification, CombinedProcessAndConstraintZeroSolvent)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(S)
-                      .AddRateConstant("DROPLET", [k](const Conditions&) { return k; })
+                      .SetRateConstant([k](const Conditions&) { return k; })
                       .Build();
 
   auto equil = DissolvedEquilibriumConstraintBuilder()
@@ -1076,7 +1076,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSingleReactant)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .AddRateConstant("DROPLET", [](const Conditions&) { return 0.5; })
+                      .SetRateConstant([](const Conditions&) { return 0.5; })
                       .SetMinHalflife(t_half)
                       .Build();
 
@@ -1124,7 +1124,7 @@ TEST(JacobianVerification, DissolvedReactionCappedTwoReactants)
                       .SetReactants({ A, B })
                       .SetProducts({ P })
                       .SetSolvent(S)
-                      .AddRateConstant("DROPLET", [](const Conditions&) { return 1.0; })
+                      .SetRateConstant([](const Conditions&) { return 1.0; })
                       .SetMinHalflife(t_half)
                       .Build();
 
@@ -1173,7 +1173,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSolventRange)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .AddRateConstant("DROPLET", [](const Conditions&) { return 1.0; })
+                      .SetRateConstant([](const Conditions&) { return 1.0; })
                       .SetMinHalflife(1.0)
                       .Build();
 
@@ -1253,7 +1253,7 @@ TEST(JacobianVerification, DissolvedReactionCappedMultiBlock)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .AddRateConstant("DROPLET", [](const Conditions&) { return 2.0; })
+                      .SetRateConstant([](const Conditions&) { return 2.0; })
                       .SetMinHalflife(0.1)
                       .Build();
 
@@ -1320,7 +1320,7 @@ namespace
                             .SetReactants(reactants)
                             .SetProducts(products)
                             .SetSolvent(solvent)
-                            .AddRateConstant("DROPLET", rate_fn)
+                            .SetRateConstant(rate_fn)
                             .Build();
     auto model_uncapped = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model_uncapped.AddProcesses({ rxn_uncapped });
@@ -1331,7 +1331,7 @@ namespace
                           .SetReactants(reactants)
                           .SetProducts(products)
                           .SetSolvent(solvent)
-                          .AddRateConstant("DROPLET", rate_fn)
+                          .SetRateConstant(rate_fn)
                           .SetMinHalflife(min_halflife)
                           .Build();
     auto model_capped = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };

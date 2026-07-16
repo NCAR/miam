@@ -38,13 +38,13 @@ namespace
                         .SetReactants({ A })
                         .SetProducts({ B })
                         .SetSolvent(S)
-                        .AddRateConstant("DROPLET", rate)
+                        .SetRateConstant(rate)
                         .Build();
 
     auto forward_rate = [k_f](const Conditions& conditions) { return k_f; };
     auto reverse_rate = [k_r](const Conditions& conditions) { return k_r; };
     auto reversible = DissolvedReversibleReaction{
-      { { "DROPLET", forward_rate } }, { { "DROPLET", reverse_rate } }, { B }, { C }, S, aqueous_phase
+      { forward_rate }, { reverse_rate }, { B }, { C }, S, aqueous_phase
     };
 
     auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -130,13 +130,13 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
                         .SetReactants({ A })
                         .SetProducts({ B })
                         .SetSolvent(S)
-                        .AddRateConstant("DROPLET", rate)
+                        .SetRateConstant(rate)
                         .Build();
 
     auto forward_rate = [k_f](const Conditions& conditions) { return k_f; };
     auto reverse_rate = [k_r](const Conditions& conditions) { return k_r; };
     auto reversible = DissolvedReversibleReaction{
-      { { "DROPLET", forward_rate } }, { { "DROPLET", reverse_rate } }, { B }, { C }, S, aqueous_phase
+      { forward_rate }, { reverse_rate }, { B }, { C }, S, aqueous_phase
     };
 
     auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -196,7 +196,7 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
                         .SetReactants({ A })
                         .SetProducts({ B })
                         .SetSolvent(S)
-                        .AddRateConstant("DROPLET", rate)
+                        .SetRateConstant(rate)
                         .Build();
 
     auto equil = DissolvedEquilibriumConstraintBuilder()
