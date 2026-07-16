@@ -38,10 +38,10 @@ namespace miam
   {
    public:
     std::function<double(const micm::Conditions& conditions)> henrys_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
-    micm::Species gas_species_;                                                     ///< Gas-phase species
-    micm::Species condensed_species_;                                               ///< Condensed-phase solute species
-    micm::Species solvent_;                                                         ///< Condensed-phase solvent species
-    micm::Phase condensed_phase_;                                                   ///< The condensed phase
+    micm::Species gas_species_;                                                      ///< Gas-phase species
+    micm::Species condensed_species_;                                                ///< Condensed-phase solute species
+    micm::Species solvent_;                                                          ///< Condensed-phase solvent species
+    micm::Phase condensed_phase_;                                                    ///< The condensed phase
     double solvent_molecular_weight_;  ///< Solvent molecular weight [kg mol⁻¹]
     double solvent_density_;           ///< Solvent density [kg m⁻³]
     std::string uuid_;                 ///< Unique identifier
