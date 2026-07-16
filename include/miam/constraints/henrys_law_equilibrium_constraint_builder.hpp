@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <miam/constraints/henry_law_equilibrium_constraint.hpp>
+#include <miam/constraints/henrys_law_equilibrium_constraint.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 
@@ -52,17 +52,17 @@ namespace miam
       requires requires(const T& t, const micm::Conditions& c) {
         { t.Calculate(c) };
       }
-    HenrysLawEquilibriumConstraintBuilder& SetHenrysLawConstant(const T& henry_law_constant)
+    HenrysLawEquilibriumConstraintBuilder& SetHenrysLawConstant(const T& henrys_law_constant)
     {
-      henry_law_constant_ = [henry_law_constant](const micm::Conditions& conditions)
-      { return henry_law_constant.Calculate(conditions); };
+      henrys_law_constant_ = [henrys_law_constant](const micm::Conditions& conditions)
+      { return henrys_law_constant.Calculate(conditions); };
       return *this;
     }
 
     HenrysLawEquilibriumConstraintBuilder& SetHenrysLawConstant(
-        std::function<double(const micm::Conditions&)> henry_law_constant)
+        std::function<double(const micm::Conditions&)> henrys_law_constant)
     {
-      henry_law_constant_ = std::move(henry_law_constant);
+      henrys_law_constant_ = std::move(henrys_law_constant);
       return *this;
     }
 
@@ -88,7 +88,7 @@ namespace miam
             MIAM_ERROR_CATEGORY_CONFIGURATION,
             MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
             "HenrysLawEquilibriumConstraintBuilder requires the condensed phase to be set.");
-      if (!henry_law_constant_)
+      if (!henrys_law_constant_)
         throw MiamException(
             MIAM_ERROR_CATEGORY_CONFIGURATION,
             MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
@@ -98,7 +98,7 @@ namespace miam
       double solvent_density = solvent_.GetProperty<double>("density [kg m-3]");
 
       return HenrysLawEquilibriumConstraint(
-          henry_law_constant_,
+          henrys_law_constant_,
           gas_species_,
           condensed_species_,
           solvent_,
@@ -116,6 +116,6 @@ namespace miam
     bool solvent_is_set_ = false;
     micm::Phase condensed_phase_;
     bool condensed_phase_is_set_ = false;
-    std::function<double(const micm::Conditions& conditions)> henry_law_constant_;
+    std::function<double(const micm::Conditions& conditions)> henrys_law_constant_;
   };
 }  // namespace miam

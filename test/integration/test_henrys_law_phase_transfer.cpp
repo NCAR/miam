@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <miam/miam.hpp>
-#include <miam/processes/constants/henry_law_constant.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
 
 #include <micm/CPU.hpp>
 #include <micm/util/constants.hpp>
@@ -76,8 +76,6 @@ TEST(HenrysLawPhaseTransferIntegration, SimpleOneInstance)
   };
 
   // Build the process using the builder
-  auto hlc = [HLC_val](const Conditions& conditions) { return HLC_val; };
-
   auto transfer = HenrysLawPhaseTransferBuilder()
                       .SetCondensedPhase(aqueous_phase)
                       .SetGasSpecies(A_g)

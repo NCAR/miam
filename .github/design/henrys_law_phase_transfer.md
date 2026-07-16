@@ -1332,7 +1332,7 @@ auto UpdateStateParametersFunction(
                 params.ForEachRow(
                     [&](const micm::Conditions& cond, double& hlc, double& T)
                     {
-                        hlc = henry_law_constant_(cond);
+                        hlc = henrys_law_constant_(cond);
                         T = cond.temperature_;
                     },
                     conditions,
@@ -2267,7 +2267,7 @@ methods.
 Henry's Law constant: `HLC(T) = HLC_ref · exp(C · (1/T - 1/T_ref))`, where
 `HLC_ref` is the Henry's Law constant at reference temperature `T_ref` and `C`
 is a parameter defining the temperature dependence.
-The process stores a `henry_law_constant_` callable (same pattern as
+The process stores a `henrys_law_constant_` callable (same pattern as
 `DissolvedReversibleReaction`'s `forward_rate_constant_`), which is invoked by
 `UpdateStateParametersFunction` each time conditions change. The computed value
 is written to a state parameter column (`hlc`) for each phase instance.

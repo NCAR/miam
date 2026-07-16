@@ -129,7 +129,7 @@ transfer:
 
 ```c++
 #include <miam/miam.hpp>
-#include <miam/processes/constants/henry_law_constant.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
 #include <micm/CPU.hpp>
 
 #include <iomanip>

@@ -33,7 +33,7 @@
 
 #include <miam/miam.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
-#include <miam/processes/constants/henry_law_constant.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
 
 #include <micm/CPU.hpp>
 #include <micm/util/constants.hpp>
@@ -370,10 +370,10 @@ TEST(AqueousCarbonicAcid, KineticODE)
 
   // Henry's Law
   const double f_v_final = h2o_final * Mw_water / rho_water;
-  const double henry_expected = K_H * micm::constants::GAS_CONSTANT * T * f_v_final * co2_g_final;
-  ASSERT_GT(henry_expected, 0.0) << "Expected positive Henry-law CO2(aq) concentration";
-  EXPECT_NEAR(co2_aq_final, henry_expected, 0.05 * henry_expected)
-      << std::format("Henry's-law equilibrium mismatch: CO2_aq={} expected={}", co2_aq_final, henry_expected);
+  const double henrys_expected = K_H * micm::constants::GAS_CONSTANT * T * f_v_final * co2_g_final;
+  ASSERT_GT(henrys_expected, 0.0) << "Expected positive Henry-law CO2(aq) concentration";
+  EXPECT_NEAR(co2_aq_final, henrys_expected, 0.05 * henrys_expected)
+      << std::format("Henry's-law equilibrium mismatch: CO2_aq={} expected={}", co2_aq_final, henrys_expected);
 
   // Carbon mass conservation: total C (gas + dissolved) must be invariant
   // Initial: all C is CO2_g; aq species start at 0

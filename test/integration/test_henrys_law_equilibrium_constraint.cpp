@@ -4,7 +4,7 @@
 // Integration tests for HenrysLawEquilibriumConstraint with the MICM DAE solver.
 
 #include <miam/miam.hpp>
-#include <miam/processes/constants/henry_law_constant.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
 
 #include <micm/CPU.hpp>
 

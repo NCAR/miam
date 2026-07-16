@@ -7,7 +7,7 @@
 
 #include <miam/miam.hpp>
 #include <miam/processes/constants/equilibrium_constant.hpp>
-#include <miam/processes/constants/henry_law_constant.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
 
 #include <micm/CPU.hpp>
 #include <micm/util/jacobian_verification.hpp>

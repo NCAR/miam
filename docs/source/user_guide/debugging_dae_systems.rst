@@ -114,7 +114,7 @@ Symptoms:
 - The equilibrium ratio ``[products]/[reactants]`` is consistently wrong
   by the same factor
 
-See the :doc:`../science_guide/henry_law_phase_transfer` guide for
+See the :doc:`../science_guide/henrys_law_phase_transfer` guide for
 conversion details.
 
 Diagnostic Strategies
@@ -433,7 +433,7 @@ High-Level Takeaways
 
 5. **Unit conversions matter enormously.** A factor of 1000 in mol/m³
    vs. mol/L propagates as 10⁶ in a two-product equilibrium expression.
-   See :doc:`../science_guide/henry_law_phase_transfer`.
+   See :doc:`../science_guide/henrys_law_phase_transfer`.
 
 6. **For DAE systems, provide reasonable initial guesses.** MICM's
    constraint initialization will refine them, but starting in the

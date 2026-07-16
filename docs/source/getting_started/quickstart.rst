@@ -13,7 +13,7 @@ Save the following as ``cloud_chem.cpp``:
 .. code-block:: c++
 
    #include <miam/miam.hpp>
-   #include <miam/processes/constants/henry_law_constant.hpp>
+   #include <miam/processes/constants/henrys_law_constant.hpp>
    #include <micm/CPU.hpp>
 
    #include <iomanip>
@@ -150,4 +150,4 @@ Next steps
 - :doc:`../user_guide/concepts` — understand the architecture
 - :doc:`../user_guide/representations` — all three representation types
 - :doc:`../user_guide/processes` — all process types and their builders
-- :doc:`../science_guide/henry_law_phase_transfer` — the full equation set
+- :doc:`../science_guide/henrys_law_phase_transfer` — the full equation set

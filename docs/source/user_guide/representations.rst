@@ -145,7 +145,7 @@ mode with both aqueous and organic phases:
 All species across all phases contribute to the total particle volume used
 for size calculations. The phase volume fraction φ_p partitions the
 particle surface area among phases (see
-:doc:`../science_guide/henry_law_phase_transfer` § Phase volume fraction).
+:doc:`../science_guide/henrys_law_phase_transfer` § Phase volume fraction).
 
 Species Property Requirements
 =============================

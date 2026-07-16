@@ -38,7 +38,7 @@ namespace miam
   class HenrysLawPhaseTransfer
   {
    public:
-    std::function<double(const micm::Conditions& conditions)> henry_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
+    std::function<double(const micm::Conditions& conditions)> henrys_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
     micm::Species gas_species_;                                                     ///< Gas-phase species
     micm::Species condensed_species_;                                               ///< Condensed-phase solute species
     micm::Species solvent_;                                                         ///< Condensed-phase solvent species
@@ -54,7 +54,7 @@ namespace miam
 
     /// @brief Constructor
     HenrysLawPhaseTransfer(
-        std::function<double(const micm::Conditions& conditions)> henry_law_constant,
+        std::function<double(const micm::Conditions& conditions)> henrys_law_constant,
         const micm::Species& gas_species,
         const micm::Species& condensed_species,
         const micm::Species& solvent,
@@ -64,7 +64,7 @@ namespace miam
         double gas_molecular_weight,
         double solvent_molecular_weight,
         double solvent_density)
-        : henry_law_constant_(henry_law_constant),
+        : henrys_law_constant_(henrys_law_constant),
           gas_species_(gas_species),
           condensed_species_(condensed_species),
           solvent_(solvent),
@@ -82,7 +82,7 @@ namespace miam
     HenrysLawPhaseTransfer CopyWithNewUuid() const
     {
       return HenrysLawPhaseTransfer(
-          henry_law_constant_,
+          henrys_law_constant_,
           gas_species_,
           condensed_species_,
           solvent_,
@@ -268,7 +268,7 @@ namespace miam
               params.ForEachRow(
                   [&](const micm::Conditions& cond, double& hlc, double& T)
                   {
-                    hlc = henry_law_constant_(cond);
+                    hlc = henrys_law_constant_(cond);
                     T = cond.temperature_;
                   },
                   conditions,

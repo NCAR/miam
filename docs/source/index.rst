@@ -54,7 +54,7 @@ atmospheric chemistry tools developed at
 
     .. grid-item-card:: Science guide
         :img-top: _static/index_science.svg
-        :link: science_guide/henry_law_phase_transfer
+        :link: science_guide/henrys_law_phase_transfer
         :link-type: doc
 
         Dig into the science behind the processes and representations MIAM implements.
@@ -82,7 +82,7 @@ atmospheric chemistry tools developed at
    :maxdepth: 2
    :caption: Science Guide
 
-   science_guide/henry_law_phase_transfer
+   science_guide/henrys_law_phase_transfer
    science_guide/dissolved_reversible_reaction
    science_guide/size_distributions
 

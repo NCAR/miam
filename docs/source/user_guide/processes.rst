@@ -74,7 +74,7 @@ Gas-condensed phase mass transfer governed by Henry's Law:
 .. code-block:: c++
 
    #include <miam/miam.hpp>
-   #include <miam/processes/constants/henry_law_constant.hpp>
+   #include <miam/processes/constants/henrys_law_constant.hpp>
 
    auto transfer = HenrysLawPhaseTransferBuilder()
      .SetCondensedPhase(aqueous_phase)
@@ -116,7 +116,7 @@ This process **requires** three aerosol properties from the
 representation: effective radius, number concentration, and phase volume
 fraction. These are provided automatically by the Model.
 
-See :doc:`../science_guide/henry_law_phase_transfer` for the full equation
+See :doc:`../science_guide/henrys_law_phase_transfer` for the full equation
 set and Jacobian derivations.
 
 Rate Constants

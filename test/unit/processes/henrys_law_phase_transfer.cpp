@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <miam/math/condensation_rate.hpp>
-#include <miam/processes/constants/henry_law_constant.hpp>
-#include <miam/processes/henry_law_phase_transfer.hpp>
-#include <miam/processes/henry_law_phase_transfer_builder.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
+#include <miam/processes/henrys_law_phase_transfer.hpp>
+#include <miam/processes/henrys_law_phase_transfer_builder.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
@@ -1995,11 +1995,11 @@ TEST(HenrysLawPhaseTransferBuilder, BuiltProcessHLCWorks)
 
   micm::Conditions cond;
   cond.temperature_ = 298.15;
-  double result = process.henry_law_constant_(cond);
+  double result = process.henrys_law_constant_(cond);
   EXPECT_NEAR(result, HLC_ref, 1e-10);
 
   cond.temperature_ = 280.0;
-  result = process.henry_law_constant_(cond);
+  result = process.henrys_law_constant_(cond);
   double expected = HLC_ref * std::exp(2400.0 * (1.0 / 280.0 - 1.0 / 298.15));
   EXPECT_NEAR(result, expected, expected * 1e-10);
 }

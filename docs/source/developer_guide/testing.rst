@@ -25,12 +25,12 @@ Test Structure
    │   │   └── uniform_section.cpp
    │   └── processes/                 # process unit tests
    │       ├── dissolved_reversible_reaction.cpp
-   │       ├── henry_law_phase_transfer.cpp
-   │       └── henry_law_constant.cpp
+   │       ├── henrys_law_phase_transfer.cpp
+   │       └── henrys_law_constant.cpp
    └── integration/
        ├── CMakeLists.txt
        ├── test_dissolved_reversible_reaction.cpp
-       ├── test_henry_law_phase_transfer.cpp
+       ├── test_henrys_law_phase_transfer.cpp
        ├── test_miam_api.cpp
        └── test_readme_example.cpp
 
@@ -48,7 +48,7 @@ To run a specific test:
 
 .. code-block:: bash
 
-   ctest -R test_henry_law_phase_transfer --output-on-failure
+   ctest -R test_henrys_law_phase_transfer --output-on-failure
 
 Unit Tests
 ==========
@@ -80,7 +80,7 @@ physical behavior:
 
 - **test_dissolved_reversible_reaction.cpp** — verifies that a reversible
   reaction approaches equilibrium.
-- **test_henry_law_phase_transfer.cpp** — verifies Henry's Law phase
+- **test_henrys_law_phase_transfer.cpp** — verifies Henry's Law phase
   transfer approaches equilibrium with mass conservation.
 - **test_miam_api.cpp** — full multi-mode, multi-process tests covering
   all three representation types with Henry's Law phase transfer.
