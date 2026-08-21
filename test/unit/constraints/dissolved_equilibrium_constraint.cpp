@@ -26,9 +26,12 @@
 
 using namespace miam;
 
+using DMP = micm::Matrix<double>;
+template<class U>
+using Vector = typename DMP::template VectorType<U>;
+
 namespace
 {
-  using DMP = micm::Matrix<double>;
 
   auto h2o = micm::Species{ "H2O" };
   auto A = micm::Species{ "A" };
@@ -200,7 +203,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualSimpleAB)
   using DMP = micm::Matrix<double>;
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
-  std::vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1);
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
@@ -247,7 +250,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultiReactant)
   using DMP = micm::Matrix<double>;
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
-  std::vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1);
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
@@ -298,7 +301,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleInstances)
   using DMP = micm::Matrix<double>;
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
-  std::vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1);
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
@@ -347,7 +350,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleCells)
   using DMP = micm::Matrix<double>;
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   DMP state_params{ 2, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
-  std::vector<micm::Conditions> conditions(2);
+  Vector<micm::Conditions> conditions(2);
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
@@ -399,7 +402,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianSimpleAB)
   using SMP = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
-  std::vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1);
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
@@ -459,7 +462,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianMultiReactant)
   using SMP = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
-  std::vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1);
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
@@ -520,7 +523,7 @@ TEST(DissolvedEquilibriumConstraint, UpdateConstraintParametersTemperatureDep)
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   ASSERT_EQ(pi.size(), 1u);
 
-  std::vector<micm::Conditions> conditions(3);
+  Vector<micm::Conditions> conditions(3);
   conditions[0].temperature_ = 250.0;
   conditions[1].temperature_ = 300.0;
   conditions[2].temperature_ = 350.0;
@@ -611,7 +614,7 @@ namespace
       const std::unordered_map<std::string, std::size_t>& param_idx,
       std::size_t num_cells)
   {
-    std::vector<micm::Conditions> conditions(num_cells);
+    Vector<micm::Conditions> conditions(num_cells);
     DMP state_params{ num_cells, std::max(param_idx.size(), std::size_t{ 1 }), 0.0 };
     auto fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, param_idx);
     fn(conditions, state_params);
@@ -622,7 +625,7 @@ namespace
       const DissolvedEquilibriumConstraint& constraint,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& param_idx,
-      const std::vector<micm::Conditions>& conditions)
+      const Vector<micm::Conditions>& conditions)
   {
     DMP state_params{ conditions.size(), std::max(param_idx.size(), std::size_t{ 1 }), 0.0 };
     auto fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, param_idx);
@@ -1140,7 +1143,7 @@ TEST(DissolvedEquilibriumConstraint, TemperatureDependentKeqFD)
   si["DROP.AQUEOUS.H2O"] = 2;
 
   std::size_t nc = 3;
-  std::vector<micm::Conditions> conditions(nc);
+  Vector<micm::Conditions> conditions(nc);
   conditions[0].temperature_ = 250.0;
   conditions[1].temperature_ = 300.0;
   conditions[2].temperature_ = 350.0;
@@ -1345,7 +1348,7 @@ TEST(DissolvedEquilibriumConstraint, KitchenSinkFD)
   si["M2.AQUEOUS.H2O"] = 9;
 
   std::size_t nc = 3;
-  std::vector<micm::Conditions> conditions(nc);
+  Vector<micm::Conditions> conditions(nc);
   conditions[0].temperature_ = 280.0;
   conditions[1].temperature_ = 300.0;
   conditions[2].temperature_ = 320.0;
@@ -1469,7 +1472,7 @@ namespace
     std::size_t keq_col = pi.begin()->second;
 
     // Update state parameters with distinct per-cell conditions
-    std::vector<micm::Conditions> conditions(num_cells);
+    typename VDM::template VectorType<micm::Conditions> conditions(num_cells);
     for (std::size_t c = 0; c < num_cells; ++c)
       conditions[c].temperature_ = 298.15 + static_cast<double>(c) * 10.0;
 
@@ -1535,11 +1538,11 @@ namespace
         {
           double fd = (rp[c][i] - rm[c][i]) / (2.0 * h);
           double analytical;
-          try
+          if (!jacobian.IsZero(i,j))
           {
             analytical = jacobian[c][i][j];
           }
-          catch (...)
+          else
           {
             if (std::abs(fd) > 1e-10)
               ADD_FAILURE() << "Missing Jacobian cell=" << c << " row=" << i << " col=" << j << " fd=" << fd;

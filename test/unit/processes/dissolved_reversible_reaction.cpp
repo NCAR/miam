@@ -16,10 +16,12 @@
 
 using namespace miam;
 
+using MatrixPolicy = micm::Matrix<double>;
+using SparseMatrixPolicy = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
+template<class U>
+using Vector = typename MatrixPolicy::template VectorType<U>;
 namespace
 {
-  using MatrixPolicy = micm::Matrix<double>;
-  using SparseMatrixPolicy = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
 
   /// @brief Compare analytical Jacobian against central finite-difference approximation
   ///        using MICM’s FiniteDifferenceJacobian / CompareJacobianToFiniteDifference utilities.
@@ -435,7 +437,7 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionBasic)
   MatrixPolicy state_parameters(3, 2, 0.0);
 
   // Create conditions for 3 grid cells
-  std::vector<micm::Conditions> conditions(3);
+  typename MatrixPolicy::template VectorType<micm::Conditions> conditions(3);
   conditions[0].temperature_ = 298.15;
   conditions[1].temperature_ = 310.0;
   conditions[2].temperature_ = 285.0;
@@ -485,7 +487,7 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionTemperatureDepend
   MatrixPolicy state_parameters(3, 2, 0.0);
 
   // Create conditions with different temperatures
-  std::vector<micm::Conditions> conditions(3);
+  typename MatrixPolicy::template VectorType<micm::Conditions> conditions(3);
   conditions[0].temperature_ = 298.15;
   conditions[1].temperature_ = 310.0;
   conditions[2].temperature_ = 273.15;
@@ -574,7 +576,7 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionMultipleCells)
   MatrixPolicy state_parameters(5, 2, 0.0);
 
   // Create conditions with different pressures
-  std::vector<micm::Conditions> conditions(5);
+  typename MatrixPolicy::template VectorType<micm::Conditions> conditions(5);
   for (std::size_t i = 0; i < 5; ++i)
   {
     conditions[i].temperature_ = 298.15;

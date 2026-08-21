@@ -35,6 +35,8 @@ using namespace miam;
 
 using DenseMatrix = micm::Matrix<double>;
 using SparseMatrixFD = micm::SparseMatrix<double, micm::SparseMatrixStandardOrdering>;
+template<class U>
+using Vector = typename DenseMatrix::template VectorType<U>;
 
 namespace
 {
@@ -134,7 +136,7 @@ namespace
       const IndexMaps& maps,
       const DenseMatrix& variables,
       const DenseMatrix& parameters,
-      const std::vector<Conditions>& conditions,
+      const Vector<Conditions>& conditions,
       double atol = 0,
       double rtol = 0)
   {
@@ -170,7 +172,7 @@ namespace
       const IndexMaps& maps,
       const DenseMatrix& variables,
       const DenseMatrix& parameters,
-      const std::vector<Conditions>& conditions,
+      const Vector<Conditions>& conditions,
       double atol = 0,
       double rtol = 0)
   {
@@ -640,7 +642,7 @@ TEST(CamCloudChemistry, Step2_HLC_Plus_Dissociation)
     variables[0][maps.variable_indices.at("CLOUD.AQUEOUS.OHm")] = oh_ic;
     variables[0][maps.variable_indices.at("CLOUD.AQUEOUS.H2O")] = C_H2O;
     DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-    std::vector<Conditions> conditions(1);
+    Vector<Conditions> conditions(1);
     conditions[0].temperature_ = T;
     conditions[0].pressure_ = 70000.0;
     std::cout << "Checking Step 2 constraint Jacobian..." << std::endl;
@@ -1958,7 +1960,7 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
   set_var(1, "CLOUD.AQUEOUS.SO2OOHm", 5.0e-7);
 
   DenseMatrix parameters(2, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-  std::vector<Conditions> conditions(2);
+  Vector<Conditions> conditions(2);
   conditions[0].temperature_ = T;
   conditions[0].pressure_ = 70000.0;
   conditions[1].temperature_ = 290.0;

@@ -184,7 +184,7 @@ namespace miam
 
     /// @brief Returns a function that writes \f$ K_{eq}(T) \f$ per grid cell into the state parameter matrix.
     template<typename DenseMatrixPolicy>
-    std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)> UpdateConstraintParametersFunction(
+    std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)> UpdateConstraintParametersFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices) const
     {
@@ -198,7 +198,7 @@ namespace miam
       auto eq_const_fn = equilibrium_constant_;
 
       DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-      std::vector<micm::Conditions> conditions_vector;
+      typename DenseMatrixPolicy::template VectorType<micm::Conditions> conditions_vector;
 
       return DenseMatrixPolicy::Function(
           [k_eq_indices, eq_const_fn](auto&& conditions, auto&& params)

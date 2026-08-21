@@ -230,11 +230,12 @@ namespace miam
     /// vector
     /// @return Function that updates state parameters for this process
     template<typename DenseMatrixPolicy>
-    std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)> UpdateStateParametersFunction(
+    std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)> UpdateStateParametersFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const auto& state_parameter_indices  // acts like std::unordered_map<std::string, std::size_t>
     ) const
     {
+      using ConstVectorView = typename DenseMatrixPolicy::template VectorType<micm::Conditions>::ConstViewType;
       std::string k_param = phase_.name_ + "." + uuid_ + ".k";
       if (state_parameter_indices.find(k_param) == state_parameter_indices.end())
       {
@@ -248,7 +249,7 @@ namespace miam
 
       // Set up dummy arguments to build the function
       DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-      std::vector<micm::Conditions> conditions_vector;
+      typename DenseMatrixPolicy::template VectorType<micm::Conditions> conditions_vector;
 
       // return a function that updates the rate constant parameter based on the current conditions
       return DenseMatrixPolicy::Function(

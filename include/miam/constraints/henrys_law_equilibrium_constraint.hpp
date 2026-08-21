@@ -170,7 +170,7 @@ namespace miam
     /// @brief Returns a function that writes \f$ \text{HLC}(T) \cdot R \cdot T \f$ per grid cell
     ///        into the state parameter matrix.
     template<typename DenseMatrixPolicy>
-    std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)> UpdateConstraintParametersFunction(
+    std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)> UpdateConstraintParametersFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices) const
     {
@@ -185,7 +185,7 @@ namespace miam
       auto hlc_fn = henrys_law_constant_;
 
       DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-      std::vector<micm::Conditions> conditions_vector;
+      typename DenseMatrixPolicy::template VectorType<micm::Conditions> conditions_vector;
 
       return DenseMatrixPolicy::Function(
           [hlc_rt_indices, hlc_fn](auto&& conditions, auto&& params)

@@ -229,7 +229,7 @@ namespace miam
 
     /// @brief Returns a function that updates state parameters (HLC and temperature)
     template<typename DenseMatrixPolicy>
-    std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)> UpdateStateParametersFunction(
+    std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)> UpdateStateParametersFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const auto& state_parameter_indices) const
     {
@@ -258,7 +258,7 @@ namespace miam
       }
 
       DenseMatrixPolicy dummy{ 1, state_parameter_indices.size(), 0.0 };
-      std::vector<micm::Conditions> dummy_conditions;
+      typename DenseMatrixPolicy::template VectorType<micm::Conditions> dummy_conditions;
 
       return DenseMatrixPolicy::Function(
           [this, hlc_indices, temp_indices](auto&& conditions, auto&& params)

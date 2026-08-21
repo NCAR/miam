@@ -21,10 +21,12 @@
 
 using namespace miam;
 
+using MatrixPolicy = micm::Matrix<double>;
+using SparseMatrixPolicy = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
+template<class U>
+using Vector = typename MatrixPolicy::template VectorType<U>;
 namespace
 {
-  using MatrixPolicy = micm::Matrix<double>;
-  using SparseMatrixPolicy = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
 
   /// @brief Compare analytical Jacobian against central finite-difference approximation
   ///        using MICM's FiniteDifferenceJacobian / CompareJacobianToFiniteDifference utilities.
@@ -346,7 +348,7 @@ TEST(DissolvedReaction, UpdateStateParametersFunctionBasic)
 
   MatrixPolicy state_parameters(3, 1, 0.0);
 
-  std::vector<micm::Conditions> conditions(3);
+  typename MatrixPolicy::template VectorType<micm::Conditions> conditions(3);
   conditions[0].temperature_ = 298.15;
   conditions[1].temperature_ = 310.0;
   conditions[2].temperature_ = 285.0;
@@ -385,7 +387,7 @@ TEST(DissolvedReaction, UpdateStateParametersFunctionTemperatureDependent)
 
   MatrixPolicy state_parameters(3, 1, 0.0);
 
-  std::vector<micm::Conditions> conditions(3);
+  typename MatrixPolicy::template VectorType<micm::Conditions> conditions(3);
   conditions[0].temperature_ = 298.15;
   conditions[1].temperature_ = 310.0;
   conditions[2].temperature_ = 273.15;
@@ -1225,7 +1227,7 @@ TEST(DissolvedReaction, JacobianFunctionSolventFloorZeroSolvent)
   for (std::size_t i = 0; i < 4; ++i)
     for (std::size_t j = 0; j < 4; ++j)
     {
-      try
+      if (!jacobian.IsZero(i, j))
       {
         double val = jacobian[0][i][j];
         EXPECT_FALSE(std::isnan(val)) << "NaN at [" << i << "," << j << "]";
@@ -1242,9 +1244,6 @@ TEST(DissolvedReaction, JacobianFunctionSolventFloorZeroSolvent)
           EXPECT_NEAR(val, 0.0, 1e-5) << "Expected near-zero reactant/product-column Jacobian when [S]=0 at [" << i << ","
                                       << j << "]";
         }
-      }
-      catch (...)
-      { /* sparse zero — expected */
       }
     }
 }

@@ -192,11 +192,11 @@ namespace miam
 
     /// @brief Returns a no-op constraint parameter update function (linear constraints have no parameters)
     template<typename DenseMatrixPolicy>
-    std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)> UpdateConstraintParametersFunction(
+    std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)> UpdateConstraintParametersFunction(
         const std::map<std::string, std::set<std::string>>& /*phase_prefixes*/,
         const std::unordered_map<std::string, std::size_t>& /*state_parameter_indices*/) const
     {
-      return [](const std::vector<micm::Conditions>&, DenseMatrixPolicy&) {};
+      return [](const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&) {};
     }
 
     /// @brief Returns state parameter names for constraints that update via conditions

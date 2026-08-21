@@ -21,6 +21,8 @@ using namespace miam;
 
 using DenseMatrix = micm::Matrix<double>;
 using SparseMatrixFD = micm::SparseMatrix<double, micm::SparseMatrixStandardOrdering>;
+template<class U>
+using Vector = typename DenseMatrix::template VectorType<U>;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Helper: build state index maps from a Model, allocating variable and parameter
@@ -71,7 +73,7 @@ namespace
       const IndexMaps& maps,
       const DenseMatrix& variables,
       const DenseMatrix& parameters,
-      const std::vector<micm::Conditions>& conditions,
+      const Vector<micm::Conditions>& conditions,
       double atol = 0,
       double rtol = 0)
   {
@@ -125,7 +127,7 @@ namespace
       const IndexMaps& maps,
       const DenseMatrix& variables,
       const DenseMatrix& parameters,
-      const std::vector<micm::Conditions>& conditions,
+      const Vector<micm::Conditions>& conditions,
       double atol = 0,
       double rtol = 0)
   {
@@ -215,7 +217,7 @@ TEST(JacobianVerification, DissolvedReactionProcess)
   variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = 2.0e-4;
 
   DenseMatrix parameters(2, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-  std::vector<Conditions> conditions(2);
+  Vector<Conditions> conditions(2);
   conditions[0].temperature_ = 298.15;
   conditions[0].pressure_ = 101325.0;
   conditions[1].temperature_ = 310.0;
@@ -253,7 +255,7 @@ TEST(JacobianVerification, DissolvedReversibleReactionProcess)
   variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = 3.0e-4;
 
   DenseMatrix parameters(2, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-  std::vector<Conditions> conditions(2);
+  Vector<Conditions> conditions(2);
   conditions[0].temperature_ = 298.15;
   conditions[0].pressure_ = 101325.0;
   conditions[1].temperature_ = 280.0;
@@ -307,7 +309,7 @@ TEST(JacobianVerification, HenrysLawPhaseTransferProcess)
   variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 0.017;  // mol/m³ air
 
   DenseMatrix parameters(2, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-  std::vector<Conditions> conditions(2);
+  Vector<Conditions> conditions(2);
   conditions[0].temperature_ = 298.15;
   conditions[0].pressure_ = 101325.0;
   conditions[1].temperature_ = 280.0;
@@ -365,7 +367,7 @@ TEST(JacobianVerification, HenrysLawPhaseTransferTwoMomentMode)
   }
 
   DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-  std::vector<Conditions> conditions(1);
+  Vector<Conditions> conditions(1);
   conditions[0].temperature_ = 298.15;
   conditions[0].pressure_ = 101325.0;
 
@@ -416,7 +418,7 @@ TEST(JacobianVerification, MultipleProcessesCombined)
   variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.S")] = 2.0e-4;
 
   DenseMatrix parameters(2, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-  std::vector<Conditions> conditions(2);
+  Vector<Conditions> conditions(2);
   conditions[0].temperature_ = 298.15;
   conditions[0].pressure_ = 101325.0;
   conditions[1].temperature_ = 273.15;
@@ -466,7 +468,7 @@ TEST(JacobianVerification, DissolvedEquilibriumConstraint)
   variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.S")] = 2.0e-4;
 
   DenseMatrix parameters(2, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-  std::vector<Conditions> conditions(2);
+  Vector<Conditions> conditions(2);
   conditions[0].temperature_ = 298.15;
   conditions[0].pressure_ = 101325.0;
   conditions[1].temperature_ = 310.0;
@@ -508,7 +510,7 @@ TEST(JacobianVerification, LinearConstraint)
   variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = 0.2;
 
   DenseMatrix parameters(2, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-  std::vector<Conditions> conditions(2);
+  Vector<Conditions> conditions(2);
   conditions[0].temperature_ = 298.15;
   conditions[0].pressure_ = 101325.0;
   conditions[1].temperature_ = 298.15;
@@ -557,7 +559,7 @@ TEST(JacobianVerification, HenrysLawEquilibriumConstraint)
   variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 0.017;  // mol/m³ air
 
   DenseMatrix parameters(2, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-  std::vector<Conditions> conditions(2);
+  Vector<Conditions> conditions(2);
   conditions[0].temperature_ = 298.15;
   conditions[0].pressure_ = 101325.0;
   conditions[1].temperature_ = 280.0;
@@ -628,7 +630,7 @@ TEST(JacobianVerification, ProcessAndConstraintsCombined)
   variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.S")] = 2.0e-4;
 
   DenseMatrix parameters(2, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-  std::vector<Conditions> conditions(2);
+  Vector<Conditions> conditions(2);
   conditions[0].temperature_ = 298.15;
   conditions[0].pressure_ = 101325.0;
   conditions[1].temperature_ = 310.0;
@@ -691,7 +693,7 @@ TEST(JacobianVerification, HenrysLawEquilibriumWithConservation)
   variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.H2O")] = 0.017;  // mol/m³ air
 
   DenseMatrix parameters(2, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-  std::vector<Conditions> conditions(2);
+  Vector<Conditions> conditions(2);
   conditions[0].temperature_ = 298.15;
   conditions[0].pressure_ = 101325.0;
   conditions[1].temperature_ = 280.0;
@@ -740,7 +742,7 @@ TEST(JacobianVerification, DissolvedReactionDampingRange)
     variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = sol;
 
     DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-    std::vector<Conditions> conditions(1);
+    Vector<Conditions> conditions(1);
     conditions[0].temperature_ = 298.15;
     conditions[0].pressure_ = 101325.0;
 
@@ -767,7 +769,7 @@ TEST(JacobianVerification, DissolvedReactionDampingRange)
     variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = sol;
 
     DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-    std::vector<Conditions> conditions(1);
+    Vector<Conditions> conditions(1);
     conditions[0].temperature_ = 298.15;
     conditions[0].pressure_ = 101325.0;
 
@@ -817,7 +819,7 @@ TEST(JacobianVerification, DissolvedReversibleReactionDampingRange)
     variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = sol;
 
     DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-    std::vector<Conditions> conditions(1);
+    Vector<Conditions> conditions(1);
     conditions[0].temperature_ = 298.15;
     conditions[0].pressure_ = 101325.0;
 
@@ -843,7 +845,7 @@ TEST(JacobianVerification, DissolvedReversibleReactionDampingRange)
     variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = sol;
 
     DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-    std::vector<Conditions> conditions(1);
+    Vector<Conditions> conditions(1);
     conditions[0].temperature_ = 298.15;
     conditions[0].pressure_ = 101325.0;
 
@@ -900,7 +902,7 @@ TEST(JacobianVerification, DissolvedEquilibriumConstraintDampingRange)
     variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.S")] = sol;
 
     DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-    std::vector<Conditions> conditions(1);
+    Vector<Conditions> conditions(1);
     conditions[0].temperature_ = 298.15;
     conditions[0].pressure_ = 101325.0;
 
@@ -928,7 +930,7 @@ TEST(JacobianVerification, DissolvedEquilibriumConstraintDampingRange)
     variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.S")] = sol;
 
     DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-    std::vector<Conditions> conditions(1);
+    Vector<Conditions> conditions(1);
     conditions[0].temperature_ = 298.15;
     conditions[0].pressure_ = 101325.0;
 
@@ -1001,7 +1003,7 @@ TEST(JacobianVerification, CombinedProcessAndConstraintZeroSolvent)
   variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.S")] = 0.0;
 
   DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-  std::vector<Conditions> conditions(1);
+  Vector<Conditions> conditions(1);
   conditions[0].temperature_ = 298.15;
   conditions[0].pressure_ = 101325.0;
 
@@ -1092,7 +1094,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSingleReactant)
     variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = 1.0;
 
     DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-    std::vector<Conditions> conditions(1);
+    Vector<Conditions> conditions(1);
     conditions[0].temperature_ = 298.15;
     conditions[0].pressure_ = 101325.0;
 
@@ -1143,7 +1145,7 @@ TEST(JacobianVerification, DissolvedReactionCappedTwoReactants)
     variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.S")] = 1.0;
 
     DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-    std::vector<Conditions> conditions(1);
+    Vector<Conditions> conditions(1);
     conditions[0].temperature_ = 298.15;
     conditions[0].pressure_ = 101325.0;
 
@@ -1186,7 +1188,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSolventRange)
     variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = sol;
 
     DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-    std::vector<Conditions> conditions(1);
+    Vector<Conditions> conditions(1);
     conditions[0].temperature_ = 298.15;
     conditions[0].pressure_ = 101325.0;
 
@@ -1212,7 +1214,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSolventRange)
     variables[0][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = sol;
 
     DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-    std::vector<Conditions> conditions(1);
+    Vector<Conditions> conditions(1);
     conditions[0].temperature_ = 298.15;
     conditions[0].pressure_ = 101325.0;
 
@@ -1265,7 +1267,7 @@ TEST(JacobianVerification, DissolvedReactionCappedMultiBlock)
   variables[1][maps.variable_indices.at("DROPLET.AQUEOUS.C")] = 1.0;
 
   DenseMatrix parameters(2, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-  std::vector<Conditions> conditions(2);
+  Vector<Conditions> conditions(2);
   conditions[0].temperature_ = 298.15;
   conditions[0].pressure_ = 101325.0;
   conditions[1].temperature_ = 298.15;
@@ -1345,7 +1347,7 @@ namespace
 
     DenseMatrix params_u(1, std::max(maps_u.num_parameters, std::size_t(1)), 0.0);
     DenseMatrix params_c(1, std::max(maps_c.num_parameters, std::size_t(1)), 0.0);
-    std::vector<Conditions> conditions(1);
+    Vector<Conditions> conditions(1);
     conditions[0].temperature_ = 298.15;
     conditions[0].pressure_ = 101325.0;
 
