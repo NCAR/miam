@@ -234,7 +234,7 @@ namespace miam
     /// vector
     /// @return Function that updates state parameters for this process
     template<typename DenseMatrixPolicy>
-    std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)> UpdateStateParametersFunction(
+    std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)> UpdateStateParametersFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const auto& state_parameter_indices  // acts like std::unordered_map<std::string, std::size_t>
     ) const
@@ -263,7 +263,7 @@ namespace miam
 
       // Set up dummy arguments to build the function
       DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-      std::vector<micm::Conditions> conditions_vector;
+      typename DenseMatrixPolicy::template VectorType<micm::Conditions> conditions_vector;
 
       // return a function that updates the forward and reverse rate constant parameters based on the current conditions
       return DenseMatrixPolicy::Function(

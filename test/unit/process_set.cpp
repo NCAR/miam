@@ -17,6 +17,8 @@ using namespace miam;
 using MatrixPolicy = micm::Matrix<double>;
 using SparseMatrixPolicy = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
 using ProcessSet = MiamProcessSet<MatrixPolicy, SparseMatrixPolicy>;
+template<class U>
+using Vector = typename MatrixPolicy::template VectorType<U>;
 
 namespace
 {
@@ -156,7 +158,7 @@ TEST(MiamProcessSet, UpdateStateParametersFunction)
 
   // 2 grid cells, 2 parameters
   MatrixPolicy state_parameters(2, param_names.size(), 0.0);
-  std::vector<micm::Conditions> conditions(2);
+  Vector<micm::Conditions> conditions(2);
   conditions[0].temperature_ = 298.15;
   conditions[1].temperature_ = 310.0;
 
@@ -201,7 +203,7 @@ TEST(MiamProcessSet, ForcingFunction)
 
   // Fill parameters using the same wrapped process
   auto update_fn = ps.update_state_parameters_function_(phase_prefixes, param_indices);
-  std::vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1);
   conditions[0].temperature_ = 298.15;
   update_fn(conditions, state_parameters);
 
@@ -263,7 +265,7 @@ TEST(MiamProcessSet, JacobianFunction)
 
   // Fill parameters using the same wrapped process
   auto update_fn = ps.update_state_parameters_function_(phase_prefixes, param_indices);
-  std::vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1);
   conditions[0].temperature_ = 298.15;
   update_fn(conditions, state_parameters);
 

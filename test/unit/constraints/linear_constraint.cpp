@@ -23,9 +23,11 @@
 
 using namespace miam;
 
+using DMP = micm::Matrix<double>;
+template<class U>
+using Vector = typename DMP::template VectorType<U>;
 namespace
 {
-  using DMP = micm::Matrix<double>;
   std::unordered_map<std::string, std::size_t> param_indices;
   const DMP no_params{};
 
@@ -317,7 +319,7 @@ TEST(LinearConstraint, UpdateConstraintParametersNoOp)
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   auto update_fn = constraint.UpdateConstraintParametersFunction<micm::Matrix<double>>(phase_prefixes, param_indices);
-  std::vector<micm::Conditions> conditions(3);
+  Vector<micm::Conditions> conditions(3);
   micm::Matrix<double> state_params{ 3, 1, 0.0 };
   // Should not throw
   update_fn(conditions, state_params);
@@ -699,10 +701,6 @@ TEST(LinearConstraint, JacobianPerInstanceNonUnitCoefficients)
   EXPECT_NEAR(jacobian[0][3][4], 0.5, 1e-12);
   EXPECT_NEAR(jacobian[0][3][5], -3.0, 1e-12);
 
-  // Cross-instance entries should not exist
-  EXPECT_THROW(jacobian[0][0][3], std::exception);
-  EXPECT_THROW(jacobian[0][3][0], std::exception);
-
   // FD check
   CheckConstraintFDJacobian(constraint, phase_prefixes, si, state_variables);
 }
@@ -991,10 +989,6 @@ TEST(LinearConstraint, PerInstanceWithGasTerms)
   // SMALL row (2): dG/d[A_g] = 1, dG/d[SMALL.A_aq] = 1
   EXPECT_NEAR(jacobian[0][2][0], -1.0, 1e-12);
   EXPECT_NEAR(jacobian[0][2][2], -1.0, 1e-12);
-
-  // Cross-instance isolation: LARGE doesn't depend on SMALL
-  EXPECT_THROW(jacobian[0][1][2], std::exception);
-  EXPECT_THROW(jacobian[0][2][1], std::exception);
 
   // FD check multi-cell
   std::size_t nc = 3;

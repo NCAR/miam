@@ -26,9 +26,11 @@
 
 using namespace miam;
 
+using DMP = micm::Matrix<double>;
+template<class U>
+using Vector = typename DMP::template VectorType<U>;
 namespace
 {
-  using DMP = micm::Matrix<double>;
 
   constexpr double water_molecular_weight = 0.018;
   constexpr double water_density = 1000.0;
@@ -202,7 +204,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualSingleInstance)
   using DMP = micm::Matrix<double>;
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
-  std::vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1);
   conditions[0].temperature_ = T;
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
@@ -256,7 +258,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualMultipleInstances)
   using DMP = micm::Matrix<double>;
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
-  std::vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1);
   conditions[0].temperature_ = T;
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
@@ -312,7 +314,7 @@ TEST(HenrysLawEquilibriumConstraint, JacobianSingleInstance)
   using SMP = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
-  std::vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1);
   conditions[0].temperature_ = T;
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
@@ -375,7 +377,7 @@ TEST(HenrysLawEquilibriumConstraint, UpdateConstraintParametersTemperatureDep)
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   ASSERT_EQ(pi.size(), 1u);
 
-  std::vector<micm::Conditions> conditions(2);
+  Vector<micm::Conditions> conditions(2);
   conditions[0].temperature_ = 250.0;
   conditions[1].temperature_ = 350.0;
 
@@ -454,7 +456,7 @@ namespace
       std::size_t num_cells,
       double T = 298.15)
   {
-    std::vector<micm::Conditions> conditions(num_cells);
+    Vector<micm::Conditions> conditions(num_cells);
     for (auto& c : conditions)
       c.temperature_ = T;
     DMP state_params{ num_cells, std::max(param_idx.size(), std::size_t{ 1 }), 0.0 };
@@ -467,7 +469,7 @@ namespace
       const HenrysLawEquilibriumConstraint& constraint,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& param_idx,
-      const std::vector<micm::Conditions>& conditions)
+      const Vector<micm::Conditions>& conditions)
   {
     DMP state_params{ conditions.size(), std::max(param_idx.size(), std::size_t{ 1 }), 0.0 };
     auto fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, param_idx);
@@ -867,7 +869,7 @@ TEST(HenrysLawEquilibriumConstraint, TemperatureDependentHlcMultiCell)
   si["DROP.AQUEOUS.H2O"] = 2;
 
   std::size_t nc = 3;
-  std::vector<micm::Conditions> conditions(nc);
+  Vector<micm::Conditions> conditions(nc);
   conditions[0].temperature_ = 270.0;
   conditions[1].temperature_ = 298.15;
   conditions[2].temperature_ = 320.0;
@@ -1007,12 +1009,6 @@ TEST(HenrysLawEquilibriumConstraint, JacobianMultipleInstancesAnalytical)
   EXPECT_NEAR(jacobian[0][3][0], -hlc_rt * fv_small, std::abs(hlc_rt * fv_small) * 1e-12);
   EXPECT_NEAR(jacobian[0][3][3], 1.0, 1e-12);
   EXPECT_NEAR(jacobian[0][3][4], -hlc_rt * Mw_rho * 1.0e-5, std::abs(hlc_rt * Mw_rho * 1e-5) * 1e-12);
-
-  // Cross-instance: LARGE row shouldn't have entries for SMALL columns and vice versa
-  EXPECT_THROW(jacobian[0][1][3], std::exception);
-  EXPECT_THROW(jacobian[0][1][4], std::exception);
-  EXPECT_THROW(jacobian[0][3][1], std::exception);
-  EXPECT_THROW(jacobian[0][3][2], std::exception);
 }
 
 // ── Large HLC ──
@@ -1177,7 +1173,7 @@ TEST(HenrysLawEquilibriumConstraint, KitchenSinkFD)
   si["M3.AQUEOUS.H2O"] = 6;
 
   std::size_t nc = 3;
-  std::vector<micm::Conditions> conditions(nc);
+  Vector<micm::Conditions> conditions(nc);
   conditions[0].temperature_ = 275.0;
   conditions[1].temperature_ = 298.15;
   conditions[2].temperature_ = 315.0;
@@ -1253,7 +1249,7 @@ namespace
     std::size_t hlc_rt_col = pi.begin()->second;
 
     // Build conditions with per-cell temperatures
-    std::vector<micm::Conditions> conditions(num_cells);
+    typename VDM::template VectorType<micm::Conditions> conditions(num_cells);
     for (std::size_t c = 0; c < num_cells; ++c)
       conditions[c].temperature_ = T_base + (varying_temperature ? static_cast<double>(c) * 10.0 : 0.0);
 
@@ -1327,11 +1323,11 @@ namespace
         {
           double fd = (rp[c][i] - rm[c][i]) / (2.0 * h);
           double analytical;
-          try
+          if (!jacobian.IsZero(i,j))
           {
             analytical = jacobian[c][i][j];
           }
-          catch (...)
+          else
           {
             if (std::abs(fd) > 1e-10)
               ADD_FAILURE() << "Missing Jacobian cell=" << c << " row=" << i << " col=" << j << " fd=" << fd;

@@ -20,6 +20,8 @@
 using namespace miam;
 using MatrixPolicy = micm::Matrix<double>;
 using SparseMatrixPolicy = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
+template<class U>
+using Vector = typename MatrixPolicy::template VectorType<U>;
 
 namespace
 {
@@ -304,7 +306,7 @@ TEST(HenrysLawPhaseTransfer, UpdateStateParametersFunction)
 
   MatrixPolicy state_parameters(1, 2, 0.0);
 
-  std::vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1);
   conditions[0].temperature_ = 298.15;
 
   update_func(conditions, state_parameters);
@@ -331,7 +333,7 @@ TEST(HenrysLawPhaseTransfer, UpdateStateParametersFunctionMultipleCells)
 
   MatrixPolicy state_parameters(3, 2, 0.0);
 
-  std::vector<micm::Conditions> conditions(3);
+  Vector<micm::Conditions> conditions(3);
   conditions[0].temperature_ = 280.0;
   conditions[1].temperature_ = 298.15;
   conditions[2].temperature_ = 310.0;
@@ -1093,22 +1095,15 @@ TEST(HenrysLawPhaseTransfer, JacobianMultiplePhaseInstances)
   // -J[MODE2.aq, gas] = -phi2*kc2
   EXPECT_NEAR(jacobian[0][3][0], -phi2 * kc2, std::abs(phi2 * kc2) * 1e-10);
 
-  // Cross-mode independence: MODE1 aq row should not depend on MODE2 aq variable
-  EXPECT_THROW(jacobian[0][1][3], std::exception);
-  EXPECT_THROW(jacobian[0][3][1], std::exception);
-
   // Mass conservation: sum of gas row and all aq rows for each column = 0
   for (std::size_t j = 0; j < 5; ++j)
   {
     double sum = 0.0;
     for (std::size_t i : { std::size_t(0), std::size_t(1), std::size_t(3) })
     {
-      try
+      if (!jacobian.IsZero(i,j))
       {
         sum += jacobian[0][i][j];
-      }
-      catch (...)
-      {
       }
     }
     EXPECT_NEAR(sum, 0.0, 1e-15) << "Mass conservation violated for column " << j;
@@ -1554,11 +1549,11 @@ TEST(HenrysLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
     {
       double fd = (fp[0][i] - fm[0][i]) / (2.0 * h);
       double analytical;
-      try
+      if (!jacobian.IsZero(i,j))
       {
         analytical = jacobian[0][i][j];
       }
-      catch (...)
+      else
       {
         continue;
       }

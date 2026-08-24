@@ -37,7 +37,7 @@ namespace miam
     std::function<std::set<std::pair<std::size_t, std::size_t>>(const PhaseMap&, const IndexMap&, const ProviderMap&)>
         non_zero_jacobian_elements_;
     std::function<
-        std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)>(const PhaseMap&, const IndexMap&)>
+        std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>(const PhaseMap&, const IndexMap&)>
         update_state_parameters_function_;
     std::function<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>(
         const PhaseMap&,

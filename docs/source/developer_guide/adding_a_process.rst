@@ -72,7 +72,7 @@ Required Methods
    .. code-block:: c++
 
       template<typename DenseMatrixPolicy>
-      std::function<void(const std::vector<micm::Conditions>&, DenseMatrixPolicy&)>
+      std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>
       UpdateStateParametersFunction(
           const std::map<std::string, std::set<std::string>>& phase_prefixes,
           const std::unordered_map<std::string, std::size_t>& param_indices) const;

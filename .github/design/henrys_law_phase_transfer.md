@@ -551,6 +551,8 @@ struct MiamProcessSet
 {
   using PhaseMap = std::map<std::string, std::set<std::string>>;
   using IndexMap = std::unordered_map<std::string, std::size_t>;
+  template<class U>
+  using Vector = typename DenseMatrixPolicy::template VectorType<U>;
   using ProviderMap = std::map<std::string,
       std::vector<AerosolPropertyProvider<DenseMatrixPolicy>>>;
 
@@ -564,7 +566,7 @@ struct MiamProcessSet
       const PhaseMap&, const IndexMap&, const ProviderMap&)>
       non_zero_jacobian_elements_;
   std::function<std::function<void(
-      const std::vector<micm::Conditions>&, DenseMatrixPolicy&)>(
+      const Vector<micm::Conditions>&, DenseMatrixPolicy&)>(
       const PhaseMap&, const IndexMap&)>
       update_state_parameters_function_;
   std::function<std::function<void(
@@ -1323,7 +1325,7 @@ auto UpdateStateParametersFunction(
     }
 
     DenseMatrixPolicy dummy{ 1, state_parameter_indices.size(), 0.0 };
-    std::vector<micm::Conditions> dummy_conditions;
+    typename DenseMatrixPolicy::template VectorType<micm::Conditions> dummy_conditions;
 
     return DenseMatrixPolicy::Function(
         [this, hlc_indices, temp_indices](auto&& conditions, auto&& params)
