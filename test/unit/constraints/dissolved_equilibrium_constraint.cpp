@@ -1538,7 +1538,7 @@ namespace
         {
           double fd = (rp[c][i] - rm[c][i]) / (2.0 * h);
           double analytical;
-          if (!jacobian.IsZero(i,j))
+          if (!jacobian.IsZero(i, j))
           {
             analytical = jacobian[c][i][j];
           }

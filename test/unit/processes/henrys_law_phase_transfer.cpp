@@ -1101,7 +1101,7 @@ TEST(HenrysLawPhaseTransfer, JacobianMultiplePhaseInstances)
     double sum = 0.0;
     for (std::size_t i : { std::size_t(0), std::size_t(1), std::size_t(3) })
     {
-      if (!jacobian.IsZero(i,j))
+      if (!jacobian.IsZero(i, j))
       {
         sum += jacobian[0][i][j];
       }
@@ -1549,7 +1549,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
     {
       double fd = (fp[0][i] - fm[0][i]) / (2.0 * h);
       double analytical;
-      if (!jacobian.IsZero(i,j))
+      if (!jacobian.IsZero(i, j))
       {
         analytical = jacobian[0][i][j];
       }

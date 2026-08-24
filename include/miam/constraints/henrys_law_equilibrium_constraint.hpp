@@ -170,7 +170,8 @@ namespace miam
     /// @brief Returns a function that writes \f$ \text{HLC}(T) \cdot R \cdot T \f$ per grid cell
     ///        into the state parameter matrix.
     template<typename DenseMatrixPolicy>
-    std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)> UpdateConstraintParametersFunction(
+    std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>
+    UpdateConstraintParametersFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices) const
     {
