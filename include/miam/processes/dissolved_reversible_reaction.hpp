@@ -234,7 +234,8 @@ namespace miam
     /// vector
     /// @return Function that updates state parameters for this process
     template<typename DenseMatrixPolicy>
-    std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)> UpdateStateParametersFunction(
+    std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>
+    UpdateStateParametersFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const auto& state_parameter_indices  // acts like std::unordered_map<std::string, std::size_t>
     ) const

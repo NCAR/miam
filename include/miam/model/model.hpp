@@ -214,12 +214,14 @@ namespace miam
 
     /// @brief Returns a function that updates state parameters
     template<typename DenseMatrixPolicy>
-    std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)> UpdateStateParametersFunction(
-        const std::unordered_map<std::string, std::size_t>& state_parameter_indices) const
+    std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>
+    UpdateStateParametersFunction(const std::unordered_map<std::string, std::size_t>& state_parameter_indices) const
     {
       // Collect parameter update functions from all processes and return a combined function
       auto phase_prefixes = CollectPhaseStatePrefixes();
-      std::vector<std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>> update_functions;
+      std::vector<
+          std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>>
+          update_functions;
       ForEachProcess(
           [&](const auto& process)
           {
@@ -227,7 +229,9 @@ namespace miam
                 process.template UpdateStateParametersFunction<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices);
             update_functions.push_back(update_fn);
           });
-      return [update_functions](const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions, DenseMatrixPolicy& state_parameters)
+      return [update_functions](
+                 const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions,
+                 DenseMatrixPolicy& state_parameters)
       {
         for (const auto& fn : update_functions)
         {
@@ -365,18 +369,23 @@ namespace miam
 
     /// @brief Returns a function that updates constraint parameters based on conditions
     template<typename DenseMatrixPolicy>
-    std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)> ConstraintUpdateStateParametersFunction(
+    std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>
+    ConstraintUpdateStateParametersFunction(
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices) const
     {
       auto phase_prefixes = CollectPhaseStatePrefixes();
-      std::vector<std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>> update_fns;
+      std::vector<
+          std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>>
+          update_fns;
       ForEachConstraint(
           [&](const auto& c)
           {
             update_fns.push_back(
                 c.template UpdateConstraintParametersFunction<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices));
           });
-      return [update_fns](const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions, DenseMatrixPolicy& state_parameters) mutable
+      return [update_fns](
+                 const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions,
+                 DenseMatrixPolicy& state_parameters) mutable
       {
         for (auto& fn : update_fns)
           fn(conditions, state_parameters);
