@@ -33,13 +33,16 @@ endif()
 
 FetchContent_Declare(micm
     GIT_REPOSITORY https://github.com/NCAR/micm.git
-    GIT_TAG f94aeddd622bba69cffe955449c0c60c2691ba7c
+    GIT_TAG ff4a51fa883328e9a64d76152514eebeba8a4ca0
     GIT_PROGRESS NOT ${FETCHCONTENT_QUIET}
     FIND_PACKAGE_ARGS NAMES micm
 )
 
 set(MICM_ENABLE_TESTS OFF)
 set(MICM_ENABLE_EXAMPLES OFF)
+if(MIAM_ENABLE_KOKKOS)
+  set(MICM_ENABLE_KOKKOS ON CACHE BOOL "Enable Kokkos support in MICM" FORCE)
+endif()
 
 FetchContent_MakeAvailable(micm)
 

@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <any>
 #include <concepts>
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <set>
@@ -43,6 +44,18 @@ namespace miam
     std::vector<RepresentationVariant> representations_;
     std::vector<ProcessVariant> processes_{};
     std::vector<ConstraintVariant> constraints_{};
+
+    std::unordered_map<std::string, std::size_t> state_parameter_indices_{};
+    std::unordered_map<std::string, std::size_t> state_variable_indices_{};
+
+    // Lazy caches for per-process / per-constraint std::function objects.
+    mutable std::any cached_process_update_fns_{};
+    mutable std::any cached_forcing_fns_{};
+    mutable std::any cached_jacobian_fns_{};
+    mutable std::any cached_constraint_update_fns_{};
+    mutable std::any cached_constraint_init_fns_{};
+    mutable std::any cached_constraint_residual_fns_{};
+    mutable std::any cached_constraint_jacobian_fns_{};
 
     /// @brief Returns the total state size (number of variables, number of parameters)
     std::tuple<std::size_t, std::size_t> StateSize() const
@@ -482,6 +495,223 @@ namespace miam
         for (auto& fn : jac_fns)
           fn(state_variables, state_parameters, jacobian_values);
       };
+    }
+
+    /// @brief Cache build-time indices for solve-time direct-dispatch methods
+    /// @details Called once by micm::SolverBuilder after the parameter map,
+    ///          species map, and Jacobian sparsity pattern are finalized.
+    template<typename SparseMatrixPolicy>
+    void FinalizeProcessSetup(
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices,
+        const SparseMatrixPolicy& /*jacobian*/)
+    {
+      state_parameter_indices_ = state_parameter_indices;
+      state_variable_indices_ = state_variable_indices;
+      cached_process_update_fns_.reset();
+      cached_forcing_fns_.reset();
+      cached_jacobian_fns_.reset();
+    }
+
+    /// @brief Cache build-time indices for constraint solve-time methods
+    template<typename SparseMatrixPolicy>
+    void FinalizeConstraintSetup(
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices,
+        const SparseMatrixPolicy& /*jacobian*/)
+    {
+      state_parameter_indices_ = state_parameter_indices;
+      state_variable_indices_ = state_variable_indices;
+      cached_constraint_update_fns_.reset();
+      cached_constraint_init_fns_.reset();
+      cached_constraint_residual_fns_.reset();
+      cached_constraint_jacobian_fns_.reset();
+    }
+
+    /// @brief Solve-time: refresh temperature-/pressure-dependent process parameters
+    template<typename DenseMatrixPolicy>
+    void UpdateStateParameters(
+        const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions,
+        DenseMatrixPolicy& state_parameters) const
+    {
+      using FnType = std::function<void(
+          const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>;
+      using CacheType = std::vector<FnType>;
+      if (!cached_process_update_fns_.has_value())
+      {
+        CacheType cache;
+        auto phase_prefixes = CollectPhaseStatePrefixes();
+        ForEachProcess(
+            [&](const auto& process)
+            {
+              cache.push_back(process.template UpdateStateParametersFunction<DenseMatrixPolicy>(
+                  phase_prefixes, state_parameter_indices_));
+            });
+        cached_process_update_fns_ = std::move(cache);
+      }
+      for (auto& fn : std::any_cast<CacheType&>(cached_process_update_fns_))
+        fn(conditions, state_parameters);
+    }
+
+    /// @brief Solve-time: add process forcing (tendency) contributions
+    template<typename DenseMatrixPolicy>
+    void AddForcingTerms(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        DenseMatrixPolicy& forcing) const
+    {
+      using FnType = std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>;
+      using CacheType = std::vector<FnType>;
+      if (!cached_forcing_fns_.has_value())
+      {
+        CacheType cache;
+        auto phase_prefixes = CollectPhaseStatePrefixes();
+        auto providers = BuildProviders<DenseMatrixPolicy>(
+            phase_prefixes, state_parameter_indices_, state_variable_indices_);
+        ForEachProcess(
+            [&](const auto& process)
+            {
+              cache.push_back(process.template ForcingFunction<DenseMatrixPolicy>(
+                  phase_prefixes, state_parameter_indices_, state_variable_indices_, providers));
+            });
+        cached_forcing_fns_ = std::move(cache);
+      }
+      for (auto& fn : std::any_cast<CacheType&>(cached_forcing_fns_))
+        fn(state_parameters, state_variables, forcing);
+    }
+
+    /// @brief Solve-time: subtract process Jacobian contributions (-J convention)
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    void SubtractJacobianTerms(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        SparseMatrixPolicy& jacobian) const
+    {
+      using FnType = std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>;
+      using CacheType = std::vector<FnType>;
+      if (!cached_jacobian_fns_.has_value())
+      {
+        CacheType cache;
+        auto phase_prefixes = CollectPhaseStatePrefixes();
+        auto providers = BuildProviders<DenseMatrixPolicy>(
+            phase_prefixes, state_parameter_indices_, state_variable_indices_);
+        ForEachProcess(
+            [&](const auto& process)
+            {
+              cache.push_back(process.template JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
+                  phase_prefixes, state_parameter_indices_, state_variable_indices_, jacobian, providers));
+            });
+        cached_jacobian_fns_ = std::move(cache);
+      }
+      for (auto& fn : std::any_cast<CacheType&>(cached_jacobian_fns_))
+        fn(state_parameters, state_variables, jacobian);
+    }
+
+    /// @brief Solve-time: refresh temperature-/pressure-dependent constraint parameters
+    template<typename DenseMatrixPolicy>
+    void UpdateConstraintStateParameters(
+        const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions,
+        DenseMatrixPolicy& state_parameters) const
+    {
+      using FnType = std::function<void(
+          const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>;
+      using CacheType = std::vector<FnType>;
+      if (!cached_constraint_update_fns_.has_value())
+      {
+        CacheType cache;
+        auto phase_prefixes = CollectPhaseStatePrefixes();
+        ForEachConstraint(
+            [&](const auto& c)
+            {
+              cache.push_back(c.template UpdateConstraintParametersFunction<DenseMatrixPolicy>(
+                  phase_prefixes, state_parameter_indices_));
+            });
+        cached_constraint_update_fns_ = std::move(cache);
+      }
+      for (auto& fn : std::any_cast<CacheType&>(cached_constraint_update_fns_))
+        fn(conditions, state_parameters);
+    }
+
+    /// @brief Solve-time: diagnose constraint parameters from current state
+    template<typename DenseMatrixPolicy>
+    void InitializeConstraintParameters(
+        const DenseMatrixPolicy& state_variables,
+        DenseMatrixPolicy& state_parameters) const
+    {
+      using FnType = std::function<void(const DenseMatrixPolicy&, DenseMatrixPolicy&)>;
+      using CacheType = std::vector<FnType>;
+      if (!cached_constraint_init_fns_.has_value())
+      {
+        CacheType cache;
+        auto phase_prefixes = CollectPhaseStatePrefixes();
+        ForEachConstraint(
+            [&](const auto& c)
+            {
+              if constexpr (requires {
+                              c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
+                                  phase_prefixes, state_parameter_indices_, state_variable_indices_);
+                            })
+              {
+                cache.push_back(c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
+                    phase_prefixes, state_parameter_indices_, state_variable_indices_));
+              }
+            });
+        cached_constraint_init_fns_ = std::move(cache);
+      }
+      for (auto& fn : std::any_cast<CacheType&>(cached_constraint_init_fns_))
+        fn(state_variables, state_parameters);
+    }
+
+    /// @brief Solve-time: add constraint residual G(y) to algebraic forcing rows
+    template<typename DenseMatrixPolicy>
+    void AddConstraintResidual(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        DenseMatrixPolicy& forcing) const
+    {
+      using FnType = std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>;
+      using CacheType = std::vector<FnType>;
+      if (!cached_constraint_residual_fns_.has_value())
+      {
+        CacheType cache;
+        auto phase_prefixes = CollectPhaseStatePrefixes();
+        ForEachConstraint(
+            [&](const auto& c)
+            {
+              cache.push_back(c.template ConstraintResidualFunction<DenseMatrixPolicy>(
+                  phase_prefixes, state_parameter_indices_, state_variable_indices_));
+            });
+        cached_constraint_residual_fns_ = std::move(cache);
+      }
+      // Per-constraint residual fn expects (state_variables, state_parameters, forcing)
+      for (auto& fn : std::any_cast<CacheType&>(cached_constraint_residual_fns_))
+        fn(state_variables, state_parameters, forcing);
+    }
+
+    /// @brief Solve-time: subtract dG/dy from algebraic Jacobian rows (-J convention)
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    void SubtractConstraintJacobian(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        SparseMatrixPolicy& jacobian) const
+    {
+      using FnType = std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>;
+      using CacheType = std::vector<FnType>;
+      if (!cached_constraint_jacobian_fns_.has_value())
+      {
+        CacheType cache;
+        auto phase_prefixes = CollectPhaseStatePrefixes();
+        ForEachConstraint(
+            [&](const auto& c)
+            {
+              cache.push_back(c.template ConstraintJacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
+                  phase_prefixes, state_parameter_indices_, state_variable_indices_, jacobian));
+            });
+        cached_constraint_jacobian_fns_ = std::move(cache);
+      }
+      // Per-constraint Jacobian fn expects (state_variables, state_parameters, jacobian)
+      for (auto& fn : std::any_cast<CacheType&>(cached_constraint_jacobian_fns_))
+        fn(state_variables, state_parameters, jacobian);
     }
 
    private:
