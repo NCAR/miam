@@ -6,6 +6,7 @@
 #include <miam/math/condensation_rate.hpp>
 #include <miam/processes/constants/rate_expression.hpp>
 #include <miam/representations/aerosol_property.hpp>
+#include <miam/representations/aerosol_property_descriptor.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 #include <miam/util/uuid.hpp>
@@ -19,6 +20,7 @@
 #include <cmath>
 #include <functional>
 #include <map>
+#include <memory>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -200,25 +202,23 @@ namespace miam
       return elements;
     }
 
-    /// @brief Returns non-zero Jacobian elements (common interface overload with providers)
-    template<typename DenseMatrixPolicy>
+    /// @brief Returns non-zero Jacobian elements including indirect dependencies through aerosol descriptors.
     std::set<std::pair<std::size_t, std::size_t>> NonZeroJacobianElements(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-        const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>>& providers) const
+        const auto& descriptors) const
     {
       auto elements = NonZeroJacobianElements(phase_prefixes, state_variable_indices);
       auto gas_idx = state_variable_indices.at(gas_species_.name_);
 
-      // Add indirect dependencies through aerosol property providers
-      for (const auto& [prefix, prov_map] : providers)
+      for (const auto& [prefix, desc_map] : descriptors)
       {
         std::size_t aq_idx =
             state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
 
-        for (const auto& [prop, provider] : prov_map)
+        for (const auto& [prop, descriptor] : desc_map)
         {
-          for (std::size_t var_j : provider.dependent_variable_indices)
+          for (std::size_t var_j : DependentVariableIndices(descriptor))
           {
             elements.insert({ gas_idx, var_j });
             elements.insert({ aq_idx, var_j });
@@ -282,14 +282,15 @@ namespace miam
           dummy);
     }
 
-    /// @brief Returns a function that calculates the forcing terms (common interface with providers)
+    /// @brief Returns a function that calculates the forcing terms using descriptor-driven aerosol properties.
     template<typename DenseMatrixPolicy>
     std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ForcingFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const auto& state_parameter_indices,
         const auto& state_variable_indices,
-        std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> providers) const
+        auto descriptors) const
     {
+      using DescriptorType = typename std::remove_reference_t<decltype(descriptors)>::mapped_type::mapped_type;
       auto gas_idx = state_variable_indices.at(gas_species_.name_);
 
       struct InstanceData
@@ -299,9 +300,9 @@ namespace miam
         std::size_t hlc_param_idx;
         std::size_t temperature_param_idx;
         double molar_volume;  ///< Solvent molar volume [m³ mol⁻¹] = solvent_molecular_weight / solvent_density
-        AerosolPropertyProvider<DenseMatrixPolicy> r_eff_provider;
-        AerosolPropertyProvider<DenseMatrixPolicy> N_provider;
-        AerosolPropertyProvider<DenseMatrixPolicy> phi_provider;
+        std::shared_ptr<DescriptorType> r_eff_descriptor;
+        std::shared_ptr<DescriptorType> N_descriptor;
+        std::shared_ptr<DescriptorType> phi_descriptor;
         CondensationRateProvider cond_rate_provider;
       };
 
@@ -311,10 +312,10 @@ namespace miam
       {
         for (const auto& prefix : my_phase_it->second)
         {
-          auto prov_it = providers.find(prefix);
-          if (prov_it == providers.end())
+          auto desc_it = descriptors.find(prefix);
+          if (desc_it == descriptors.end())
             continue;
-          const auto& prov_map = prov_it->second;
+          auto& desc_map = desc_it->second;
           InstanceData inst;
           inst.aq_species_idx =
               state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
@@ -323,9 +324,12 @@ namespace miam
           inst.temperature_param_idx =
               state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
           inst.molar_volume = solvent_molecular_weight_ / solvent_density_;
-          inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
-          inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
-          inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
+          inst.r_eff_descriptor =
+              std::make_shared<DescriptorType>(std::move(desc_map.at(AerosolProperty::EffectiveRadius)));
+          inst.N_descriptor =
+              std::make_shared<DescriptorType>(std::move(desc_map.at(AerosolProperty::NumberConcentration)));
+          inst.phi_descriptor =
+              std::make_shared<DescriptorType>(std::move(desc_map.at(AerosolProperty::PhaseVolumeFraction)));
           inst.cond_rate_provider =
               MakeCondensationRateProvider(diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
           instances.push_back(std::move(inst));
@@ -422,9 +426,9 @@ namespace miam
           DenseMatrixPolicy r_eff_buf{ num_rows, 1, 0.0 };
           DenseMatrixPolicy N_buf{ num_rows, 1, 0.0 };
           DenseMatrixPolicy phi_buf{ num_rows, 1, 0.0 };
-          inst.r_eff_provider.ComputeValue(state_parameters, state_variables, r_eff_buf);
-          inst.N_provider.ComputeValue(state_parameters, state_variables, N_buf);
-          inst.phi_provider.ComputeValue(state_parameters, state_variables, phi_buf);
+          EvaluateAerosolProperty(*inst.r_eff_descriptor, state_parameters, state_variables, r_eff_buf);
+          EvaluateAerosolProperty(*inst.N_descriptor, state_parameters, state_variables, N_buf);
+          EvaluateAerosolProperty(*inst.phi_descriptor, state_parameters, state_variables, phi_buf);
 
           // Call the Function-wrapped inner loop with actual data
           inner_functions[i](state_parameters, state_variables, forcing_terms, r_eff_buf, N_buf, phi_buf);
@@ -432,15 +436,16 @@ namespace miam
       };
     }
 
-    /// @brief Returns a function that calculates Jacobian contributions (common interface with providers)
+    /// @brief Returns a function that calculates Jacobian contributions using descriptor-driven aerosol properties.
     template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
     std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> JacobianFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const auto& state_parameter_indices,
         const auto& state_variable_indices,
         const SparseMatrixPolicy& jacobian,
-        std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> providers) const
+        auto descriptors) const
     {
+      using DescriptorType = typename std::remove_reference_t<decltype(descriptors)>::mapped_type::mapped_type;
       auto gas_idx = state_variable_indices.at(gas_species_.name_);
 
       struct InstanceData
@@ -450,9 +455,9 @@ namespace miam
         std::size_t hlc_param_idx;
         std::size_t temperature_param_idx;
         double molar_volume;  ///< Solvent molar volume [m³ mol⁻¹] = solvent_molecular_weight / solvent_density
-        AerosolPropertyProvider<DenseMatrixPolicy> r_eff_provider;
-        AerosolPropertyProvider<DenseMatrixPolicy> N_provider;
-        AerosolPropertyProvider<DenseMatrixPolicy> phi_provider;
+        std::shared_ptr<DescriptorType> r_eff_descriptor;
+        std::shared_ptr<DescriptorType> N_descriptor;
+        std::shared_ptr<DescriptorType> phi_descriptor;
         CondensationRateProvider cond_rate_provider;
         std::size_t n_r_eff_deps;
         std::size_t n_N_deps;
@@ -468,10 +473,10 @@ namespace miam
       {
         for (const auto& prefix : my_jac_phase_it->second)
         {
-          auto prov_it = providers.find(prefix);
-          if (prov_it == providers.end())
+          auto desc_it = descriptors.find(prefix);
+          if (desc_it == descriptors.end())
             continue;
-          const auto& prov_map = prov_it->second;
+          auto& desc_map = desc_it->second;
           InstanceData inst;
           inst.aq_species_idx =
               state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
@@ -480,19 +485,13 @@ namespace miam
           inst.temperature_param_idx =
               state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
           inst.molar_volume = solvent_molecular_weight_ / solvent_density_;
-          inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
-          inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
-          inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
-          inst.cond_rate_provider =
-              MakeCondensationRateProvider(diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
-          inst.n_r_eff_deps = prov_map.at(AerosolProperty::EffectiveRadius).dependent_variable_indices.size();
-          inst.n_N_deps = prov_map.at(AerosolProperty::NumberConcentration).dependent_variable_indices.size();
-          inst.n_phi_deps = prov_map.at(AerosolProperty::PhaseVolumeFraction).dependent_variable_indices.size();
+          inst.n_r_eff_deps = DependentVariableIndices(desc_map.at(AerosolProperty::EffectiveRadius)).size();
+          inst.n_N_deps = DependentVariableIndices(desc_map.at(AerosolProperty::NumberConcentration)).size();
+          inst.n_phi_deps = DependentVariableIndices(desc_map.at(AerosolProperty::PhaseVolumeFraction)).size();
 
           std::size_t aq_idx = inst.aq_species_idx;
           std::size_t solvent_idx = inst.solvent_species_idx;
 
-          // Build flat Jacobian index vector
           std::size_t total_indices = 6 + 2 * inst.n_r_eff_deps + 2 * inst.n_N_deps + 2 * inst.n_phi_deps;
           inst.jac_indices = micm::Matrix<std::size_t>(1, total_indices);
           std::size_t idx = 0;
@@ -506,24 +505,32 @@ namespace miam
           inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, aq_idx, solvent_idx);
 
           // Indirect through r_eff
-          for (std::size_t var_j : prov_map.at(AerosolProperty::EffectiveRadius).dependent_variable_indices)
+          for (std::size_t var_j : DependentVariableIndices(desc_map.at(AerosolProperty::EffectiveRadius)))
           {
             inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, gas_idx, var_j);
             inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, aq_idx, var_j);
           }
           // Indirect through N
-          for (std::size_t var_j : prov_map.at(AerosolProperty::NumberConcentration).dependent_variable_indices)
+          for (std::size_t var_j : DependentVariableIndices(desc_map.at(AerosolProperty::NumberConcentration)))
           {
             inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, gas_idx, var_j);
             inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, aq_idx, var_j);
           }
           // Indirect through phi
-          for (std::size_t var_j : prov_map.at(AerosolProperty::PhaseVolumeFraction).dependent_variable_indices)
+          for (std::size_t var_j : DependentVariableIndices(desc_map.at(AerosolProperty::PhaseVolumeFraction)))
           {
             inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, gas_idx, var_j);
             inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, aq_idx, var_j);
           }
 
+          inst.r_eff_descriptor =
+              std::make_shared<DescriptorType>(std::move(desc_map.at(AerosolProperty::EffectiveRadius)));
+          inst.N_descriptor =
+              std::make_shared<DescriptorType>(std::move(desc_map.at(AerosolProperty::NumberConcentration)));
+          inst.phi_descriptor =
+              std::make_shared<DescriptorType>(std::move(desc_map.at(AerosolProperty::PhaseVolumeFraction)));
+          inst.cond_rate_provider =
+              MakeCondensationRateProvider(diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
           jac_instances.push_back(std::move(inst));
         }
       }
@@ -764,22 +771,25 @@ namespace miam
           DenseMatrixPolicy r_eff_buf{ num_blocks, 1, 0.0 };
           DenseMatrixPolicy N_buf{ num_blocks, 1, 0.0 };
           DenseMatrixPolicy phi_buf{ num_blocks, 1, 0.0 };
-          inst.r_eff_provider.ComputeValue(state_parameters, state_variables, r_eff_buf);
-          inst.N_provider.ComputeValue(state_parameters, state_variables, N_buf);
-          inst.phi_provider.ComputeValue(state_parameters, state_variables, phi_buf);
+          EvaluateAerosolProperty(*inst.r_eff_descriptor, state_parameters, state_variables, r_eff_buf);
+          EvaluateAerosolProperty(*inst.N_descriptor, state_parameters, state_variables, N_buf);
+          EvaluateAerosolProperty(*inst.phi_descriptor, state_parameters, state_variables, phi_buf);
 
           // Pre-compute partials
           DenseMatrixPolicy r_eff_partials{ num_blocks, std::max(inst.n_r_eff_deps, std::size_t(1)), 0.0 };
           if (inst.n_r_eff_deps > 0)
-            inst.r_eff_provider.ComputeValueAndDerivatives(state_parameters, state_variables, r_eff_buf, r_eff_partials);
+            EvaluateAerosolPropertyAndDerivatives(
+                *inst.r_eff_descriptor, state_parameters, state_variables, r_eff_buf, r_eff_partials);
 
           DenseMatrixPolicy N_partials{ num_blocks, std::max(inst.n_N_deps, std::size_t(1)), 0.0 };
           if (inst.n_N_deps > 0)
-            inst.N_provider.ComputeValueAndDerivatives(state_parameters, state_variables, N_buf, N_partials);
+            EvaluateAerosolPropertyAndDerivatives(
+                *inst.N_descriptor, state_parameters, state_variables, N_buf, N_partials);
 
           DenseMatrixPolicy phi_partials{ num_blocks, std::max(inst.n_phi_deps, std::size_t(1)), 0.0 };
           if (inst.n_phi_deps > 0)
-            inst.phi_provider.ComputeValueAndDerivatives(state_parameters, state_variables, phi_buf, phi_partials);
+            EvaluateAerosolPropertyAndDerivatives(
+                *inst.phi_descriptor, state_parameters, state_variables, phi_buf, phi_partials);
 
           // Call the Function-wrapped inner loop
           inner_jac_functions[i](

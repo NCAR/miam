@@ -261,14 +261,14 @@ namespace miam
     {
       // Collect forcing functions from all processes and return a combined function
       auto phase_prefixes = CollectPhaseStatePrefixes();
-      auto providers = BuildProviders<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+      auto descriptors = BuildDescriptors<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
       std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>>
           forcing_functions;
       ForEachProcess(
           [&](const auto& process)
           {
             auto forcing_fn = process.template ForcingFunction<DenseMatrixPolicy>(
-                phase_prefixes, state_parameter_indices, state_variable_indices, providers);
+                phase_prefixes, state_parameter_indices, state_variable_indices, descriptors);
             forcing_functions.push_back(forcing_fn);
           });
       return [forcing_functions](
@@ -292,14 +292,14 @@ namespace miam
     {
       // Collect Jacobian functions from all processes and return a combined function
       auto phase_prefixes = CollectPhaseStatePrefixes();
-      auto providers = BuildProviders<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+      auto descriptors = BuildDescriptors<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
       std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>>
           jacobian_functions;
       ForEachProcess(
           [&](const auto& process)
           {
             auto jacobian_fn = process.template JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
-                phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
+                phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, descriptors);
             jacobian_functions.push_back(jacobian_fn);
           });
       return [jacobian_functions](
@@ -566,13 +566,13 @@ namespace miam
       {
         CacheType cache;
         auto phase_prefixes = CollectPhaseStatePrefixes();
-        auto providers = BuildProviders<DenseMatrixPolicy>(
+        auto descriptors = BuildDescriptors<DenseMatrixPolicy>(
             phase_prefixes, state_parameter_indices_, state_variable_indices_);
         ForEachProcess(
             [&](const auto& process)
             {
               cache.push_back(process.template ForcingFunction<DenseMatrixPolicy>(
-                  phase_prefixes, state_parameter_indices_, state_variable_indices_, providers));
+                  phase_prefixes, state_parameter_indices_, state_variable_indices_, descriptors));
             });
         cached_forcing_fns_ = std::move(cache);
       }
@@ -593,13 +593,13 @@ namespace miam
       {
         CacheType cache;
         auto phase_prefixes = CollectPhaseStatePrefixes();
-        auto providers = BuildProviders<DenseMatrixPolicy>(
+        auto descriptors = BuildDescriptors<DenseMatrixPolicy>(
             phase_prefixes, state_parameter_indices_, state_variable_indices_);
         ForEachProcess(
             [&](const auto& process)
             {
               cache.push_back(process.template JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
-                  phase_prefixes, state_parameter_indices_, state_variable_indices_, jacobian, providers));
+                  phase_prefixes, state_parameter_indices_, state_variable_indices_, jacobian, descriptors));
             });
         cached_jacobian_fns_ = std::move(cache);
       }
@@ -735,11 +735,11 @@ namespace miam
       }
     }
 
-    /// @brief Build aerosol property providers for all processes
+    /// @brief Build aerosol property descriptors for all processes.
     /// @details Queries RequiredAerosolProperties() on each process, finds the representation
-    ///          that owns each phase prefix, and calls GetPropertyProvider() to create providers.
+    ///          that owns each phase prefix, and calls GetPropertyDescriptor() to create descriptors.
     template<typename DenseMatrixPolicy>
-    std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> BuildProviders(
+    std::map<std::string, std::map<AerosolProperty, AerosolPropertyDescriptor<DenseMatrixPolicy>>> BuildDescriptors(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
@@ -759,7 +759,7 @@ namespace miam
               }
           });
 
-      std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> result;
+      std::map<std::string, std::map<AerosolProperty, AerosolPropertyDescriptor<DenseMatrixPolicy>>> result;
       if (required.empty())
         return result;
 
@@ -771,7 +771,7 @@ namespace miam
           throw MiamException(
               MIAM_ERROR_CATEGORY_INTERNAL,
               MIAM_INTERNAL_MISSING_PHASE_PREFIX,
-              "BuildProviders: phase not found: " + phase_name);
+              "BuildDescriptors: phase not found: " + phase_name);
         }
 
         for (const auto& prefix : pp_it->second)
@@ -787,8 +787,9 @@ namespace miam
                   {
                     for (const auto& prop : properties)
                     {
-                      result[prefix][prop] = r.template GetPropertyProvider<DenseMatrixPolicy>(
-                          prop, state_parameter_indices, state_variable_indices, phase_name);
+                      result[prefix][prop] = WidenDescriptorVariant<DenseMatrixPolicy>(
+                          r.template GetPropertyDescriptor<DenseMatrixPolicy>(
+                              prop, state_parameter_indices, state_variable_indices, phase_name));
                     }
                   }
                 },

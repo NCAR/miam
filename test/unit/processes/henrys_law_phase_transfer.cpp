@@ -6,6 +6,9 @@
 #include <miam/processes/henrys_law_phase_transfer.hpp>
 #include <miam/processes/henrys_law_phase_transfer_builder.hpp>
 
+#include "../../util/constant_aerosol_property_descriptor.hpp"
+#include "../../util/linear_aerosol_property_descriptor.hpp"
+
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
@@ -78,35 +81,22 @@ namespace
         solvent_density);
   }
 
-  /// Create a simple AerosolPropertyProvider that returns a constant value
+  /// Synthetic descriptor variant used by these tests \u2014 union of the two test-only helpers.
   template<typename DenseMatrixPolicy>
-  AerosolPropertyProvider<DenseMatrixPolicy> MakeConstantProvider(
+  using TestDescriptor =
+      std::variant<test::ConstantAerosolPropertyDescriptor<DenseMatrixPolicy>, test::LinearAerosolPropertyDescriptor<DenseMatrixPolicy>>;
+
+  /// Create a simple descriptor that returns a constant value.
+  template<typename DenseMatrixPolicy>
+  TestDescriptor<DenseMatrixPolicy> MakeConstantProvider(
       double value,
       const std::vector<std::size_t>& dependent_variable_indices = {})
   {
-    AerosolPropertyProvider<DenseMatrixPolicy> provider;
-    provider.dependent_variable_indices = dependent_variable_indices;
-    provider.ComputeValue =
-        [value](const DenseMatrixPolicy& params, const DenseMatrixPolicy& vars, DenseMatrixPolicy& result)
-    {
-      for (std::size_t row = 0; row < result.NumRows(); ++row)
-        result[row][0] = value;
-    };
-    provider.ComputeValueAndDerivatives = [value](
-                                              const DenseMatrixPolicy& params,
-                                              const DenseMatrixPolicy& vars,
-                                              DenseMatrixPolicy& result,
-                                              DenseMatrixPolicy& partials)
-    {
-      for (std::size_t row = 0; row < result.NumRows(); ++row)
-        result[row][0] = value;
-      // partials remain 0 for constant providers
-    };
-    return provider;
+    return test::ConstantAerosolPropertyDescriptor<DenseMatrixPolicy>{ value, dependent_variable_indices };
   }
 
-  /// Create providers with specified values for r_eff, N, phi
-  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> MakeTestProviders(
+  /// Create providers with specified values for r_eff, N, phi.
+  std::map<std::string, std::map<AerosolProperty, TestDescriptor<MatrixPolicy>>> MakeTestProviders(
       const std::string& prefix,
       double r_eff,
       double N,
@@ -115,11 +105,11 @@ namespace
       const std::vector<std::size_t>& N_deps = {},
       const std::vector<std::size_t>& phi_deps = {})
   {
-    std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
-    providers[prefix][AerosolProperty::EffectiveRadius] = MakeConstantProvider<MatrixPolicy>(r_eff, r_eff_deps);
-    providers[prefix][AerosolProperty::NumberConcentration] = MakeConstantProvider<MatrixPolicy>(N, N_deps);
-    providers[prefix][AerosolProperty::PhaseVolumeFraction] = MakeConstantProvider<MatrixPolicy>(phi, phi_deps);
-    return providers;
+    std::map<std::string, std::map<AerosolProperty, TestDescriptor<MatrixPolicy>>> descriptors;
+    descriptors[prefix][AerosolProperty::EffectiveRadius] = MakeConstantProvider<MatrixPolicy>(r_eff, r_eff_deps);
+    descriptors[prefix][AerosolProperty::NumberConcentration] = MakeConstantProvider<MatrixPolicy>(N, N_deps);
+    descriptors[prefix][AerosolProperty::PhaseVolumeFraction] = MakeConstantProvider<MatrixPolicy>(phi, phi_deps);
+    return descriptors;
   }
 }  // namespace
 
@@ -275,7 +265,7 @@ TEST(HenrysLawPhaseTransfer, NonZeroJacobianElementsWithProviders)
       { 1, 2 },  // N: depends on aq and solvent
       { 1 });    // phi: depends on aq
 
-  auto elements = process.NonZeroJacobianElements<MatrixPolicy>(phase_prefixes, state_variable_indices, providers);
+  auto elements = process.NonZeroJacobianElements(phase_prefixes, state_variable_indices, providers);
 
   // 6 direct + N indirect: 2*2 = 4 (gas,1),(aq,1),(gas,2),(aq,2) + phi indirect: 2*1 = 2 (gas,1),(aq,1)
   // But many overlap with direct entries. Let's just check key additions.
@@ -554,7 +544,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionDirectEntries)
   auto providers = MakeTestProviders("MODE1", r_eff_val, N_val, phi_val);
 
   // Build sparse jacobian
-  auto elements = process.NonZeroJacobianElements<MatrixPolicy>(phase_prefixes, state_variable_indices, providers);
+  auto elements = process.NonZeroJacobianElements(phase_prefixes, state_variable_indices, providers);
   auto builder = SparseMatrixPolicy::Create(3).SetNumberOfBlocks(1);
   for (const auto& elem : elements)
     builder.WithElement(elem.first, elem.second);
@@ -623,7 +613,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionSymmetry)
 
   auto providers = MakeTestProviders("MODE1", 2.0e-6, 5.0e8, 1.0e-4);
 
-  auto elements = process.NonZeroJacobianElements<MatrixPolicy>(phase_prefixes, state_variable_indices, providers);
+  auto elements = process.NonZeroJacobianElements(phase_prefixes, state_variable_indices, providers);
   auto builder = SparseMatrixPolicy::Create(3).SetNumberOfBlocks(1);
   for (const auto& elem : elements)
     builder.WithElement(elem.first, elem.second);
@@ -676,7 +666,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionFiniteDifference)
 
   auto providers = MakeTestProviders("MODE1", r_eff_val, N_val, phi_val);
 
-  auto elements = process.NonZeroJacobianElements<MatrixPolicy>(phase_prefixes, state_variable_indices, providers);
+  auto elements = process.NonZeroJacobianElements(phase_prefixes, state_variable_indices, providers);
   auto builder = SparseMatrixPolicy::Create(3).SetNumberOfBlocks(1);
   for (const auto& elem : elements)
     builder.WithElement(elem.first, elem.second);
@@ -769,7 +759,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionMultipleCells)
 
   auto providers = MakeTestProviders("MODE1", r_eff_val, N_val, phi_val);
 
-  auto elements = process.NonZeroJacobianElements<MatrixPolicy>(phase_prefixes, state_variable_indices, providers);
+  auto elements = process.NonZeroJacobianElements(phase_prefixes, state_variable_indices, providers);
 
   std::size_t num_cells = 2;
   auto builder = SparseMatrixPolicy::Create(3).SetNumberOfBlocks(num_cells);
@@ -817,14 +807,15 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionMultipleCells)
 namespace
 {
   /// @brief Build a sparse Jacobian matrix with declared sparsity for a single process
+  template<class DescriptorMap>
   SparseMatrixPolicy BuildJacobian(
       const HenrysLawPhaseTransfer& process,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-      const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>>& providers,
+      const DescriptorMap& providers,
       std::size_t num_blocks)
   {
-    auto elements = process.NonZeroJacobianElements<MatrixPolicy>(phase_prefixes, state_variable_indices, providers);
+    auto elements = process.NonZeroJacobianElements(phase_prefixes, state_variable_indices, providers);
     auto builder = SparseMatrixPolicy::Create(state_variable_indices.size()).SetNumberOfBlocks(num_blocks).InitialValue(0.0);
     for (const auto& elem : elements)
       builder = builder.WithElement(elem.first, elem.second);
@@ -832,17 +823,18 @@ namespace
   }
 
   /// @brief Build a sparse Jacobian matrix with declared sparsity for multiple processes
+  template<class DescriptorMap>
   SparseMatrixPolicy BuildJacobian(
       const std::vector<std::reference_wrapper<const HenrysLawPhaseTransfer>>& processes,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-      const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>>& providers,
+      const DescriptorMap& providers,
       std::size_t num_blocks)
   {
     std::set<std::pair<std::size_t, std::size_t>> elements;
     for (const auto& proc : processes)
     {
-      auto elts = proc.get().NonZeroJacobianElements<MatrixPolicy>(phase_prefixes, state_variable_indices, providers);
+      auto elts = proc.get().NonZeroJacobianElements(phase_prefixes, state_variable_indices, providers);
       elements.insert(elts.begin(), elts.end());
     }
     auto builder = SparseMatrixPolicy::Create(state_variable_indices.size()).SetNumberOfBlocks(num_blocks).InitialValue(0.0);
@@ -853,12 +845,13 @@ namespace
 
   /// @brief Compare analytical Jacobian against central finite-difference approximation
   ///        using MICM's FiniteDifferenceJacobian / CompareJacobianToFiniteDifference mathities.
+  template<class DescriptorMap>
   void CheckFiniteDifferenceJacobian(
       const HenrysLawPhaseTransfer& process,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
       const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-      const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>>& providers,
+      const DescriptorMap& providers,
       const MatrixPolicy& state_parameters,
       const MatrixPolicy& state_variables)
   {
@@ -897,38 +890,10 @@ namespace
 
   /// @brief Create a provider that varies linearly with given state variables:
   ///        value = base_value + sum(coeffs[k] * vars[dep_indices[k]])
-  AerosolPropertyProvider<MatrixPolicy>
+  TestDescriptor<MatrixPolicy>
   MakeLinearProvider(double base_value, const std::vector<std::size_t>& dep_indices, const std::vector<double>& coeffs)
   {
-    AerosolPropertyProvider<MatrixPolicy> provider;
-    provider.dependent_variable_indices = dep_indices;
-    provider.ComputeValue =
-        [base_value, dep_indices, coeffs](const MatrixPolicy& params, const MatrixPolicy& vars, MatrixPolicy& result)
-    {
-      for (std::size_t row = 0; row < result.NumRows(); ++row)
-      {
-        double val = base_value;
-        for (std::size_t k = 0; k < dep_indices.size(); ++k)
-          val += coeffs[k] * vars[row][dep_indices[k]];
-        result[row][0] = val;
-      }
-    };
-    provider.ComputeValueAndDerivatives =
-        [base_value, dep_indices, coeffs](
-            const MatrixPolicy& params, const MatrixPolicy& vars, MatrixPolicy& result, MatrixPolicy& partials)
-    {
-      for (std::size_t row = 0; row < result.NumRows(); ++row)
-      {
-        double val = base_value;
-        for (std::size_t k = 0; k < dep_indices.size(); ++k)
-        {
-          val += coeffs[k] * vars[row][dep_indices[k]];
-          partials[row][k] = coeffs[k];
-        }
-        result[row][0] = val;
-      }
-    };
-    return provider;
+    return test::LinearAerosolPropertyDescriptor<MatrixPolicy>{ base_value, dep_indices, coeffs };
   }
 }  // namespace
 
@@ -961,7 +926,7 @@ TEST(HenrysLawPhaseTransfer, ForcingMultiplePhaseInstances)
 
   auto prov1 = MakeTestProviders("MODE1", r1, N1, phi1);
   auto prov2 = MakeTestProviders("MODE2", r2, N2, phi2);
-  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
+  std::map<std::string, std::map<AerosolProperty, TestDescriptor<MatrixPolicy>>> providers;
   providers.insert(prov1.begin(), prov1.end());
   providers.insert(prov2.begin(), prov2.end());
 
@@ -1043,7 +1008,7 @@ TEST(HenrysLawPhaseTransfer, JacobianMultiplePhaseInstances)
 
   auto prov1 = MakeTestProviders("MODE1", r1, N1, phi1);
   auto prov2 = MakeTestProviders("MODE2", r2, N2, phi2);
-  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
+  std::map<std::string, std::map<AerosolProperty, TestDescriptor<MatrixPolicy>>> providers;
   providers.insert(prov1.begin(), prov1.end());
   providers.insert(prov2.begin(), prov2.end());
 
@@ -1139,7 +1104,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFDMultiplePhaseInstances)
 
   auto prov1 = MakeTestProviders("MODE1", r1, N1, phi1);
   auto prov2 = MakeTestProviders("MODE2", r2, N2, phi2);
-  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
+  std::map<std::string, std::map<AerosolProperty, TestDescriptor<MatrixPolicy>>> providers;
   providers.insert(prov1.begin(), prov1.end());
   providers.insert(prov2.begin(), prov2.end());
 
@@ -1234,7 +1199,7 @@ TEST(HenrysLawPhaseTransfer, ForcingMultiCellsMultiInstances)
   double r2 = 5.0e-6, N2 = 1.0e7, phi2 = 1.0e-4;
   auto prov1 = MakeTestProviders("MODE1", r1, N1, phi1);
   auto prov2 = MakeTestProviders("MODE2", r2, N2, phi2);
-  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
+  std::map<std::string, std::map<AerosolProperty, TestDescriptor<MatrixPolicy>>> providers;
   providers.insert(prov1.begin(), prov1.end());
   providers.insert(prov2.begin(), prov2.end());
 
@@ -1310,7 +1275,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFDMultiCellsMultiInstances)
   double r2 = 5.0e-6, N2 = 1.0e7, phi2 = 1.0e-4;
   auto prov1 = MakeTestProviders("MODE1", r1, N1, phi1);
   auto prov2 = MakeTestProviders("MODE2", r2, N2, phi2);
-  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
+  std::map<std::string, std::map<AerosolProperty, TestDescriptor<MatrixPolicy>>> providers;
   providers.insert(prov1.begin(), prov1.end());
   providers.insert(prov2.begin(), prov2.end());
 
@@ -1595,7 +1560,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFDWithLinearProviders)
   // phi depends linearly on H2O: phi = 1e-6 + 1e-10 * [H2O]
   auto phi_prov = MakeLinearProvider(1.0e-6, { 2 }, { 1.0e-10 });
 
-  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
+  std::map<std::string, std::map<AerosolProperty, TestDescriptor<MatrixPolicy>>> providers;
   providers["MODE1"][AerosolProperty::EffectiveRadius] = r_eff_prov;
   providers["MODE1"][AerosolProperty::NumberConcentration] = N_prov;
   providers["MODE1"][AerosolProperty::PhaseVolumeFraction] = phi_prov;
@@ -1639,7 +1604,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFDLinearProvidersMultiCell)
   auto N_prov = MakeLinearProvider(1.0e8, { 4 }, { 1.0e6 });
   auto phi_prov = MakeLinearProvider(1.0e-6, { 2 }, { 1.0e-10 });
 
-  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
+  std::map<std::string, std::map<AerosolProperty, TestDescriptor<MatrixPolicy>>> providers;
   providers["MODE1"][AerosolProperty::EffectiveRadius] = r_eff_prov;
   providers["MODE1"][AerosolProperty::NumberConcentration] = N_prov;
   providers["MODE1"][AerosolProperty::PhaseVolumeFraction] = phi_prov;
@@ -1770,7 +1735,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFDMultipleDepsPerProvider)
   // phi depends on H2O and NaCl
   auto phi_prov = MakeLinearProvider(1.0e-6, { 2, 3 }, { 1.0e-10, 5.0e-8 });
 
-  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
+  std::map<std::string, std::map<AerosolProperty, TestDescriptor<MatrixPolicy>>> providers;
   providers["MODE1"][AerosolProperty::EffectiveRadius] = r_eff_prov;
   providers["MODE1"][AerosolProperty::NumberConcentration] = N_prov;
   providers["MODE1"][AerosolProperty::PhaseVolumeFraction] = phi_prov;
@@ -1826,7 +1791,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFDKitchenSink)
   auto N_prov2 = MakeLinearProvider(1.0e7, { 6 }, { 1.0e5 });
   auto phi_prov2 = MakeConstantProvider<MatrixPolicy>(1.0e-4);
 
-  std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<MatrixPolicy>>> providers;
+  std::map<std::string, std::map<AerosolProperty, TestDescriptor<MatrixPolicy>>> providers;
   providers["MODE1"][AerosolProperty::EffectiveRadius] = r_eff_prov1;
   providers["MODE1"][AerosolProperty::NumberConcentration] = N_prov1;
   providers["MODE1"][AerosolProperty::PhaseVolumeFraction] = phi_prov1;

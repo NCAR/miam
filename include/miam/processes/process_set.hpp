@@ -4,6 +4,7 @@
 #pragma once
 
 #include <miam/representations/aerosol_property.hpp>
+#include <miam/representations/aerosol_property_descriptor.hpp>
 
 #include <micm/system/conditions.hpp>
 
@@ -29,12 +30,12 @@ namespace miam
   {
     using PhaseMap = std::map<std::string, std::set<std::string>>;
     using IndexMap = std::unordered_map<std::string, std::size_t>;
-    using ProviderMap = std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>>;
+    using DescriptorMap = std::map<std::string, std::map<AerosolProperty, AerosolPropertyDescriptor<DenseMatrixPolicy>>>;
 
     std::function<std::set<std::string>(const PhaseMap&)> process_parameter_names_;
     std::function<std::set<std::string>(const PhaseMap&)> species_used_;
     std::function<std::map<std::string, std::vector<AerosolProperty>>()> required_aerosol_properties_;
-    std::function<std::set<std::pair<std::size_t, std::size_t>>(const PhaseMap&, const IndexMap&, const ProviderMap&)>
+    std::function<std::set<std::pair<std::size_t, std::size_t>>(const PhaseMap&, const IndexMap&, const DescriptorMap&)>
         non_zero_jacobian_elements_;
     std::function<
         std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>(
@@ -45,14 +46,14 @@ namespace miam
         const PhaseMap&,
         const IndexMap&,
         const IndexMap&,
-        ProviderMap)>
+        DescriptorMap)>
         get_forcing_function_;
     std::function<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>(
         const PhaseMap&,
         const IndexMap&,
         const IndexMap&,
         const SparseMatrixPolicy&,
-        ProviderMap)>
+        DescriptorMap)>
         get_jacobian_function_;
 
     /// @brief Construct a MiamProcessSet from any process type that satisfies the common interface
@@ -69,18 +70,18 @@ namespace miam
 
       required_aerosol_properties_ = [shared]() { return shared->RequiredAerosolProperties(); };
 
-      non_zero_jacobian_elements_ = [shared](const PhaseMap& pp, const IndexMap& vi, const ProviderMap& prov)
+      non_zero_jacobian_elements_ = [shared](const PhaseMap& pp, const IndexMap& vi, const DescriptorMap& prov)
       { return shared->NonZeroJacobianElements(pp, vi, prov); };
 
       update_state_parameters_function_ = [shared](const PhaseMap& pp, const IndexMap& pi)
       { return shared->template UpdateStateParametersFunction<DenseMatrixPolicy>(pp, pi); };
 
-      get_forcing_function_ = [shared](const PhaseMap& pp, const IndexMap& pi, const IndexMap& vi, ProviderMap prov)
+      get_forcing_function_ = [shared](const PhaseMap& pp, const IndexMap& pi, const IndexMap& vi, DescriptorMap prov)
       { return shared->template ForcingFunction<DenseMatrixPolicy>(pp, pi, vi, std::move(prov)); };
 
       get_jacobian_function_ =
           [shared](
-              const PhaseMap& pp, const IndexMap& pi, const IndexMap& vi, const SparseMatrixPolicy& jac, ProviderMap prov)
+              const PhaseMap& pp, const IndexMap& pi, const IndexMap& vi, const SparseMatrixPolicy& jac, DescriptorMap prov)
       { return shared->template JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(pp, pi, vi, jac, std::move(prov)); };
     }
   };

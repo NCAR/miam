@@ -5,6 +5,7 @@
 
 #include <miam/processes/constants/rate_expression.hpp>
 #include <miam/representations/aerosol_property.hpp>
+#include <miam/representations/aerosol_property_descriptor.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 #include <miam/util/uuid.hpp>
@@ -218,11 +219,10 @@ namespace miam
 
     /// @brief Returns non-zero Jacobian elements (common interface overload accepting providers)
     /// @details Delegates to the existing two-argument version; providers are unused.
-    template<typename DenseMatrixPolicy>
     std::set<std::pair<std::size_t, std::size_t>> NonZeroJacobianElements(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-        const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>>& /* providers */)
+        const auto& /* providers */)
         const
     {
       return NonZeroJacobianElements(phase_prefixes, state_variable_indices);
@@ -299,7 +299,7 @@ namespace miam
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const auto& state_parameter_indices,  // acts like std::unordered_map<std::string, std::size_t>
         const auto& state_variable_indices,   // acts like std::unordered_map<std::string, std::size_t>
-        std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> /* providers */
+        const auto& /* providers */
     ) const
     {
       return ForcingFunction<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
@@ -400,7 +400,7 @@ namespace miam
         const auto& state_parameter_indices,  // acts like std::unordered_map<std::string, std::size_t>
         const auto& state_variable_indices,   // acts like std::unordered_map<std::string, std::size_t>
         const SparseMatrixPolicy& jacobian,
-        std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> /* providers */) const
+        const auto& /* providers */) const
     {
       return JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
           phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);

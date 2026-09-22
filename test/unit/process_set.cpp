@@ -120,9 +120,9 @@ TEST(MiamProcessSet, NonZeroJacobianElements)
   ProcessSet ps(fix.MakeReaction());
   auto phase_prefixes = fix.MakePhaseMap();
   auto var_indices = fix.MakeVariableIndices();
-  ProcessSet::ProviderMap providers;  // empty — not used by this process
+  ProcessSet::DescriptorMap descriptors;  // empty — not used by this process
 
-  auto elements = ps.non_zero_jacobian_elements_(phase_prefixes, var_indices, providers);
+  auto elements = ps.non_zero_jacobian_elements_(phase_prefixes, var_indices, descriptors);
 
   // A <-> B with solvent: the reaction touches all 3 species
   // All pairs of (reactant, product, solvent) × (reactant, product, solvent) should appear
@@ -191,9 +191,9 @@ TEST(MiamProcessSet, ForcingFunction)
 
   // Wrap the same reaction so UUIDs match the parameter index map
   ProcessSet ps(reaction);
-  ProcessSet::ProviderMap providers;
+  ProcessSet::DescriptorMap descriptors;
 
-  auto forcing_fn = ps.get_forcing_function_(phase_prefixes, param_indices, var_indices, std::move(providers));
+  auto forcing_fn = ps.get_forcing_function_(phase_prefixes, param_indices, var_indices, std::move(descriptors));
   EXPECT_TRUE(forcing_fn);
 
   // Set up state: 1 grid cell, 2 params, 3 variables
@@ -254,9 +254,9 @@ TEST(MiamProcessSet, JacobianFunction)
 
   // Wrap the same reaction so UUIDs match
   ProcessSet ps(reaction);
-  ProcessSet::ProviderMap providers;
+  ProcessSet::DescriptorMap descriptors;
 
-  auto jacobian_fn = ps.get_jacobian_function_(phase_prefixes, param_indices, var_indices, jacobian, std::move(providers));
+  auto jacobian_fn = ps.get_jacobian_function_(phase_prefixes, param_indices, var_indices, jacobian, std::move(descriptors));
   EXPECT_TRUE(jacobian_fn);
 
   // Set up state: 1 grid cell
