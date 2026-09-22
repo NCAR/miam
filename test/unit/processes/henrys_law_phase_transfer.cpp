@@ -56,10 +56,10 @@ namespace
     return micm::Phase{ "AQUEOUS", { { MakeCondensedSpecies() }, { MakeSolvent() } } };
   }
 
-  /// Create a simple constant HLC function
-  auto MakeConstantHLC(double hlc_value)
+  /// Create a simple constant HLC expression
+  UserDefinedConstantExpression MakeConstantHLC(double hlc_value)
   {
-    return [hlc_value](const micm::Conditions& conditions) { return hlc_value; };
+    return UserDefinedConstantExpression{ hlc_value };
   }
 
   /// Create a HenrysLawPhaseTransfer process with default test settings
@@ -1356,7 +1356,7 @@ TEST(HenrysLawPhaseTransfer, ForcingMultipleTransferProcesses)
   double D_CO2 = 1.5e-5, D_SO2 = 1.2e-5;
 
   auto proc_CO2 = HenrysLawPhaseTransfer(
-      [HLC_CO2](const micm::Conditions&) { return HLC_CO2; },
+      UserDefinedConstantExpression{ HLC_CO2 },
       gas_CO2,
       aq_CO2,
       solvent,
@@ -1367,7 +1367,7 @@ TEST(HenrysLawPhaseTransfer, ForcingMultipleTransferProcesses)
       solvent_molecular_weight,
       solvent_density);
   auto proc_SO2 = HenrysLawPhaseTransfer(
-      [HLC_SO2](const micm::Conditions&) { return HLC_SO2; },
+      UserDefinedConstantExpression{ HLC_SO2 },
       gas_SO2,
       aq_SO2,
       solvent,
@@ -1462,7 +1462,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
   double D_CO2 = 1.5e-5, D_SO2 = 1.2e-5;
 
   auto proc_CO2 = HenrysLawPhaseTransfer(
-      [HLC_CO2](const micm::Conditions&) { return HLC_CO2; },
+      UserDefinedConstantExpression{ HLC_CO2 },
       gas_CO2,
       aq_CO2,
       solvent,
@@ -1473,7 +1473,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
       solvent_molecular_weight,
       solvent_density);
   auto proc_SO2 = HenrysLawPhaseTransfer(
-      [HLC_SO2](const micm::Conditions&) { return HLC_SO2; },
+      UserDefinedConstantExpression{ HLC_SO2 },
       gas_SO2,
       aq_SO2,
       solvent,
@@ -1990,11 +1990,11 @@ TEST(HenrysLawPhaseTransferBuilder, BuiltProcessHLCWorks)
 
   micm::Conditions cond;
   cond.temperature_ = 298.15;
-  double result = process.henrys_law_constant_(cond);
+  double result = EvaluateExpression(process.henrys_law_constant_, cond);
   EXPECT_NEAR(result, HLC_ref, 1e-10);
 
   cond.temperature_ = 280.0;
-  result = process.henrys_law_constant_(cond);
+  result = EvaluateExpression(process.henrys_law_constant_, cond);
   double expected = HLC_ref * std::exp(2400.0 * (1.0 / 280.0 - 1.0 / 298.15));
   EXPECT_NEAR(result, expected, expected * 1e-10);
 }

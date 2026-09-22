@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <miam/processes/constants/rate_expression.hpp>
 #include <miam/representations/aerosol_property.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
@@ -51,13 +52,13 @@ namespace miam
   class DissolvedReversibleReaction
   {
    public:
-    std::function<double(const micm::Conditions& conditions)> forward_rate_constant_;  ///< Forward rate constant function
-    std::function<double(const micm::Conditions& conditions)> reverse_rate_constant_;  ///< Reverse rate constant function
-    std::vector<micm::Species> reactants_;                                             ///< Reactant species
-    std::vector<micm::Species> products_;                                              ///< Product species
-    micm::Species solvent_;                                                            ///< Solvent species
-    micm::Phase phase_;  ///< Phase in which the reaction occurs
-    std::string uuid_;   ///< Unique identifier for the reaction
+    RateConstantExpression forward_rate_constant_;  ///< Forward rate constant expression
+    RateConstantExpression reverse_rate_constant_;  ///< Reverse rate constant expression
+    std::vector<micm::Species> reactants_;          ///< Reactant species
+    std::vector<micm::Species> products_;           ///< Product species
+    micm::Species solvent_;                         ///< Solvent species
+    micm::Phase phase_;                             ///< Phase in which the reaction occurs
+    std::string uuid_;                              ///< Unique identifier for the reaction
     double solvent_floor_{
       1.0e-20
     };  ///< Floor [mol m⁻³] added to [S] in ([S]+δ)^n denominator to prevent singularity as [S] → 0
@@ -66,15 +67,15 @@ namespace miam
 
     /// @brief Constructor
     DissolvedReversibleReaction(
-        std::function<double(const micm::Conditions& conditions)> forward_rate_constant,
-        std::function<double(const micm::Conditions& conditions)> reverse_rate_constant,
+        RateConstantExpression forward_rate_constant,
+        RateConstantExpression reverse_rate_constant,
         const std::vector<micm::Species>& reactants,
         const std::vector<micm::Species>& products,
         micm::Species solvent,
         micm::Phase phase,
         double solvent_floor = 1.0e-20)
-        : forward_rate_constant_(forward_rate_constant),
-          reverse_rate_constant_(reverse_rate_constant),
+        : forward_rate_constant_(std::move(forward_rate_constant)),
+          reverse_rate_constant_(std::move(reverse_rate_constant)),
           reactants_(reactants),
           products_(products),
           solvent_(solvent),
@@ -271,11 +272,13 @@ namespace miam
           [this, forward_index, reverse_index](auto&& conditions, auto&& params)
           {
             params.ForEachRow(
-                [&](const micm::Conditions& condition, double& parameter) { parameter = forward_rate_constant_(condition); },
+                [&](const micm::Conditions& condition, double& parameter)
+                { parameter = EvaluateExpression(forward_rate_constant_, condition); },
                 conditions,
                 params.GetColumnView(forward_index));
             params.ForEachRow(
-                [&](const micm::Conditions& condition, double& parameter) { parameter = reverse_rate_constant_(condition); },
+                [&](const micm::Conditions& condition, double& parameter)
+                { parameter = EvaluateExpression(reverse_rate_constant_, condition); },
                 conditions,
                 params.GetColumnView(reverse_index));
           },

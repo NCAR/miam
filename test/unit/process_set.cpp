@@ -34,8 +34,8 @@ namespace
 
     DissolvedReversibleReaction MakeReaction() const
     {
-      return DissolvedReversibleReaction{ { [kf = k_forward](const micm::Conditions&) { return kf; } },
-                                          { [kr = k_reverse](const micm::Conditions&) { return kr; } },
+      return DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                          UserDefinedConstantExpression{ k_reverse },
                                           { a },
                                           { b },
                                           solvent,

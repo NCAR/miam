@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <miam/processes/constants/rate_expression.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 #include <miam/util/uuid.hpp>
@@ -42,9 +43,9 @@ namespace miam
   class DissolvedEquilibriumConstraint
   {
    public:
-    std::function<double(const micm::Conditions& conditions)> equilibrium_constant_;  ///< K_eq function
-    std::vector<micm::Species> reactants_;                                            ///< Reactant species
-    std::vector<micm::Species> products_;                                             ///< Product species
+    EquilibriumConstantExpression equilibrium_constant_;  ///< K_eq expression
+    std::vector<micm::Species> reactants_;                ///< Reactant species
+    std::vector<micm::Species> products_;                 ///< Product species
     micm::Species algebraic_species_;  ///< Product species whose ODE row is replaced
     micm::Species solvent_;            ///< Solvent species
     micm::Phase phase_;                ///< Phase in which the reaction occurs
@@ -56,14 +57,14 @@ namespace miam
 
     /// @brief Constructor
     DissolvedEquilibriumConstraint(
-        std::function<double(const micm::Conditions& conditions)> equilibrium_constant,
+        EquilibriumConstantExpression equilibrium_constant,
         const std::vector<micm::Species>& reactants,
         const std::vector<micm::Species>& products,
         const micm::Species& algebraic_species,
         micm::Species solvent,
         micm::Phase phase,
         double solvent_floor = 1.0e-20)
-        : equilibrium_constant_(equilibrium_constant),
+        : equilibrium_constant_(std::move(equilibrium_constant)),
           reactants_(reactants),
           products_(products),
           algebraic_species_(algebraic_species),
@@ -196,17 +197,18 @@ namespace miam
         for (const auto& prefix : phase_it->second)
           k_eq_indices.push_back(state_parameter_indices.at(prefix + "." + phase_.name_ + "." + uuid_ + ".k_eq"));
       }
-      auto eq_const_fn = equilibrium_constant_;
+      auto eq_const_expr = equilibrium_constant_;
 
       DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
       typename DenseMatrixPolicy::template VectorType<micm::Conditions> conditions_vector;
 
       return DenseMatrixPolicy::Function(
-          [k_eq_indices, eq_const_fn](auto&& conditions, auto&& params)
+          [k_eq_indices, eq_const_expr](auto&& conditions, auto&& params)
           {
             for (const auto& k_eq_idx : k_eq_indices)
               params.ForEachRow(
-                  [eq_const_fn](const micm::Conditions& cond, double& k_eq) { k_eq = eq_const_fn(cond); },
+                  [eq_const_expr](const micm::Conditions& cond, double& k_eq)
+                  { k_eq = EvaluateExpression(eq_const_expr, cond); },
                   conditions,
                   params.GetColumnView(k_eq_idx));
           },

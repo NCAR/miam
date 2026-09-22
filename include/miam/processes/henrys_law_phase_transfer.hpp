@@ -4,6 +4,7 @@
 #pragma once
 
 #include <miam/math/condensation_rate.hpp>
+#include <miam/processes/constants/rate_expression.hpp>
 #include <miam/representations/aerosol_property.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
@@ -38,11 +39,11 @@ namespace miam
   class HenrysLawPhaseTransfer
   {
    public:
-    std::function<double(const micm::Conditions& conditions)> henrys_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
-    micm::Species gas_species_;                                                      ///< Gas-phase species
-    micm::Species condensed_species_;                                                ///< Condensed-phase solute species
-    micm::Species solvent_;                                                          ///< Condensed-phase solvent species
-    micm::Phase condensed_phase_;                                                    ///< The condensed phase
+    HenrysLawConstantExpression henrys_law_constant_;   ///< HLC(T) expression [mol m⁻³ Pa⁻¹]
+    micm::Species gas_species_;                         ///< Gas-phase species
+    micm::Species condensed_species_;                   ///< Condensed-phase solute species
+    micm::Species solvent_;                             ///< Condensed-phase solvent species
+    micm::Phase condensed_phase_;                       ///< The condensed phase
     double diffusion_coefficient_;      ///< Gas-phase diffusion coefficient [m² s⁻¹]
     double accommodation_coefficient_;  ///< Mass accommodation coefficient [dimensionless]
     double gas_molecular_weight_;       ///< Gas-phase molecular weight [kg mol⁻¹]
@@ -54,7 +55,7 @@ namespace miam
 
     /// @brief Constructor
     HenrysLawPhaseTransfer(
-        std::function<double(const micm::Conditions& conditions)> henrys_law_constant,
+        HenrysLawConstantExpression henrys_law_constant,
         const micm::Species& gas_species,
         const micm::Species& condensed_species,
         const micm::Species& solvent,
@@ -64,7 +65,7 @@ namespace miam
         double gas_molecular_weight,
         double solvent_molecular_weight,
         double solvent_density)
-        : henrys_law_constant_(henrys_law_constant),
+        : henrys_law_constant_(std::move(henrys_law_constant)),
           gas_species_(gas_species),
           condensed_species_(condensed_species),
           solvent_(solvent),
@@ -269,7 +270,7 @@ namespace miam
               params.ForEachRow(
                   [&](const micm::Conditions& cond, double& hlc, double& T)
                   {
-                    hlc = henrys_law_constant_(cond);
+                    hlc = EvaluateExpression(henrys_law_constant_, cond);
                     T = cond.temperature_;
                   },
                   conditions,

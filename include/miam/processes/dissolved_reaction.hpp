@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <miam/processes/constants/rate_expression.hpp>
 #include <miam/representations/aerosol_property.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
@@ -61,12 +62,12 @@ namespace miam
   class DissolvedReaction
   {
    public:
-    std::function<double(const micm::Conditions& conditions)> rate_constant_;  ///< Rate constant function
-    std::vector<micm::Species> reactants_;                                     ///< Reactant species
-    std::vector<micm::Species> products_;                                      ///< Product species
-    micm::Species solvent_;                                                    ///< Solvent species
-    micm::Phase phase_;                                                        ///< Phase in which the reaction occurs
-    std::string uuid_;                                                         ///< Unique identifier for the reaction
+    RateConstantExpression rate_constant_;   ///< Rate constant expression
+    std::vector<micm::Species> reactants_;   ///< Reactant species
+    std::vector<micm::Species> products_;    ///< Product species
+    micm::Species solvent_;                  ///< Solvent species
+    micm::Phase phase_;                      ///< Phase in which the reaction occurs
+    std::string uuid_;                       ///< Unique identifier for the reaction
     double solvent_floor_{
       1.0e-20
     };  ///< Floor [mol m⁻³] added to [S] in ([S]+δ)^n denominator to prevent singularity as [S] → 0
@@ -78,14 +79,14 @@ namespace miam
 
     /// @brief Constructor
     DissolvedReaction(
-        std::function<double(const micm::Conditions& conditions)> rate_constant,
+        RateConstantExpression rate_constant,
         const std::vector<micm::Species>& reactants,
         const std::vector<micm::Species>& products,
         micm::Species solvent,
         micm::Phase phase,
         double solvent_floor = 1.0e-20,
         double min_halflife = 0.0)
-        : rate_constant_(rate_constant),
+        : rate_constant_(std::move(rate_constant)),
           reactants_(reactants),
           products_(products),
           solvent_(solvent),
@@ -257,7 +258,8 @@ namespace miam
           [this, k_index](auto&& conditions, auto&& params)
           {
             params.ForEachRow(
-                [&](const micm::Conditions& condition, double& parameter) { parameter = rate_constant_(condition); },
+                [&](const micm::Conditions& condition, double& parameter)
+                { parameter = EvaluateExpression(rate_constant_, condition); },
                 conditions,
                 params.GetColumnView(k_index));
           },

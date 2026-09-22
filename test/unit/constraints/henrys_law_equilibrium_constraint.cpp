@@ -59,7 +59,7 @@ namespace
 
 TEST(HenrysLawEquilibriumConstraint, AlgebraicVariableNamesSinglePrefix)
 {
-  auto hlc = [](const micm::Conditions&) { return 5.0e3; };
+  auto hlc = UserDefinedConstantExpression{ 5.0e3 };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -78,7 +78,7 @@ TEST(HenrysLawEquilibriumConstraint, AlgebraicVariableNamesSinglePrefix)
 
 TEST(HenrysLawEquilibriumConstraint, AlgebraicVariableNamesMultiplePrefixes)
 {
-  auto hlc = [](const micm::Conditions&) { return 5.0e3; };
+  auto hlc = UserDefinedConstantExpression{ 5.0e3 };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -101,7 +101,7 @@ TEST(HenrysLawEquilibriumConstraint, AlgebraicVariableNamesMultiplePrefixes)
 
 TEST(HenrysLawEquilibriumConstraint, SpeciesDependencies)
 {
-  auto hlc = [](const micm::Conditions&) { return 5.0e3; };
+  auto hlc = UserDefinedConstantExpression{ 5.0e3 };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -123,7 +123,7 @@ TEST(HenrysLawEquilibriumConstraint, SpeciesDependencies)
 
 TEST(HenrysLawEquilibriumConstraint, SpeciesDependenciesMultipleInstances)
 {
-  auto hlc = [](const micm::Conditions&) { return 5.0e3; };
+  auto hlc = UserDefinedConstantExpression{ 5.0e3 };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -150,7 +150,7 @@ TEST(HenrysLawEquilibriumConstraint, SpeciesDependenciesMultipleInstances)
 
 TEST(HenrysLawEquilibriumConstraint, NonZeroJacobianElements)
 {
-  auto hlc = [](const micm::Conditions&) { return 5.0e3; };
+  auto hlc = UserDefinedConstantExpression{ 5.0e3 };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -183,7 +183,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualSingleInstance)
   // f_v = [H2O] * Mw / rho
   double HLC = 5.0e3;
   double T = 298.15;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -235,7 +235,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualMultipleInstances)
 {
   double HLC = 3.0e3;
   double T = 300.0;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -293,7 +293,7 @@ TEST(HenrysLawEquilibriumConstraint, JacobianSingleInstance)
 {
   double HLC = 5.0e3;
   double T = 298.15;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -360,8 +360,12 @@ TEST(HenrysLawEquilibriumConstraint, JacobianSingleInstance)
 
 TEST(HenrysLawEquilibriumConstraint, UpdateConstraintParametersTemperatureDep)
 {
-  // HLC(T) = 1000.0 / T  =>  HLC*R*T = 1000 * R  (temperature-independent)
-  auto hlc = [](const micm::Conditions& c) { return 1000.0 / c.temperature_; };
+  // HLC(T) = HLC_ref * exp(C * (1/T - 1/T0))  (Henry's law form)
+  constexpr double HLC_ref = 1000.0;
+  constexpr double C_v = 2400.0;
+  constexpr double T0_v = 298.15;
+  auto hlc_val = [&](double T) { return HLC_ref * std::exp(C_v * (1.0 / T - 1.0 / T0_v)); };
+  auto hlc = HenrysLawExpression{ HLC_ref, C_v, T0_v };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -385,24 +389,19 @@ TEST(HenrysLawEquilibriumConstraint, UpdateConstraintParametersTemperatureDep)
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
-  // HLC*R*T = (1000/T) * R * T = 1000 * R (temperature-independent)
-  double expected = 1000.0 * micm::constants::GAS_CONSTANT;
+  // HLC*R*T
   std::size_t hlc_rt_col = pi.begin()->second;
-  EXPECT_NEAR(state_params[0][hlc_rt_col], expected, expected * 1.0e-12);
-  EXPECT_NEAR(state_params[1][hlc_rt_col], expected, expected * 1.0e-12);
+  double expected0 = hlc_val(250.0) * micm::constants::GAS_CONSTANT * 250.0;
+  double expected1 = hlc_val(350.0) * micm::constants::GAS_CONSTANT * 350.0;
+  EXPECT_NEAR(state_params[0][hlc_rt_col], expected0, expected0 * 1.0e-12);
+  EXPECT_NEAR(state_params[1][hlc_rt_col], expected1, expected1 * 1.0e-12);
 }
 
 // ── Builder ──
 
 TEST(HenrysLawEquilibriumConstraint, BuilderValidation)
 {
-  struct FakeHLC
-  {
-    double Calculate(const micm::Conditions&) const
-    {
-      return 5.0e3;
-    }
-  };
+  auto hlc = UserDefinedConstantExpression{ 5.0e3 };
 
   // Missing gas species
   EXPECT_THROW(
@@ -410,7 +409,7 @@ TEST(HenrysLawEquilibriumConstraint, BuilderValidation)
           .SetCondensedSpecies(A_aq)
           .SetSolvent(h2o)
           .SetCondensedPhase(aqueous_phase)
-          .SetHenrysLawConstant(FakeHLC{})
+          .SetHenrysLawConstant(hlc)
           .Build(),
       std::runtime_error);
 
@@ -420,7 +419,7 @@ TEST(HenrysLawEquilibriumConstraint, BuilderValidation)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(h2o)
                         .SetCondensedPhase(aqueous_phase)
-                        .SetHenrysLawConstant(FakeHLC{})
+                        .SetHenrysLawConstant(hlc)
                         .Build();
   EXPECT_EQ(constraint.gas_species_.name_, "A_g");
   EXPECT_EQ(constraint.condensed_species_.name_, "A_aq");
@@ -529,7 +528,7 @@ TEST(HenrysLawEquilibriumConstraint, JacobianFDSingleInstance)
 {
   double HLC = 5.0e3;
   double T = 298.15;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -563,7 +562,7 @@ TEST(HenrysLawEquilibriumConstraint, JacobianFDMultipleInstances)
 {
   double HLC = 3.0e3;
   double T = 300.0;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -602,7 +601,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualMultipleCells)
 {
   double HLC = 5.0e3;
   double T = 298.15;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -657,7 +656,7 @@ TEST(HenrysLawEquilibriumConstraint, MultiInstanceMultiCellFD)
 {
   double HLC = 4.0e3;
   double T = 290.0;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -712,7 +711,7 @@ TEST(HenrysLawEquilibriumConstraint, ThreeInstancesFD)
 {
   double HLC = 2.0e3;
   double T = 310.0;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -764,7 +763,7 @@ TEST(HenrysLawEquilibriumConstraint, JacobianAccumulates)
 {
   double HLC = 5.0e3;
   double T = 298.15;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -811,7 +810,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualSetsNotAccumulates)
 {
   double HLC = 5.0e3;
   double T = 298.15;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -851,7 +850,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualSetsNotAccumulates)
 TEST(HenrysLawEquilibriumConstraint, TemperatureDependentHlcMultiCell)
 {
   // HLC(T) = 5000 * exp(2400 * (1/T - 1/298.15))
-  auto hlc = [](const micm::Conditions& c) { return 5000.0 * std::exp(2400.0 * (1.0 / c.temperature_ - 1.0 / 298.15)); };
+  auto hlc = HenrysLawExpression{ 5000.0, 2400.0, 298.15 };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -911,7 +910,7 @@ TEST(HenrysLawEquilibriumConstraint, TemperatureDependentHlcMultiCell)
 TEST(HenrysLawEquilibriumConstraint, CrossInstanceJacobianIsolation)
 {
   double HLC = 5.0e3;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -960,7 +959,7 @@ TEST(HenrysLawEquilibriumConstraint, JacobianMultipleInstancesAnalytical)
 {
   double HLC = 3.0e3;
   double T = 300.0;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -1017,7 +1016,7 @@ TEST(HenrysLawEquilibriumConstraint, LargeHLC)
 {
   double HLC = 1.0e8;
   double T = 298.15;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -1060,7 +1059,7 @@ TEST(HenrysLawEquilibriumConstraint, CopiedConstraintProducesSameResults)
 {
   double HLC = 5.0e3;
   double T = 298.15;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto original = HenrysLawEquilibriumConstraintBuilder()
                       .SetGasSpecies(A_g)
                       .SetCondensedSpecies(A_aq)
@@ -1107,7 +1106,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualZeroAtEquilibrium)
 {
   double HLC = 5.0e3;
   double T = 298.15;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -1149,7 +1148,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualZeroAtEquilibrium)
 
 TEST(HenrysLawEquilibriumConstraint, KitchenSinkFD)
 {
-  auto hlc = [](const micm::Conditions& c) { return 3000.0 * std::exp(1500.0 * (1.0 / c.temperature_ - 1.0 / 298.15)); };
+  auto hlc = HenrysLawExpression{ 3000.0, 1500.0, 298.15 };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -1223,7 +1222,7 @@ namespace
   void TestHLConstraintVectorMatrix(std::size_t num_cells, double T_base, bool varying_temperature)
   {
     double HLC = 5.0e3;
-    auto hlc_fn = [HLC](const micm::Conditions&) { return HLC; };
+    auto hlc_fn = UserDefinedConstantExpression{ HLC };
     auto constraint = HenrysLawEquilibriumConstraintBuilder()
                           .SetGasSpecies(A_g)
                           .SetCondensedSpecies(A_aq)
@@ -1374,7 +1373,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualZeroGasConcentration)
   // G = HLC*R*T*f_v*[A_g] - [A_aq]; with [A_g]=0: G = -[A_aq]
   double HLC = 5.0e3;
   double T = 298.15;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -1412,7 +1411,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualZeroAqueousConcentration)
   // G = HLC*R*T*f_v*[A_g] - [A_aq]; with [A_aq]=0: G = HLC*R*T*f_v*[A_g]
   double HLC = 5.0e3;
   double T = 298.15;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -1453,7 +1452,7 @@ TEST(HenrysLawEquilibriumConstraint, JacobianFDZeroConcentrations)
 {
   double HLC = 5.0e3;
   double T = 298.15;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
@@ -1495,7 +1494,7 @@ TEST(HenrysLawEquilibriumConstraint, JacobianFDZeroConcentrations)
 TEST(HenrysLawEquilibriumConstraint, JacobianFDTemperatureExtremes)
 {
   double HLC = 5.0e3;
-  auto hlc = [HLC](const micm::Conditions&) { return HLC; };
+  auto hlc = UserDefinedConstantExpression{ HLC };
   auto constraint = HenrysLawEquilibriumConstraintBuilder()
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
