@@ -4,8 +4,11 @@
 #pragma once
 
 #include <miam/constraints/dissolved_equilibrium_constraint.hpp>
+#include <miam/constraints/dissolved_equilibrium_constraint_set.hpp>
 #include <miam/constraints/henrys_law_equilibrium_constraint.hpp>
+#include <miam/constraints/henrys_law_equilibrium_constraint_set.hpp>
 #include <miam/constraints/linear_constraint.hpp>
+#include <miam/constraints/linear_constraint_set.hpp>
 #include <miam/processes.hpp>
 #include <miam/processes/dissolved_reaction_set.hpp>
 #include <miam/processes/dissolved_reversible_reaction_set.hpp>
@@ -56,8 +59,6 @@ namespace miam
     mutable std::any cached_process_update_fns_{};
     mutable std::any cached_constraint_update_fns_{};
     mutable std::any cached_constraint_init_fns_{};
-    mutable std::any cached_constraint_residual_fns_{};
-    mutable std::any cached_constraint_jacobian_fns_{};
 
     // Cached DP-typed aerosol descriptor map used by cached AddForcingTerms /
     // SubtractJacobianTerms. Rebuilt lazily when the stored DP does not match.
@@ -69,6 +70,11 @@ namespace miam
     std::vector<DissolvedReactionSet> dissolved_reaction_sets_{};
     std::vector<DissolvedReversibleReactionSet> dissolved_reversible_reaction_sets_{};
     std::vector<HenrysLawPhaseTransferSet> henrys_law_phase_transfer_sets_{};
+
+    // Solve-time companion Sets for constraints. Populated in FinalizeConstraintSetup.
+    std::vector<LinearConstraintSet> linear_constraint_sets_{};
+    std::vector<DissolvedEquilibriumConstraintSet> dissolved_equilibrium_constraint_sets_{};
+    std::vector<HenrysLawEquilibriumConstraintSet> henrys_law_equilibrium_constraint_sets_{};
 
     /// @brief Returns the total state size (number of variables, number of parameters)
     std::tuple<std::size_t, std::size_t> StateSize() const
@@ -493,55 +499,6 @@ namespace miam
       return elements;
     }
 
-    /// @brief Returns combined constraint residual function G(y) = 0
-    template<typename DenseMatrixPolicy>
-    std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ConstraintResidualFunction(
-        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
-        const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
-    {
-      auto phase_prefixes = CollectPhaseStatePrefixes();
-      std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>> residual_fns;
-      ForEachConstraint(
-          [&](const auto& c)
-          {
-            residual_fns.push_back(c.template ConstraintResidualFunction<DenseMatrixPolicy>(
-                phase_prefixes, state_parameter_indices, state_variable_indices));
-          });
-      return [residual_fns](
-                 const DenseMatrixPolicy& state_variables,
-                 const DenseMatrixPolicy& state_parameters,
-                 DenseMatrixPolicy& residual)
-      {
-        for (const auto& fn : residual_fns)
-          fn(state_variables, state_parameters, residual);
-      };
-    }
-
-    /// @brief Returns combined constraint Jacobian function (subtracts dG/dy)
-    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
-    std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> ConstraintJacobianFunction(
-        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
-        const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-        const SparseMatrixPolicy& jacobian) const
-    {
-      auto phase_prefixes = CollectPhaseStatePrefixes();
-      std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>> jac_fns;
-      ForEachConstraint(
-          [&](const auto& c)
-          {
-            jac_fns.push_back(c.template ConstraintJacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
-                phase_prefixes, state_parameter_indices, state_variable_indices, jacobian));
-          });
-      return [jac_fns](
-                 const DenseMatrixPolicy& state_variables,
-                 const DenseMatrixPolicy& state_parameters,
-                 SparseMatrixPolicy& jacobian_values) mutable
-      {
-        for (auto& fn : jac_fns)
-          fn(state_variables, state_parameters, jacobian_values);
-      };
-    }
-
     /// @brief Cache build-time indices for solve-time direct-dispatch methods
     /// @details Called once by micm::SolverBuilder after the parameter map,
     ///          species map, and Jacobian sparsity pattern are finalized.
@@ -597,14 +554,36 @@ namespace miam
     void FinalizeConstraintSetup(
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-        const SparseMatrixPolicy& /*jacobian*/)
+        const SparseMatrixPolicy& jacobian)
     {
       state_parameter_indices_ = state_parameter_indices;
       state_variable_indices_ = state_variable_indices;
       cached_constraint_update_fns_.reset();
       cached_constraint_init_fns_.reset();
-      cached_constraint_residual_fns_.reset();
-      cached_constraint_jacobian_fns_.reset();
+
+      auto phase_prefixes = CollectPhaseStatePrefixes();
+
+      linear_constraint_sets_.clear();
+      dissolved_equilibrium_constraint_sets_.clear();
+      henrys_law_equilibrium_constraint_sets_.clear();
+      for (const auto& constraint : constraints_)
+      {
+        std::visit(
+            [&](const auto& c)
+            {
+              using C = std::decay_t<decltype(c)>;
+              if constexpr (std::is_same_v<C, LinearConstraint>)
+                linear_constraint_sets_.emplace_back(
+                    c, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+              else if constexpr (std::is_same_v<C, DissolvedEquilibriumConstraint>)
+                dissolved_equilibrium_constraint_sets_.emplace_back(
+                    c, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+              else if constexpr (std::is_same_v<C, HenrysLawEquilibriumConstraint>)
+                henrys_law_equilibrium_constraint_sets_.emplace_back(
+                    c, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+            },
+            constraint);
+      }
     }
 
     /// @brief Solve-time: refresh temperature-/pressure-dependent process parameters
@@ -735,23 +714,12 @@ namespace miam
         const DenseMatrixPolicy& state_variables,
         DenseMatrixPolicy& forcing) const
     {
-      using FnType = std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>;
-      using CacheType = std::vector<FnType>;
-      if (!cached_constraint_residual_fns_.has_value())
-      {
-        CacheType cache;
-        auto phase_prefixes = CollectPhaseStatePrefixes();
-        ForEachConstraint(
-            [&](const auto& c)
-            {
-              cache.push_back(c.template ConstraintResidualFunction<DenseMatrixPolicy>(
-                  phase_prefixes, state_parameter_indices_, state_variable_indices_));
-            });
-        cached_constraint_residual_fns_ = std::move(cache);
-      }
-      // Per-constraint residual fn expects (state_variables, state_parameters, forcing)
-      for (auto& fn : std::any_cast<CacheType&>(cached_constraint_residual_fns_))
-        fn(state_variables, state_parameters, forcing);
+      for (const auto& set : linear_constraint_sets_)
+        set.template AddResidual<DenseMatrixPolicy>(state_variables, state_parameters, forcing);
+      for (const auto& set : dissolved_equilibrium_constraint_sets_)
+        set.template AddResidual<DenseMatrixPolicy>(state_variables, state_parameters, forcing);
+      for (const auto& set : henrys_law_equilibrium_constraint_sets_)
+        set.template AddResidual<DenseMatrixPolicy>(state_variables, state_parameters, forcing);
     }
 
     /// @brief Solve-time: subtract dG/dy from algebraic Jacobian rows (-J convention)
@@ -761,23 +729,12 @@ namespace miam
         const DenseMatrixPolicy& state_variables,
         SparseMatrixPolicy& jacobian) const
     {
-      using FnType = std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>;
-      using CacheType = std::vector<FnType>;
-      if (!cached_constraint_jacobian_fns_.has_value())
-      {
-        CacheType cache;
-        auto phase_prefixes = CollectPhaseStatePrefixes();
-        ForEachConstraint(
-            [&](const auto& c)
-            {
-              cache.push_back(c.template ConstraintJacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
-                  phase_prefixes, state_parameter_indices_, state_variable_indices_, jacobian));
-            });
-        cached_constraint_jacobian_fns_ = std::move(cache);
-      }
-      // Per-constraint Jacobian fn expects (state_variables, state_parameters, jacobian)
-      for (auto& fn : std::any_cast<CacheType&>(cached_constraint_jacobian_fns_))
-        fn(state_variables, state_parameters, jacobian);
+      for (const auto& set : linear_constraint_sets_)
+        set.template SubtractJacobian<DenseMatrixPolicy, SparseMatrixPolicy>(state_variables, state_parameters, jacobian);
+      for (const auto& set : dissolved_equilibrium_constraint_sets_)
+        set.template SubtractJacobian<DenseMatrixPolicy, SparseMatrixPolicy>(state_variables, state_parameters, jacobian);
+      for (const auto& set : henrys_law_equilibrium_constraint_sets_)
+        set.template SubtractJacobian<DenseMatrixPolicy, SparseMatrixPolicy>(state_variables, state_parameters, jacobian);
     }
 
    private:

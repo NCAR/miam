@@ -123,7 +123,7 @@ namespace
 
   /// Helper to verify constraint Jacobian (residual-based) for a given model
   void VerifyConstraintJacobian(
-      const Model& model,
+      Model& model,
       const IndexMaps& maps,
       const DenseMatrix& variables,
       const DenseMatrix& parameters,
@@ -149,13 +149,12 @@ namespace
     SparseMatrixFD analytical_jac(builder);
 
     // Compute analytical Jacobian
-    auto jac_fn = model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(
-        maps.parameter_indices, maps.variable_indices, analytical_jac);
-    jac_fn(variables, params_copy, analytical_jac);
+    model.template FinalizeConstraintSetup<SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, analytical_jac);
+    model.template SubtractConstraintJacobian<DenseMatrix, SparseMatrixFD>(params_copy, variables, analytical_jac);
 
     // Compute finite-difference Jacobian from residual function
-    auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
-    auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing) { residual_fn(vars, params_copy, forcing); };
+    auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing)
+    { model.template AddConstraintResidual<DenseMatrix>(params_copy, vars, forcing); };
 
     auto fd_jac = micm::FiniteDifferenceJacobian<DenseMatrix>(fd_wrapper, variables, num_species);
 
@@ -904,14 +903,12 @@ TEST(JacobianVerification, DissolvedEquilibriumConstraintDampingRange)
   }
 
   // At extreme low solvent, verify finiteness only
-  auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
   auto jac_nz = model.NonZeroConstraintJacobianElements(maps.variable_indices);
   auto jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
   for (const auto& elem : jac_nz)
     jac_builder = jac_builder.WithElement(elem.first, elem.second);
   SparseMatrixFD jac(jac_builder);
-  auto jac_fn =
-      model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, jac);
+  model.template FinalizeConstraintSetup<SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, jac);
 
   for (double sol : { 1.0e-10, 1.0e-15, 0.0 })
   {
@@ -932,12 +929,12 @@ TEST(JacobianVerification, DissolvedEquilibriumConstraintDampingRange)
     update_fn(conditions, parameters);
 
     DenseMatrix residual(1, maps.num_variables, 0.0);
-    residual_fn(variables, parameters, residual);
+    model.template AddConstraintResidual<DenseMatrix>(parameters, variables, residual);
     for (std::size_t j = 0; j < maps.num_variables; ++j)
       EXPECT_TRUE(std::isfinite(residual[0][j])) << "residual[" << j << "] is not finite at sol=" << sol;
 
     jac.Fill(0.0);
-    jac_fn(variables, parameters, jac);
+    model.template SubtractConstraintJacobian<DenseMatrix, SparseMatrixFD>(parameters, variables, jac);
     for (const auto& v : jac.AsVector())
       EXPECT_TRUE(std::isfinite(v)) << "Constraint Jacobian element is not finite at sol=" << sol;
   }
@@ -1027,20 +1024,18 @@ TEST(JacobianVerification, CombinedProcessAndConstraintZeroSolvent)
     EXPECT_TRUE(std::isfinite(v)) << "Process Jacobian element is not finite at sol=0";
 
   // Constraint residual/Jacobian finiteness
-  auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
   DenseMatrix residual(1, maps.num_variables, 0.0);
-  residual_fn(variables, parameters, residual);
-  for (std::size_t j = 0; j < maps.num_variables; ++j)
-    EXPECT_TRUE(std::isfinite(residual[0][j])) << "Constraint residual[" << j << "] is not finite at sol=0";
-
   auto cons_nz = model.NonZeroConstraintJacobianElements(maps.variable_indices);
   auto cons_jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
   for (const auto& elem : cons_nz)
     cons_jac_builder = cons_jac_builder.WithElement(elem.first, elem.second);
   SparseMatrixFD cons_jac(cons_jac_builder);
-  auto cons_jac_fn =
-      model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, cons_jac);
-  cons_jac_fn(variables, parameters, cons_jac);
+  model.template FinalizeConstraintSetup<SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, cons_jac);
+  model.template AddConstraintResidual<DenseMatrix>(parameters, variables, residual);
+  for (std::size_t j = 0; j < maps.num_variables; ++j)
+    EXPECT_TRUE(std::isfinite(residual[0][j])) << "Constraint residual[" << j << "] is not finite at sol=0";
+
+  model.template SubtractConstraintJacobian<DenseMatrix, SparseMatrixFD>(parameters, variables, cons_jac);
   for (const auto& v : cons_jac.AsVector())
     EXPECT_TRUE(std::isfinite(v)) << "Constraint Jacobian element is not finite at sol=0";
 }

@@ -174,7 +174,7 @@ namespace miam_test_cam_cloud_chemistry
   }
 
   inline void VerifyConstraintJacobian(
-      const Model& model,
+      Model& model,
       const IndexMaps& maps,
       const DenseMatrix& variables,
       const DenseMatrix& parameters,
@@ -193,11 +193,10 @@ namespace miam_test_cam_cloud_chemistry
     for (const auto& elem : nz_elements)
       builder = builder.WithElement(elem.first, elem.second);
     SparseMatrixFD analytical_jac(builder);
-    auto jac_fn = model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(
-        maps.parameter_indices, maps.variable_indices, analytical_jac);
-    jac_fn(variables, params_copy, analytical_jac);
-    auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
-    auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing) { residual_fn(vars, params_copy, forcing); };
+    model.template FinalizeConstraintSetup<SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, analytical_jac);
+    model.template SubtractConstraintJacobian<DenseMatrix, SparseMatrixFD>(params_copy, variables, analytical_jac);
+    auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing)
+    { model.template AddConstraintResidual<DenseMatrix>(params_copy, vars, forcing); };
     auto fd_jac = FiniteDifferenceJacobian<DenseMatrix>(fd_wrapper, variables, num_species);
     auto comparison =
         (atol > 0 && rtol > 0)
