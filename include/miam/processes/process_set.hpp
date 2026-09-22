@@ -42,19 +42,6 @@ namespace miam
             const PhaseMap&,
             const IndexMap&)>
         update_state_parameters_function_;
-    std::function<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>(
-        const PhaseMap&,
-        const IndexMap&,
-        const IndexMap&,
-        DescriptorMap)>
-        get_forcing_function_;
-    std::function<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>(
-        const PhaseMap&,
-        const IndexMap&,
-        const IndexMap&,
-        const SparseMatrixPolicy&,
-        DescriptorMap)>
-        get_jacobian_function_;
 
     /// @brief Construct a MiamProcessSet from any process type that satisfies the common interface
     /// @tparam ProcessType The concrete process type
@@ -75,14 +62,6 @@ namespace miam
 
       update_state_parameters_function_ = [shared](const PhaseMap& pp, const IndexMap& pi)
       { return shared->template UpdateStateParametersFunction<DenseMatrixPolicy>(pp, pi); };
-
-      get_forcing_function_ = [shared](const PhaseMap& pp, const IndexMap& pi, const IndexMap& vi, DescriptorMap prov)
-      { return shared->template ForcingFunction<DenseMatrixPolicy>(pp, pi, vi, std::move(prov)); };
-
-      get_jacobian_function_ =
-          [shared](
-              const PhaseMap& pp, const IndexMap& pi, const IndexMap& vi, const SparseMatrixPolicy& jac, DescriptorMap prov)
-      { return shared->template JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(pp, pi, vi, jac, std::move(prov)); };
     }
   };
 }  // namespace miam
