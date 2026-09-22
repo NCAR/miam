@@ -5,6 +5,8 @@
 
 #include <miam/constraints/linear_constraint.hpp>
 
+#include <micm/util/types.hpp>
+
 #include <cstddef>
 #include <map>
 #include <set>
@@ -15,17 +17,55 @@
 
 namespace miam
 {
-  /// @brief Solve-time companion to `LinearConstraint`, mirroring the process Set pattern.
-  /// @details Non-templated data-holding class populated once at Finalize time. Solve-time
-  ///          methods build the DP/SP kernel per call from trivially-copyable captures.
-  ///          Handles all four (is_global, diagnose_from_state) combinations at construction
-  ///          time; solve-time methods just iterate the resolved indices.
+  /// @brief Solve-time companion to `LinearConstraint`, mirroring `micm::ProcessSet`.
+  /// @details Indices/coefficients are stored in `SparseMatrixPolicy::VectorType<T>` so they
+  ///          are device-accessible via `.GetView()`. A POD `Views` bundle is captured by
+  ///          value in every `MICM_LAMBDA`.
+  template<class DenseMatrixPolicy, class SparseMatrixPolicy>
   class LinearConstraintSet
   {
    public:
+    template<class U>
+    using Vector = typename SparseMatrixPolicy::template VectorType<U>;
+    template<class U>
+    using VectorView = typename Vector<U>::ConstViewType;
+
+    struct Views
+    {
+      VectorView<micm::Index> alg_indices_;
+      VectorView<micm::Index> param_indices_;
+      VectorView<micm::Index> counts_per_instance_;
+      VectorView<micm::Index> flat_term_indices_;
+      VectorView<micm::Real> flat_term_coeffs_;
+      VectorView<micm::Index> flat_jac_ids_;
+      micm::Index num_instances_;
+      micm::Real constant_;
+
+      Views() = default;
+
+      Views(
+          const Vector<micm::Index>& alg_indices,
+          const Vector<micm::Index>& param_indices,
+          const Vector<micm::Index>& counts_per_instance,
+          const Vector<micm::Index>& flat_term_indices,
+          const Vector<micm::Real>& flat_term_coeffs,
+          const Vector<micm::Index>& flat_jac_ids,
+          micm::Index num_instances,
+          micm::Real constant)
+          : alg_indices_(alg_indices.GetView()),
+            param_indices_(param_indices.GetView()),
+            counts_per_instance_(counts_per_instance.GetView()),
+            flat_term_indices_(flat_term_indices.GetView()),
+            flat_term_coeffs_(flat_term_coeffs.GetView()),
+            flat_jac_ids_(flat_jac_ids.GetView()),
+            num_instances_(num_instances),
+            constant_(constant)
+      {
+      }
+    };
+
     LinearConstraintSet() = default;
 
-    template<typename SparseMatrixPolicy>
     LinearConstraintSet(
         const LinearConstraint& config,
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
@@ -33,137 +73,190 @@ namespace miam
         const std::unordered_map<std::string, std::size_t>& state_variable_indices,
         const SparseMatrixPolicy& jacobian)
     {
-      is_global_ = (phase_prefixes.find(config.algebraic_phase_.name_) == phase_prefixes.end());
       diagnose_from_state_ = config.diagnose_from_state_;
-      constant_ = config.constant_;
+      const bool is_global = (phase_prefixes.find(config.algebraic_phase_.name_) == phase_prefixes.end());
 
-      if (is_global_)
+      std::vector<micm::Index> alg_indices_host;
+      std::vector<micm::Index> param_indices_host;
+      std::vector<micm::Index> counts_per_instance_host;
+      std::vector<micm::Index> flat_term_indices_host;
+      std::vector<micm::Real> flat_term_coeffs_host;
+      std::vector<micm::Index> flat_jac_ids_host;
+
+      if (is_global)
       {
         auto resolved = ResolveGlobalTerms(config, phase_prefixes, state_variable_indices);
-        alg_indices_.push_back(state_variable_indices.at(config.algebraic_species_.name_));
-        counts_per_instance_.push_back(resolved.size());
+        const auto alg_idx = static_cast<micm::Index>(state_variable_indices.at(config.algebraic_species_.name_));
+        alg_indices_host.push_back(alg_idx);
+        counts_per_instance_host.push_back(static_cast<micm::Index>(resolved.size()));
         for (const auto& [idx, coeff] : resolved)
         {
-          flat_term_indices_.push_back(idx);
-          flat_term_coeffs_.push_back(coeff);
-          flat_jac_ids_.push_back(jacobian.VectorIndex(0, alg_indices_.back(), idx));
+          flat_term_indices_host.push_back(static_cast<micm::Index>(idx));
+          flat_term_coeffs_host.push_back(coeff);
+          flat_jac_ids_host.push_back(static_cast<micm::Index>(jacobian.VectorIndex(0, alg_idx, idx)));
         }
-        if (diagnose_from_state_)
-          param_indices_.push_back(state_parameter_indices.at("LC_" + config.uuid_ + "_constant"));
+        if (config.diagnose_from_state_)
+          param_indices_host.push_back(
+              static_cast<micm::Index>(state_parameter_indices.at("LC_" + config.uuid_ + "_constant")));
       }
       else
       {
         const auto& alg_prefixes = phase_prefixes.at(config.algebraic_phase_.name_);
         for (const auto& alg_prefix : alg_prefixes)
         {
-          std::size_t alg_idx = state_variable_indices.at(
-              alg_prefix + "." + config.algebraic_phase_.name_ + "." + config.algebraic_species_.name_);
-          alg_indices_.push_back(alg_idx);
-          if (diagnose_from_state_)
-            param_indices_.push_back(state_parameter_indices.at("LC_" + config.uuid_ + "_" + alg_prefix + "_constant"));
+          const auto alg_idx = static_cast<micm::Index>(state_variable_indices.at(
+              alg_prefix + "." + config.algebraic_phase_.name_ + "." + config.algebraic_species_.name_));
+          alg_indices_host.push_back(alg_idx);
+          if (config.diagnose_from_state_)
+            param_indices_host.push_back(static_cast<micm::Index>(
+                state_parameter_indices.at("LC_" + config.uuid_ + "_" + alg_prefix + "_constant")));
 
-          std::size_t count = 0;
+          micm::Index count = 0;
           for (const auto& term : config.terms_)
           {
             auto phase_it = phase_prefixes.find(term.phase.name_);
-            std::size_t idx = (phase_it != phase_prefixes.end())
-                                  ? state_variable_indices.at(alg_prefix + "." + term.phase.name_ + "." + term.species.name_)
-                                  : state_variable_indices.at(term.species.name_);
-            flat_term_indices_.push_back(idx);
-            flat_term_coeffs_.push_back(term.coefficient);
-            flat_jac_ids_.push_back(jacobian.VectorIndex(0, alg_idx, idx));
+            const std::size_t idx =
+                (phase_it != phase_prefixes.end())
+                    ? state_variable_indices.at(alg_prefix + "." + term.phase.name_ + "." + term.species.name_)
+                    : state_variable_indices.at(term.species.name_);
+            flat_term_indices_host.push_back(static_cast<micm::Index>(idx));
+            flat_term_coeffs_host.push_back(term.coefficient);
+            flat_jac_ids_host.push_back(static_cast<micm::Index>(jacobian.VectorIndex(0, alg_idx, idx)));
             ++count;
           }
-          counts_per_instance_.push_back(count);
+          counts_per_instance_host.push_back(count);
         }
       }
+
+      alg_indices_ = Vector<micm::Index>(std::move(alg_indices_host));
+      param_indices_ = Vector<micm::Index>(std::move(param_indices_host));
+      counts_per_instance_ = Vector<micm::Index>(std::move(counts_per_instance_host));
+      flat_term_indices_ = Vector<micm::Index>(std::move(flat_term_indices_host));
+      flat_term_coeffs_ = Vector<micm::Real>(std::move(flat_term_coeffs_host));
+      flat_jac_ids_ = Vector<micm::Index>(std::move(flat_jac_ids_host));
+
+      alg_indices_.CopyToDevice();
+      param_indices_.CopyToDevice();
+      counts_per_instance_.CopyToDevice();
+      flat_term_indices_.CopyToDevice();
+      flat_term_coeffs_.CopyToDevice();
+      flat_jac_ids_.CopyToDevice();
+
+      views_ = Views(
+          alg_indices_,
+          param_indices_,
+          counts_per_instance_,
+          flat_term_indices_,
+          flat_term_coeffs_,
+          flat_jac_ids_,
+          static_cast<micm::Index>(alg_indices_.size()),
+          config.constant_);
     }
 
     /// @brief Add G(y) into the algebraic rows of `residual`.
-    /// @details G = sum(coeff_i * [species_i]) - C, written into residual[alg_row].
-    template<typename DenseMatrixPolicy>
+    /// @details G = sum(coeff_i * [species_i]) - C (or - state_parameters[C_idx] when diagnosed).
     void AddResidual(
         const DenseMatrixPolicy& state_variables,
         const DenseMatrixPolicy& state_parameters,
         DenseMatrixPolicy& residual) const
     {
-      const std::size_t n_inst = alg_indices_.size();
-      std::size_t offset = 0;
-      for (std::size_t i = 0; i < n_inst; ++i)
+      const auto& views = views_;
+      if (diagnose_from_state_)
       {
-        const std::size_t count = counts_per_instance_[i];
-        const std::size_t alg_idx = alg_indices_[i];
-        if (diagnose_from_state_)
-        {
-          const std::size_t param_idx = param_indices_[i];
-          DenseMatrixPolicy::Function(
-              [this, offset, count, alg_idx, param_idx](auto&& sv, auto&& sp, auto&& res)
+        DenseMatrixPolicy::Function(
+            MICM_LAMBDA(
+                const typename DenseMatrixPolicy::ViewType& residual_view,
+                const typename DenseMatrixPolicy::ConstViewType& state_view,
+                const typename DenseMatrixPolicy::ConstViewType& params_view)
+            {
+              micm::Index term_offset = 0;
+              for (micm::Index i = 0; i < views.num_instances_; ++i)
               {
-                auto sum = res.GetRowVariable();
-                res.ForEachRowStrict(
-                    [](const double& p, double& s) { s = -p; }, sp.GetConstColumnView(param_idx), sum);
-                for (std::size_t k = 0; k < count; ++k)
+                const micm::Index count = views.counts_per_instance_[i];
+                const micm::Index alg_idx = views.alg_indices_[i];
+                const micm::Index param_idx = views.param_indices_[i];
+                auto sum = residual_view.GetRowVariable();
+                residual_view.ForEachRowStrict(
+                    [](const micm::Real& p, micm::Real& s) { s = -p; },
+                    params_view.GetConstColumnView(param_idx),
+                    sum);
+                for (micm::Index k = 0; k < count; ++k)
                 {
-                  const std::size_t term_idx = flat_term_indices_[offset + k];
-                  const double coeff = flat_term_coeffs_[offset + k];
-                  res.ForEachRowStrict(
-                      [coeff](const double& val, double& s) { s += coeff * val; },
-                      sv.GetConstColumnView(term_idx),
+                  const micm::Index term_idx = views.flat_term_indices_[term_offset + k];
+                  const micm::Real coeff = views.flat_term_coeffs_[term_offset + k];
+                  residual_view.ForEachRowStrict(
+                      [coeff](const micm::Real& v, micm::Real& s) { s += coeff * v; },
+                      state_view.GetConstColumnView(term_idx),
                       sum);
                 }
-                res.ForEachRowStrict([](const double& s, double& r) { r = s; }, sum, res.GetColumnView(alg_idx));
-              },
-              state_variables,
-              state_parameters,
-              residual)(state_variables, state_parameters, residual);
-        }
-        else
-        {
-          const double constant = constant_;
-          DenseMatrixPolicy::Function(
-              [this, offset, count, alg_idx, constant](auto&& sv, auto&& res)
+                residual_view.ForEachRowStrict(
+                    [](const micm::Real& s, micm::Real& r) { r = s; },
+                    sum,
+                    residual_view.GetColumnView(alg_idx));
+                term_offset += count;
+              }
+            },
+            residual,
+            state_variables,
+            state_parameters)(residual, state_variables, state_parameters);
+      }
+      else
+      {
+        DenseMatrixPolicy::Function(
+            MICM_LAMBDA(
+                const typename DenseMatrixPolicy::ViewType& residual_view,
+                const typename DenseMatrixPolicy::ConstViewType& state_view)
+            {
+              micm::Index term_offset = 0;
+              for (micm::Index i = 0; i < views.num_instances_; ++i)
               {
-                auto sum = res.GetRowVariable();
-                res.ForEachRowStrict([constant](double& s) { s = -constant; }, sum);
-                for (std::size_t k = 0; k < count; ++k)
+                const micm::Index count = views.counts_per_instance_[i];
+                const micm::Index alg_idx = views.alg_indices_[i];
+                const micm::Real c = views.constant_;
+                auto sum = residual_view.GetRowVariable();
+                residual_view.ForEachRowStrict([c](micm::Real& s) { s = -c; }, sum);
+                for (micm::Index k = 0; k < count; ++k)
                 {
-                  const std::size_t term_idx = flat_term_indices_[offset + k];
-                  const double coeff = flat_term_coeffs_[offset + k];
-                  res.ForEachRowStrict(
-                      [coeff](const double& val, double& s) { s += coeff * val; },
-                      sv.GetConstColumnView(term_idx),
+                  const micm::Index term_idx = views.flat_term_indices_[term_offset + k];
+                  const micm::Real coeff = views.flat_term_coeffs_[term_offset + k];
+                  residual_view.ForEachRowStrict(
+                      [coeff](const micm::Real& v, micm::Real& s) { s += coeff * v; },
+                      state_view.GetConstColumnView(term_idx),
                       sum);
                 }
-                res.ForEachRowStrict([](const double& s, double& r) { r = s; }, sum, res.GetColumnView(alg_idx));
-              },
-              state_variables,
-              residual)(state_variables, residual);
-        }
-        offset += count;
+                residual_view.ForEachRowStrict(
+                    [](const micm::Real& s, micm::Real& r) { r = s; },
+                    sum,
+                    residual_view.GetColumnView(alg_idx));
+                term_offset += count;
+              }
+            },
+            residual,
+            state_variables)(residual, state_variables);
+        (void)state_parameters;
       }
     }
 
-    /// @brief Subtract dG/dy from `jacobian` (jac -= dG/dy). dG/d[species_i] = coeff_i.
-    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    /// @brief Subtract dG/dy from `jacobian`. dG/d[species_i] = coeff_i.
     void SubtractJacobian(
-        const DenseMatrixPolicy& state_variables,
+        const DenseMatrixPolicy& /*state_variables*/,
         const DenseMatrixPolicy& /*state_parameters*/,
         SparseMatrixPolicy& jacobian) const
     {
-      const std::size_t total = flat_jac_ids_.size();
+      const auto& views = views_;
       SparseMatrixPolicy::Function(
-          [this, total](auto&& /*sv*/, auto&& jac)
+          MICM_LAMBDA(const typename SparseMatrixPolicy::ViewType& jac_view)
           {
-            for (std::size_t k = 0; k < total; ++k)
+            const micm::Index total = static_cast<micm::Index>(views.flat_jac_ids_.size());
+            for (micm::Index k = 0; k < total; ++k)
             {
-              const double coeff = flat_term_coeffs_[k];
-              const std::size_t vec_idx = flat_jac_ids_[k];
-              auto bv = jac.GetBlockView(vec_idx);
-              jac.ForEachBlockStrict([coeff](double& j) { j -= coeff; }, bv);
+              const micm::Real coeff = views.flat_term_coeffs_[k];
+              const micm::Index vec_idx = views.flat_jac_ids_[k];
+              jac_view.ForEachBlockStrict(
+                  [coeff](micm::Real& j) { j -= coeff; }, jac_view.GetBlockView(vec_idx));
             }
           },
-          state_variables,
-          jacobian)(state_variables, jacobian);
+          jacobian)(jacobian);
     }
 
    private:
@@ -193,14 +286,13 @@ namespace miam
       return resolved;
     }
 
-    bool is_global_{ true };
-    bool diagnose_from_state_{ false };
-    double constant_{ 0.0 };
-    std::vector<std::size_t> alg_indices_{};        ///< One per constraint instance (size 1 if global).
-    std::vector<std::size_t> param_indices_{};      ///< Diagnosed-constant param index per instance; empty if not diagnosed.
-    std::vector<std::size_t> counts_per_instance_{};///< Number of terms per instance.
-    std::vector<std::size_t> flat_term_indices_{};  ///< Flattened state-variable indices across all instances.
-    std::vector<double> flat_term_coeffs_{};        ///< Coefficient for each flat term.
-    std::vector<std::size_t> flat_jac_ids_{};       ///< VectorIndex per flat term for Jacobian (block 0).
+    Vector<micm::Index> alg_indices_{};
+    Vector<micm::Index> param_indices_{};
+    Vector<micm::Index> counts_per_instance_{};
+    Vector<micm::Index> flat_term_indices_{};
+    Vector<micm::Real> flat_term_coeffs_{};
+    Vector<micm::Index> flat_jac_ids_{};
+    Views views_{};
+    bool diagnose_from_state_{ false };  //!< host-only; selects AddResidual kernel variant
   };
 }  // namespace miam

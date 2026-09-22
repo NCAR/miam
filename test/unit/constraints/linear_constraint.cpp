@@ -46,8 +46,8 @@ namespace
 
 namespace
 {
-  template<typename Sparse>
-  LinearConstraintSet MakeSet(
+  template<typename Dense, typename Sparse>
+  LinearConstraintSet<Dense, Sparse> MakeSet(
       const LinearConstraint& constraint,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
@@ -59,7 +59,8 @@ namespace
     for (const auto& elem : elements)
       builder = builder.WithElement(elem.first, elem.second);
     Sparse pattern(builder);
-    return LinearConstraintSet(constraint, phase_prefixes, state_parameter_indices, state_variable_indices, pattern);
+    return LinearConstraintSet<Dense, Sparse>(
+        constraint, phase_prefixes, state_parameter_indices, state_variable_indices, pattern);
   }
 }  // namespace
 
@@ -132,7 +133,7 @@ TEST(LinearConstraint, ResidualGlobal)
   state_indices["SMALL.AQUEOUS.A_aq"] = 2;
 
   using DMP = micm::Matrix<double>;
-  auto residual_fn_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
+  auto residual_fn_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
 
   DMP state_variables{ 1, 3, 0.0 };
   state_variables[0][0] = 50.0;  // [A_g]
@@ -140,7 +141,7 @@ TEST(LinearConstraint, ResidualGlobal)
   state_variables[0][2] = 20.0;  // SMALL [A_aq]
 
   DMP residual{ 1, 3, 0.0 };
-  residual_fn_set.template AddResidual<DMP>(state_variables, no_params, residual);
+  residual_fn_set.AddResidual(state_variables, no_params, residual);
 
   // G = 50 + 30 + 20 - 100 = 0
   EXPECT_NEAR(residual[0][0], 0.0, 1.0e-12);
@@ -149,7 +150,7 @@ TEST(LinearConstraint, ResidualGlobal)
   state_variables[0][0] = 60.0;
   for (auto& v : residual.AsVector())
     v = 0.0;
-  residual_fn_set.template AddResidual<DMP>(state_variables, no_params, residual);
+  residual_fn_set.AddResidual(state_variables, no_params, residual);
   // G = 60 + 30 + 20 - 100 = 10
   EXPECT_NEAR(residual[0][0], 10.0, 1.0e-12);
 }
@@ -175,13 +176,13 @@ TEST(LinearConstraint, JacobianGlobal)
     builder.WithElement(row, col);
   SMP jacobian(builder);
 
-  LinearConstraintSet jac_fn_set(constraint, phase_prefixes, param_indices, state_indices, jacobian);
+  LinearConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, param_indices, state_indices, jacobian);
 
   DMP state_variables{ 1, 3, 0.0 };  // values don't matter for linear Jacobian
 
   for (auto& v : jacobian.AsVector())
     v = 0.0;
-  jac_fn_set.template SubtractJacobian<DMP, SMP>(state_variables, no_params, jacobian);
+  jac_fn_set.SubtractJacobian(state_variables, no_params, jacobian);
 
   // All coefficients are 1.0; jac -= 1.0 → jac = -1.0
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 0, 0)], -1.0, 1.0e-12);
@@ -246,7 +247,7 @@ TEST(LinearConstraint, ResidualPerInstance)
   state_indices["SMALL.AQUEOUS.B-"] = 5;
 
   using DMP = micm::Matrix<double>;
-  auto residual_fn_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
+  auto residual_fn_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
 
   DMP state_variables{ 1, 6, 0.0 };
   state_variables[0][0] = 1.0e-4;  // LARGE H+
@@ -257,7 +258,7 @@ TEST(LinearConstraint, ResidualPerInstance)
   state_variables[0][5] = 8.0e-5;  // SMALL B-
 
   DMP residual{ 1, 6, 0.0 };
-  residual_fn_set.template AddResidual<DMP>(state_variables, no_params, residual);
+  residual_fn_set.AddResidual(state_variables, no_params, residual);
 
   // LARGE: G = 1e-4 - 5e-5 - 3e-5 = 2e-5
   EXPECT_NEAR(residual[0][0], 2.0e-5, 1.0e-18);
@@ -293,12 +294,12 @@ TEST(LinearConstraint, JacobianPerInstance)
     builder.WithElement(row, col);
   SMP jacobian(builder);
 
-  LinearConstraintSet jac_fn_set(constraint, phase_prefixes, param_indices, state_indices, jacobian);
+  LinearConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, param_indices, state_indices, jacobian);
 
   DMP state_variables{ 1, 6, 0.0 };
   for (auto& v : jacobian.AsVector())
     v = 0.0;
-  jac_fn_set.template SubtractJacobian<DMP, SMP>(state_variables, no_params, jacobian);
+  jac_fn_set.SubtractJacobian(state_variables, no_params, jacobian);
 
   // LARGE algebraic row (0): jac -= coeff => jac[0,0] = -1, jac[0,1] = +1, jac[0,2] = +1
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 0, 0)], -1.0, 1.0e-12);
@@ -361,14 +362,14 @@ TEST(LinearConstraint, ResidualWithNonUnitCoefficients)
   state_indices["DROP.AQUEOUS.A_aq"] = 1;
 
   using DMP = micm::Matrix<double>;
-  auto residual_fn_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
+  auto residual_fn_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
 
   DMP state_variables{ 1, 2, 0.0 };
   state_variables[0][0] = 3.0;  // [A_g]
   state_variables[0][1] = 8.0;  // [A_aq]
 
   DMP residual{ 1, 2, 0.0 };
-  residual_fn_set.template AddResidual<DMP>(state_variables, no_params, residual);
+  residual_fn_set.AddResidual(state_variables, no_params, residual);
 
   // G = 2*3 + 0.5*8 - 10 = 6 + 4 - 10 = 0
   EXPECT_NEAR(residual[0][0], 0.0, 1.0e-12);
@@ -430,18 +431,18 @@ namespace
 
     // Build sparse Jacobian structure and compute analytical Jacobian
     auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, state_indices, num_blocks);
-    LinearConstraintSet jac_fn_set(constraint, phase_prefixes, param_indices, state_indices, jacobian);
-    jac_fn_set.template SubtractJacobian<DMP, SMP>(state_variables, no_params, jacobian);
+    LinearConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, param_indices, state_indices, jacobian);
+    jac_fn_set.SubtractJacobian(state_variables, no_params, jacobian);
 
     // Build FD Jacobian — bind no_params into the residual callable
     // Use perturbation=1e-7 to match old central-difference scheme: h = max(|x|, 1) * 1e-7.
     // Use atol=rtol=1e-5 to account for FP cancellation from the large constant term.
-    auto rf_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
+    auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
     auto fd_jac = micm::FiniteDifferenceJacobian<DMP>(
         [&](const DMP& vars, DMP& out)
         {
           out.Fill(0.0);
-          rf_set.template AddResidual<DMP>(vars, no_params, out);
+          rf_set.AddResidual(vars, no_params, out);
         },
         state_variables,
         num_vars,
@@ -494,9 +495,9 @@ TEST(LinearConstraint, ResidualGlobalMultipleCells)
   state_variables[3][1] = 0.0;
   state_variables[3][2] = 0.0;
 
-  auto residual_fn_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
+  auto residual_fn_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
   DMP residual{ num_cells, 3, 0.0 };
-  residual_fn_set.template AddResidual<DMP>(state_variables, no_params, residual);
+  residual_fn_set.AddResidual(state_variables, no_params, residual);
 
   EXPECT_NEAR(residual[0][0], 0.0, 1e-12);
   EXPECT_NEAR(residual[1][0], 10.0, 1e-12);
@@ -558,13 +559,13 @@ TEST(LinearConstraint, JacobianGlobalNonUnitCoefficients)
   state_indices["MODE1.AQUEOUS.B_aq"] = 2;
 
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, state_indices, 1);
-  LinearConstraintSet jac_fn_set(constraint, phase_prefixes, param_indices, state_indices, jacobian);
+  LinearConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, param_indices, state_indices, jacobian);
 
   DMP state_variables{ 1, 3, 0.0 };
   state_variables[0][0] = 5.0;
   state_variables[0][1] = 10.0;
   state_variables[0][2] = 7.0;
-  jac_fn_set.template SubtractJacobian<DMP, SMP>(state_variables, no_params, jacobian);
+  jac_fn_set.SubtractJacobian(state_variables, no_params, jacobian);
 
   // jac -= dG/dy, so jac[0,0] = -2.0, jac[0,1] = -0.5, jac[0,2] = -3.0
   EXPECT_NEAR(jacobian[0][0][0], -2.0, 1e-12);
@@ -620,9 +621,9 @@ TEST(LinearConstraint, ResidualPerInstanceMultipleCells)
   state_variables[2][4] = 1.0e-5;
   state_variables[2][5] = 1.0e-5;
 
-  auto residual_fn_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
+  auto residual_fn_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
   DMP residual{ num_cells, 6, 0.0 };
-  residual_fn_set.template AddResidual<DMP>(state_variables, no_params, residual);
+  residual_fn_set.AddResidual(state_variables, no_params, residual);
 
   // Cell 0: LARGE: 1e-4 - 5e-5 - 5e-5 = 0; SMALL: 2e-4 - 1e-4 - 5e-5 = 5e-5
   EXPECT_NEAR(residual[0][0], 0.0, 1e-18);
@@ -700,7 +701,7 @@ TEST(LinearConstraint, JacobianPerInstanceNonUnitCoefficients)
 
   // Check analytical Jacobian entries
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  LinearConstraintSet jac_fn_set(constraint, phase_prefixes, param_indices, si, jacobian);
+  LinearConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, param_indices, si, jacobian);
 
   DMP state_variables{ 1, 6, 0.0 };
   state_variables[0][0] = 1.0;
@@ -710,7 +711,7 @@ TEST(LinearConstraint, JacobianPerInstanceNonUnitCoefficients)
   state_variables[0][4] = 5.0;
   state_variables[0][5] = 6.0;
 
-  jac_fn_set.template SubtractJacobian<DMP, SMP>(state_variables, no_params, jacobian);
+  jac_fn_set.SubtractJacobian(state_variables, no_params, jacobian);
 
   // MODE1 algebraic row (0): jac -= {2.0, -0.5, 3.0} => {-2.0, 0.5, -3.0}
   EXPECT_NEAR(jacobian[0][0][0], -2.0, 1e-12);
@@ -762,9 +763,9 @@ TEST(LinearConstraint, ThreeInstances)
   state_variables[1][4] = 30.0;
   state_variables[1][5] = 25.0;
 
-  auto residual_fn_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, si);
+  auto residual_fn_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, si);
   DMP residual{ 2, 6, 0.0 };
-  residual_fn_set.template AddResidual<DMP>(state_variables, no_params, residual);
+  residual_fn_set.AddResidual(state_variables, no_params, residual);
 
   // Cell 0: A: 1.0 - 0.5 = 0.5; B: 2.0 - 2.0 = 0.0; C: 3.0 - 4.0 = -1.0
   EXPECT_NEAR(residual[0][0], 0.5, 1e-12);
@@ -807,16 +808,16 @@ TEST(LinearConstraint, GlobalWithManyInstances)
   sv[0][3] = 10.0;
   sv[0][4] = 10.0;
 
-  auto residual_fn_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, si);
+  auto residual_fn_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, si);
   DMP residual{ 1, 5, 0.0 };
-  residual_fn_set.template AddResidual<DMP>(sv, no_params, residual);
+  residual_fn_set.AddResidual(sv, no_params, residual);
   // G = 10+10+10+10+10 - 50 = 0
   EXPECT_NEAR(residual[0][0], 0.0, 1e-12);
 
   // Jacobian: all columns in row 0 should have -1
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  LinearConstraintSet jac_fn_set(constraint, phase_prefixes, param_indices, si, jacobian);
-  jac_fn_set.template SubtractJacobian<DMP, SMP>(sv, no_params, jacobian);
+  LinearConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, param_indices, si, jacobian);
+  jac_fn_set.SubtractJacobian(sv, no_params, jacobian);
   for (std::size_t j = 0; j < 5; ++j)
     EXPECT_NEAR(jacobian[0][0][j], -1.0, 1e-12);
 
@@ -838,14 +839,14 @@ TEST(LinearConstraint, JacobianAccumulates)
   si["MODE1.AQUEOUS.A_aq"] = 1;
 
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  LinearConstraintSet jac_fn_set(constraint, phase_prefixes, param_indices, si, jacobian);
+  LinearConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, param_indices, si, jacobian);
 
   DMP sv{ 1, 2, 0.0 };
   sv[0][0] = 1.0;
   sv[0][1] = 2.0;
 
   // First call
-  jac_fn_set.template SubtractJacobian<DMP, SMP>(sv, no_params, jacobian);
+  jac_fn_set.SubtractJacobian(sv, no_params, jacobian);
   double j00_once = jacobian[0][0][0];
   double j01_once = jacobian[0][0][1];
 
@@ -853,7 +854,7 @@ TEST(LinearConstraint, JacobianAccumulates)
   EXPECT_NEAR(j01_once, -0.5, 1e-12);
 
   // Second call accumulates
-  jac_fn_set.template SubtractJacobian<DMP, SMP>(sv, no_params, jacobian);
+  jac_fn_set.SubtractJacobian(sv, no_params, jacobian);
   EXPECT_NEAR(jacobian[0][0][0], 2.0 * j00_once, 1e-12);
   EXPECT_NEAR(jacobian[0][0][1], 2.0 * j01_once, 1e-12);
 }
@@ -869,17 +870,17 @@ TEST(LinearConstraint, ResidualSetsNotAccumulates)
   std::unordered_map<std::string, std::size_t> si;
   si["A_g"] = 0;
 
-  auto residual_fn_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, si);
+  auto residual_fn_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, si);
 
   DMP sv{ 1, 1, 0.0 };
   sv[0][0] = 7.0;
 
   DMP residual{ 1, 1, 999.0 };  // pre-filled with junk
-  residual_fn_set.template AddResidual<DMP>(sv, no_params, residual);
+  residual_fn_set.AddResidual(sv, no_params, residual);
   EXPECT_NEAR(residual[0][0], -3.0, 1e-12);  // 7 - 10 = -3
 
   // Second call still gives same result (assignment, not accumulation)
-  residual_fn_set.template AddResidual<DMP>(sv, no_params, residual);
+  residual_fn_set.AddResidual(sv, no_params, residual);
   EXPECT_NEAR(residual[0][0], -3.0, 1e-12);
 }
 
@@ -903,8 +904,8 @@ TEST(LinearConstraint, MultipleConstraintsCombined)
   si["MODE1.AQUEOUS.A-"] = 3;
 
   // Residuals from both constraints
-  auto rf1_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(mass_cons, phase_prefixes, param_indices, si);
-  auto rf2_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(charge_bal, phase_prefixes, param_indices, si);
+  auto rf1_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(mass_cons, phase_prefixes, param_indices, si);
+  auto rf2_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(charge_bal, phase_prefixes, param_indices, si);
 
   DMP sv{ 1, 4, 0.0 };
   sv[0][0] = 60.0;    // A_g
@@ -913,8 +914,8 @@ TEST(LinearConstraint, MultipleConstraintsCombined)
   sv[0][3] = 1.0e-3;  // A-
 
   DMP residual{ 1, 4, 0.0 };
-  rf1_set.template AddResidual<DMP>(sv, no_params, residual);
-  rf2_set.template AddResidual<DMP>(sv, no_params, residual);
+  rf1_set.AddResidual(sv, no_params, residual);
+  rf2_set.AddResidual(sv, no_params, residual);
 
   // Mass: 60 + 40 - 100 = 0 → residual at A_g (idx 0)
   EXPECT_NEAR(residual[0][0], 0.0, 1e-12);
@@ -924,10 +925,10 @@ TEST(LinearConstraint, MultipleConstraintsCombined)
   // Combined Jacobian
   auto jacobian = BuildConstraintJacobian({ std::cref(mass_cons), std::cref(charge_bal) }, phase_prefixes, si, 1);
 
-  LinearConstraintSet jf1_set(mass_cons, phase_prefixes, param_indices, si, jacobian);
-  LinearConstraintSet jf2_set(charge_bal, phase_prefixes, param_indices, si, jacobian);
-  jf1_set.template SubtractJacobian<DMP, SMP>(sv, no_params, jacobian);
-  jf2_set.template SubtractJacobian<DMP, SMP>(sv, no_params, jacobian);
+  LinearConstraintSet<DMP, SMP> jf1_set(mass_cons, phase_prefixes, param_indices, si, jacobian);
+  LinearConstraintSet<DMP, SMP> jf2_set(charge_bal, phase_prefixes, param_indices, si, jacobian);
+  jf1_set.SubtractJacobian(sv, no_params, jacobian);
+  jf2_set.SubtractJacobian(sv, no_params, jacobian);
 
   // Mass row (0): dG/d[A_g] = 1, dG/d[A_aq] = 1 → jac = -1, -1
   EXPECT_NEAR(jacobian[0][0][0], -1.0, 1e-12);
@@ -990,9 +991,9 @@ TEST(LinearConstraint, PerInstanceWithGasTerms)
   sv[0][1] = 4.0;  // LARGE aq
   sv[0][2] = 8.0;  // SMALL aq
 
-  auto rf_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, si);
+  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, si);
   DMP residual{ 1, 3, 0.0 };
-  rf_set.template AddResidual<DMP>(sv, no_params, residual);
+  rf_set.AddResidual(sv, no_params, residual);
 
   // LARGE: 4 + 3 - 10 = -3
   EXPECT_NEAR(residual[0][1], -3.0, 1e-12);
@@ -1001,8 +1002,8 @@ TEST(LinearConstraint, PerInstanceWithGasTerms)
 
   // Jacobian: each instance row has entries for (A_g, own A_aq)
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  LinearConstraintSet jf_set(constraint, phase_prefixes, param_indices, si, jacobian);
-  jf_set.template SubtractJacobian<DMP, SMP>(sv, no_params, jacobian);
+  LinearConstraintSet<DMP, SMP> jf_set(constraint, phase_prefixes, param_indices, si, jacobian);
+  jf_set.SubtractJacobian(sv, no_params, jacobian);
 
   // LARGE row (1): dG/d[A_g] = 1, dG/d[LARGE.A_aq] = 1
   EXPECT_NEAR(jacobian[0][1][0], -1.0, 1e-12);  // jac -= 1
@@ -1090,21 +1091,21 @@ TEST(LinearConstraint, SingleTerm)
   DMP sv{ 1, 1, 0.0 };
   sv[0][0] = 5.0;
 
-  auto rf_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, si);
+  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, si);
   DMP residual{ 1, 1, 0.0 };
-  rf_set.template AddResidual<DMP>(sv, no_params, residual);
+  rf_set.AddResidual(sv, no_params, residual);
   // 3*5 - 15 = 0
   EXPECT_NEAR(residual[0][0], 0.0, 1e-12);
 
   sv[0][0] = 4.0;
-  rf_set.template AddResidual<DMP>(sv, no_params, residual);
+  rf_set.AddResidual(sv, no_params, residual);
   // 3*4 - 15 = -3
   EXPECT_NEAR(residual[0][0], -3.0, 1e-12);
 
   // Jacobian: -3.0
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  LinearConstraintSet jf_set(constraint, phase_prefixes, param_indices, si, jacobian);
-  jf_set.template SubtractJacobian<DMP, SMP>(sv, no_params, jacobian);
+  LinearConstraintSet<DMP, SMP> jf_set(constraint, phase_prefixes, param_indices, si, jacobian);
+  jf_set.SubtractJacobian(sv, no_params, jacobian);
   EXPECT_NEAR(jacobian[0][0][0], -3.0, 1e-12);
 
   CheckConstraintFDJacobian(constraint, phase_prefixes, si, sv);
@@ -1128,9 +1129,9 @@ TEST(LinearConstraint, LargeCoefficientRange)
   sv[0][0] = 5.0e-4;  // 1e6 * 5e-4 = 500
   sv[0][1] = 1.0e6;   // 1e-6 * 1e6 = 1
 
-  auto rf_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, si);
+  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, si);
   DMP residual{ 1, 2, 0.0 };
-  rf_set.template AddResidual<DMP>(sv, no_params, residual);
+  rf_set.AddResidual(sv, no_params, residual);
   // 500 + 1 - 500 = 1
   EXPECT_NEAR(residual[0][0], 1.0, 1e-9);
 
@@ -1157,13 +1158,13 @@ TEST(LinearConstraint, CopiedConstraintProducesSameResults)
   sv[0][0] = 3.0;
   sv[0][1] = 8.0;
 
-  auto rf_orig_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(original, phase_prefixes, param_indices, si);
-  auto rf_copy_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(copy, phase_prefixes, param_indices, si);
+  auto rf_orig_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(original, phase_prefixes, param_indices, si);
+  auto rf_copy_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(copy, phase_prefixes, param_indices, si);
 
   DMP res_orig{ 1, 2, 0.0 };
   DMP res_copy{ 1, 2, 0.0 };
-  rf_orig_set.template AddResidual<DMP>(sv, no_params, res_orig);
-  rf_copy_set.template AddResidual<DMP>(sv, no_params, res_copy);
+  rf_orig_set.AddResidual(sv, no_params, res_orig);
+  rf_copy_set.AddResidual(sv, no_params, res_copy);
 
   EXPECT_NEAR(res_orig[0][0], res_copy[0][0], 1e-15);
 }
@@ -1186,9 +1187,9 @@ TEST(LinearConstraint, ResidualAllZero)
 
   DMP vars{ 1, 2, 0.0 };  // all zero
 
-  auto rf_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
+  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
   DMP residual{ 1, 2, 0.0 };
-  rf_set.template AddResidual<DMP>(vars, no_params, residual);
+  rf_set.AddResidual(vars, no_params, residual);
 
   EXPECT_NEAR(residual[0][0], -100.0, 1.0e-12);
 }
@@ -1209,9 +1210,9 @@ TEST(LinearConstraint, ResidualNegativeCoefficients)
   vars[0][0] = 7.0;  // [A_g]
   vars[0][1] = 3.0;  // [A_aq]
 
-  auto rf_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
+  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_indices, state_indices);
   DMP residual{ 1, 2, 0.0 };
-  rf_set.template AddResidual<DMP>(vars, no_params, residual);
+  rf_set.AddResidual(vars, no_params, residual);
 
   // G = 7.0 - 2.0*3.0 - 5.0 = 7 - 6 - 5 = -4.0
   EXPECT_NEAR(residual[0][0], -4.0, 1.0e-12);

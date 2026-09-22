@@ -15,6 +15,7 @@
 #include <miam/processes/henrys_law_phase_transfer_set.hpp>
 #include <miam/representations.hpp>
 #include <miam/util/error.hpp>
+#include <miam/util/matching_sparse.hpp>
 #include <miam/util/miam_exception.hpp>
 
 #include <micm/system/conditions.hpp>
@@ -72,7 +73,9 @@ namespace miam
     std::vector<HenrysLawPhaseTransferSet> henrys_law_phase_transfer_sets_{};
 
     // Solve-time companion Sets for constraints. Populated in FinalizeConstraintSetup.
-    std::vector<LinearConstraintSet> linear_constraint_sets_{};
+    // `linear_constraint_sets_any_` holds `std::vector<LinearConstraintSet<DP, SP>>` for the
+    // SP MICM finalized us with (DP recovered via `detail::MatchingDenseT<SP>`).
+    mutable std::any linear_constraint_sets_any_{};
     std::vector<DissolvedEquilibriumConstraintSet> dissolved_equilibrium_constraint_sets_{};
     std::vector<HenrysLawEquilibriumConstraintSet> henrys_law_equilibrium_constraint_sets_{};
 
@@ -563,7 +566,9 @@ namespace miam
 
       auto phase_prefixes = CollectPhaseStatePrefixes();
 
-      linear_constraint_sets_.clear();
+      using MatchingDP = detail::MatchingDenseT<SparseMatrixPolicy>;
+      using LinearSetT = LinearConstraintSet<MatchingDP, SparseMatrixPolicy>;
+      std::vector<LinearSetT> linear_sets;
       dissolved_equilibrium_constraint_sets_.clear();
       henrys_law_equilibrium_constraint_sets_.clear();
       for (const auto& constraint : constraints_)
@@ -573,7 +578,7 @@ namespace miam
             {
               using C = std::decay_t<decltype(c)>;
               if constexpr (std::is_same_v<C, LinearConstraint>)
-                linear_constraint_sets_.emplace_back(
+                linear_sets.emplace_back(
                     c, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
               else if constexpr (std::is_same_v<C, DissolvedEquilibriumConstraint>)
                 dissolved_equilibrium_constraint_sets_.emplace_back(
@@ -584,6 +589,7 @@ namespace miam
             },
             constraint);
       }
+      linear_constraint_sets_any_ = std::move(linear_sets);
     }
 
     /// @brief Solve-time: refresh temperature-/pressure-dependent process parameters
@@ -714,8 +720,14 @@ namespace miam
         const DenseMatrixPolicy& state_variables,
         DenseMatrixPolicy& forcing) const
     {
-      for (const auto& set : linear_constraint_sets_)
-        set.template AddResidual<DenseMatrixPolicy>(state_variables, state_parameters, forcing);
+      using SP = detail::MatchingSparseT<DenseMatrixPolicy>;
+      using LinearSetT = LinearConstraintSet<DenseMatrixPolicy, SP>;
+      if (linear_constraint_sets_any_.has_value())
+      {
+        auto& sets = std::any_cast<std::vector<LinearSetT>&>(linear_constraint_sets_any_);
+        for (const auto& set : sets)
+          set.AddResidual(state_variables, state_parameters, forcing);
+      }
       for (const auto& set : dissolved_equilibrium_constraint_sets_)
         set.template AddResidual<DenseMatrixPolicy>(state_variables, state_parameters, forcing);
       for (const auto& set : henrys_law_equilibrium_constraint_sets_)
@@ -729,8 +741,13 @@ namespace miam
         const DenseMatrixPolicy& state_variables,
         SparseMatrixPolicy& jacobian) const
     {
-      for (const auto& set : linear_constraint_sets_)
-        set.template SubtractJacobian<DenseMatrixPolicy, SparseMatrixPolicy>(state_variables, state_parameters, jacobian);
+      using LinearSetT = LinearConstraintSet<DenseMatrixPolicy, SparseMatrixPolicy>;
+      if (linear_constraint_sets_any_.has_value())
+      {
+        auto& sets = std::any_cast<std::vector<LinearSetT>&>(linear_constraint_sets_any_);
+        for (const auto& set : sets)
+          set.SubtractJacobian(state_variables, state_parameters, jacobian);
+      }
       for (const auto& set : dissolved_equilibrium_constraint_sets_)
         set.template SubtractJacobian<DenseMatrixPolicy, SparseMatrixPolicy>(state_variables, state_parameters, jacobian);
       for (const auto& set : henrys_law_equilibrium_constraint_sets_)
