@@ -98,7 +98,7 @@ namespace
     jacobian_fn(params_copy, variables, analytical_jac);
 
     // Compute finite-difference Jacobian
-    auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+    auto forcing_fn = model.ForcingFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices);
     auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing) { forcing_fn(params_copy, vars, forcing); };
 
     auto fd_jac = micm::FiniteDifferenceJacobian<DenseMatrix>(fd_wrapper, variables, num_species);
@@ -747,7 +747,7 @@ TEST(JacobianVerification, DissolvedReactionDampingRange)
 
   // At extreme low solvent (near/below eps), FD can't resolve the steep damping gradient.
   // Verify finiteness instead.
-  auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+  auto forcing_fn = model.ForcingFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices);
   auto jac_nz = model.NonZeroJacobianElements(maps.variable_indices);
   auto jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
   for (const auto& elem : jac_nz)
@@ -821,7 +821,7 @@ TEST(JacobianVerification, DissolvedReversibleReactionDampingRange)
   }
 
   // At extreme low solvent, verify finiteness only
-  auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+  auto forcing_fn = model.ForcingFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices);
   auto jac_nz = model.NonZeroJacobianElements(maps.variable_indices);
   auto jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
   for (const auto& elem : jac_nz)
@@ -1009,7 +1009,7 @@ TEST(JacobianVerification, CombinedProcessAndConstraintZeroSolvent)
   cons_update_fn(conditions, parameters);
 
   // Process forcing/Jacobian finiteness
-  auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+  auto forcing_fn = model.ForcingFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices);
   DenseMatrix forcing(1, maps.num_variables, 0.0);
   forcing_fn(parameters, variables, forcing);
   for (std::size_t j = 0; j < maps.num_variables; ++j)
@@ -1190,7 +1190,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSolventRange)
   }
 
   // At extreme low solvent, verify finiteness
-  auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+  auto forcing_fn = model.ForcingFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices);
   auto jac_nz = model.NonZeroJacobianElements(maps.variable_indices);
   auto jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
   for (const auto& elem : jac_nz)
@@ -1348,9 +1348,9 @@ namespace
 
     // Compare forcing
     DenseMatrix forcing_u(1, n, 0.0), forcing_c(1, n, 0.0);
-    model_uncapped.ForcingFunction<DenseMatrix>(maps_u.parameter_indices, maps_u.variable_indices)(
+    model_uncapped.ForcingFunction<DenseMatrix, SparseMatrixFD>(maps_u.parameter_indices, maps_u.variable_indices)(
         params_u, variables, forcing_u);
-    model_capped.ForcingFunction<DenseMatrix>(maps_c.parameter_indices, maps_c.variable_indices)(
+    model_capped.ForcingFunction<DenseMatrix, SparseMatrixFD>(maps_c.parameter_indices, maps_c.variable_indices)(
         params_c, variables, forcing_c);
 
     double max_forcing_rel = 0.0;

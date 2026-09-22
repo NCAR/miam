@@ -7,6 +7,7 @@
 #include <miam/constraints/henrys_law_equilibrium_constraint.hpp>
 #include <miam/constraints/linear_constraint.hpp>
 #include <miam/processes.hpp>
+#include <miam/processes/dissolved_reaction_set.hpp>
 #include <miam/representations.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
@@ -56,6 +57,11 @@ namespace miam
     mutable std::any cached_constraint_init_fns_{};
     mutable std::any cached_constraint_residual_fns_{};
     mutable std::any cached_constraint_jacobian_fns_{};
+
+    // Solve-time companion Sets. Populated in FinalizeProcessSetup (which is when
+    // the sparse Jacobian pattern is available); consumed on-device by AddForcingTerms /
+    // SubtractJacobianTerms.
+    std::vector<DissolvedReactionSet> dissolved_reaction_sets_{};
 
     /// @brief Returns the total state size (number of variables, number of parameters)
     std::tuple<std::size_t, std::size_t> StateSize() const
@@ -253,33 +259,49 @@ namespace miam
       };
     }
 
-    /// @brief Returns a function that calculates forcing terms
-    template<typename DenseMatrixPolicy>
+    /// @brief Returns a function that calculates forcing terms.
+    /// @details `SparseMatrixPolicy` is required so that process Sets can pre-compute Jacobian flat IDs at build time.
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
     std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ForcingFunction(
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
     {
-      // Collect forcing functions from all processes and return a combined function
       auto phase_prefixes = CollectPhaseStatePrefixes();
       auto descriptors = BuildDescriptors<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+      // Build a jacobian pattern so DissolvedReactionSet can pre-compute flat IDs.
+      auto nz_elements = NonZeroJacobianElements(state_variable_indices);
+      auto jacobian_builder = SparseMatrixPolicy::Create(state_variable_indices.size()).InitialValue(0.0);
+      for (const auto& elem : nz_elements)
+        jacobian_builder = jacobian_builder.WithElement(elem.first, elem.second);
+      SparseMatrixPolicy jacobian_pattern(jacobian_builder);
+
       std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>>
           forcing_functions;
+      std::vector<DissolvedReactionSet> local_sets;
       ForEachProcess(
           [&](const auto& process)
           {
-            auto forcing_fn = process.template ForcingFunction<DenseMatrixPolicy>(
-                phase_prefixes, state_parameter_indices, state_variable_indices, descriptors);
-            forcing_functions.push_back(forcing_fn);
+            using P = std::decay_t<decltype(process)>;
+            if constexpr (std::is_same_v<P, DissolvedReaction>)
+            {
+              local_sets.emplace_back(
+                  process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian_pattern);
+            }
+            else
+            {
+              forcing_functions.push_back(process.template ForcingFunction<DenseMatrixPolicy>(
+                  phase_prefixes, state_parameter_indices, state_variable_indices, descriptors));
+            }
           });
-      return [forcing_functions](
+      return [forcing_functions = std::move(forcing_functions), local_sets = std::move(local_sets)](
                  const DenseMatrixPolicy& state_parameters,
                  const DenseMatrixPolicy& state_variables,
                  DenseMatrixPolicy& forcing_terms)
       {
         for (const auto& fn : forcing_functions)
-        {
           fn(state_parameters, state_variables, forcing_terms);
-        }
+        for (const auto& set : local_sets)
+          set.template AddForcingTerms<DenseMatrixPolicy>(state_parameters, state_variables, forcing_terms);
       };
     }
 
@@ -290,27 +312,35 @@ namespace miam
         const std::unordered_map<std::string, std::size_t>& state_variable_indices,
         const SparseMatrixPolicy& jacobian) const
     {
-      // Collect Jacobian functions from all processes and return a combined function
       auto phase_prefixes = CollectPhaseStatePrefixes();
       auto descriptors = BuildDescriptors<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
       std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>>
           jacobian_functions;
+      std::vector<DissolvedReactionSet> local_sets;
       ForEachProcess(
           [&](const auto& process)
           {
-            auto jacobian_fn = process.template JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
-                phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, descriptors);
-            jacobian_functions.push_back(jacobian_fn);
+            using P = std::decay_t<decltype(process)>;
+            if constexpr (std::is_same_v<P, DissolvedReaction>)
+            {
+              local_sets.emplace_back(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+            }
+            else
+            {
+              jacobian_functions.push_back(process.template JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
+                  phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, descriptors));
+            }
           });
-      return [jacobian_functions](
+      return [jacobian_functions = std::move(jacobian_functions), local_sets = std::move(local_sets)](
                  const DenseMatrixPolicy& state_parameters,
                  const DenseMatrixPolicy& state_variables,
                  SparseMatrixPolicy& jacobian)
       {
         for (const auto& fn : jacobian_functions)
-        {
           fn(state_parameters, state_variables, jacobian);
-        }
+        for (const auto& set : local_sets)
+          set.template SubtractJacobianTerms<DenseMatrixPolicy, SparseMatrixPolicy>(
+              state_parameters, state_variables, jacobian);
       };
     }
 
@@ -504,13 +534,30 @@ namespace miam
     void FinalizeProcessSetup(
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-        const SparseMatrixPolicy& /*jacobian*/)
+        const SparseMatrixPolicy& jacobian)
     {
       state_parameter_indices_ = state_parameter_indices;
       state_variable_indices_ = state_variable_indices;
       cached_process_update_fns_.reset();
       cached_forcing_fns_.reset();
       cached_jacobian_fns_.reset();
+
+      auto phase_prefixes = CollectPhaseStatePrefixes();
+      dissolved_reaction_sets_.clear();
+      for (const auto& process : processes_)
+      {
+        std::visit(
+            [&](const auto& p)
+            {
+              using P = std::decay_t<decltype(p)>;
+              if constexpr (std::is_same_v<P, DissolvedReaction>)
+              {
+                dissolved_reaction_sets_.emplace_back(
+                    p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+              }
+            },
+            process);
+      }
     }
 
     /// @brief Cache build-time indices for constraint solve-time methods
@@ -571,13 +618,19 @@ namespace miam
         ForEachProcess(
             [&](const auto& process)
             {
-              cache.push_back(process.template ForcingFunction<DenseMatrixPolicy>(
-                  phase_prefixes, state_parameter_indices_, state_variable_indices_, descriptors));
+              using P = std::decay_t<decltype(process)>;
+              if constexpr (!std::is_same_v<P, DissolvedReaction>)
+              {
+                cache.push_back(process.template ForcingFunction<DenseMatrixPolicy>(
+                    phase_prefixes, state_parameter_indices_, state_variable_indices_, descriptors));
+              }
             });
         cached_forcing_fns_ = std::move(cache);
       }
       for (auto& fn : std::any_cast<CacheType&>(cached_forcing_fns_))
         fn(state_parameters, state_variables, forcing);
+      for (const auto& set : dissolved_reaction_sets_)
+        set.template AddForcingTerms<DenseMatrixPolicy>(state_parameters, state_variables, forcing);
     }
 
     /// @brief Solve-time: subtract process Jacobian contributions (-J convention)
@@ -598,13 +651,20 @@ namespace miam
         ForEachProcess(
             [&](const auto& process)
             {
-              cache.push_back(process.template JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
-                  phase_prefixes, state_parameter_indices_, state_variable_indices_, jacobian, descriptors));
+              using P = std::decay_t<decltype(process)>;
+              if constexpr (!std::is_same_v<P, DissolvedReaction>)
+              {
+                cache.push_back(process.template JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
+                    phase_prefixes, state_parameter_indices_, state_variable_indices_, jacobian, descriptors));
+              }
             });
         cached_jacobian_fns_ = std::move(cache);
       }
       for (auto& fn : std::any_cast<CacheType&>(cached_jacobian_fns_))
         fn(state_parameters, state_variables, jacobian);
+      for (const auto& set : dissolved_reaction_sets_)
+        set.template SubtractJacobianTerms<DenseMatrixPolicy, SparseMatrixPolicy>(
+            state_parameters, state_variables, jacobian);
     }
 
     /// @brief Solve-time: refresh temperature-/pressure-dependent constraint parameters

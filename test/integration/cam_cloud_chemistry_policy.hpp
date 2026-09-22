@@ -158,7 +158,7 @@ namespace miam_test_cam_cloud_chemistry
     auto jacobian_fn =
         model.JacobianFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, analytical_jac);
     jacobian_fn(params_copy, variables, analytical_jac);
-    auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+    auto forcing_fn = model.ForcingFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices);
     auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing) { forcing_fn(params_copy, vars, forcing); };
     auto fd_jac = FiniteDifferenceJacobian<DenseMatrix>(fd_wrapper, variables, num_species);
     auto comparison =
