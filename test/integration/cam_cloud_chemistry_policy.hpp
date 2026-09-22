@@ -75,11 +75,34 @@ namespace miam_test_cam_cloud_chemistry
   //   R3: SO3²⁻ + O3   → SO4²⁻, k298 = 1.59e9 M⁻¹s⁻¹, Ea/R = 5280 K
 
   // Common solver helper: integrate and return convergence status
+  // Sync host-populated state.variables_/parameters/conditions to device before Solve.
+  template<typename StateT>
+  inline void SyncStateToDevice(StateT& state)
+  {
+    if constexpr (requires { state.variables_.CopyToDevice(); })
+      state.variables_.CopyToDevice();
+    if constexpr (requires { state.custom_rate_parameters_.CopyToDevice(); })
+      state.custom_rate_parameters_.CopyToDevice();
+    if constexpr (requires { state.conditions_.CopyToDevice(); })
+      state.conditions_.CopyToDevice();
+  }
+
+  // Sync device-updated state values back to host after Solve.
+  template<typename StateT>
+  inline void SyncStateToHost(StateT& state)
+  {
+    if constexpr (requires { state.variables_.CopyToHost(); })
+      state.variables_.CopyToHost();
+    if constexpr (requires { state.custom_rate_parameters_.CopyToHost(); })
+      state.custom_rate_parameters_.CopyToHost();
+  }
+
   template<typename SolverT, typename StateT>
   bool IntegrateDAE(SolverT& solver, StateT& state, double target_time, double dt0, bool verbose = false)
   {
     double total_time = 0.0;
     double dt = dt0;
+    SyncStateToDevice(state);
     while (total_time < target_time - 1.0e-10)
     {
       double step = std::min(dt, target_time - total_time);
@@ -88,7 +111,7 @@ namespace miam_test_cam_cloud_chemistry
       if (result.state_ != SolverState::Converged)
       {
         if (verbose)
-          std::cerr << "Solver failed at t=" << total_time << " s" << std::endl;
+          std::cerr << "Solver failed at t=" << total_time << " s state=" << static_cast<int>(result.state_) << std::endl;
         return false;
       }
       total_time += step;
@@ -102,9 +125,9 @@ namespace miam_test_cam_cloud_chemistry
       if (total_time > 100.0 && dt < 100.0)
         dt = 100.0;
     }
+    SyncStateToHost(state);
     return true;
   }
-
   // FD Jacobian verification helpers (reused from test_jacobian_verification.cpp)
   struct IndexMaps
   {
@@ -1414,6 +1437,7 @@ namespace miam_test_cam_cloud_chemistry
   double dt = 0.001;
   bool converged = true;
 
+  SyncStateToDevice(state);
   while (total_time < 1800.0 - 1.0e-10)
   {
     double step = std::min(dt, 1800.0 - total_time);
@@ -1438,6 +1462,7 @@ namespace miam_test_cam_cloud_chemistry
       dt = 100.0;
   }
 
+  SyncStateToHost(state);
   state.PrintState(static_cast<int>(total_time));
   ASSERT_TRUE(converged) << "DAE solver failed to converge for full system";
 
@@ -1697,6 +1722,7 @@ namespace miam_test_cam_cloud_chemistry
   double dt = 0.001;
   bool converged = true;
 
+  SyncStateToDevice(state);
   while (total_time < 1800.0 - 1.0e-10)
   {
     double step = std::min(dt, 1800.0 - total_time);
@@ -1721,6 +1747,7 @@ namespace miam_test_cam_cloud_chemistry
       dt = 100.0;
   }
 
+  SyncStateToHost(state);
   state.PrintState(static_cast<int>(total_time));
   ASSERT_TRUE(converged) << "DAE solver failed to converge with naive ICs";
 

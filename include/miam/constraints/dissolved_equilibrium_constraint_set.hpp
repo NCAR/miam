@@ -94,35 +94,35 @@ namespace miam
                 auto&& sv, auto&& sp, auto&& res)
             {
               auto forward = res.GetRowVariable();
-              res.ForEachRow(
+              res.ForEachRowStrict(
                   [](const double& keq, double& fwd) { fwd = keq; },
                   sp.GetConstColumnView(k_eq_idx),
                   forward);
               for (std::size_t r = 0; r < nr; ++r)
-                res.ForEachRow(
+                res.ForEachRowStrict(
                     [](const double& conc, double& fwd) { fwd *= conc; },
                     sv.GetConstColumnView(reactant_indices_[r_base + r]),
                     forward);
-              res.ForEachRow(
+              res.ForEachRowStrict(
                   [nr, eps](const double& sol, double& fwd)
                   { fwd *= sol / std::pow(sol + eps, static_cast<double>(nr)); },
                   sv.GetConstColumnView(solvent_idx),
                   forward);
 
               auto reverse = res.GetRowVariable();
-              res.ForEachRow([](double& rev) { rev = 1.0; }, reverse);
+              res.ForEachRowStrict([](double& rev) { rev = 1.0; }, reverse);
               for (std::size_t p = 0; p < np; ++p)
-                res.ForEachRow(
+                res.ForEachRowStrict(
                     [](const double& conc, double& rev) { rev *= conc; },
                     sv.GetConstColumnView(product_indices_[p_base + p]),
                     reverse);
-              res.ForEachRow(
+              res.ForEachRowStrict(
                   [np, eps](const double& sol, double& rev)
                   { rev *= sol / std::pow(sol + eps, static_cast<double>(np)); },
                   sv.GetConstColumnView(solvent_idx),
                   reverse);
 
-              res.ForEachRow(
+              res.ForEachRowStrict(
                   [](const double& fwd, const double& rev, double& r) { r = fwd - rev; },
                   forward,
                   reverse,
@@ -160,55 +160,55 @@ namespace miam
               for (std::size_t r = 0; r < nr; ++r)
               {
                 auto d = jac.GetBlockVariable();
-                jac.ForEachBlock(
+                jac.ForEachBlockStrict(
                     [](const double& keq, double& v) { v = keq; },
                     sp.GetConstColumnView(k_eq_idx),
                     d);
                 for (std::size_t j = 0; j < nr; ++j)
                   if (j != r)
-                    jac.ForEachBlock(
+                    jac.ForEachBlockStrict(
                         [](const double& conc, double& v) { v *= conc; },
                         sv.GetConstColumnView(reactant_indices_[r_base + j]),
                         d);
-                jac.ForEachBlock(
+                jac.ForEachBlockStrict(
                     [nr, eps](const double& sol, double& v)
                     { v *= sol / std::pow(sol + eps, static_cast<double>(nr)); },
                     sv.GetConstColumnView(solvent_idx),
                     d);
                 auto bv = jac.GetBlockView(reactant_jac_ids_[r_base + r]);
-                jac.ForEachBlock([](const double& v, double& j_val) { j_val -= v; }, d, bv);
+                jac.ForEachBlockStrict([](const double& v, double& j_val) { j_val -= v; }, d, bv);
               }
 
               // dG/d[P_j] = -prod_{k!=j}[P_k] * [S] / ([S]+eps)^n_p  →  jac -= -dG = +dG
               for (std::size_t p = 0; p < np; ++p)
               {
                 auto d = jac.GetBlockVariable();
-                jac.ForEachBlock([](double& v) { v = 1.0; }, d);
+                jac.ForEachBlockStrict([](double& v) { v = 1.0; }, d);
                 for (std::size_t k = 0; k < np; ++k)
                   if (k != p)
-                    jac.ForEachBlock(
+                    jac.ForEachBlockStrict(
                         [](const double& conc, double& v) { v *= conc; },
                         sv.GetConstColumnView(product_indices_[p_base + k]),
                         d);
-                jac.ForEachBlock(
+                jac.ForEachBlockStrict(
                     [np, eps](const double& sol, double& v)
                     { v *= sol / std::pow(sol + eps, static_cast<double>(np)); },
                     sv.GetConstColumnView(solvent_idx),
                     d);
                 auto bv = jac.GetBlockView(product_jac_ids_[p_base + p]);
-                jac.ForEachBlock([](const double& v, double& j_val) { j_val += v; }, d, bv);
+                jac.ForEachBlockStrict([](const double& v, double& j_val) { j_val += v; }, d, bv);
               }
 
               // dG/d[S]: damped solvent derivative
               auto fwd_d = jac.GetBlockVariable();
-              jac.ForEachBlock(
+              jac.ForEachBlockStrict(
                   [](const double& keq, double& v) { v = keq; }, sp.GetConstColumnView(k_eq_idx), fwd_d);
               for (std::size_t r = 0; r < nr; ++r)
-                jac.ForEachBlock(
+                jac.ForEachBlockStrict(
                     [](const double& conc, double& v) { v *= conc; },
                     sv.GetConstColumnView(reactant_indices_[r_base + r]),
                     fwd_d);
-              jac.ForEachBlock(
+              jac.ForEachBlockStrict(
                   [nr, eps](const double& sol, double& v)
                   {
                     v *= (eps + (1.0 - static_cast<double>(nr)) * sol) /
@@ -218,13 +218,13 @@ namespace miam
                   fwd_d);
 
               auto rev_d = jac.GetBlockVariable();
-              jac.ForEachBlock([](double& v) { v = 1.0; }, rev_d);
+              jac.ForEachBlockStrict([](double& v) { v = 1.0; }, rev_d);
               for (std::size_t p = 0; p < np; ++p)
-                jac.ForEachBlock(
+                jac.ForEachBlockStrict(
                     [](const double& conc, double& v) { v *= conc; },
                     sv.GetConstColumnView(product_indices_[p_base + p]),
                     rev_d);
-              jac.ForEachBlock(
+              jac.ForEachBlockStrict(
                   [np, eps](const double& sol, double& v)
                   {
                     v *= (eps + (1.0 - static_cast<double>(np)) * sol) /
@@ -234,7 +234,7 @@ namespace miam
                   rev_d);
 
               auto bv = jac.GetBlockView(solvent_jac_id);
-              jac.ForEachBlock(
+              jac.ForEachBlockStrict(
                   [](const double& fwd, const double& rev, double& j_val) { j_val -= (fwd - rev); },
                   fwd_d,
                   rev_d,

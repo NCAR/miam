@@ -148,7 +148,7 @@ namespace miam
             {
               auto net = forcing_view.GetRowVariable();
 
-              params.ForEachRow(
+              params.ForEachRowStrict(
                   [molar_volume, cond](
                       const double& r_eff,
                       const double& N,
@@ -176,9 +176,9 @@ namespace miam
                   vars.GetConstColumnView(solvent_idx),
                   net);
 
-              params.ForEachRow(
+              params.ForEachRowStrict(
                   [](const double& n, double& f) { f -= n; }, net, forcing_view.GetColumnView(gas_idx));
-              params.ForEachRow(
+              params.ForEachRowStrict(
                   [](const double& n, double& f) { f += n; }, net, forcing_view.GetColumnView(aq_idx));
             },
             state_parameters,
@@ -259,7 +259,7 @@ namespace miam
               auto bv_aa = jacobian_values.GetBlockView(flat_ids[idx++]);
               auto bv_as = jacobian_values.GetBlockView(flat_ids[idx++]);
 
-              jacobian_values.ForEachBlock(
+              jacobian_values.ForEachBlockStrict(
                   [molar_volume, cond](
                       const double& r_eff,
                       const double& N,
@@ -305,7 +305,7 @@ namespace miam
               {
                 auto bv_r_gas = jacobian_values.GetBlockView(flat_ids[idx++]);
                 auto bv_r_aq = jacobian_values.GetBlockView(flat_ids[idx++]);
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [molar_volume, cond](
                         const double& r_eff,
                         const double& N,
@@ -344,7 +344,7 @@ namespace miam
               {
                 auto bv_N_gas = jacobian_values.GetBlockView(flat_ids[idx++]);
                 auto bv_N_aq = jacobian_values.GetBlockView(flat_ids[idx++]);
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [molar_volume, cond](
                         const double& r_eff,
                         const double& N,
@@ -383,7 +383,7 @@ namespace miam
               {
                 auto bv_phi_gas = jacobian_values.GetBlockView(flat_ids[idx++]);
                 auto bv_phi_aq = jacobian_values.GetBlockView(flat_ids[idx++]);
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [molar_volume, cond](
                         const double& r_eff,
                         const double& N,

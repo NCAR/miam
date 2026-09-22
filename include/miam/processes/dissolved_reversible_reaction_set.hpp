@@ -124,7 +124,7 @@ namespace miam
             {
               auto forward_rate = forcing_view.GetRowVariable();
               auto reverse_rate = forcing_view.GetRowVariable();
-              params.ForEachRow(
+              params.ForEachRowStrict(
                   [num_reactants, num_products, eps](
                       const double& k_f, const double& k_r, const double& solvent, double& fwd, double& rev)
                   {
@@ -139,7 +139,7 @@ namespace miam
               for (std::size_t r = 0; r < num_reactants; ++r)
               {
                 const std::size_t r_idx = reactant_indices_[phase * num_reactants + r];
-                params.ForEachRow(
+                params.ForEachRowStrict(
                     [](const double& reactant, double& fwd) { fwd *= reactant; },
                     vars.GetConstColumnView(r_idx),
                     forward_rate);
@@ -147,7 +147,7 @@ namespace miam
               for (std::size_t p = 0; p < num_products; ++p)
               {
                 const std::size_t p_idx = product_indices_[phase * num_products + p];
-                params.ForEachRow(
+                params.ForEachRowStrict(
                     [](const double& product, double& rev) { rev *= product; },
                     vars.GetConstColumnView(p_idx),
                     reverse_rate);
@@ -155,7 +155,7 @@ namespace miam
               for (std::size_t r = 0; r < num_reactants; ++r)
               {
                 const std::size_t r_idx = reactant_indices_[phase * num_reactants + r];
-                params.ForEachRow(
+                params.ForEachRowStrict(
                     [](const double& fwd, const double& rev, double& forcing)
                     {
                       forcing -= fwd;
@@ -168,7 +168,7 @@ namespace miam
               for (std::size_t p = 0; p < num_products; ++p)
               {
                 const std::size_t p_idx = product_indices_[phase * num_products + p];
-                params.ForEachRow(
+                params.ForEachRowStrict(
                     [](const double& fwd, const double& rev, double& forcing)
                     {
                       forcing += fwd;
@@ -212,7 +212,7 @@ namespace miam
 
               for (std::size_t i_ind = 0; i_ind < num_reactants; ++i_ind)
               {
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [num_reactants, eps](const double& k_f, const double& solvent, double& partial)
                     { partial = k_f * solvent / std::pow(solvent + eps, num_reactants); },
                     params.GetConstColumnView(k_fwd),
@@ -223,7 +223,7 @@ namespace miam
                   if (r == i_ind)
                     continue;
                   const std::size_t r_idx = reactant_indices_[phase * num_reactants + r];
-                  jacobian_values.ForEachBlock(
+                  jacobian_values.ForEachBlockStrict(
                       [](const double& reactant, double& partial) { partial *= reactant; },
                       vars.GetConstColumnView(r_idx),
                       d_fwd);
@@ -231,7 +231,7 @@ namespace miam
                 for (std::size_t i_dep = 0; i_dep < num_reactants; ++i_dep)
                 {
                   const std::size_t flat = jacobian_flat_ids_[pair++];
-                  jacobian_values.ForEachBlock(
+                  jacobian_values.ForEachBlockStrict(
                       [](const double& partial, double& jac) { jac += partial; },
                       d_fwd,
                       jacobian_values.GetBlockView(flat));
@@ -239,7 +239,7 @@ namespace miam
                 for (std::size_t i_dep = 0; i_dep < num_products; ++i_dep)
                 {
                   const std::size_t flat = jacobian_flat_ids_[pair++];
-                  jacobian_values.ForEachBlock(
+                  jacobian_values.ForEachBlockStrict(
                       [](const double& partial, double& jac) { jac -= partial; },
                       d_fwd,
                       jacobian_values.GetBlockView(flat));
@@ -248,7 +248,7 @@ namespace miam
 
               for (std::size_t i_ind = 0; i_ind < num_products; ++i_ind)
               {
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [num_products, eps](const double& k_r, const double& solvent, double& partial)
                     { partial = k_r * solvent / std::pow(solvent + eps, num_products); },
                     params.GetConstColumnView(k_rev),
@@ -259,7 +259,7 @@ namespace miam
                   if (p == i_ind)
                     continue;
                   const std::size_t p_idx = product_indices_[phase * num_products + p];
-                  jacobian_values.ForEachBlock(
+                  jacobian_values.ForEachBlockStrict(
                       [](const double& product, double& partial) { partial *= product; },
                       vars.GetConstColumnView(p_idx),
                       d_rev);
@@ -267,7 +267,7 @@ namespace miam
                 for (std::size_t i_dep = 0; i_dep < num_reactants; ++i_dep)
                 {
                   const std::size_t flat = jacobian_flat_ids_[pair++];
-                  jacobian_values.ForEachBlock(
+                  jacobian_values.ForEachBlockStrict(
                       [](const double& partial, double& jac) { jac -= partial; },
                       d_rev,
                       jacobian_values.GetBlockView(flat));
@@ -275,14 +275,14 @@ namespace miam
                 for (std::size_t i_dep = 0; i_dep < num_products; ++i_dep)
                 {
                   const std::size_t flat = jacobian_flat_ids_[pair++];
-                  jacobian_values.ForEachBlock(
+                  jacobian_values.ForEachBlockStrict(
                       [](const double& partial, double& jac) { jac += partial; },
                       d_rev,
                       jacobian_values.GetBlockView(flat));
                 }
               }
 
-              jacobian_values.ForEachBlock(
+              jacobian_values.ForEachBlockStrict(
                   [num_reactants, num_products, eps](
                       const double& k_f, const double& k_r, const double& solvent, double& fwd_p, double& rev_p) {
                     fwd_p = k_f * (eps + (1.0 - static_cast<int>(num_reactants)) * solvent) /
@@ -298,7 +298,7 @@ namespace miam
               for (std::size_t r = 0; r < num_reactants; ++r)
               {
                 const std::size_t r_idx = reactant_indices_[phase * num_reactants + r];
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [](const double& reactant, double& fwd_p) { fwd_p *= reactant; },
                     vars.GetConstColumnView(r_idx),
                     d_fwd);
@@ -306,7 +306,7 @@ namespace miam
               for (std::size_t p = 0; p < num_products; ++p)
               {
                 const std::size_t p_idx = product_indices_[phase * num_products + p];
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [](const double& product, double& rev_p) { rev_p *= product; },
                     vars.GetConstColumnView(p_idx),
                     d_rev);
@@ -314,7 +314,7 @@ namespace miam
               for (std::size_t i_dep = 0; i_dep < num_reactants; ++i_dep)
               {
                 const std::size_t flat = jacobian_flat_ids_[pair++];
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [](const double& fwd_p, const double& rev_p, double& jac)
                     {
                       jac += fwd_p;
@@ -327,7 +327,7 @@ namespace miam
               for (std::size_t i_dep = 0; i_dep < num_products; ++i_dep)
               {
                 const std::size_t flat = jacobian_flat_ids_[pair++];
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [](const double& fwd_p, const double& rev_p, double& jac)
                     {
                       jac -= fwd_p;

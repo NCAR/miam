@@ -117,7 +117,7 @@ namespace miam
                 auto&& params, auto&& vars, auto&& forcing_view)
             {
               auto rate = forcing_view.GetRowVariable();
-              params.ForEachRow(
+              params.ForEachRowStrict(
                   [num_reactants, eps](const double& k, const double& solvent, double& out)
                   { out = k * solvent / std::pow(solvent + eps, num_reactants); },
                   params.GetConstColumnView(k_index),
@@ -126,7 +126,7 @@ namespace miam
               for (std::size_t r = 0; r < num_reactants; ++r)
               {
                 const std::size_t reactant_idx = reactant_indices_[phase * num_reactants + r];
-                params.ForEachRow(
+                params.ForEachRowStrict(
                     [](const double& reactant, double& out) { out *= reactant; },
                     vars.GetConstColumnView(reactant_idx),
                     rate);
@@ -137,7 +137,7 @@ namespace miam
                 auto accum = forcing_view.GetRowVariable();
                 {
                   const std::size_t r0_idx = reactant_indices_[phase * num_reactants + 0];
-                  params.ForEachRow(
+                  params.ForEachRowStrict(
                       [](const double& R, double& acc) { acc = std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
                       vars.GetConstColumnView(r0_idx),
                       accum);
@@ -145,12 +145,12 @@ namespace miam
                 for (std::size_t r = 1; r < num_reactants; ++r)
                 {
                   const std::size_t r_idx = reactant_indices_[phase * num_reactants + r];
-                  params.ForEachRow(
+                  params.ForEachRowStrict(
                       [](const double& R, double& acc) { acc += std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
                       vars.GetConstColumnView(r_idx),
                       accum);
                 }
-                params.ForEachRow(
+                params.ForEachRowStrict(
                     [t_half](double& out, double& acc)
                     {
                       const double c_min = std::pow(acc, -1.0 / kSoftMinP);
@@ -165,7 +165,7 @@ namespace miam
               for (std::size_t r = 0; r < num_reactants; ++r)
               {
                 const std::size_t reactant_idx = reactant_indices_[phase * num_reactants + r];
-                params.ForEachRow(
+                params.ForEachRowStrict(
                     [](const double& rate, double& forcing) { forcing -= rate; },
                     rate,
                     forcing_view.GetColumnView(reactant_idx));
@@ -173,7 +173,7 @@ namespace miam
               for (std::size_t p = 0; p < num_products; ++p)
               {
                 const std::size_t product_idx = product_indices_[phase * num_products + p];
-                params.ForEachRow(
+                params.ForEachRowStrict(
                     [](const double& rate, double& forcing) { forcing += rate; },
                     rate,
                     forcing_view.GetColumnView(product_idx));
@@ -216,7 +216,7 @@ namespace miam
 
               if (capped)
               {
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [num_reactants, eps](const double& k, const double& solvent, double& rr)
                     { rr = k * solvent / std::pow(solvent + eps, num_reactants); },
                     params.GetConstColumnView(k_index),
@@ -225,14 +225,14 @@ namespace miam
                 for (std::size_t r = 0; r < num_reactants; ++r)
                 {
                   const std::size_t r_idx = reactant_indices_[phase * num_reactants + r];
-                  jacobian_values.ForEachBlock(
+                  jacobian_values.ForEachBlockStrict(
                       [](const double& reactant, double& rr) { rr *= reactant; },
                       vars.GetConstColumnView(r_idx),
                       raw_rate);
                 }
                 {
                   const std::size_t r0_idx = reactant_indices_[phase * num_reactants + 0];
-                  jacobian_values.ForEachBlock(
+                  jacobian_values.ForEachBlockStrict(
                       [](const double& R, double& cm) { cm = std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
                       vars.GetConstColumnView(r0_idx),
                       c_min_var);
@@ -240,12 +240,12 @@ namespace miam
                 for (std::size_t r = 1; r < num_reactants; ++r)
                 {
                   const std::size_t r_idx = reactant_indices_[phase * num_reactants + r];
-                  jacobian_values.ForEachBlock(
+                  jacobian_values.ForEachBlockStrict(
                       [](const double& R, double& cm) { cm += std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
                       vars.GetConstColumnView(r_idx),
                       c_min_var);
                 }
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [t_half](double& rr, double& cm, double& s2, double& cr)
                     {
                       cm = std::pow(cm, -1.0 / kSoftMinP);
@@ -271,7 +271,7 @@ namespace miam
 
               for (std::size_t i_ind = 0; i_ind < num_reactants; ++i_ind)
               {
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [num_reactants, eps](const double& k, const double& solvent, double& partial)
                     { partial = k * solvent / std::pow(solvent + eps, num_reactants); },
                     params.GetConstColumnView(k_index),
@@ -282,7 +282,7 @@ namespace miam
                   if (r == i_ind)
                     continue;
                   const std::size_t r_idx = reactant_indices_[phase * num_reactants + r];
-                  jacobian_values.ForEachBlock(
+                  jacobian_values.ForEachBlockStrict(
                       [](const double& reactant, double& partial) { partial *= reactant; },
                       vars.GetConstColumnView(r_idx),
                       d_rate_d_ind);
@@ -290,7 +290,7 @@ namespace miam
                 if (capped)
                 {
                   const std::size_t i_ind_idx = reactant_indices_[phase * num_reactants + i_ind];
-                  jacobian_values.ForEachBlock(
+                  jacobian_values.ForEachBlockStrict(
                       [](const double& s2, const double& cr, const double& cm, const double& R, double& partial)
                       {
                         const double ratio = cm / std::max(R, kSoftMinFloor);
@@ -305,7 +305,7 @@ namespace miam
                 for (std::size_t i_dep = 0; i_dep < num_reactants; ++i_dep)
                 {
                   const std::size_t flat = jacobian_flat_ids_[pair++];
-                  jacobian_values.ForEachBlock(
+                  jacobian_values.ForEachBlockStrict(
                       [](const double& partial, double& jac) { jac += partial; },
                       d_rate_d_ind,
                       jacobian_values.GetBlockView(flat));
@@ -313,14 +313,14 @@ namespace miam
                 for (std::size_t i_dep = 0; i_dep < num_products; ++i_dep)
                 {
                   const std::size_t flat = jacobian_flat_ids_[pair++];
-                  jacobian_values.ForEachBlock(
+                  jacobian_values.ForEachBlockStrict(
                       [](const double& partial, double& jac) { jac -= partial; },
                       d_rate_d_ind,
                       jacobian_values.GetBlockView(flat));
                 }
               }
 
-              jacobian_values.ForEachBlock(
+              jacobian_values.ForEachBlockStrict(
                   [num_reactants, eps](const double& k, const double& solvent, double& partial) {
                     partial = k * (eps + (1.0 - static_cast<int>(num_reactants)) * solvent) /
                               std::pow(solvent + eps, num_reactants + 1);
@@ -331,18 +331,18 @@ namespace miam
               for (std::size_t r = 0; r < num_reactants; ++r)
               {
                 const std::size_t r_idx = reactant_indices_[phase * num_reactants + r];
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [](const double& reactant, double& partial) { partial *= reactant; },
                     vars.GetConstColumnView(r_idx),
                     d_rate_d_ind);
               }
               if (capped)
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [](const double& s2, double& partial) { partial *= s2; }, sech2_var, d_rate_d_ind);
               for (std::size_t i_dep = 0; i_dep < num_reactants; ++i_dep)
               {
                 const std::size_t flat = jacobian_flat_ids_[pair++];
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [](const double& partial, double& jac) { jac += partial; },
                     d_rate_d_ind,
                     jacobian_values.GetBlockView(flat));
@@ -350,7 +350,7 @@ namespace miam
               for (std::size_t i_dep = 0; i_dep < num_products; ++i_dep)
               {
                 const std::size_t flat = jacobian_flat_ids_[pair++];
-                jacobian_values.ForEachBlock(
+                jacobian_values.ForEachBlockStrict(
                     [](const double& partial, double& jac) { jac -= partial; },
                     d_rate_d_ind,
                     jacobian_values.GetBlockView(flat));

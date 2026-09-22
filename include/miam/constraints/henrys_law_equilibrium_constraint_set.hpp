@@ -83,7 +83,7 @@ namespace miam
         DenseMatrixPolicy::Function(
             [molar_volume, gas_idx, hlc_rt_idx, aq_idx, sol_idx](auto&& sv, auto&& sp, auto&& res)
             {
-              res.ForEachRow(
+              res.ForEachRowStrict(
                   [molar_volume](const double& hlc_rt, const double& gas, const double& aq, const double& sol, double& r)
                   { r = hlc_rt * (sol * molar_volume) * gas - aq; },
                   sp.GetConstColumnView(hlc_rt_idx),
@@ -122,7 +122,7 @@ namespace miam
               auto bv_gas = jac.GetBlockView(gas_jac_id);
               auto bv_aq = jac.GetBlockView(aq_jac_id);
               auto bv_sol = jac.GetBlockView(solvent_jac_id);
-              jac.ForEachBlock(
+              jac.ForEachBlockStrict(
                   [molar_volume](
                       const double& hlc_rt, const double& gas, const double& sol,
                       double& j_gas, double& j_aq, double& j_sol)

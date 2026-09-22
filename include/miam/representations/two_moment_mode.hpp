@@ -80,17 +80,17 @@ namespace miam
           [view](auto&& params_view, auto&& vars_view, auto&& result_view)
           {
             auto r = result_view.GetColumnView(0);
-            params_view.ForEachRow([](double& v) { v = 0.0; }, r);
+            params_view.ForEachRowStrict([](double& v) { v = 0.0; }, r);
             const std::size_t n = view.species_variable_indices_.size();
             for (std::size_t k = 0; k < n; ++k)
             {
               const double mv = view.species_molar_volumes_[k];
-              params_view.ForEachRow(
+              params_view.ForEachRowStrict(
                   [mv](const double& c, double& V) { V += c * mv; },
                   vars_view.GetConstColumnView(view.species_variable_indices_[k]),
                   r);
             }
-            params_view.ForEachRow(
+            params_view.ForEachRowStrict(
                 [](const double& gsd, const double& nc, double& r_eff)
                 {
                   const double ln_gsd = std::log(gsd);
@@ -118,12 +118,12 @@ namespace miam
           [view](auto&& params_view, auto&& vars_view, auto&& result_view, auto&& partials_view)
           {
             auto V_total = result_view.GetRowVariable();
-            params_view.ForEachRow([](double& v) { v = 0.0; }, V_total);
+            params_view.ForEachRowStrict([](double& v) { v = 0.0; }, V_total);
             const std::size_t n = view.species_variable_indices_.size();
             for (std::size_t k = 0; k < n; ++k)
             {
               const double mv = view.species_molar_volumes_[k];
-              params_view.ForEachRow(
+              params_view.ForEachRowStrict(
                   [mv](const double& c, double& V) { V += c * mv; },
                   vars_view.GetConstColumnView(view.species_variable_indices_[k]),
                   V_total);
@@ -131,7 +131,7 @@ namespace miam
             for (std::size_t k = 0; k < n; ++k)
             {
               const double mv = view.species_molar_volumes_[k];
-              params_view.ForEachRow(
+              params_view.ForEachRowStrict(
                   [mv](const double& gsd, const double& nc, const double& V_total_row, double& dr)
                   {
                     const double ln_gsd = std::log(gsd);
@@ -145,7 +145,7 @@ namespace miam
                   V_total,
                   partials_view.GetColumnView(k));
             }
-            params_view.ForEachRow(
+            params_view.ForEachRowStrict(
                 [](const double& gsd, const double& nc, const double& V_total_row, double& dr_dN)
                 {
                   const double ln_gsd = std::log(gsd);
@@ -158,7 +158,7 @@ namespace miam
                 vars_view.GetConstColumnView(view.nc_variable_index_),
                 V_total,
                 partials_view.GetColumnView(n));
-            params_view.ForEachRow(
+            params_view.ForEachRowStrict(
                 [](const double& gsd, const double& nc, const double& V_total_row, double& r_out)
                 {
                   const double ln_gsd = std::log(gsd);
@@ -223,7 +223,7 @@ namespace miam
       DenseMatrixPolicy::Function(
           [view](auto&& params_view, auto&& vars_view, auto&& result_view)
           {
-            params_view.ForEachRow(
+            params_view.ForEachRowStrict(
                 [](const double& nc, double& N) { N = nc; },
                 vars_view.GetConstColumnView(view.nc_variable_index_),
                 result_view.GetColumnView(0));
@@ -243,7 +243,7 @@ namespace miam
       DenseMatrixPolicy::Function(
           [view](auto&& params_view, auto&& vars_view, auto&& result_view, auto&& partials_view)
           {
-            params_view.ForEachRow(
+            params_view.ForEachRowStrict(
                 [](const double& nc, double& N, double& dN_dN)
                 {
                   N = nc;

@@ -206,7 +206,7 @@ namespace miam
           [k_eq_indices, eq_const_expr](auto&& conditions, auto&& params)
           {
             for (const auto& k_eq_idx : k_eq_indices)
-              params.ForEachRow(
+              params.ForEachRowStrict(
                   [eq_const_expr](const micm::Conditions& cond, double& k_eq)
                   { k_eq = EvaluateExpression(eq_const_expr, cond); },
                   conditions,

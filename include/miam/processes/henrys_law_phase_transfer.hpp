@@ -267,7 +267,7 @@ namespace miam
           {
             for (std::size_t i = 0; i < hlc_indices.size(); ++i)
             {
-              params.ForEachRow(
+              params.ForEachRowStrict(
                   [&](const micm::Conditions& cond, double& hlc, double& T)
                   {
                     hlc = EvaluateExpression(henrys_law_constant_, cond);

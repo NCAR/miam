@@ -72,11 +72,11 @@ namespace miam
             auto phi = result_view.GetColumnView(0);
             if (view.species_variable_indices_.size() == 0)
             {
-              params_view.ForEachRow([](double& v) { v = 1.0; }, phi);
+              params_view.ForEachRowStrict([](double& v) { v = 1.0; }, phi);
               return;
             }
             auto V_phase = result_view.GetRowVariable();
-            params_view.ForEachRow(
+            params_view.ForEachRowStrict(
                 [](double& vt, double& vp)
                 {
                   vt = 0.0;
@@ -89,7 +89,7 @@ namespace miam
             {
               const double mv = view.species_molar_volumes_[k];
               if (k < view.phase_species_count_)
-                params_view.ForEachRow(
+                params_view.ForEachRowStrict(
                     [mv](const double& c, double& vt, double& vp)
                     {
                       const double vol = c * mv;
@@ -100,12 +100,12 @@ namespace miam
                     phi,
                     V_phase);
               else
-                params_view.ForEachRow(
+                params_view.ForEachRowStrict(
                     [mv](const double& c, double& vt) { vt += c * mv; },
                     vars_view.GetConstColumnView(view.species_variable_indices_[k]),
                     phi);
             }
-            params_view.ForEachRow(
+            params_view.ForEachRowStrict(
                 [](double& vt, const double& vp) { vt = (vt > 0.0) ? vp / vt : 1.0; }, phi, V_phase);
           },
           state_parameters,
@@ -131,7 +131,7 @@ namespace miam
             auto phi = result_view.GetColumnView(0);
             auto V_phase = result_view.GetRowVariable();
             auto V_total = result_view.GetRowVariable();
-            params_view.ForEachRow(
+            params_view.ForEachRowStrict(
                 [](double& vt, double& vp)
                 {
                   vt = 0.0;
@@ -144,7 +144,7 @@ namespace miam
             {
               const double mv = view.species_molar_volumes_[k];
               if (k < view.phase_species_count_)
-                params_view.ForEachRow(
+                params_view.ForEachRowStrict(
                     [mv](const double& c, double& vt, double& vp)
                     {
                       const double vol = c * mv;
@@ -155,12 +155,12 @@ namespace miam
                     V_total,
                     V_phase);
               else
-                params_view.ForEachRow(
+                params_view.ForEachRowStrict(
                     [mv](const double& c, double& vt) { vt += c * mv; },
                     vars_view.GetConstColumnView(view.species_variable_indices_[k]),
                     V_total);
             }
-            params_view.ForEachRow(
+            params_view.ForEachRowStrict(
                 [](const double& vp, const double& vt, double& phi_out) { phi_out = (vt > 0.0) ? vp / vt : 1.0; },
                 V_phase,
                 V_total,
@@ -169,14 +169,14 @@ namespace miam
             {
               const double mv = view.species_molar_volumes_[k];
               if (k < view.phase_species_count_)
-                params_view.ForEachRow(
+                params_view.ForEachRowStrict(
                     [mv](const double& phi_row, const double& vt, double& dphi)
                     { dphi = (vt > 0.0) ? mv * (1.0 - phi_row) / vt : 0.0; },
                     phi,
                     V_total,
                     partials_view.GetColumnView(k));
               else
-                params_view.ForEachRow(
+                params_view.ForEachRowStrict(
                     [mv](const double& phi_row, const double& vt, double& dphi)
                     { dphi = (vt > 0.0) ? -mv * phi_row / vt : 0.0; },
                     phi,

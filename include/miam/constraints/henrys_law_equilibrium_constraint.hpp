@@ -193,7 +193,7 @@ namespace miam
           [hlc_rt_indices, hlc_expr](auto&& conditions, auto&& params)
           {
             for (const auto& hlc_rt_idx : hlc_rt_indices)
-              params.ForEachRow(
+              params.ForEachRowStrict(
                   [hlc_expr](const micm::Conditions& cond, double& hlc_rt)
                   { hlc_rt = EvaluateExpression(hlc_expr, cond) * micm::constants::GAS_CONSTANT * cond.temperature_; },
                   conditions,

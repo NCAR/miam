@@ -271,12 +271,12 @@ namespace miam
       return DenseMatrixPolicy::Function(
           [this, forward_index, reverse_index](auto&& conditions, auto&& params)
           {
-            params.ForEachRow(
+            params.ForEachRowStrict(
                 [&](const micm::Conditions& condition, double& parameter)
                 { parameter = EvaluateExpression(forward_rate_constant_, condition); },
                 conditions,
                 params.GetColumnView(forward_index));
-            params.ForEachRow(
+            params.ForEachRowStrict(
                 [&](const micm::Conditions& condition, double& parameter)
                 { parameter = EvaluateExpression(reverse_rate_constant_, condition); },
                 conditions,

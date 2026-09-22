@@ -100,18 +100,18 @@ namespace miam
               [this, offset, count, alg_idx, param_idx](auto&& sv, auto&& sp, auto&& res)
               {
                 auto sum = res.GetRowVariable();
-                res.ForEachRow(
+                res.ForEachRowStrict(
                     [](const double& p, double& s) { s = -p; }, sp.GetConstColumnView(param_idx), sum);
                 for (std::size_t k = 0; k < count; ++k)
                 {
                   const std::size_t term_idx = flat_term_indices_[offset + k];
                   const double coeff = flat_term_coeffs_[offset + k];
-                  res.ForEachRow(
+                  res.ForEachRowStrict(
                       [coeff](const double& val, double& s) { s += coeff * val; },
                       sv.GetConstColumnView(term_idx),
                       sum);
                 }
-                res.ForEachRow([](const double& s, double& r) { r = s; }, sum, res.GetColumnView(alg_idx));
+                res.ForEachRowStrict([](const double& s, double& r) { r = s; }, sum, res.GetColumnView(alg_idx));
               },
               state_variables,
               state_parameters,
@@ -124,17 +124,17 @@ namespace miam
               [this, offset, count, alg_idx, constant](auto&& sv, auto&& res)
               {
                 auto sum = res.GetRowVariable();
-                res.ForEachRow([constant](double& s) { s = -constant; }, sum);
+                res.ForEachRowStrict([constant](double& s) { s = -constant; }, sum);
                 for (std::size_t k = 0; k < count; ++k)
                 {
                   const std::size_t term_idx = flat_term_indices_[offset + k];
                   const double coeff = flat_term_coeffs_[offset + k];
-                  res.ForEachRow(
+                  res.ForEachRowStrict(
                       [coeff](const double& val, double& s) { s += coeff * val; },
                       sv.GetConstColumnView(term_idx),
                       sum);
                 }
-                res.ForEachRow([](const double& s, double& r) { r = s; }, sum, res.GetColumnView(alg_idx));
+                res.ForEachRowStrict([](const double& s, double& r) { r = s; }, sum, res.GetColumnView(alg_idx));
               },
               state_variables,
               residual)(state_variables, residual);
@@ -159,7 +159,7 @@ namespace miam
               const double coeff = flat_term_coeffs_[k];
               const std::size_t vec_idx = flat_jac_ids_[k];
               auto bv = jac.GetBlockView(vec_idx);
-              jac.ForEachBlock([coeff](double& j) { j -= coeff; }, bv);
+              jac.ForEachBlockStrict([coeff](double& j) { j -= coeff; }, bv);
             }
           },
           state_variables,

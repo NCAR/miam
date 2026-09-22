@@ -257,7 +257,7 @@ namespace miam
       return DenseMatrixPolicy::Function(
           [this, k_index](auto&& conditions, auto&& params)
           {
-            params.ForEachRow(
+            params.ForEachRowStrict(
                 [&](const micm::Conditions& condition, double& parameter)
                 { parameter = EvaluateExpression(rate_constant_, condition); },
                 conditions,

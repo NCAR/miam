@@ -244,13 +244,13 @@ namespace miam
             [resolved, param_idx](auto&& state_variables, auto&& state_parameters)
             {
               auto total = state_parameters.GetRowVariable();
-              state_parameters.ForEachRow([](double& t) { t = 0.0; }, total);
+              state_parameters.ForEachRowStrict([](double& t) { t = 0.0; }, total);
               for (const auto& [idx, coeff] : resolved)
-                state_parameters.ForEachRow(
+                state_parameters.ForEachRowStrict(
                     [coeff](const double& val, double& t) { t += coeff * val; },
                     state_variables.GetConstColumnView(idx),
                     total);
-              state_parameters.ForEachRow(
+              state_parameters.ForEachRowStrict(
                   [](const double& t, double& param) { param = t; }, total, state_parameters.GetColumnView(param_idx));
             },
             dummy_state_variables,
@@ -278,13 +278,13 @@ namespace miam
               for (std::size_t i_inst = 0; i_inst < param_indices.size(); ++i_inst)
               {
                 auto total = state_parameters.GetRowVariable();
-                state_parameters.ForEachRow([](double& t) { t = 0.0; }, total);
+                state_parameters.ForEachRowStrict([](double& t) { t = 0.0; }, total);
                 for (const auto& [idx, coeff] : per_instance[i_inst])
-                  state_parameters.ForEachRow(
+                  state_parameters.ForEachRowStrict(
                       [coeff](const double& val, double& t) { t += coeff * val; },
                       state_variables.GetConstColumnView(idx),
                       total);
-                state_parameters.ForEachRow(
+                state_parameters.ForEachRowStrict(
                     [](const double& t, double& param) { param = t; },
                     total,
                     state_parameters.GetColumnView(param_indices[i_inst]));

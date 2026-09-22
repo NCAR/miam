@@ -60,7 +60,7 @@ namespace miam
       DenseMatrixPolicy::Function(
           [view](auto&& params_view, auto&& /*vars_view*/, auto&& result_view)
           {
-            params_view.ForEachRow(
+            params_view.ForEachRowStrict(
                 [](const double& r_min, const double& r_max, double& r_eff) { r_eff = 0.5 * (r_min + r_max); },
                 params_view.GetConstColumnView(view.rmin_parameter_index_),
                 params_view.GetConstColumnView(view.rmax_parameter_index_),
@@ -139,17 +139,17 @@ namespace miam
           [view](auto&& params_view, auto&& vars_view, auto&& result_view)
           {
             auto N = result_view.GetColumnView(0);
-            params_view.ForEachRow([](double& v) { v = 0.0; }, N);
+            params_view.ForEachRowStrict([](double& v) { v = 0.0; }, N);
             const std::size_t n = view.species_variable_indices_.size();
             for (std::size_t k = 0; k < n; ++k)
             {
               const double mv = view.species_molar_volumes_[k];
-              params_view.ForEachRow(
+              params_view.ForEachRowStrict(
                   [mv](const double& c, double& V) { V += c * mv; },
                   vars_view.GetConstColumnView(view.species_variable_indices_[k]),
                   N);
             }
-            params_view.ForEachRow(
+            params_view.ForEachRowStrict(
                 [](const double& r_min, const double& r_max, double& N_out)
                 {
                   const double r_eff = 0.5 * (r_min + r_max);
@@ -182,7 +182,7 @@ namespace miam
             for (std::size_t k = 0; k < n; ++k)
             {
               const double mv = view.species_molar_volumes_[k];
-              params_view.ForEachRow(
+              params_view.ForEachRowStrict(
                   [mv](const double& r_min, const double& r_max, double& dN)
                   {
                     const double r_eff = 0.5 * (r_min + r_max);
