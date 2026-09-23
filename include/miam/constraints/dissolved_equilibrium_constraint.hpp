@@ -12,6 +12,7 @@
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
 #include <micm/util/matrix.hpp>
+#include <micm/util/types.hpp>
 
 #include <cmath>
 #include <functional>
@@ -20,6 +21,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 namespace miam
@@ -197,23 +199,41 @@ namespace miam
         for (const auto& prefix : phase_it->second)
           k_eq_indices.push_back(state_parameter_indices.at(prefix + "." + phase_.name_ + "." + uuid_ + ".k_eq"));
       }
-      auto eq_const_expr = equilibrium_constant_;
 
-      DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-      typename DenseMatrixPolicy::template VectorType<micm::Conditions> conditions_vector;
+      // The MICM_LAMBDA lives in `MakeKeqUpdateFn` (a function template) rather than the generic
+      // std::visit lambda, which NVCC forbids for extended __host__ __device__ lambdas.
+      return std::visit(
+          [&](const auto& eq_expr) { return MakeKeqUpdateFn<DenseMatrixPolicy>(eq_expr, k_eq_indices); },
+          equilibrium_constant_);
+    }
 
-      return DenseMatrixPolicy::Function(
-          [k_eq_indices, eq_const_expr](auto&& conditions, auto&& params)
-          {
-            for (const auto& k_eq_idx : k_eq_indices)
-              params.ForEachRowStrict(
-                  [eq_const_expr](const micm::Conditions& cond, double& k_eq)
-                  { k_eq = EvaluateExpression(eq_const_expr, cond); },
-                  conditions,
-                  params.GetColumnView(k_eq_idx));
-          },
-          conditions_vector,
-          state_parameters);
+    /// @brief Builds the K_eq update callable for one concrete expression alternative.
+    /// @details Public because NVCC forbids private functions that define an extended lambda.
+    template<typename DenseMatrixPolicy, typename EqT>
+    static std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>
+    MakeKeqUpdateFn(const EqT& eq_expr, std::vector<std::size_t> k_eq_indices)
+    {
+      const EqT eq_copy = eq_expr;
+      return [k_eq_indices = std::move(k_eq_indices), eq_copy](
+                 const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions,
+                 DenseMatrixPolicy& params)
+      {
+        for (const auto& k_eq_idx : k_eq_indices)
+        {
+          DenseMatrixPolicy::Function(
+              MICM_LAMBDA(
+                  const typename DenseMatrixPolicy::template VectorType<micm::Conditions>::ConstViewType& conditions_view,
+                  const typename DenseMatrixPolicy::ViewType& params_view)
+              {
+                params_view.ForEachRowStrict(
+                    [eq_copy](const micm::Conditions& cond, micm::Real& k_eq) { k_eq = eq_copy.Calculate(cond); },
+                    conditions_view,
+                    params_view.GetColumnView(k_eq_idx));
+              },
+              conditions,
+              params)(conditions, params);
+        }
+      };
     }
 
    private:

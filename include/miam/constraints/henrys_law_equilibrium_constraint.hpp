@@ -14,6 +14,7 @@
 #include <micm/system/species.hpp>
 #include <micm/util/constants.hpp>
 #include <micm/util/matrix.hpp>
+#include <micm/util/types.hpp>
 
 #include <functional>
 #include <map>
@@ -21,6 +22,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 namespace miam
@@ -184,23 +186,42 @@ namespace miam
           hlc_rt_indices.push_back(
               state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc_rt"));
       }
-      auto hlc_expr = henrys_law_constant_;
 
-      DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-      typename DenseMatrixPolicy::template VectorType<micm::Conditions> conditions_vector;
+      // The MICM_LAMBDA lives in `MakeHlcRtUpdateFn` (a function template) rather than the generic
+      // std::visit lambda, which NVCC forbids for extended __host__ __device__ lambdas.
+      return std::visit(
+          [&](const auto& hlc_expr_v) { return MakeHlcRtUpdateFn<DenseMatrixPolicy>(hlc_expr_v, hlc_rt_indices); },
+          henrys_law_constant_);
+    }
 
-      return DenseMatrixPolicy::Function(
-          [hlc_rt_indices, hlc_expr](auto&& conditions, auto&& params)
-          {
-            for (const auto& hlc_rt_idx : hlc_rt_indices)
-              params.ForEachRowStrict(
-                  [hlc_expr](const micm::Conditions& cond, double& hlc_rt)
-                  { hlc_rt = EvaluateExpression(hlc_expr, cond) * micm::constants::GAS_CONSTANT * cond.temperature_; },
-                  conditions,
-                  params.GetColumnView(hlc_rt_idx));
-          },
-          conditions_vector,
-          state_parameters);
+    /// @brief Builds the HLC·R·T update callable for one concrete expression alternative.
+    /// @details Public because NVCC forbids private functions that define an extended lambda.
+    template<typename DenseMatrixPolicy, typename HlcT>
+    static std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>
+    MakeHlcRtUpdateFn(const HlcT& hlc_expr, std::vector<std::size_t> hlc_rt_indices)
+    {
+      const HlcT hlc_copy = hlc_expr;
+      return [hlc_rt_indices = std::move(hlc_rt_indices), hlc_copy](
+                 const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions,
+                 DenseMatrixPolicy& params)
+      {
+        for (const auto& hlc_rt_idx : hlc_rt_indices)
+        {
+          DenseMatrixPolicy::Function(
+              MICM_LAMBDA(
+                  const typename DenseMatrixPolicy::template VectorType<micm::Conditions>::ConstViewType& conditions_view,
+                  const typename DenseMatrixPolicy::ViewType& params_view)
+              {
+                params_view.ForEachRowStrict(
+                    [hlc_copy](const micm::Conditions& cond, micm::Real& hlc_rt)
+                    { hlc_rt = hlc_copy.Calculate(cond) * micm::constants::GAS_CONSTANT * cond.temperature_; },
+                    conditions_view,
+                    params_view.GetColumnView(hlc_rt_idx));
+              },
+              conditions,
+              params)(conditions, params);
+        }
+      };
     }
 
    private:

@@ -16,6 +16,7 @@
 #include <micm/system/species.hpp>
 #include <micm/util/constants.hpp>
 #include <micm/util/matrix.hpp>
+#include <micm/util/types.hpp>
 
 #include <cmath>
 #include <functional>
@@ -25,6 +26,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 namespace miam
@@ -259,28 +261,50 @@ namespace miam
         }
       }
 
-      DenseMatrixPolicy dummy{ 1, state_parameter_indices.size(), 0.0 };
-      typename DenseMatrixPolicy::template VectorType<micm::Conditions> dummy_conditions;
-
-      return DenseMatrixPolicy::Function(
-          [this, hlc_indices, temp_indices](auto&& conditions, auto&& params)
-          {
-            for (std::size_t i = 0; i < hlc_indices.size(); ++i)
-            {
-              params.ForEachRowStrict(
-                  [&](const micm::Conditions& cond, double& hlc, double& T)
-                  {
-                    hlc = EvaluateExpression(henrys_law_constant_, cond);
-                    T = cond.temperature_;
-                  },
-                  conditions,
-                  params.GetColumnView(hlc_indices[i]),
-                  params.GetColumnView(temp_indices[i]));
-            }
-          },
-          dummy_conditions,
-          dummy);
+      // The returned callable loops over phase instances on the host and dispatches one kernel
+      // per instance. The MICM_LAMBDA lives in `MakeHlcUpdateFn` (a function template) rather than
+      // the generic std::visit lambda, which NVCC forbids for extended __host__ __device__ lambdas.
+      return std::visit(
+          [&](const auto& hlc_expr)
+          { return MakeHlcUpdateFn<DenseMatrixPolicy>(hlc_expr, hlc_indices, temp_indices); },
+          henrys_law_constant_);
     }
 
+    /// @brief Builds the HLC/temperature update callable for one concrete expression alternative.
+    /// @details Public because NVCC forbids private functions that define an extended lambda.
+    template<typename DenseMatrixPolicy, typename HlcT>
+    static std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>
+    MakeHlcUpdateFn(
+        const HlcT& hlc_expr, std::vector<std::size_t> hlc_indices, std::vector<std::size_t> temp_indices)
+    {
+      const HlcT hlc_copy = hlc_expr;
+      return [hlc_indices = std::move(hlc_indices), temp_indices = std::move(temp_indices), hlc_copy](
+                 const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions,
+                 DenseMatrixPolicy& params)
+      {
+        for (std::size_t i = 0; i < hlc_indices.size(); ++i)
+        {
+          const std::size_t hlc_idx = hlc_indices[i];
+          const std::size_t temp_idx = temp_indices[i];
+          DenseMatrixPolicy::Function(
+              MICM_LAMBDA(
+                  const typename DenseMatrixPolicy::template VectorType<micm::Conditions>::ConstViewType& conditions_view,
+                  const typename DenseMatrixPolicy::ViewType& params_view)
+              {
+                params_view.ForEachRowStrict(
+                    [hlc_copy](const micm::Conditions& cond, micm::Real& hlc, micm::Real& T)
+                    {
+                      hlc = hlc_copy.Calculate(cond);
+                      T = cond.temperature_;
+                    },
+                    conditions_view,
+                    params_view.GetColumnView(hlc_idx),
+                    params_view.GetColumnView(temp_idx));
+              },
+              conditions,
+              params)(conditions, params);
+        }
+      };
+    }
   };
 }  // namespace miam

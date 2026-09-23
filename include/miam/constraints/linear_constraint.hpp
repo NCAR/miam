@@ -9,6 +9,7 @@
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
 #include <micm/util/matrix.hpp>
+#include <micm/util/types.hpp>
 
 #include <functional>
 #include <map>
@@ -231,34 +232,39 @@ namespace miam
 
       bool is_global = (phase_prefixes.find(algebraic_phase_.name_) == phase_prefixes.end());
 
-      DenseMatrixPolicy dummy_state_variables{ 1, state_variable_indices.size(), 0.0 };
-      DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-
       if (is_global)
       {
         auto resolved = ResolveGlobalTerms(phase_prefixes, state_variable_indices);
         auto param_name = "LC_" + uuid_ + "_constant";
         std::size_t param_idx = state_parameter_indices.at(param_name);
 
-        auto inner = DenseMatrixPolicy::Function(
-            [resolved, param_idx](auto&& state_variables, auto&& state_parameters)
-            {
-              auto total = state_parameters.GetRowVariable();
-              state_parameters.ForEachRowStrict([](double& t) { t = 0.0; }, total);
-              for (const auto& [idx, coeff] : resolved)
-                state_parameters.ForEachRowStrict(
-                    [coeff](const double& val, double& t) { t += coeff * val; },
-                    state_variables.GetConstColumnView(idx),
-                    total);
-              state_parameters.ForEachRowStrict(
-                  [](const double& t, double& param) { param = t; }, total, state_parameters.GetColumnView(param_idx));
-            },
-            dummy_state_variables,
-            dummy_state_parameters);
-
-        return
-            [inner = std::move(inner)](const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters) mutable
-        { inner(state_variables, state_parameters); };
+        // The returned host callable dispatches one zero-kernel plus one accumulate-kernel per
+        // term, so each MICM_LAMBDA captures only scalars (`resolved` is iterated on the host).
+        return [resolved, param_idx](const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters)
+        {
+          DenseMatrixPolicy::Function(
+              MICM_LAMBDA(const typename DenseMatrixPolicy::ViewType& params_view)
+              {
+                params_view.ForEachRowStrict(
+                    [](micm::Real& p) { p = 0.0; }, params_view.GetColumnView(param_idx));
+              },
+              state_parameters)(state_parameters);
+          for (const auto& [idx, coeff] : resolved)
+          {
+            DenseMatrixPolicy::Function(
+                MICM_LAMBDA(
+                    const typename DenseMatrixPolicy::ConstViewType& state_view,
+                    const typename DenseMatrixPolicy::ViewType& params_view)
+                {
+                  params_view.ForEachRowStrict(
+                      [coeff](const micm::Real& v, micm::Real& p) { p += coeff * v; },
+                      state_view.GetConstColumnView(idx),
+                      params_view.GetColumnView(param_idx));
+                },
+                state_variables,
+                state_parameters)(state_variables, state_parameters);
+          }
+        };
       }
       else
       {
@@ -272,30 +278,37 @@ namespace miam
           ++i;
         }
 
-        auto inner = DenseMatrixPolicy::Function(
-            [per_instance, param_indices](auto&& state_variables, auto&& state_parameters)
+        // The returned host callable loops over instances/terms on the host, dispatching one
+        // kernel per operation so each MICM_LAMBDA captures only scalars.
+        return [per_instance, param_indices](const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters)
+        {
+          for (std::size_t i_inst = 0; i_inst < param_indices.size(); ++i_inst)
+          {
+            const std::size_t param_idx = param_indices[i_inst];
+            DenseMatrixPolicy::Function(
+                MICM_LAMBDA(const typename DenseMatrixPolicy::ViewType& params_view)
+                {
+                  params_view.ForEachRowStrict(
+                      [](micm::Real& p) { p = 0.0; }, params_view.GetColumnView(param_idx));
+                },
+                state_parameters)(state_parameters);
+            for (const auto& [idx, coeff] : per_instance[i_inst])
             {
-              for (std::size_t i_inst = 0; i_inst < param_indices.size(); ++i_inst)
-              {
-                auto total = state_parameters.GetRowVariable();
-                state_parameters.ForEachRowStrict([](double& t) { t = 0.0; }, total);
-                for (const auto& [idx, coeff] : per_instance[i_inst])
-                  state_parameters.ForEachRowStrict(
-                      [coeff](const double& val, double& t) { t += coeff * val; },
-                      state_variables.GetConstColumnView(idx),
-                      total);
-                state_parameters.ForEachRowStrict(
-                    [](const double& t, double& param) { param = t; },
-                    total,
-                    state_parameters.GetColumnView(param_indices[i_inst]));
-              }
-            },
-            dummy_state_variables,
-            dummy_state_parameters);
-
-        return
-            [inner = std::move(inner)](const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters) mutable
-        { inner(state_variables, state_parameters); };
+              DenseMatrixPolicy::Function(
+                  MICM_LAMBDA(
+                      const typename DenseMatrixPolicy::ConstViewType& state_view,
+                      const typename DenseMatrixPolicy::ViewType& params_view)
+                  {
+                    params_view.ForEachRowStrict(
+                        [coeff](const micm::Real& v, micm::Real& p) { p += coeff * v; },
+                        state_view.GetConstColumnView(idx),
+                        params_view.GetColumnView(param_idx));
+                  },
+                  state_variables,
+                  state_parameters)(state_variables, state_parameters);
+            }
+          }
+        };
       }
     }
 

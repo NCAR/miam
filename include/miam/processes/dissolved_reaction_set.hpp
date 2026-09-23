@@ -34,11 +34,6 @@ namespace miam
     template<class U>
     using VectorView = typename Vector<U>::ConstViewType;
 
-    /// Soft-min exponent for rate capping; matches `DissolvedReaction::kSoftMinP`.
-    static constexpr micm::Real kSoftMinP = 10.0;
-    /// Tiny floor to prevent `pow(0, -p)` overflow; matches `DissolvedReaction::kSoftMinFloor`.
-    static constexpr micm::Real kSoftMinFloor = 1.0e-300;
-
     struct Views
     {
       VectorView<micm::Index> reactant_indices_;
@@ -216,7 +211,7 @@ namespace miam
                   const micm::Index r0_idx = views.reactant_indices_[phase * num_reactants + 0];
                   forcing_view.ForEachRowStrict(
                       [](const micm::Real& R, micm::Real& acc)
-                      { acc = std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
+                      { acc = std::pow(std::max(R, micm::Real(1.0e-300)), -micm::Real(10.0)); },
                       state_view.GetConstColumnView(r0_idx),
                       accum);
                 }
@@ -225,16 +220,16 @@ namespace miam
                   const micm::Index r_idx = views.reactant_indices_[phase * num_reactants + r];
                   forcing_view.ForEachRowStrict(
                       [](const micm::Real& R, micm::Real& acc)
-                      { acc += std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
+                      { acc += std::pow(std::max(R, micm::Real(1.0e-300)), -micm::Real(10.0)); },
                       state_view.GetConstColumnView(r_idx),
                       accum);
                 }
                 forcing_view.ForEachRowStrict(
                     [t_half](micm::Real& out, micm::Real& acc)
                     {
-                      const micm::Real c_min = std::pow(acc, -1.0 / kSoftMinP);
+                      const micm::Real c_min = std::pow(acc, -1.0 / micm::Real(10.0));
                       const micm::Real r_max = c_min / t_half;
-                      if (r_max > kSoftMinFloor)
+                      if (r_max > micm::Real(1.0e-300))
                         out = r_max * std::tanh(out / r_max);
                     },
                     rate,
@@ -315,7 +310,7 @@ namespace miam
                   const micm::Index r0_idx = views.reactant_indices_[phase * num_reactants + 0];
                   jac_view.ForEachBlockStrict(
                       [](const micm::Real& R, micm::Real& cm)
-                      { cm = std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
+                      { cm = std::pow(std::max(R, micm::Real(1.0e-300)), -micm::Real(10.0)); },
                       state_view.GetConstColumnView(r0_idx),
                       c_min_var);
                 }
@@ -324,16 +319,16 @@ namespace miam
                   const micm::Index r_idx = views.reactant_indices_[phase * num_reactants + r];
                   jac_view.ForEachBlockStrict(
                       [](const micm::Real& R, micm::Real& cm)
-                      { cm += std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
+                      { cm += std::pow(std::max(R, micm::Real(1.0e-300)), -micm::Real(10.0)); },
                       state_view.GetConstColumnView(r_idx),
                       c_min_var);
                 }
                 jac_view.ForEachBlockStrict(
                     [t_half](micm::Real& rr, micm::Real& cm, micm::Real& s2, micm::Real& cr)
                     {
-                      cm = std::pow(cm, -1.0 / kSoftMinP);
+                      cm = std::pow(cm, -1.0 / micm::Real(10.0));
                       const micm::Real r_max = cm / t_half;
-                      if (r_max > kSoftMinFloor)
+                      if (r_max > micm::Real(1.0e-300))
                       {
                         const micm::Real u = rr / r_max;
                         const micm::Real th = std::tanh(u);
@@ -380,8 +375,8 @@ namespace miam
                          const micm::Real& R,
                          micm::Real& partial)
                       {
-                        const micm::Real ratio = cm / std::max(R, kSoftMinFloor);
-                        partial = s2 * partial + cr * std::pow(ratio, kSoftMinP + 1.0);
+                        const micm::Real ratio = cm / std::max(R, micm::Real(1.0e-300));
+                        partial = s2 * partial + cr * std::pow(ratio, micm::Real(10.0) + 1.0);
                       },
                       sech2_var,
                       corr_var,

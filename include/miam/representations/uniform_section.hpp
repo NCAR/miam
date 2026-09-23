@@ -58,7 +58,7 @@ namespace miam
     {
       const auto view = view_;
       DenseMatrixPolicy::Function(
-          [view](auto&& params_view, auto&& /*vars_view*/, auto&& result_view)
+          MICM_LAMBDA(const typename DenseMatrixPolicy::ConstViewType& params_view, const typename DenseMatrixPolicy::ConstViewType& /*vars_view*/, const typename DenseMatrixPolicy::ViewType& result_view)
           {
             params_view.ForEachRowStrict(
                 [](const double& r_min, const double& r_max, double& r_eff) { r_eff = 0.5 * (r_min + r_max); },
@@ -136,7 +136,7 @@ namespace miam
     {
       const auto view = GetView();
       DenseMatrixPolicy::Function(
-          [view](auto&& params_view, auto&& vars_view, auto&& result_view)
+          MICM_LAMBDA(const typename DenseMatrixPolicy::ConstViewType& params_view, const typename DenseMatrixPolicy::ConstViewType& vars_view, const typename DenseMatrixPolicy::ViewType& result_view)
           {
             auto N = result_view.GetColumnView(0);
             params_view.ForEachRowStrict([](double& v) { v = 0.0; }, N);
@@ -176,7 +176,7 @@ namespace miam
         return;
       const auto view = GetView();
       DenseMatrixPolicy::Function(
-          [view](auto&& params_view, auto&& /*vars_view*/, auto&& /*result_view*/, auto&& partials_view)
+          MICM_LAMBDA(const typename DenseMatrixPolicy::ConstViewType& params_view, const typename DenseMatrixPolicy::ConstViewType& /*vars_view*/, const typename DenseMatrixPolicy::ViewType& /*result_view*/, const typename DenseMatrixPolicy::ViewType& partials_view)
           {
             const std::size_t n = view.species_variable_indices_.size();
             for (std::size_t k = 0; k < n; ++k)

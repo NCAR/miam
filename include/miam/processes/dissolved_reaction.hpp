@@ -14,6 +14,7 @@
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
 #include <micm/util/matrix.hpp>
+#include <micm/util/types.hpp>
 
 #include <cmath>
 #include <functional>
@@ -21,6 +22,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace miam
@@ -237,7 +239,6 @@ namespace miam
         const auto& state_parameter_indices  // acts like std::unordered_map<std::string, std::size_t>
     ) const
     {
-      using ConstVectorView = typename DenseMatrixPolicy::template VectorType<micm::Conditions>::ConstViewType;
       std::string k_param = phase_.name_ + "." + uuid_ + ".k";
       if (state_parameter_indices.find(k_param) == state_parameter_indices.end())
       {
@@ -248,20 +249,39 @@ namespace miam
                 " not found in state_parameter_indices");
       }
       std::size_t k_index = state_parameter_indices.at(k_param);
+      std::size_t num_params = state_parameter_indices.size();
 
-      // Set up dummy arguments to build the function
-      DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
+      // Hoist the variant visit to the host: the concrete rate-constant expression POD is
+      // captured by value into MICM_LAMBDA so `.Calculate()` runs on-device without std::visit.
+      // The MICM_LAMBDA lives in `MakeRateUpdateFn` (a function template) rather than inside the
+      // generic std::visit lambda, which NVCC forbids for extended __host__ __device__ lambdas.
+      return std::visit(
+          [k_index, num_params](const auto& expr)
+          { return MakeRateUpdateFn<DenseMatrixPolicy>(expr, k_index, num_params); },
+          rate_constant_);
+    }
+
+    /// @brief Builds the rate-constant update callable for one concrete expression alternative.
+    /// @details Public because NVCC forbids private functions that define an extended
+    ///          __host__ __device__ lambda; separated from `UpdateStateParametersFunction` so the
+    ///          MICM_LAMBDA is not nested inside the generic std::visit lambda.
+    template<typename DenseMatrixPolicy, typename ExprT>
+    static std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>
+    MakeRateUpdateFn(const ExprT& expr, std::size_t k_index, std::size_t num_params)
+    {
+      const ExprT expr_copy = expr;
+      DenseMatrixPolicy state_parameters{ 1, num_params, 0.0 };
       typename DenseMatrixPolicy::template VectorType<micm::Conditions> conditions_vector;
-
-      // return a function that updates the rate constant parameter based on the current conditions
       return DenseMatrixPolicy::Function(
-          [this, k_index](auto&& conditions, auto&& params)
+          MICM_LAMBDA(
+              const typename DenseMatrixPolicy::template VectorType<micm::Conditions>::ConstViewType& conditions_view,
+              const typename DenseMatrixPolicy::ViewType& params_view)
           {
-            params.ForEachRowStrict(
-                [&](const micm::Conditions& condition, double& parameter)
-                { parameter = EvaluateExpression(rate_constant_, condition); },
-                conditions,
-                params.GetColumnView(k_index));
+            params_view.ForEachRowStrict(
+                [expr_copy](const micm::Conditions& condition, micm::Real& parameter)
+                { parameter = expr_copy.Calculate(condition); },
+                conditions_view,
+                params_view.GetColumnView(k_index));
           },
           conditions_vector,
           state_parameters);

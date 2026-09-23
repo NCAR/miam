@@ -67,7 +67,7 @@ namespace miam
     {
       const auto view = GetView();
       DenseMatrixPolicy::Function(
-          [view](auto&& params_view, auto&& vars_view, auto&& result_view)
+          MICM_LAMBDA(const typename DenseMatrixPolicy::ConstViewType& params_view, const typename DenseMatrixPolicy::ConstViewType& vars_view, const typename DenseMatrixPolicy::ViewType& result_view)
           {
             auto phi = result_view.GetColumnView(0);
             if (view.species_variable_indices_.size() == 0)
@@ -126,7 +126,7 @@ namespace miam
       }
       const auto view = GetView();
       DenseMatrixPolicy::Function(
-          [view](auto&& params_view, auto&& vars_view, auto&& result_view, auto&& partials_view)
+          MICM_LAMBDA(const typename DenseMatrixPolicy::ConstViewType& params_view, const typename DenseMatrixPolicy::ConstViewType& vars_view, const typename DenseMatrixPolicy::ViewType& result_view, const typename DenseMatrixPolicy::ViewType& partials_view)
           {
             auto phi = result_view.GetColumnView(0);
             auto V_phase = result_view.GetRowVariable();

@@ -77,7 +77,7 @@ namespace miam
     {
       const auto view = GetView();
       DenseMatrixPolicy::Function(
-          [view](auto&& params_view, auto&& vars_view, auto&& result_view)
+          MICM_LAMBDA(const typename DenseMatrixPolicy::ConstViewType& params_view, const typename DenseMatrixPolicy::ConstViewType& vars_view, const typename DenseMatrixPolicy::ViewType& result_view)
           {
             auto r = result_view.GetColumnView(0);
             params_view.ForEachRowStrict([](double& v) { v = 0.0; }, r);
@@ -115,7 +115,7 @@ namespace miam
     {
       const auto view = GetView();
       DenseMatrixPolicy::Function(
-          [view](auto&& params_view, auto&& vars_view, auto&& result_view, auto&& partials_view)
+          MICM_LAMBDA(const typename DenseMatrixPolicy::ConstViewType& params_view, const typename DenseMatrixPolicy::ConstViewType& vars_view, const typename DenseMatrixPolicy::ViewType& result_view, const typename DenseMatrixPolicy::ViewType& partials_view)
           {
             auto V_total = result_view.GetRowVariable();
             params_view.ForEachRowStrict([](double& v) { v = 0.0; }, V_total);
@@ -221,7 +221,7 @@ namespace miam
     {
       const auto view = view_;
       DenseMatrixPolicy::Function(
-          [view](auto&& params_view, auto&& vars_view, auto&& result_view)
+          MICM_LAMBDA(const typename DenseMatrixPolicy::ConstViewType& params_view, const typename DenseMatrixPolicy::ConstViewType& vars_view, const typename DenseMatrixPolicy::ViewType& result_view)
           {
             params_view.ForEachRowStrict(
                 [](const double& nc, double& N) { N = nc; },
@@ -241,7 +241,7 @@ namespace miam
     {
       const auto view = view_;
       DenseMatrixPolicy::Function(
-          [view](auto&& params_view, auto&& vars_view, auto&& result_view, auto&& partials_view)
+          MICM_LAMBDA(const typename DenseMatrixPolicy::ConstViewType& params_view, const typename DenseMatrixPolicy::ConstViewType& vars_view, const typename DenseMatrixPolicy::ViewType& result_view, const typename DenseMatrixPolicy::ViewType& partials_view)
           {
             params_view.ForEachRowStrict(
                 [](const double& nc, double& N, double& dN_dN)

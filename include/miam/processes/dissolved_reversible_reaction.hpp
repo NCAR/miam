@@ -14,6 +14,7 @@
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
 #include <micm/util/matrix.hpp>
+#include <micm/util/types.hpp>
 
 #include <cmath>
 #include <functional>
@@ -21,6 +22,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace miam
@@ -262,25 +264,44 @@ namespace miam
       }
       std::size_t forward_index = state_parameter_indices.at(forward_param);
       std::size_t reverse_index = state_parameter_indices.at(reverse_param);
+      std::size_t num_params = state_parameter_indices.size();
 
-      // Set up dummy arguments to build the function
-      DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
+      // Hoist both variant visits to the host so the concrete expression PODs are captured by
+      // value into MICM_LAMBDA (built inside `MakeReversibleUpdateFn`, a function template, so the
+      // extended lambda is not nested in the generic std::visit lambda, which NVCC forbids).
+      return std::visit(
+          [forward_index, reverse_index, num_params](const auto& fwd_expr, const auto& rev_expr)
+          { return MakeReversibleUpdateFn<DenseMatrixPolicy>(fwd_expr, rev_expr, forward_index, reverse_index, num_params); },
+          forward_rate_constant_,
+          reverse_rate_constant_);
+    }
+
+    /// @brief Builds the forward/reverse rate-constant update callable for concrete expression alternatives.
+    /// @details Public because NVCC forbids private functions that define an extended lambda.
+    template<typename DenseMatrixPolicy, typename FwdT, typename RevT>
+    static std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>
+    MakeReversibleUpdateFn(
+        const FwdT& fwd_expr, const RevT& rev_expr, std::size_t forward_index, std::size_t reverse_index, std::size_t num_params)
+    {
+      const FwdT fwd_copy = fwd_expr;
+      const RevT rev_copy = rev_expr;
+      DenseMatrixPolicy state_parameters{ 1, num_params, 0.0 };
       typename DenseMatrixPolicy::template VectorType<micm::Conditions> conditions_vector;
-
-      // return a function that updates the forward and reverse rate constant parameters based on the current conditions
       return DenseMatrixPolicy::Function(
-          [this, forward_index, reverse_index](auto&& conditions, auto&& params)
+          MICM_LAMBDA(
+              const typename DenseMatrixPolicy::template VectorType<micm::Conditions>::ConstViewType& conditions_view,
+              const typename DenseMatrixPolicy::ViewType& params_view)
           {
-            params.ForEachRowStrict(
-                [&](const micm::Conditions& condition, double& parameter)
-                { parameter = EvaluateExpression(forward_rate_constant_, condition); },
-                conditions,
-                params.GetColumnView(forward_index));
-            params.ForEachRowStrict(
-                [&](const micm::Conditions& condition, double& parameter)
-                { parameter = EvaluateExpression(reverse_rate_constant_, condition); },
-                conditions,
-                params.GetColumnView(reverse_index));
+            params_view.ForEachRowStrict(
+                [fwd_copy](const micm::Conditions& condition, micm::Real& parameter)
+                { parameter = fwd_copy.Calculate(condition); },
+                conditions_view,
+                params_view.GetColumnView(forward_index));
+            params_view.ForEachRowStrict(
+                [rev_copy](const micm::Conditions& condition, micm::Real& parameter)
+                { parameter = rev_copy.Calculate(condition); },
+                conditions_view,
+                params_view.GetColumnView(reverse_index));
           },
           conditions_vector,
           state_parameters);
