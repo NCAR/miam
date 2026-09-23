@@ -58,8 +58,8 @@ namespace
 
 namespace
 {
-  template<typename Sparse>
-  DissolvedEquilibriumConstraintSet MakeSet(
+  template<typename Dense, typename Sparse>
+  DissolvedEquilibriumConstraintSet<Dense, Sparse> MakeSet(
       const DissolvedEquilibriumConstraint& constraint,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
@@ -71,7 +71,8 @@ namespace
     for (const auto& elem : elements)
       builder = builder.WithElement(elem.first, elem.second);
     Sparse pattern(builder);
-    return DissolvedEquilibriumConstraintSet(constraint, phase_prefixes, state_parameter_indices, state_variable_indices, pattern);
+    return DissolvedEquilibriumConstraintSet<Dense, Sparse>(
+        constraint, phase_prefixes, state_parameter_indices, state_variable_indices, pattern);
   }
 }  // namespace
 
@@ -228,7 +229,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualSimpleAB)
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
-  auto residual_fn_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, state_indices);
+  auto residual_fn_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, state_indices);
 
   DMP state_variables{ 1, 3, 0.0 };
   state_variables[0][0] = 1.0;    // [A]
@@ -236,7 +237,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualSimpleAB)
   state_variables[0][2] = 300.0;  // [H2O]
 
   DMP residual{ 1, 3, 0.0 };
-  residual_fn_set.template AddResidual<DMP>(state_variables, state_params, residual);
+  residual_fn_set.AddResidual(state_variables, state_params, residual);
 
   // G = K_eq * [A] / [S]^(1-1) - [B] / [S]^(1-1) = K_eq * [A] - [B]
   // = 10.0 * 1.0 - 5.0 = 5.0
@@ -275,7 +276,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultiReactant)
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
-  auto residual_fn_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, state_indices);
+  auto residual_fn_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, state_indices);
 
   DMP state_variables{ 1, 4, 0.0 };
   state_variables[0][0] = 3.0;    // [A]
@@ -284,7 +285,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultiReactant)
   state_variables[0][3] = 300.0;  // [H2O]
 
   DMP residual{ 1, 4, 0.0 };
-  residual_fn_set.template AddResidual<DMP>(state_variables, state_params, residual);
+  residual_fn_set.AddResidual(state_variables, state_params, residual);
 
   // G = K_eq * [A]*[B]/[S]^(2-1) - [C]/[S]^(1-1)
   // = 2.0 * 3.0*4.0/300.0 - 20.0 = 0.08 - 20.0 = -19.92
@@ -326,7 +327,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleInstances)
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
-  auto residual_fn_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, state_indices);
+  auto residual_fn_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, state_indices);
 
   DMP state_variables{ 1, 6, 0.0 };
   state_variables[0][0] = 2.0;    // LARGE [A]
@@ -337,7 +338,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleInstances)
   state_variables[0][5] = 300.0;  // SMALL [H2O]
 
   DMP residual{ 1, 6, 0.0 };
-  residual_fn_set.template AddResidual<DMP>(state_variables, state_params, residual);
+  residual_fn_set.AddResidual(state_variables, state_params, residual);
 
   // LARGE: G = 5.0 * 2.0 - 8.0 = 2.0
   EXPECT_NEAR(residual[0][1], 2.0, 1.0e-12);
@@ -375,7 +376,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleCells)
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
-  auto residual_fn_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, state_indices);
+  auto residual_fn_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, state_indices);
 
   DMP state_variables{ 2, 3, 0.0 };
   state_variables[0][0] = 1.0;    // cell 0 [A]
@@ -386,7 +387,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleCells)
   state_variables[1][2] = 300.0;  // cell 1 [H2O]
 
   DMP residual{ 2, 3, 0.0 };
-  residual_fn_set.template AddResidual<DMP>(state_variables, state_params, residual);
+  residual_fn_set.AddResidual(state_variables, state_params, residual);
 
   // cell 0: G = 4*1 - 2 = 2
   EXPECT_NEAR(residual[0][1], 2.0, 1.0e-12);
@@ -434,7 +435,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianSimpleAB)
     builder.WithElement(row, col);
   SMP jacobian(builder);
 
-  DissolvedEquilibriumConstraintSet jac_fn_set(constraint, phase_prefixes, pi, state_indices, jacobian);
+  DissolvedEquilibriumConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, pi, state_indices, jacobian);
 
   DMP state_variables{ 1, 3, 0.0 };
   state_variables[0][0] = 1.0;    // [A]
@@ -445,7 +446,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianSimpleAB)
   for (auto& v : jacobian.AsVector())
     v = 0.0;
 
-  jac_fn_set.template SubtractJacobian<DMP, SMP>(state_variables, state_params, jacobian);
+  jac_fn_set.SubtractJacobian(state_variables, state_params, jacobian);
 
   // MICM convention: jac -= dG/dy
   // jac[B,A] -= K_eq → jac[B,A] = -K_eq = -10.0
@@ -493,7 +494,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianMultiReactant)
     builder.WithElement(row, col);
   SMP jacobian(builder);
 
-  DissolvedEquilibriumConstraintSet jac_fn_set(constraint, phase_prefixes, pi, state_indices, jacobian);
+  DissolvedEquilibriumConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, pi, state_indices, jacobian);
 
   DMP state_variables{ 1, 4, 0.0 };
   state_variables[0][0] = 3.0;    // [A]
@@ -503,7 +504,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianMultiReactant)
 
   for (auto& v : jacobian.AsVector())
     v = 0.0;
-  jac_fn_set.template SubtractJacobian<DMP, SMP>(state_variables, state_params, jacobian);
+  jac_fn_set.SubtractJacobian(state_variables, state_params, jacobian);
 
   // dG/dA = K_eq * [B] / [S] = 2.0 * 4.0 / 300.0
   double dG_dA = K_eq * 4.0 / 300.0;
@@ -668,18 +669,18 @@ namespace
 
     // Build sparse Jacobian structure and compute analytical Jacobian
     auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, state_indices, num_blocks);
-    DissolvedEquilibriumConstraintSet jac_fn_set(constraint, phase_prefixes, param_idx, state_indices, jacobian);
-    jac_fn_set.template SubtractJacobian<DMP, SMP>(state_variables, state_params, jacobian);
+    DissolvedEquilibriumConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, param_idx, state_indices, jacobian);
+    jac_fn_set.SubtractJacobian(state_variables, state_params, jacobian);
 
     // Build FD Jacobian — bind state_params into the residual callable
     // Use perturbation=1e-7 to match old central-difference scheme: h = max(|x|, 1) * 1e-7.
     // Use atol=rtol=1e-5 to match old rel_tol tolerance.
-    auto rf_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_idx, state_indices);
+    auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_idx, state_indices);
     auto fd_jac = micm::FiniteDifferenceJacobian<DMP>(
         [&](const DMP& vars, DMP& out)
         {
           out.Fill(0.0);
-          rf_set.template AddResidual<DMP>(vars, state_params, out);
+          rf_set.AddResidual(vars, state_params, out);
         },
         state_variables,
         num_vars,
@@ -885,9 +886,9 @@ TEST(DissolvedEquilibriumConstraint, ResidualAndJacobianFDMultipleCells)
   sv[3][2] = 0.017;
 
   // Check residuals
-  auto rf_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
+  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
   DMP residual{ nc, 3, 0.0 };
-  rf_set.template AddResidual<DMP>(sv, sp, residual);
+  rf_set.AddResidual(sv, sp, residual);
 
   // G = K_eq * [A] - [B]
   EXPECT_NEAR(residual[0][1], 5.0 * 1.0 - 5.0, 1e-6);
@@ -962,9 +963,9 @@ TEST(DissolvedEquilibriumConstraint, MultiInstanceMultiCellFD)
   sv[2][7] = 0.017;
 
   // Residuals: G = K_eq * [A]*[B]/[S] - [C]
-  auto rf_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
+  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
   DMP residual{ nc, 8, 0.0 };
-  rf_set.template AddResidual<DMP>(sv, sp, residual);
+  rf_set.AddResidual(sv, sp, residual);
 
   // LARGE instance, cell 0: G = 3.0 * 0.5*0.3/0.017 - 0.1
   double expected_L0 = 3.0 * 0.5 * 0.3 / 0.017 - 0.1;
@@ -1079,7 +1080,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianAccumulates)
   auto sp = InitKeq(constraint, phase_prefixes, pi, 1);
 
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  DissolvedEquilibriumConstraintSet jac_fn_set(constraint, phase_prefixes, pi, si, jacobian);
+  DissolvedEquilibriumConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, pi, si, jacobian);
 
   DMP sv{ 1, 3, 0.0 };
   sv[0][0] = 1.0;
@@ -1087,12 +1088,12 @@ TEST(DissolvedEquilibriumConstraint, JacobianAccumulates)
   sv[0][2] = 300.0;
 
   // First call
-  jac_fn_set.template SubtractJacobian<DMP, SMP>(sv, sp, jacobian);
+  jac_fn_set.SubtractJacobian(sv, sp, jacobian);
   double j_BA_once = jacobian.AsVector()[jacobian.VectorIndex(0, 1, 0)];
   double j_BB_once = jacobian.AsVector()[jacobian.VectorIndex(0, 1, 1)];
 
   // Second call should accumulate
-  jac_fn_set.template SubtractJacobian<DMP, SMP>(sv, sp, jacobian);
+  jac_fn_set.SubtractJacobian(sv, sp, jacobian);
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 1, 0)], 2.0 * j_BA_once, 1e-12);
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 1, 1)], 2.0 * j_BB_once, 1e-12);
 }
@@ -1123,7 +1124,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualSetsNotAccumulates)
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   auto sp = InitKeq(constraint, phase_prefixes, pi, 1);
 
-  auto rf_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
+  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
 
   DMP sv{ 1, 3, 0.0 };
   sv[0][0] = 1.0;
@@ -1131,10 +1132,10 @@ TEST(DissolvedEquilibriumConstraint, ResidualSetsNotAccumulates)
   sv[0][2] = 300.0;
 
   DMP residual{ 1, 3, 999.0 };
-  rf_set.template AddResidual<DMP>(sv, sp, residual);
+  rf_set.AddResidual(sv, sp, residual);
   double val1 = residual[0][1];
 
-  rf_set.template AddResidual<DMP>(sv, sp, residual);
+  rf_set.AddResidual(sv, sp, residual);
   EXPECT_NEAR(residual[0][1], val1, 1e-15);
 }
 
@@ -1185,9 +1186,9 @@ TEST(DissolvedEquilibriumConstraint, TemperatureDependentKeqFD)
   sv[2][2] = 0.017;
 
   // Check residuals with different K_eq per cell
-  auto rf_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
+  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
   DMP residual{ nc, 3, 0.0 };
-  rf_set.template AddResidual<DMP>(sv, sp, residual);
+  rf_set.AddResidual(sv, sp, residual);
 
   EXPECT_NEAR(residual[0][1], keq_val(250.0) * 1.0 - 2.0, 1e-6);
   EXPECT_NEAR(residual[1][1], keq_val(300.0) * 0.5 - 1.0, 1e-6);
@@ -1229,9 +1230,9 @@ TEST(DissolvedEquilibriumConstraint, LargeKeqRange)
   sv[0][1] = 100.0;   // [B] = K_eq * A
   sv[0][2] = 0.017;
 
-  auto rf_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
+  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
   DMP residual{ 1, 3, 0.0 };
-  rf_set.template AddResidual<DMP>(sv, sp, residual);
+  rf_set.AddResidual(sv, sp, residual);
 
   // G = 1e8 * 1e-6 - 100 = 100 - 100 = 0
   EXPECT_NEAR(residual[0][1], 0.0, 1e-6);
@@ -1278,13 +1279,13 @@ TEST(DissolvedEquilibriumConstraint, CopiedConstraintProducesSameResults)
   sv[0][2] = 20.0;
   sv[0][3] = 300.0;
 
-  auto rf_orig_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(original, phase_prefixes, pi_orig, si);
-  auto rf_copy_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(copy, phase_prefixes, pi_copy, si);
+  auto rf_orig_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(original, phase_prefixes, pi_orig, si);
+  auto rf_copy_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(copy, phase_prefixes, pi_copy, si);
 
   DMP res_orig{ 1, 4, 0.0 };
   DMP res_copy{ 1, 4, 0.0 };
-  rf_orig_set.template AddResidual<DMP>(sv, sp_orig, res_orig);
-  rf_copy_set.template AddResidual<DMP>(sv, sp_copy, res_copy);
+  rf_orig_set.AddResidual(sv, sp_orig, res_orig);
+  rf_copy_set.AddResidual(sv, sp_copy, res_copy);
 
   EXPECT_NEAR(res_orig[0][2], res_copy[0][2], 1e-15);
 }
@@ -1319,7 +1320,7 @@ TEST(DissolvedEquilibriumConstraint, SolventJacobianMultiReactant)
   auto sp = InitKeq(constraint, phase_prefixes, pi, 1);
 
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  DissolvedEquilibriumConstraintSet jac_fn_set(constraint, phase_prefixes, pi, si, jacobian);
+  DissolvedEquilibriumConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, pi, si, jacobian);
 
   DMP sv{ 1, 4, 0.0 };
   sv[0][0] = 3.0;
@@ -1327,7 +1328,7 @@ TEST(DissolvedEquilibriumConstraint, SolventJacobianMultiReactant)
   sv[0][2] = 20.0;
   sv[0][3] = 300.0;
 
-  jac_fn_set.template SubtractJacobian<DMP, SMP>(sv, sp, jacobian);
+  jac_fn_set.SubtractJacobian(sv, sp, jacobian);
 
   // dG/dS = K_eq * [A]*[B] * (1-2)/[S]^2 - [C] * (1-1)/[S]^1
   //       = -K_eq * [A]*[B] / [S]^2 - 0
@@ -1520,8 +1521,8 @@ namespace
 
     // Residual check: G = K_eq * [A] - [B]
     VDM residual{ num_cells, 3, 0.0 };
-    auto rf_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
-    rf_set.template AddResidual<VDM>(state_variables, state_params, residual);
+    auto rf_set = MakeSet<VDM, VSM>(constraint, phase_prefixes, pi, si);
+    rf_set.AddResidual(state_variables, state_params, residual);
 
     for (std::size_t c = 0; c < num_cells; ++c)
     {
@@ -1538,8 +1539,8 @@ namespace
       jac_builder = jac_builder.WithElement(row, col);
     VSM jacobian(jac_builder);
 
-    DissolvedEquilibriumConstraintSet jac_fn_set(constraint, phase_prefixes, pi, si, jacobian);
-    jac_fn_set.template SubtractJacobian<VDM, VSM>(state_variables, state_params, jacobian);
+    DissolvedEquilibriumConstraintSet<VDM, VSM> jac_fn_set(constraint, phase_prefixes, pi, si, jacobian);
+    jac_fn_set.SubtractJacobian(state_variables, state_params, jacobian);
 
     double eps = 1e-7;
     for (std::size_t c = 0; c < num_cells; ++c)
@@ -1554,8 +1555,8 @@ namespace
 
         VDM rp(num_cells, 3, 0.0);
         VDM rm(num_cells, 3, 0.0);
-        rf_set.template AddResidual<VDM>(vp, state_params, rp);
-        rf_set.template AddResidual<VDM>(vm, state_params, rm);
+        rf_set.AddResidual(vp, state_params, rp);
+        rf_set.AddResidual(vm, state_params, rm);
 
         for (std::size_t i = 0; i < si.size(); ++i)
         {
@@ -1638,9 +1639,9 @@ TEST(DissolvedEquilibriumConstraint, ResidualZeroReactant)
   sv[0][1] = 0.5;   // [B]
   sv[0][2] = 55.0;  // [H2O]
 
-  auto rf_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
+  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
   DMP residual{ 1, 3, 0.0 };
-  rf_set.template AddResidual<DMP>(sv, sp, residual);
+  rf_set.AddResidual(sv, sp, residual);
 
   // G = K_eq * [A] / [H2O]^0 - [B] / [H2O]^0 = K_eq*0 - [B] = -0.5
   EXPECT_NEAR(residual[0][1], -0.5, 1.0e-12);
@@ -1677,9 +1678,9 @@ TEST(DissolvedEquilibriumConstraint, ResidualExtremeKeq)
     sv[0][1] = B_conc;
     sv[0][2] = 55.0;
 
-    auto rf_set = MakeSet<micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
+    auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
     DMP residual{ 1, 3, 0.0 };
-    rf_set.template AddResidual<DMP>(sv, sp, residual);
+    rf_set.AddResidual(sv, sp, residual);
     return residual[0][1];
   };
 

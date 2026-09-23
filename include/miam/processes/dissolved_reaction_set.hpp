@@ -7,41 +7,95 @@
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 
+#include <micm/util/types.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <map>
+#include <set>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 namespace miam
 {
   /// @brief Solve-time companion to `DissolvedReaction`, mirroring `micm::ProcessSet`.
-  /// @details Non-templated data-holding class populated once at Finalize time (which is
-  ///          when the sparse Jacobian pattern is available). Every device-facing solve-time
-  ///          method captures only trivially-copyable scalars into `MICM_LAMBDA` and iterates
-  ///          the phase-instance / reactant / product indices on the host \u2014 matching MICM's
-  ///          `stub_aerosol_1` external model. Rate-constant evaluation is handled separately
-  ///          by the Layer-D `ConstantsBucket`; this class only reads the resolved `k` column
-  ///          from the state-parameters matrix.
+  /// @details Indices live in `SparseMatrixPolicy::VectorType<Index>` so they are
+  ///          device-accessible via `.GetView()`. A POD `Views` bundle is captured by
+  ///          value in every `MICM_LAMBDA`.
+  template<class DenseMatrixPolicy, class SparseMatrixPolicy>
   class DissolvedReactionSet
   {
    public:
+    template<class U>
+    using Vector = typename SparseMatrixPolicy::template VectorType<U>;
+    template<class U>
+    using VectorView = typename Vector<U>::ConstViewType;
+
+    /// Soft-min exponent for rate capping; matches `DissolvedReaction::kSoftMinP`.
+    static constexpr micm::Real kSoftMinP = 10.0;
+    /// Tiny floor to prevent `pow(0, -p)` overflow; matches `DissolvedReaction::kSoftMinFloor`.
+    static constexpr micm::Real kSoftMinFloor = 1.0e-300;
+
+    struct Views
+    {
+      VectorView<micm::Index> reactant_indices_;
+      VectorView<micm::Index> product_indices_;
+      VectorView<micm::Index> solvent_indices_;
+      VectorView<micm::Index> jacobian_flat_ids_;
+      micm::Index k_state_parameter_index_;
+      micm::Index num_phases_;
+      micm::Index num_reactants_;
+      micm::Index num_products_;
+      micm::Real solvent_floor_;
+      micm::Real min_halflife_;
+      bool capped_;
+
+      Views() = default;
+
+      Views(
+          const Vector<micm::Index>& reactant_indices,
+          const Vector<micm::Index>& product_indices,
+          const Vector<micm::Index>& solvent_indices,
+          const Vector<micm::Index>& jacobian_flat_ids,
+          micm::Index k_state_parameter_index,
+          micm::Index num_phases,
+          micm::Index num_reactants,
+          micm::Index num_products,
+          micm::Real solvent_floor,
+          micm::Real min_halflife)
+          : reactant_indices_(reactant_indices.GetView()),
+            product_indices_(product_indices.GetView()),
+            solvent_indices_(solvent_indices.GetView()),
+            jacobian_flat_ids_(jacobian_flat_ids.GetView()),
+            k_state_parameter_index_(k_state_parameter_index),
+            num_phases_(num_phases),
+            num_reactants_(num_reactants),
+            num_products_(num_products),
+            solvent_floor_(solvent_floor),
+            min_halflife_(min_halflife),
+            capped_(min_halflife > 0.0)
+      {
+      }
+    };
+
     DissolvedReactionSet() = default;
 
-    template<typename SparseMatrixPolicy>
     DissolvedReactionSet(
         const DissolvedReaction& config,
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
-        const auto& state_parameter_indices,
-        const auto& state_variable_indices,
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices,
         const SparseMatrixPolicy& jacobian)
     {
-      k_state_parameter_index_ = LookupParameterIndex(config, state_parameter_indices);
-      num_reactants_ = config.reactants_.size();
-      num_products_ = config.products_.size();
-      solvent_floor_ = config.solvent_floor_;
-      min_halflife_ = config.min_halflife_;
+      const micm::Index k_state_parameter_index =
+          static_cast<micm::Index>(LookupParameterIndex(config, state_parameter_indices));
+      const micm::Index num_reactants = static_cast<micm::Index>(config.reactants_.size());
+      const micm::Index num_products = static_cast<micm::Index>(config.products_.size());
+      const micm::Real solvent_floor = config.solvent_floor_;
+      const micm::Real min_halflife = config.min_halflife_;
 
       auto phase_it = phase_prefixes.find(config.phase_.name_);
       if (phase_it == phase_prefixes.end())
@@ -51,84 +105,107 @@ namespace miam
             "DissolvedReactionSet: phase " + config.phase_.name_ + " not found in phase_prefixes for process " +
                 config.uuid_);
       const auto& prefixes = phase_it->second;
-      num_phases_ = prefixes.size();
+      const micm::Index num_phases = static_cast<micm::Index>(prefixes.size());
 
-      // Layout: reactant_indices_[phase * num_reactants_ + r], product_indices_[phase * num_products_ + p],
-      //         solvent_indices_[phase], jacobian_flat_ids_[phase * pairs_per_phase + pair].
-      const std::size_t pairs_per_phase = (num_reactants_ + 1) * (num_reactants_ + num_products_);
-      reactant_indices_.assign(num_phases_ * num_reactants_, 0);
-      product_indices_.assign(num_phases_ * num_products_, 0);
-      solvent_indices_.assign(num_phases_, 0);
-      jacobian_flat_ids_.assign(num_phases_ * pairs_per_phase, 0);
+      const micm::Index pairs_per_phase = (num_reactants + 1) * (num_reactants + num_products);
 
-      std::size_t i_phase = 0;
+      std::vector<micm::Index> reactant_indices_host(num_phases * num_reactants, 0);
+      std::vector<micm::Index> product_indices_host(num_phases * num_products, 0);
+      std::vector<micm::Index> solvent_indices_host(num_phases, 0);
+      std::vector<micm::Index> jacobian_flat_ids_host(num_phases * pairs_per_phase, 0);
+
+      micm::Index i_phase = 0;
       for (const auto& prefix : prefixes)
       {
-        for (std::size_t r = 0; r < num_reactants_; ++r)
-          reactant_indices_[i_phase * num_reactants_ + r] =
-              LookupSpecies(state_variable_indices, prefix, config.phase_.name_, config.reactants_[r].name_);
-        for (std::size_t p = 0; p < num_products_; ++p)
-          product_indices_[i_phase * num_products_ + p] =
-              LookupSpecies(state_variable_indices, prefix, config.phase_.name_, config.products_[p].name_);
-        solvent_indices_[i_phase] =
-            LookupSpecies(state_variable_indices, prefix, config.phase_.name_, config.solvent_.name_);
+        for (micm::Index r = 0; r < num_reactants; ++r)
+          reactant_indices_host[i_phase * num_reactants + r] = static_cast<micm::Index>(
+              LookupSpecies(state_variable_indices, prefix, config.phase_.name_, config.reactants_[r].name_));
+        for (micm::Index p = 0; p < num_products; ++p)
+          product_indices_host[i_phase * num_products + p] = static_cast<micm::Index>(
+              LookupSpecies(state_variable_indices, prefix, config.phase_.name_, config.products_[p].name_));
+        solvent_indices_host[i_phase] = static_cast<micm::Index>(
+            LookupSpecies(state_variable_indices, prefix, config.phase_.name_, config.solvent_.name_));
 
-        std::size_t pair = 0;
-        for (std::size_t i_ind = 0; i_ind < num_reactants_; ++i_ind)
+        micm::Index pair = 0;
+        for (micm::Index i_ind = 0; i_ind < num_reactants; ++i_ind)
         {
-          const std::size_t ind_idx = reactant_indices_[i_phase * num_reactants_ + i_ind];
-          for (std::size_t i_dep = 0; i_dep < num_reactants_; ++i_dep)
-            jacobian_flat_ids_[i_phase * pairs_per_phase + pair++] =
-                jacobian.VectorIndex(0, reactant_indices_[i_phase * num_reactants_ + i_dep], ind_idx);
-          for (std::size_t i_dep = 0; i_dep < num_products_; ++i_dep)
-            jacobian_flat_ids_[i_phase * pairs_per_phase + pair++] =
-                jacobian.VectorIndex(0, product_indices_[i_phase * num_products_ + i_dep], ind_idx);
+          const micm::Index ind_idx = reactant_indices_host[i_phase * num_reactants + i_ind];
+          for (micm::Index i_dep = 0; i_dep < num_reactants; ++i_dep)
+            jacobian_flat_ids_host[i_phase * pairs_per_phase + pair++] = static_cast<micm::Index>(
+                jacobian.VectorIndex(0, reactant_indices_host[i_phase * num_reactants + i_dep], ind_idx));
+          for (micm::Index i_dep = 0; i_dep < num_products; ++i_dep)
+            jacobian_flat_ids_host[i_phase * pairs_per_phase + pair++] = static_cast<micm::Index>(
+                jacobian.VectorIndex(0, product_indices_host[i_phase * num_products + i_dep], ind_idx));
         }
-        const std::size_t solv_idx = solvent_indices_[i_phase];
-        for (std::size_t i_dep = 0; i_dep < num_reactants_; ++i_dep)
-          jacobian_flat_ids_[i_phase * pairs_per_phase + pair++] =
-              jacobian.VectorIndex(0, reactant_indices_[i_phase * num_reactants_ + i_dep], solv_idx);
-        for (std::size_t i_dep = 0; i_dep < num_products_; ++i_dep)
-          jacobian_flat_ids_[i_phase * pairs_per_phase + pair++] =
-              jacobian.VectorIndex(0, product_indices_[i_phase * num_products_ + i_dep], solv_idx);
+        const micm::Index solv_idx = solvent_indices_host[i_phase];
+        for (micm::Index i_dep = 0; i_dep < num_reactants; ++i_dep)
+          jacobian_flat_ids_host[i_phase * pairs_per_phase + pair++] = static_cast<micm::Index>(
+              jacobian.VectorIndex(0, reactant_indices_host[i_phase * num_reactants + i_dep], solv_idx));
+        for (micm::Index i_dep = 0; i_dep < num_products; ++i_dep)
+          jacobian_flat_ids_host[i_phase * pairs_per_phase + pair++] = static_cast<micm::Index>(
+              jacobian.VectorIndex(0, product_indices_host[i_phase * num_products + i_dep], solv_idx));
         ++i_phase;
       }
+
+      reactant_indices_ = Vector<micm::Index>(std::move(reactant_indices_host));
+      product_indices_ = Vector<micm::Index>(std::move(product_indices_host));
+      solvent_indices_ = Vector<micm::Index>(std::move(solvent_indices_host));
+      jacobian_flat_ids_ = Vector<micm::Index>(std::move(jacobian_flat_ids_host));
+
+      reactant_indices_.CopyToDevice();
+      product_indices_.CopyToDevice();
+      solvent_indices_.CopyToDevice();
+      jacobian_flat_ids_.CopyToDevice();
+
+      views_ = Views(
+          reactant_indices_,
+          product_indices_,
+          solvent_indices_,
+          jacobian_flat_ids_,
+          k_state_parameter_index,
+          num_phases,
+          num_reactants,
+          num_products,
+          solvent_floor,
+          min_halflife);
     }
 
     /// @brief Adds forcing contributions from every phase instance of this reaction into `forcing`.
-    template<typename DenseMatrixPolicy>
     void AddForcingTerms(
         const DenseMatrixPolicy& state_parameters,
         const DenseMatrixPolicy& state_variables,
         DenseMatrixPolicy& forcing) const
     {
-      const std::size_t num_reactants = num_reactants_;
-      const std::size_t num_products = num_products_;
-      const std::size_t k_index = k_state_parameter_index_;
-      const double eps = solvent_floor_;
-      const double t_half = min_halflife_;
-      const bool capped = t_half > 0.0;
+      const auto& views = views_;
+      DenseMatrixPolicy::Function(
+          MICM_LAMBDA(
+              const typename DenseMatrixPolicy::ConstViewType& params_view,
+              const typename DenseMatrixPolicy::ConstViewType& state_view,
+              const typename DenseMatrixPolicy::ViewType& forcing_view)
+          {
+            const micm::Index num_reactants = views.num_reactants_;
+            const micm::Index num_products = views.num_products_;
+            const micm::Index k_index = views.k_state_parameter_index_;
+            const micm::Real eps = views.solvent_floor_;
+            const micm::Real t_half = views.min_halflife_;
+            const bool capped = views.capped_;
 
-      for (std::size_t phase = 0; phase < num_phases_; ++phase)
-      {
-        const std::size_t solvent_idx = solvent_indices_[phase];
-        DenseMatrixPolicy::Function(
-            [this, phase, k_index, solvent_idx, num_reactants, num_products, eps, t_half, capped](
-                auto&& params, auto&& vars, auto&& forcing_view)
+            for (micm::Index phase = 0; phase < views.num_phases_; ++phase)
             {
+              const micm::Index solvent_idx = views.solvent_indices_[phase];
               auto rate = forcing_view.GetRowVariable();
-              params.ForEachRowStrict(
-                  [num_reactants, eps](const double& k, const double& solvent, double& out)
+              forcing_view.ForEachRowStrict(
+                  [num_reactants, eps](const micm::Real& k, const micm::Real& solvent, micm::Real& out)
                   { out = k * solvent / std::pow(solvent + eps, num_reactants); },
-                  params.GetConstColumnView(k_index),
-                  vars.GetConstColumnView(solvent_idx),
+                  params_view.GetConstColumnView(k_index),
+                  state_view.GetConstColumnView(solvent_idx),
                   rate);
-              for (std::size_t r = 0; r < num_reactants; ++r)
+              for (micm::Index r = 0; r < num_reactants; ++r)
               {
-                const std::size_t reactant_idx = reactant_indices_[phase * num_reactants + r];
-                params.ForEachRowStrict(
-                    [](const double& reactant, double& out) { out *= reactant; },
-                    vars.GetConstColumnView(reactant_idx),
+                const micm::Index reactant_idx = views.reactant_indices_[phase * num_reactants + r];
+                forcing_view.ForEachRowStrict(
+                    [](const micm::Real& reactant, micm::Real& out) { out *= reactant; },
+                    state_view.GetConstColumnView(reactant_idx),
                     rate);
               }
 
@@ -136,25 +213,27 @@ namespace miam
               {
                 auto accum = forcing_view.GetRowVariable();
                 {
-                  const std::size_t r0_idx = reactant_indices_[phase * num_reactants + 0];
-                  params.ForEachRowStrict(
-                      [](const double& R, double& acc) { acc = std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
-                      vars.GetConstColumnView(r0_idx),
+                  const micm::Index r0_idx = views.reactant_indices_[phase * num_reactants + 0];
+                  forcing_view.ForEachRowStrict(
+                      [](const micm::Real& R, micm::Real& acc)
+                      { acc = std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
+                      state_view.GetConstColumnView(r0_idx),
                       accum);
                 }
-                for (std::size_t r = 1; r < num_reactants; ++r)
+                for (micm::Index r = 1; r < num_reactants; ++r)
                 {
-                  const std::size_t r_idx = reactant_indices_[phase * num_reactants + r];
-                  params.ForEachRowStrict(
-                      [](const double& R, double& acc) { acc += std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
-                      vars.GetConstColumnView(r_idx),
+                  const micm::Index r_idx = views.reactant_indices_[phase * num_reactants + r];
+                  forcing_view.ForEachRowStrict(
+                      [](const micm::Real& R, micm::Real& acc)
+                      { acc += std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
+                      state_view.GetConstColumnView(r_idx),
                       accum);
                 }
-                params.ForEachRowStrict(
-                    [t_half](double& out, double& acc)
+                forcing_view.ForEachRowStrict(
+                    [t_half](micm::Real& out, micm::Real& acc)
                     {
-                      const double c_min = std::pow(acc, -1.0 / kSoftMinP);
-                      const double r_max = c_min / t_half;
+                      const micm::Real c_min = std::pow(acc, -1.0 / kSoftMinP);
+                      const micm::Real r_max = c_min / t_half;
                       if (r_max > kSoftMinFloor)
                         out = r_max * std::tanh(out / r_max);
                     },
@@ -162,98 +241,102 @@ namespace miam
                     accum);
               }
 
-              for (std::size_t r = 0; r < num_reactants; ++r)
+              for (micm::Index r = 0; r < num_reactants; ++r)
               {
-                const std::size_t reactant_idx = reactant_indices_[phase * num_reactants + r];
-                params.ForEachRowStrict(
-                    [](const double& rate, double& forcing) { forcing -= rate; },
+                const micm::Index reactant_idx = views.reactant_indices_[phase * num_reactants + r];
+                forcing_view.ForEachRowStrict(
+                    [](const micm::Real& rate, micm::Real& forcing) { forcing -= rate; },
                     rate,
                     forcing_view.GetColumnView(reactant_idx));
               }
-              for (std::size_t p = 0; p < num_products; ++p)
+              for (micm::Index p = 0; p < num_products; ++p)
               {
-                const std::size_t product_idx = product_indices_[phase * num_products + p];
-                params.ForEachRowStrict(
-                    [](const double& rate, double& forcing) { forcing += rate; },
+                const micm::Index product_idx = views.product_indices_[phase * num_products + p];
+                forcing_view.ForEachRowStrict(
+                    [](const micm::Real& rate, micm::Real& forcing) { forcing += rate; },
                     rate,
                     forcing_view.GetColumnView(product_idx));
               }
-            },
-            state_parameters,
-            state_variables,
-            forcing)(state_parameters, state_variables, forcing);
-      }
+            }
+          },
+          state_parameters,
+          state_variables,
+          forcing)(state_parameters, state_variables, forcing);
     }
 
     /// @brief Subtracts Jacobian contributions from every phase instance of this reaction into `jacobian`.
-    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
     void SubtractJacobianTerms(
         const DenseMatrixPolicy& state_parameters,
         const DenseMatrixPolicy& state_variables,
         SparseMatrixPolicy& jacobian) const
     {
-      const std::size_t num_reactants = num_reactants_;
-      const std::size_t num_products = num_products_;
-      const std::size_t k_index = k_state_parameter_index_;
-      const std::size_t pairs_per_phase = (num_reactants_ + 1) * (num_reactants_ + num_products_);
-      const double eps = solvent_floor_;
-      const double t_half = min_halflife_;
-      const bool capped = t_half > 0.0;
+      const auto& views = views_;
+      SparseMatrixPolicy::Function(
+          MICM_LAMBDA(
+              const typename DenseMatrixPolicy::ConstViewType& params_view,
+              const typename DenseMatrixPolicy::ConstViewType& state_view,
+              const typename SparseMatrixPolicy::ViewType& jac_view)
+          {
+            const micm::Index num_reactants = views.num_reactants_;
+            const micm::Index num_products = views.num_products_;
+            const micm::Index k_index = views.k_state_parameter_index_;
+            const micm::Index pairs_per_phase = (num_reactants + 1) * (num_reactants + num_products);
+            const micm::Real eps = views.solvent_floor_;
+            const micm::Real t_half = views.min_halflife_;
+            const bool capped = views.capped_;
 
-      for (std::size_t phase = 0; phase < num_phases_; ++phase)
-      {
-        const std::size_t solvent_idx = solvent_indices_[phase];
-        SparseMatrixPolicy::Function(
-            [this, phase, k_index, solvent_idx, num_reactants, num_products, pairs_per_phase, eps, t_half, capped](
-                auto&& params, auto&& vars, auto&& jacobian_values)
+            for (micm::Index phase = 0; phase < views.num_phases_; ++phase)
             {
-              auto d_rate_d_ind = jacobian_values.GetBlockVariable();
-              auto raw_rate = jacobian_values.GetBlockVariable();
-              auto sech2_var = jacobian_values.GetBlockVariable();
-              auto corr_var = jacobian_values.GetBlockVariable();
-              auto c_min_var = jacobian_values.GetBlockVariable();
-              std::size_t pair = phase * pairs_per_phase;
+              const micm::Index solvent_idx = views.solvent_indices_[phase];
+              auto d_rate_d_ind = jac_view.GetBlockVariable();
+              auto raw_rate = jac_view.GetBlockVariable();
+              auto sech2_var = jac_view.GetBlockVariable();
+              auto corr_var = jac_view.GetBlockVariable();
+              auto c_min_var = jac_view.GetBlockVariable();
+              micm::Index pair = phase * pairs_per_phase;
 
               if (capped)
               {
-                jacobian_values.ForEachBlockStrict(
-                    [num_reactants, eps](const double& k, const double& solvent, double& rr)
+                jac_view.ForEachBlockStrict(
+                    [num_reactants, eps](const micm::Real& k, const micm::Real& solvent, micm::Real& rr)
                     { rr = k * solvent / std::pow(solvent + eps, num_reactants); },
-                    params.GetConstColumnView(k_index),
-                    vars.GetConstColumnView(solvent_idx),
+                    params_view.GetConstColumnView(k_index),
+                    state_view.GetConstColumnView(solvent_idx),
                     raw_rate);
-                for (std::size_t r = 0; r < num_reactants; ++r)
+                for (micm::Index r = 0; r < num_reactants; ++r)
                 {
-                  const std::size_t r_idx = reactant_indices_[phase * num_reactants + r];
-                  jacobian_values.ForEachBlockStrict(
-                      [](const double& reactant, double& rr) { rr *= reactant; },
-                      vars.GetConstColumnView(r_idx),
+                  const micm::Index r_idx = views.reactant_indices_[phase * num_reactants + r];
+                  jac_view.ForEachBlockStrict(
+                      [](const micm::Real& reactant, micm::Real& rr) { rr *= reactant; },
+                      state_view.GetConstColumnView(r_idx),
                       raw_rate);
                 }
                 {
-                  const std::size_t r0_idx = reactant_indices_[phase * num_reactants + 0];
-                  jacobian_values.ForEachBlockStrict(
-                      [](const double& R, double& cm) { cm = std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
-                      vars.GetConstColumnView(r0_idx),
+                  const micm::Index r0_idx = views.reactant_indices_[phase * num_reactants + 0];
+                  jac_view.ForEachBlockStrict(
+                      [](const micm::Real& R, micm::Real& cm)
+                      { cm = std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
+                      state_view.GetConstColumnView(r0_idx),
                       c_min_var);
                 }
-                for (std::size_t r = 1; r < num_reactants; ++r)
+                for (micm::Index r = 1; r < num_reactants; ++r)
                 {
-                  const std::size_t r_idx = reactant_indices_[phase * num_reactants + r];
-                  jacobian_values.ForEachBlockStrict(
-                      [](const double& R, double& cm) { cm += std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
-                      vars.GetConstColumnView(r_idx),
+                  const micm::Index r_idx = views.reactant_indices_[phase * num_reactants + r];
+                  jac_view.ForEachBlockStrict(
+                      [](const micm::Real& R, micm::Real& cm)
+                      { cm += std::pow(std::max(R, kSoftMinFloor), -kSoftMinP); },
+                      state_view.GetConstColumnView(r_idx),
                       c_min_var);
                 }
-                jacobian_values.ForEachBlockStrict(
-                    [t_half](double& rr, double& cm, double& s2, double& cr)
+                jac_view.ForEachBlockStrict(
+                    [t_half](micm::Real& rr, micm::Real& cm, micm::Real& s2, micm::Real& cr)
                     {
                       cm = std::pow(cm, -1.0 / kSoftMinP);
-                      const double r_max = cm / t_half;
+                      const micm::Real r_max = cm / t_half;
                       if (r_max > kSoftMinFloor)
                       {
-                        const double u = rr / r_max;
-                        const double th = std::tanh(u);
+                        const micm::Real u = rr / r_max;
+                        const micm::Real th = std::tanh(u);
                         s2 = 1.0 - th * th;
                         cr = (th - u * s2) / t_half;
                       }
@@ -269,106 +352,108 @@ namespace miam
                     corr_var);
               }
 
-              for (std::size_t i_ind = 0; i_ind < num_reactants; ++i_ind)
+              for (micm::Index i_ind = 0; i_ind < num_reactants; ++i_ind)
               {
-                jacobian_values.ForEachBlockStrict(
-                    [num_reactants, eps](const double& k, const double& solvent, double& partial)
+                jac_view.ForEachBlockStrict(
+                    [num_reactants, eps](const micm::Real& k, const micm::Real& solvent, micm::Real& partial)
                     { partial = k * solvent / std::pow(solvent + eps, num_reactants); },
-                    params.GetConstColumnView(k_index),
-                    vars.GetConstColumnView(solvent_idx),
+                    params_view.GetConstColumnView(k_index),
+                    state_view.GetConstColumnView(solvent_idx),
                     d_rate_d_ind);
-                for (std::size_t r = 0; r < num_reactants; ++r)
+                for (micm::Index r = 0; r < num_reactants; ++r)
                 {
                   if (r == i_ind)
                     continue;
-                  const std::size_t r_idx = reactant_indices_[phase * num_reactants + r];
-                  jacobian_values.ForEachBlockStrict(
-                      [](const double& reactant, double& partial) { partial *= reactant; },
-                      vars.GetConstColumnView(r_idx),
+                  const micm::Index r_idx = views.reactant_indices_[phase * num_reactants + r];
+                  jac_view.ForEachBlockStrict(
+                      [](const micm::Real& reactant, micm::Real& partial) { partial *= reactant; },
+                      state_view.GetConstColumnView(r_idx),
                       d_rate_d_ind);
                 }
                 if (capped)
                 {
-                  const std::size_t i_ind_idx = reactant_indices_[phase * num_reactants + i_ind];
-                  jacobian_values.ForEachBlockStrict(
-                      [](const double& s2, const double& cr, const double& cm, const double& R, double& partial)
+                  const micm::Index i_ind_idx = views.reactant_indices_[phase * num_reactants + i_ind];
+                  jac_view.ForEachBlockStrict(
+                      [](const micm::Real& s2,
+                         const micm::Real& cr,
+                         const micm::Real& cm,
+                         const micm::Real& R,
+                         micm::Real& partial)
                       {
-                        const double ratio = cm / std::max(R, kSoftMinFloor);
+                        const micm::Real ratio = cm / std::max(R, kSoftMinFloor);
                         partial = s2 * partial + cr * std::pow(ratio, kSoftMinP + 1.0);
                       },
                       sech2_var,
                       corr_var,
                       c_min_var,
-                      vars.GetConstColumnView(i_ind_idx),
+                      state_view.GetConstColumnView(i_ind_idx),
                       d_rate_d_ind);
                 }
-                for (std::size_t i_dep = 0; i_dep < num_reactants; ++i_dep)
+                for (micm::Index i_dep = 0; i_dep < num_reactants; ++i_dep)
                 {
-                  const std::size_t flat = jacobian_flat_ids_[pair++];
-                  jacobian_values.ForEachBlockStrict(
-                      [](const double& partial, double& jac) { jac += partial; },
+                  const micm::Index flat = views.jacobian_flat_ids_[pair++];
+                  jac_view.ForEachBlockStrict(
+                      [](const micm::Real& partial, micm::Real& jac) { jac += partial; },
                       d_rate_d_ind,
-                      jacobian_values.GetBlockView(flat));
+                      jac_view.GetBlockView(flat));
                 }
-                for (std::size_t i_dep = 0; i_dep < num_products; ++i_dep)
+                for (micm::Index i_dep = 0; i_dep < num_products; ++i_dep)
                 {
-                  const std::size_t flat = jacobian_flat_ids_[pair++];
-                  jacobian_values.ForEachBlockStrict(
-                      [](const double& partial, double& jac) { jac -= partial; },
+                  const micm::Index flat = views.jacobian_flat_ids_[pair++];
+                  jac_view.ForEachBlockStrict(
+                      [](const micm::Real& partial, micm::Real& jac) { jac -= partial; },
                       d_rate_d_ind,
-                      jacobian_values.GetBlockView(flat));
+                      jac_view.GetBlockView(flat));
                 }
               }
 
-              jacobian_values.ForEachBlockStrict(
-                  [num_reactants, eps](const double& k, const double& solvent, double& partial) {
-                    partial = k * (eps + (1.0 - static_cast<int>(num_reactants)) * solvent) /
+              jac_view.ForEachBlockStrict(
+                  [num_reactants, eps](const micm::Real& k, const micm::Real& solvent, micm::Real& partial)
+                  {
+                    partial = k * (eps + (1.0 - static_cast<micm::Real>(num_reactants)) * solvent) /
                               std::pow(solvent + eps, num_reactants + 1);
                   },
-                  params.GetConstColumnView(k_index),
-                  vars.GetConstColumnView(solvent_idx),
+                  params_view.GetConstColumnView(k_index),
+                  state_view.GetConstColumnView(solvent_idx),
                   d_rate_d_ind);
-              for (std::size_t r = 0; r < num_reactants; ++r)
+              for (micm::Index r = 0; r < num_reactants; ++r)
               {
-                const std::size_t r_idx = reactant_indices_[phase * num_reactants + r];
-                jacobian_values.ForEachBlockStrict(
-                    [](const double& reactant, double& partial) { partial *= reactant; },
-                    vars.GetConstColumnView(r_idx),
+                const micm::Index r_idx = views.reactant_indices_[phase * num_reactants + r];
+                jac_view.ForEachBlockStrict(
+                    [](const micm::Real& reactant, micm::Real& partial) { partial *= reactant; },
+                    state_view.GetConstColumnView(r_idx),
                     d_rate_d_ind);
               }
               if (capped)
-                jacobian_values.ForEachBlockStrict(
-                    [](const double& s2, double& partial) { partial *= s2; }, sech2_var, d_rate_d_ind);
-              for (std::size_t i_dep = 0; i_dep < num_reactants; ++i_dep)
+                jac_view.ForEachBlockStrict(
+                    [](const micm::Real& s2, micm::Real& partial) { partial *= s2; }, sech2_var, d_rate_d_ind);
+              for (micm::Index i_dep = 0; i_dep < num_reactants; ++i_dep)
               {
-                const std::size_t flat = jacobian_flat_ids_[pair++];
-                jacobian_values.ForEachBlockStrict(
-                    [](const double& partial, double& jac) { jac += partial; },
+                const micm::Index flat = views.jacobian_flat_ids_[pair++];
+                jac_view.ForEachBlockStrict(
+                    [](const micm::Real& partial, micm::Real& jac) { jac += partial; },
                     d_rate_d_ind,
-                    jacobian_values.GetBlockView(flat));
+                    jac_view.GetBlockView(flat));
               }
-              for (std::size_t i_dep = 0; i_dep < num_products; ++i_dep)
+              for (micm::Index i_dep = 0; i_dep < num_products; ++i_dep)
               {
-                const std::size_t flat = jacobian_flat_ids_[pair++];
-                jacobian_values.ForEachBlockStrict(
-                    [](const double& partial, double& jac) { jac -= partial; },
+                const micm::Index flat = views.jacobian_flat_ids_[pair++];
+                jac_view.ForEachBlockStrict(
+                    [](const micm::Real& partial, micm::Real& jac) { jac -= partial; },
                     d_rate_d_ind,
-                    jacobian_values.GetBlockView(flat));
+                    jac_view.GetBlockView(flat));
               }
-            },
-            state_parameters,
-            state_variables,
-            jacobian)(state_parameters, state_variables, jacobian);
-      }
+            }
+          },
+          state_parameters,
+          state_variables,
+          jacobian)(state_parameters, state_variables, jacobian);
     }
 
    private:
-    /// Soft-min exponent for rate capping; matches `DissolvedReaction::kSoftMinP`.
-    static constexpr double kSoftMinP = 10.0;
-    /// Tiny floor to prevent `pow(0, -p)` overflow; matches `DissolvedReaction::kSoftMinFloor`.
-    static constexpr double kSoftMinFloor = 1.0e-300;
-
-    static std::size_t LookupParameterIndex(const DissolvedReaction& config, const auto& state_parameter_indices)
+    static std::size_t LookupParameterIndex(
+        const DissolvedReaction& config,
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices)
     {
       const std::string key = config.phase_.name_ + "." + config.uuid_ + ".k";
       auto it = state_parameter_indices.find(key);
@@ -381,7 +466,7 @@ namespace miam
     }
 
     static std::size_t LookupSpecies(
-        const auto& state_variable_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices,
         const std::string& prefix,
         const std::string& phase_name,
         const std::string& species_name)
@@ -396,15 +481,10 @@ namespace miam
       return it->second;
     }
 
-    std::vector<std::size_t> reactant_indices_;
-    std::vector<std::size_t> product_indices_;
-    std::vector<std::size_t> solvent_indices_;
-    std::vector<std::size_t> jacobian_flat_ids_;
-    std::size_t k_state_parameter_index_ = 0;
-    std::size_t num_phases_ = 0;
-    std::size_t num_reactants_ = 0;
-    std::size_t num_products_ = 0;
-    double solvent_floor_ = 1.0e-20;
-    double min_halflife_ = 0.0;
+    Vector<micm::Index> reactant_indices_{};
+    Vector<micm::Index> product_indices_{};
+    Vector<micm::Index> solvent_indices_{};
+    Vector<micm::Index> jacobian_flat_ids_{};
+    Views views_{};
   };
 }  // namespace miam

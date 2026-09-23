@@ -68,16 +68,16 @@ namespace miam
     // Solve-time companion Sets. Populated in FinalizeProcessSetup (which is when
     // the sparse Jacobian pattern is available); consumed on-device by AddForcingTerms /
     // SubtractJacobianTerms.
-    std::vector<DissolvedReactionSet> dissolved_reaction_sets_{};
-    std::vector<DissolvedReversibleReactionSet> dissolved_reversible_reaction_sets_{};
-    std::vector<HenrysLawPhaseTransferSet> henrys_law_phase_transfer_sets_{};
+    mutable std::any dissolved_reaction_sets_any_{};
+    mutable std::any dissolved_reversible_reaction_sets_any_{};
+    mutable std::any henrys_law_phase_transfer_sets_any_{};
 
     // Solve-time companion Sets for constraints. Populated in FinalizeConstraintSetup.
-    // `linear_constraint_sets_any_` holds `std::vector<LinearConstraintSet<DP, SP>>` for the
-    // SP MICM finalized us with (DP recovered via `detail::MatchingDenseT<SP>`).
+    // Each holds `std::vector<ConstraintSet<DP, SP>>` for the SP MICM finalized us with
+    // (DP recovered via `detail::MatchingDenseT<SP>`).
     mutable std::any linear_constraint_sets_any_{};
-    std::vector<DissolvedEquilibriumConstraintSet> dissolved_equilibrium_constraint_sets_{};
-    std::vector<HenrysLawEquilibriumConstraintSet> henrys_law_equilibrium_constraint_sets_{};
+    mutable std::any dissolved_equilibrium_constraint_sets_any_{};
+    mutable std::any henrys_law_equilibrium_constraint_sets_any_{};
 
     /// @brief Returns the total state size (number of variables, number of parameters)
     std::tuple<std::size_t, std::size_t> StateSize() const
@@ -291,9 +291,9 @@ namespace miam
         jacobian_builder = jacobian_builder.WithElement(elem.first, elem.second);
       SparseMatrixPolicy jacobian_pattern(jacobian_builder);
 
-      std::vector<DissolvedReactionSet> dr_sets;
-      std::vector<DissolvedReversibleReactionSet> drr_sets;
-      std::vector<HenrysLawPhaseTransferSet> hlpt_sets;
+      std::vector<DissolvedReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>> dr_sets;
+      std::vector<DissolvedReversibleReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>> drr_sets;
+      std::vector<HenrysLawPhaseTransferSet<DenseMatrixPolicy, SparseMatrixPolicy>> hlpt_sets;
       ForEachProcess(
           [&](const auto& process)
           {
@@ -315,11 +315,11 @@ namespace miam
                  DenseMatrixPolicy& forcing_terms)
       {
         for (const auto& set : dr_sets)
-          set.template AddForcingTerms<DenseMatrixPolicy>(state_parameters, state_variables, forcing_terms);
+          set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
         for (const auto& set : drr_sets)
-          set.template AddForcingTerms<DenseMatrixPolicy>(state_parameters, state_variables, forcing_terms);
+          set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
         for (const auto& set : hlpt_sets)
-          set.template AddForcingTerms<DenseMatrixPolicy>(state_parameters, state_variables, forcing_terms, descriptors);
+          set.AddForcingTerms(state_parameters, state_variables, forcing_terms, descriptors);
       };
     }
 
@@ -333,9 +333,9 @@ namespace miam
       auto phase_prefixes = CollectPhaseStatePrefixes();
       auto descriptors =
           BuildDescriptors<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
-      std::vector<DissolvedReactionSet> dr_sets;
-      std::vector<DissolvedReversibleReactionSet> drr_sets;
-      std::vector<HenrysLawPhaseTransferSet> hlpt_sets;
+      std::vector<DissolvedReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>> dr_sets;
+      std::vector<DissolvedReversibleReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>> drr_sets;
+      std::vector<HenrysLawPhaseTransferSet<DenseMatrixPolicy, SparseMatrixPolicy>> hlpt_sets;
       ForEachProcess(
           [&](const auto& process)
           {
@@ -357,14 +357,11 @@ namespace miam
                  SparseMatrixPolicy& jacobian)
       {
         for (const auto& set : dr_sets)
-          set.template SubtractJacobianTerms<DenseMatrixPolicy, SparseMatrixPolicy>(
-              state_parameters, state_variables, jacobian);
+          set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
         for (const auto& set : drr_sets)
-          set.template SubtractJacobianTerms<DenseMatrixPolicy, SparseMatrixPolicy>(
-              state_parameters, state_variables, jacobian);
+          set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
         for (const auto& set : hlpt_sets)
-          set.template SubtractJacobianTerms<DenseMatrixPolicy, SparseMatrixPolicy>(
-              state_parameters, state_variables, jacobian, descriptors);
+          set.SubtractJacobianTerms(state_parameters, state_variables, jacobian, descriptors);
       };
     }
 
@@ -523,9 +520,13 @@ namespace miam
       auto reference_descriptors =
           BuildDescriptors<ReferenceDense>(phase_prefixes, state_parameter_indices, state_variable_indices);
 
-      dissolved_reaction_sets_.clear();
-      dissolved_reversible_reaction_sets_.clear();
-      henrys_law_phase_transfer_sets_.clear();
+      using MatchingDP = detail::MatchingDenseT<SparseMatrixPolicy>;
+      using DissolvedReactionSetT = DissolvedReactionSet<MatchingDP, SparseMatrixPolicy>;
+      using DissolvedReversibleReactionSetT = DissolvedReversibleReactionSet<MatchingDP, SparseMatrixPolicy>;
+      using HenrysLawPhaseTransferSetT = HenrysLawPhaseTransferSet<MatchingDP, SparseMatrixPolicy>;
+      std::vector<DissolvedReactionSetT> dissolved_reaction_sets;
+      std::vector<DissolvedReversibleReactionSetT> dissolved_reversible_reaction_sets;
+      std::vector<HenrysLawPhaseTransferSetT> henrys_law_phase_transfer_sets;
       for (const auto& process : processes_)
       {
         std::visit(
@@ -534,22 +535,25 @@ namespace miam
               using P = std::decay_t<decltype(p)>;
               if constexpr (std::is_same_v<P, DissolvedReaction>)
               {
-                dissolved_reaction_sets_.emplace_back(
+                dissolved_reaction_sets.emplace_back(
                     p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
               }
               else if constexpr (std::is_same_v<P, DissolvedReversibleReaction>)
               {
-                dissolved_reversible_reaction_sets_.emplace_back(
+                dissolved_reversible_reaction_sets.emplace_back(
                     p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
               }
               else if constexpr (std::is_same_v<P, HenrysLawPhaseTransfer>)
               {
-                henrys_law_phase_transfer_sets_.emplace_back(
+                henrys_law_phase_transfer_sets.emplace_back(
                     p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, reference_descriptors);
               }
             },
             process);
       }
+      dissolved_reaction_sets_any_ = std::move(dissolved_reaction_sets);
+      dissolved_reversible_reaction_sets_any_ = std::move(dissolved_reversible_reaction_sets);
+      henrys_law_phase_transfer_sets_any_ = std::move(henrys_law_phase_transfer_sets);
     }
 
     /// @brief Cache build-time indices for constraint solve-time methods
@@ -568,9 +572,11 @@ namespace miam
 
       using MatchingDP = detail::MatchingDenseT<SparseMatrixPolicy>;
       using LinearSetT = LinearConstraintSet<MatchingDP, SparseMatrixPolicy>;
+      using DissEqSetT = DissolvedEquilibriumConstraintSet<MatchingDP, SparseMatrixPolicy>;
+      using HenrysEqSetT = HenrysLawEquilibriumConstraintSet<MatchingDP, SparseMatrixPolicy>;
       std::vector<LinearSetT> linear_sets;
-      dissolved_equilibrium_constraint_sets_.clear();
-      henrys_law_equilibrium_constraint_sets_.clear();
+      std::vector<DissEqSetT> dissolved_equilibrium_sets;
+      std::vector<HenrysEqSetT> henrys_law_equilibrium_sets;
       for (const auto& constraint : constraints_)
       {
         std::visit(
@@ -581,15 +587,17 @@ namespace miam
                 linear_sets.emplace_back(
                     c, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
               else if constexpr (std::is_same_v<C, DissolvedEquilibriumConstraint>)
-                dissolved_equilibrium_constraint_sets_.emplace_back(
+                dissolved_equilibrium_sets.emplace_back(
                     c, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
               else if constexpr (std::is_same_v<C, HenrysLawEquilibriumConstraint>)
-                henrys_law_equilibrium_constraint_sets_.emplace_back(
+                henrys_law_equilibrium_sets.emplace_back(
                     c, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
             },
             constraint);
       }
       linear_constraint_sets_any_ = std::move(linear_sets);
+      dissolved_equilibrium_constraint_sets_any_ = std::move(dissolved_equilibrium_sets);
+      henrys_law_equilibrium_constraint_sets_any_ = std::move(henrys_law_equilibrium_sets);
     }
 
     /// @brief Solve-time: refresh temperature-/pressure-dependent process parameters
@@ -624,15 +632,31 @@ namespace miam
         const DenseMatrixPolicy& state_variables,
         DenseMatrixPolicy& forcing) const
     {
-      for (const auto& set : dissolved_reaction_sets_)
-        set.template AddForcingTerms<DenseMatrixPolicy>(state_parameters, state_variables, forcing);
-      for (const auto& set : dissolved_reversible_reaction_sets_)
-        set.template AddForcingTerms<DenseMatrixPolicy>(state_parameters, state_variables, forcing);
-      if (!henrys_law_phase_transfer_sets_.empty())
+      using SP = detail::MatchingSparseT<DenseMatrixPolicy>;
+      using DissolvedReactionSetT = DissolvedReactionSet<DenseMatrixPolicy, SP>;
+      using DissolvedReversibleReactionSetT = DissolvedReversibleReactionSet<DenseMatrixPolicy, SP>;
+      using HenrysLawPhaseTransferSetT = HenrysLawPhaseTransferSet<DenseMatrixPolicy, SP>;
+      if (dissolved_reaction_sets_any_.has_value())
       {
-        const auto& descriptors = GetCachedDescriptors<DenseMatrixPolicy>();
-        for (const auto& set : henrys_law_phase_transfer_sets_)
-          set.template AddForcingTerms<DenseMatrixPolicy>(state_parameters, state_variables, forcing, descriptors);
+        auto& sets = std::any_cast<std::vector<DissolvedReactionSetT>&>(dissolved_reaction_sets_any_);
+        for (const auto& set : sets)
+          set.AddForcingTerms(state_parameters, state_variables, forcing);
+      }
+      if (dissolved_reversible_reaction_sets_any_.has_value())
+      {
+        auto& sets = std::any_cast<std::vector<DissolvedReversibleReactionSetT>&>(dissolved_reversible_reaction_sets_any_);
+        for (const auto& set : sets)
+          set.AddForcingTerms(state_parameters, state_variables, forcing);
+      }
+      if (henrys_law_phase_transfer_sets_any_.has_value())
+      {
+        auto& sets = std::any_cast<std::vector<HenrysLawPhaseTransferSetT>&>(henrys_law_phase_transfer_sets_any_);
+        if (!sets.empty())
+        {
+          const auto& descriptors = GetCachedDescriptors<DenseMatrixPolicy>();
+          for (const auto& set : sets)
+            set.AddForcingTerms(state_parameters, state_variables, forcing, descriptors);
+        }
       }
     }
 
@@ -643,18 +667,30 @@ namespace miam
         const DenseMatrixPolicy& state_variables,
         SparseMatrixPolicy& jacobian) const
     {
-      for (const auto& set : dissolved_reaction_sets_)
-        set.template SubtractJacobianTerms<DenseMatrixPolicy, SparseMatrixPolicy>(
-            state_parameters, state_variables, jacobian);
-      for (const auto& set : dissolved_reversible_reaction_sets_)
-        set.template SubtractJacobianTerms<DenseMatrixPolicy, SparseMatrixPolicy>(
-            state_parameters, state_variables, jacobian);
-      if (!henrys_law_phase_transfer_sets_.empty())
+      using DissolvedReactionSetT = DissolvedReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>;
+      using DissolvedReversibleReactionSetT = DissolvedReversibleReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>;
+      using HenrysLawPhaseTransferSetT = HenrysLawPhaseTransferSet<DenseMatrixPolicy, SparseMatrixPolicy>;
+      if (dissolved_reaction_sets_any_.has_value())
       {
-        const auto& descriptors = GetCachedDescriptors<DenseMatrixPolicy>();
-        for (const auto& set : henrys_law_phase_transfer_sets_)
-          set.template SubtractJacobianTerms<DenseMatrixPolicy, SparseMatrixPolicy>(
-              state_parameters, state_variables, jacobian, descriptors);
+        auto& sets = std::any_cast<std::vector<DissolvedReactionSetT>&>(dissolved_reaction_sets_any_);
+        for (const auto& set : sets)
+          set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
+      }
+      if (dissolved_reversible_reaction_sets_any_.has_value())
+      {
+        auto& sets = std::any_cast<std::vector<DissolvedReversibleReactionSetT>&>(dissolved_reversible_reaction_sets_any_);
+        for (const auto& set : sets)
+          set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
+      }
+      if (henrys_law_phase_transfer_sets_any_.has_value())
+      {
+        auto& sets = std::any_cast<std::vector<HenrysLawPhaseTransferSetT>&>(henrys_law_phase_transfer_sets_any_);
+        if (!sets.empty())
+        {
+          const auto& descriptors = GetCachedDescriptors<DenseMatrixPolicy>();
+          for (const auto& set : sets)
+            set.SubtractJacobianTerms(state_parameters, state_variables, jacobian, descriptors);
+        }
       }
     }
 
@@ -722,16 +758,26 @@ namespace miam
     {
       using SP = detail::MatchingSparseT<DenseMatrixPolicy>;
       using LinearSetT = LinearConstraintSet<DenseMatrixPolicy, SP>;
+      using DissEqSetT = DissolvedEquilibriumConstraintSet<DenseMatrixPolicy, SP>;
+      using HenrysEqSetT = HenrysLawEquilibriumConstraintSet<DenseMatrixPolicy, SP>;
       if (linear_constraint_sets_any_.has_value())
       {
         auto& sets = std::any_cast<std::vector<LinearSetT>&>(linear_constraint_sets_any_);
         for (const auto& set : sets)
           set.AddResidual(state_variables, state_parameters, forcing);
       }
-      for (const auto& set : dissolved_equilibrium_constraint_sets_)
-        set.template AddResidual<DenseMatrixPolicy>(state_variables, state_parameters, forcing);
-      for (const auto& set : henrys_law_equilibrium_constraint_sets_)
-        set.template AddResidual<DenseMatrixPolicy>(state_variables, state_parameters, forcing);
+      if (dissolved_equilibrium_constraint_sets_any_.has_value())
+      {
+        auto& sets = std::any_cast<std::vector<DissEqSetT>&>(dissolved_equilibrium_constraint_sets_any_);
+        for (const auto& set : sets)
+          set.AddResidual(state_variables, state_parameters, forcing);
+      }
+      if (henrys_law_equilibrium_constraint_sets_any_.has_value())
+      {
+        auto& sets = std::any_cast<std::vector<HenrysEqSetT>&>(henrys_law_equilibrium_constraint_sets_any_);
+        for (const auto& set : sets)
+          set.AddResidual(state_variables, state_parameters, forcing);
+      }
     }
 
     /// @brief Solve-time: subtract dG/dy from algebraic Jacobian rows (-J convention)
@@ -742,16 +788,26 @@ namespace miam
         SparseMatrixPolicy& jacobian) const
     {
       using LinearSetT = LinearConstraintSet<DenseMatrixPolicy, SparseMatrixPolicy>;
+      using DissEqSetT = DissolvedEquilibriumConstraintSet<DenseMatrixPolicy, SparseMatrixPolicy>;
+      using HenrysEqSetT = HenrysLawEquilibriumConstraintSet<DenseMatrixPolicy, SparseMatrixPolicy>;
       if (linear_constraint_sets_any_.has_value())
       {
         auto& sets = std::any_cast<std::vector<LinearSetT>&>(linear_constraint_sets_any_);
         for (const auto& set : sets)
           set.SubtractJacobian(state_variables, state_parameters, jacobian);
       }
-      for (const auto& set : dissolved_equilibrium_constraint_sets_)
-        set.template SubtractJacobian<DenseMatrixPolicy, SparseMatrixPolicy>(state_variables, state_parameters, jacobian);
-      for (const auto& set : henrys_law_equilibrium_constraint_sets_)
-        set.template SubtractJacobian<DenseMatrixPolicy, SparseMatrixPolicy>(state_variables, state_parameters, jacobian);
+      if (dissolved_equilibrium_constraint_sets_any_.has_value())
+      {
+        auto& sets = std::any_cast<std::vector<DissEqSetT>&>(dissolved_equilibrium_constraint_sets_any_);
+        for (const auto& set : sets)
+          set.SubtractJacobian(state_variables, state_parameters, jacobian);
+      }
+      if (henrys_law_equilibrium_constraint_sets_any_.has_value())
+      {
+        auto& sets = std::any_cast<std::vector<HenrysEqSetT>&>(henrys_law_equilibrium_constraint_sets_any_);
+        for (const auto& set : sets)
+          set.SubtractJacobian(state_variables, state_parameters, jacobian);
+      }
     }
 
    private:

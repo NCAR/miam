@@ -31,8 +31,8 @@ namespace
   /// Builds a `DissolvedReactionSet` bound to a fresh sparse-Jacobian pattern derived from
   /// `reaction.NonZeroJacobianElements(...)`; used to drive both `AddForcingTerms` and
   /// `SubtractJacobianTerms` in the tests below.
-  template<typename Sparse = SparseMatrixPolicy>
-  DissolvedReactionSet MakeSet(
+  template<typename Dense = MatrixPolicy, typename Sparse = SparseMatrixPolicy>
+  DissolvedReactionSet<Dense, Sparse> MakeSet(
       const DissolvedReaction& reaction,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
@@ -44,7 +44,8 @@ namespace
     for (const auto& elem : elements)
       builder = builder.WithElement(elem.first, elem.second);
     Sparse pattern(builder);
-    return DissolvedReactionSet(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, pattern);
+    return DissolvedReactionSet<Dense, Sparse>(
+        reaction, phase_prefixes, state_parameter_indices, state_variable_indices, pattern);
   }
 
   /// @brief Compare analytical Jacobian against central finite-difference approximation
@@ -68,9 +69,9 @@ namespace
     SparseMatrixPolicy jacobian(jac_builder);
     jacobian.Fill(0.0);
 
-    DissolvedReactionSet reaction_set(
+    DissolvedReactionSet<MatrixPolicy, SparseMatrixPolicy> reaction_set(
         reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
-    reaction_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(
+    reaction_set.SubtractJacobianTerms(
         state_parameters, state_variables, jacobian);
 
     // Build FD Jacobian — bind state_parameters into the forcing callable
@@ -78,7 +79,7 @@ namespace
         [&](const MatrixPolicy& vars, MatrixPolicy& out)
         {
           out.Fill(0.0);
-          reaction_set.template AddForcingTerms<MatrixPolicy>(state_parameters, vars, out);
+          reaction_set.AddForcingTerms(state_parameters, vars, out);
         },
         state_variables,
         num_vars);
@@ -479,7 +480,7 @@ TEST(DissolvedReaction, ForcingFunctionBasicRates)
   state_variable_indices["MODE1.AQUEOUS.B"] = 1;
   state_variable_indices["MODE1.AQUEOUS.S"] = 2;
 
-  auto forcing_func_set = MakeSet<SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_func_set = MakeSet<MatrixPolicy, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(1, 1);
   state_parameters[0][0] = k;
@@ -491,7 +492,7 @@ TEST(DissolvedReaction, ForcingFunctionBasicRates)
 
   MatrixPolicy forcing_terms(1, 3, 0.0);
 
-  forcing_func_set.template AddForcingTerms<MatrixPolicy>(state_parameters, state_variables, forcing_terms);
+  forcing_func_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // rate = k / [S]^(1-1) * [A] = k * [A] = 0.1 * 2.0 = 0.2
   double expected_rate = k * 2.0;
@@ -539,7 +540,7 @@ TEST(DissolvedReaction, ForcingFunctionSolventNormalization)
   state_variable_indices["DROP.AQUEOUS.C"] = 2;
   state_variable_indices["DROP.AQUEOUS.S"] = 3;
 
-  auto forcing_func_set = MakeSet<SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_func_set = MakeSet<MatrixPolicy, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(1, 1);
   state_parameters[0][0] = k;
@@ -552,7 +553,7 @@ TEST(DissolvedReaction, ForcingFunctionSolventNormalization)
 
   MatrixPolicy forcing_terms(1, 4, 0.0);
 
-  forcing_func_set.template AddForcingTerms<MatrixPolicy>(state_parameters, state_variables, forcing_terms);
+  forcing_func_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // rate = k / [S]^(2-1) * [A] * [B] = k / [S] * [A] * [B]
   double expected_rate = k / 50.0 * 0.001 * 0.002;
@@ -598,7 +599,7 @@ TEST(DissolvedReaction, ForcingFunctionMultipleProducts)
   state_variable_indices["DROP.AQUEOUS.C"] = 2;
   state_variable_indices["DROP.AQUEOUS.S"] = 3;
 
-  auto forcing_func_set = MakeSet<SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_func_set = MakeSet<MatrixPolicy, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(1, 1);
   state_parameters[0][0] = k;
@@ -611,7 +612,7 @@ TEST(DissolvedReaction, ForcingFunctionMultipleProducts)
 
   MatrixPolicy forcing_terms(1, 4, 0.0);
 
-  forcing_func_set.template AddForcingTerms<MatrixPolicy>(state_parameters, state_variables, forcing_terms);
+  forcing_func_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // rate = k / [S]^(1-1) * [A] = k * [A] = 2.0 * 3.0 = 6.0
   double expected_rate = k * 3.0;
@@ -650,7 +651,7 @@ TEST(DissolvedReaction, ForcingFunctionMultipleCells)
   state_variable_indices["MODE1.AQUEOUS.B"] = 1;
   state_variable_indices["MODE1.AQUEOUS.S"] = 2;
 
-  auto forcing_func_set = MakeSet<SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_func_set = MakeSet<MatrixPolicy, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(3, 1);
   MatrixPolicy state_variables(3, 3);
@@ -664,7 +665,7 @@ TEST(DissolvedReaction, ForcingFunctionMultipleCells)
     state_variables[i][2] = 55.0;           // [S]
   }
 
-  forcing_func_set.template AddForcingTerms<MatrixPolicy>(state_parameters, state_variables, forcing_terms);
+  forcing_func_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   for (std::size_t i = 0; i < 3; ++i)
   {
@@ -709,7 +710,7 @@ TEST(DissolvedReaction, ForcingFunctionMultiplePhaseInstances)
   state_variable_indices["LARGE_DROP.AQUEOUS.B"] = 4;
   state_variable_indices["LARGE_DROP.AQUEOUS.S"] = 5;
 
-  auto forcing_func_set = MakeSet<SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_func_set = MakeSet<MatrixPolicy, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(1, 1);
   state_parameters[0][0] = k;
@@ -726,7 +727,7 @@ TEST(DissolvedReaction, ForcingFunctionMultiplePhaseInstances)
 
   MatrixPolicy forcing_terms(1, 6, 0.0);
 
-  forcing_func_set.template AddForcingTerms<MatrixPolicy>(state_parameters, state_variables, forcing_terms);
+  forcing_func_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // Small drop: rate = k * [A] = 0.1 * 2.0 = 0.2
   double rate_small = k * 2.0;
@@ -784,7 +785,7 @@ TEST(DissolvedReaction, JacobianFunctionBasicPartials)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  DissolvedReactionSet jacobian_func_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_func_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 1);
   state_parameters[0][0] = k;
@@ -794,7 +795,7 @@ TEST(DissolvedReaction, JacobianFunctionBasicPartials)
   state_variables[0][1] = 0.5;   // [B]
   state_variables[0][2] = 55.0;  // [S]
 
-  jacobian_func_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(state_parameters, state_variables, jacobian);
+  jacobian_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // For A -> B (1 reactant, n_r = 1):
   // rate = k / [S]^0 * [A] = k * [A]
@@ -856,7 +857,7 @@ TEST(DissolvedReaction, JacobianFunctionMultipleReactants)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  DissolvedReactionSet jacobian_func_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_func_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 1);
   state_parameters[0][0] = k;
@@ -867,7 +868,7 @@ TEST(DissolvedReaction, JacobianFunctionMultipleReactants)
   state_variables[0][2] = 0.0;    // [C]
   state_variables[0][3] = 50.0;   // [S]
 
-  jacobian_func_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(state_parameters, state_variables, jacobian);
+  jacobian_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // rate = k / [S] * [A] * [B]
   // d(rate)/d[A] = k / [S] * [B] = 1.0 / 50.0 * 0.002 = 4e-5
@@ -942,7 +943,7 @@ TEST(DissolvedReaction, JacobianFunctionSolventPartial)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  DissolvedReactionSet jacobian_func_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_func_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 1);
   state_parameters[0][0] = k;
@@ -952,7 +953,7 @@ TEST(DissolvedReaction, JacobianFunctionSolventPartial)
   state_variables[0][1] = 40.0;  // [C] (solvent and reactant)
   state_variables[0][2] = 0.0;   // [B]
 
-  jacobian_func_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(state_parameters, state_variables, jacobian);
+  jacobian_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // rate = k / [C]^(2-1) * [A] * [C] = k * [A]
   // d(rate)/d[A] = k / [C] * [C] = k
@@ -1166,7 +1167,7 @@ TEST(DissolvedReaction, ForcingFunctionSolventFloorZeroSolvent)
     { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.C", 2 }, { "DROP.AQUEOUS.S", 3 }
   };
 
-  auto ff_set = MakeSet<SparseMatrixPolicy>(reaction, phase_prefixes, spi, svi);
+  auto ff_set = MakeSet<VM, SparseMatrixPolicy>(reaction, phase_prefixes, spi, svi);
 
   VM params(1, 1);
   params[0][0] = k;
@@ -1177,7 +1178,7 @@ TEST(DissolvedReaction, ForcingFunctionSolventFloorZeroSolvent)
   vars[0][3] = 0.0;  // [S] = 0
   VM forcing(1, 4, 0.0);
 
-  ff_set.template AddForcingTerms<VM>(params, vars, forcing);
+  ff_set.AddForcingTerms(params, vars, forcing);
 
   // rate = k * 0 / (0+eps)^2 * [A]*[B] → 0
   EXPECT_NEAR(forcing[0][0], 0.0, 1e-10) << "Forcing should be zero when [S]=0";
@@ -1215,7 +1216,7 @@ TEST(DissolvedReaction, JacobianFunctionSolventFloorZeroSolvent)
   SparseMatrixPolicy jacobian(jac_builder);
   jacobian.Fill(0.0);
 
-  DissolvedReactionSet jac_func_set(reaction, phase_prefixes, spi, svi, jacobian);
+  DissolvedReactionSet<MatrixPolicy, SparseMatrixPolicy> jac_func_set(reaction, phase_prefixes, spi, svi, jacobian);
 
   MatrixPolicy params(1, 1);
   params[0][0] = k;
@@ -1224,7 +1225,7 @@ TEST(DissolvedReaction, JacobianFunctionSolventFloorZeroSolvent)
   vars[0][1] = 0.002;
   vars[0][2] = 0.0;
   vars[0][3] = 0.0;  // [S] = 0
-  jac_func_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(params, vars, jacobian);
+  jac_func_set.SubtractJacobianTerms(params, vars, jacobian);
 
   // When [S] = 0 the rate r = k*[S]/([S]+δ)^n_r * ∏Ri = 0, so
   // ∂r/∂[Ri] = k*[S]/([S]+δ)^n_r * ∏_{j≠i}Rj → 0 naturally (reactant/product columns).
@@ -1289,8 +1290,8 @@ TEST(DissolvedReaction, ForcingFunctionCappedUncappedRegime)
                                                     { "DROP.AQUEOUS.B", 1 },
                                                     { "DROP.AQUEOUS.S", 2 } };
 
-  auto ff_u_set = MakeSet<SparseMatrixPolicy>(uncapped, phase_prefixes, spi_u, svi);
-  auto ff_c_set = MakeSet<SparseMatrixPolicy>(capped, phase_prefixes, spi_c, svi);
+  auto ff_u_set = MakeSet<VM, SparseMatrixPolicy>(uncapped, phase_prefixes, spi_u, svi);
+  auto ff_c_set = MakeSet<VM, SparseMatrixPolicy>(capped, phase_prefixes, spi_c, svi);
 
   VM params(1, 1);
   params[0][0] = k;
@@ -1302,8 +1303,8 @@ TEST(DissolvedReaction, ForcingFunctionCappedUncappedRegime)
   // r = k * [A] = 1e-6; r_max = [A] / t_half = 1.0 → r << r_max
   VM forcing_u(1, 3, 0.0);
   VM forcing_c(1, 3, 0.0);
-  ff_u_set.template AddForcingTerms<VM>(params, vars, forcing_u);
-  ff_c_set.template AddForcingTerms<VM>(params, vars, forcing_c);
+  ff_u_set.AddForcingTerms(params, vars, forcing_u);
+  ff_c_set.AddForcingTerms(params, vars, forcing_c);
 
   EXPECT_NEAR(forcing_c[0][0], forcing_u[0][0], std::abs(forcing_u[0][0]) * 1e-10)
       << "Capped should equal uncapped when rate << r_max";
@@ -1333,7 +1334,7 @@ TEST(DissolvedReaction, ForcingFunctionCappedSaturatedRegime)
                                                     { "DROP.AQUEOUS.B", 1 },
                                                     { "DROP.AQUEOUS.S", 2 } };
 
-  auto ff_set = MakeSet<SparseMatrixPolicy>(reaction, phase_prefixes, spi, svi);
+  auto ff_set = MakeSet<VM, SparseMatrixPolicy>(reaction, phase_prefixes, spi, svi);
 
   VM params(1, 1);
   params[0][0] = k;
@@ -1346,7 +1347,7 @@ TEST(DissolvedReaction, ForcingFunctionCappedSaturatedRegime)
   // r = k * [A] = 1e6; r_max = [A] / t_half = 1e-3 → rate >> r_max
   // expected capped rate ≈ r_max = A / t_half (tanh(u) ≈ 1)
   VM forcing(1, 3, 0.0);
-  ff_set.template AddForcingTerms<VM>(params, vars, forcing);
+  ff_set.AddForcingTerms(params, vars, forcing);
 
   double r_max = A / t_half;
   EXPECT_NEAR(forcing[0][0], -r_max, r_max * 1e-6) << "Capped forcing should approach -r_max in saturated regime";

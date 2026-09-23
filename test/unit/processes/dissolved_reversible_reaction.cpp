@@ -26,8 +26,8 @@ namespace
   /// Builds a `DissolvedReversibleReactionSet` bound to a fresh sparse-Jacobian pattern
   /// derived from `reaction.NonZeroJacobianElements(...)`; used to drive both `AddForcingTerms`
   /// and `SubtractJacobianTerms` in the tests below.
-  template<typename Sparse = SparseMatrixPolicy>
-  DissolvedReversibleReactionSet MakeSet(
+  template<typename Dense = MatrixPolicy, typename Sparse = SparseMatrixPolicy>
+  DissolvedReversibleReactionSet<Dense, Sparse> MakeSet(
       const DissolvedReversibleReaction& reaction,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
@@ -39,7 +39,8 @@ namespace
     for (const auto& elem : elements)
       builder = builder.WithElement(elem.first, elem.second);
     Sparse pattern(builder);
-    return DissolvedReversibleReactionSet(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, pattern);
+    return DissolvedReversibleReactionSet<Dense, Sparse>(
+        reaction, phase_prefixes, state_parameter_indices, state_variable_indices, pattern);
   }
 
   /// @brief Compare analytical Jacobian against central finite-difference approximation
@@ -63,16 +64,16 @@ namespace
     SparseMatrixPolicy jacobian(jac_builder);
     jacobian.Fill(0.0);
 
-    DissolvedReversibleReactionSet reaction_set(
+    DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> reaction_set(
         reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
-    reaction_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(
+    reaction_set.SubtractJacobianTerms(
         state_parameters, state_variables, jacobian);
 
     auto fd_jac = micm::FiniteDifferenceJacobian<MatrixPolicy>(
         [&](const MatrixPolicy& vars, MatrixPolicy& out)
         {
           out.Fill(0.0);
-          reaction_set.template AddForcingTerms<MatrixPolicy>(state_parameters, vars, out);
+          reaction_set.AddForcingTerms(state_parameters, vars, out);
         },
         state_variables,
         num_vars);
@@ -652,7 +653,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionBasicRates)
   state_variable_indices["MODE1.AQUEOUS.H+"] = 1;
   state_variable_indices["MODE1.AQUEOUS.OH-"] = 2;
 
-  auto forcing_set = MakeSet(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   // Create state parameters (1 cell, 2 parameters)
   MatrixPolicy state_parameters(1, 2);
@@ -669,7 +670,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionBasicRates)
   MatrixPolicy forcing_terms(1, 3, 0.0);
 
   // Apply the forcing function
-  forcing_set.template AddForcingTerms<MatrixPolicy>(state_parameters, state_variables, forcing_terms);
+  forcing_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // Calculate expected rates
   // Forward rate = k_f / [H2O]^(n_reactants-1) * [H2O] = k_f * [H2O] / [H2O]^0 = k_f * [H2O]
@@ -724,7 +725,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionSolventNormalization)
   state_variable_indices["DROP.AQUEOUS.H2O"] = 1;
   state_variable_indices["DROP.AQUEOUS.H2CO3"] = 2;
 
-  auto forcing_set = MakeSet(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -737,7 +738,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionSolventNormalization)
 
   MatrixPolicy forcing_terms(1, 3, 0.0);
 
-  forcing_set.template AddForcingTerms<MatrixPolicy>(state_parameters, state_variables, forcing_terms);
+  forcing_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // Forward rate = k_f / [H2O]^(2-1) * [CO2] * [H2O] = k_f / [H2O] * [CO2] * [H2O]
   double forward_rate_val = k_forward / std::pow(50.0, 1) * 0.001 * 50.0;
@@ -793,7 +794,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleReactantsProducts)
   state_variable_indices["REP1.LIQUID.D"] = 3;
   state_variable_indices["REP1.LIQUID.SOLVENT"] = 4;
 
-  auto forcing_set = MakeSet(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -808,7 +809,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleReactantsProducts)
 
   MatrixPolicy forcing_terms(1, 5, 0.0);
 
-  forcing_set.template AddForcingTerms<MatrixPolicy>(state_parameters, state_variables, forcing_terms);
+  forcing_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // Forward rate = k_f / [solvent]^(2-1) * [A] * [B] = k_f / [solvent] * [A] * [B]
   double forward_rate_val = k_forward / 40.0 * 2.0 * 3.0;
@@ -858,7 +859,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleCells)
   state_variable_indices["MODE1.AQUEOUS.H+"] = 1;
   state_variable_indices["MODE1.AQUEOUS.OH-"] = 2;
 
-  auto forcing_set = MakeSet(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   // Test with 3 cells
   MatrixPolicy state_parameters(3, 2);
@@ -875,7 +876,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleCells)
     state_variables[i][2] = 1.0e-7 * (i + 1);  // Different [OH-]
   }
 
-  forcing_set.template AddForcingTerms<MatrixPolicy>(state_parameters, state_variables, forcing_terms);
+  forcing_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // Verify each cell independently
   for (std::size_t i = 0; i < 3; ++i)
@@ -928,7 +929,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultiplePhaseInstances)
   state_variable_indices["LARGE_DROP.AQUEOUS.H+"] = 4;
   state_variable_indices["LARGE_DROP.AQUEOUS.OH-"] = 5;
 
-  auto forcing_set = MakeSet(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -946,7 +947,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultiplePhaseInstances)
 
   MatrixPolicy forcing_terms(1, 6, 0.0);
 
-  forcing_set.template AddForcingTerms<MatrixPolicy>(state_parameters, state_variables, forcing_terms);
+  forcing_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // Verify small drop
   double forward_small = k_forward * 50.0;
@@ -1017,7 +1018,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionBasicPartials)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  DissolvedReversibleReactionSet jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -1028,7 +1029,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionBasicPartials)
   state_variables[0][1] = 1.0e-7;  // [H+]
   state_variables[0][2] = 1.0e-7;  // [OH-]
 
-  jacobian_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(state_parameters, state_variables, jacobian);
+  jacobian_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // Expected partial derivatives:
   // d[H2O]/d[H2O] = -k_f + k_r * [H+] * [OH-] * (1-1) / [H2O]^1 = -k_f - k_r * [H+] * [OH-] / [H2O]^2
@@ -1113,7 +1114,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleReactantsProducts)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  DissolvedReversibleReactionSet jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -1124,7 +1125,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleReactantsProducts)
   state_variables[0][1] = 50.0;    // [H2O]
   state_variables[0][2] = 0.0005;  // [H2CO3]
 
-  jacobian_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(state_parameters, state_variables, jacobian);
+  jacobian_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // Expected partials for CO2 + H2O <-> H2CO3:
   // Forward rate = k_f / [H2O] * [CO2] * [H2O]
@@ -1217,7 +1218,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSigns)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  DissolvedReversibleReactionSet jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -1229,7 +1230,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSigns)
   state_variables[0][2] = 5.0e-8;  // [CO32-]
   state_variables[0][3] = 55.0;    // [H2O]
 
-  jacobian_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(state_parameters, state_variables, jacobian);
+  jacobian_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // Check signs (stored as -J, so all signs are flipped vs. the actual Jacobian):
   // - Reactant w.r.t. reactant: positive (actual J negative)
@@ -1302,7 +1303,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleCells)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  DissolvedReversibleReactionSet jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   // Test with 3 cells
   MatrixPolicy state_parameters(3, 2);
@@ -1317,7 +1318,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleCells)
     state_variables[i][2] = 1.0e-7 * (i + 1);  // Different [OH-]
   }
 
-  jacobian_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(state_parameters, state_variables, jacobian);
+  jacobian_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // Verify each cell independently
   for (std::size_t i = 0; i < 3; ++i)
@@ -1383,7 +1384,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultiplePhaseInstances)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  DissolvedReversibleReactionSet jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -1399,7 +1400,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultiplePhaseInstances)
   state_variables[0][4] = 2.0e-7;  // [H+]
   state_variables[0][5] = 2.0e-7;  // [OH-]
 
-  jacobian_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(state_parameters, state_variables, jacobian);
+  jacobian_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // Verify small drop elements are populated
   EXPECT_NE(jacobian[0][0][0], 0.0);  // d[H2O_small]/d[H2O_small]
@@ -1466,7 +1467,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSimpleDistinctSpecies)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  DissolvedReversibleReactionSet jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -1477,7 +1478,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSimpleDistinctSpecies)
   state_variables[0][1] = 5.0;   // [bar]
   state_variables[0][2] = 50.0;  // [baz]
 
-  jacobian_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(state_parameters, state_variables, jacobian);
+  jacobian_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // For foo <-> bar:
   // Forward rate = k_f / [baz]^(N_reactants - 1) * [foo] = k_f / [baz]^0 * [foo] = k_f * [foo]
@@ -1563,7 +1564,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionTwoReactantsWithSolventDepende
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  DissolvedReversibleReactionSet jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -1575,7 +1576,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionTwoReactantsWithSolventDepende
   state_variables[0][2] = 5.0;   // [bar]
   state_variables[0][3] = 50.0;  // [baz]
 
-  jacobian_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(state_parameters, state_variables, jacobian);
+  jacobian_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // Forward rate = k_f / [baz]^(2-1) * [foo] * [qux] = k_f / [baz] * [foo] * [qux]
   // Reverse rate = k_r / [baz]^(1-1) * [bar] = k_r * [bar]
@@ -1944,7 +1945,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionZeroReactant)
   svi["MODE1.AQUEOUS.H+"] = 1;
   svi["MODE1.AQUEOUS.OH-"] = 2;
 
-  auto forcing_set = MakeSet(reaction, phase_prefixes, spi, svi);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, spi, svi);
 
   MatrixPolicy params(1, 2, 0.0);
   params[0][0] = k_forward;
@@ -1955,7 +1956,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionZeroReactant)
   vars[0][2] = 1.0e-4;
 
   MatrixPolicy forcing(1, 3, 0.0);
-  forcing_set.template AddForcingTerms<MatrixPolicy>(params, vars, forcing);
+  forcing_set.AddForcingTerms(params, vars, forcing);
 
   // forward_rate = k_f * [H2O] / ([H2O] + eps)^1 * [H2O] → ~0 when [H2O]=0
   EXPECT_NEAR(forcing[0][0], 0.0, 1.0e-20);  // H2O: forcing ≈ 0 (forward ~ 0, reverse ~ 0 due to floor)
@@ -1995,7 +1996,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionZeroProduct)
   svi["MODE1.AQ.A"] = 1;
   svi["MODE1.AQ.B"] = 2;
 
-  auto forcing_set = MakeSet(reaction, phase_prefixes, spi, svi);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, spi, svi);
 
   MatrixPolicy params(1, 2, 0.0);
   params[0][0] = k_forward;
@@ -2007,7 +2008,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionZeroProduct)
   vars[0][2] = 0.0;  // [B] = 0 → reverse rate = 0
 
   MatrixPolicy forcing(1, 3, 0.0);
-  forcing_set.template AddForcingTerms<MatrixPolicy>(params, vars, forcing);
+  forcing_set.AddForcingTerms(params, vars, forcing);
 
   // forward_rate = k_f * [S] / ([S]+eps)^1 * [A] ≈ k_f * [A]
   double fwd = k_forward * S / (S + 1.0e-20) * 0.5;
@@ -2047,7 +2048,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionAtEquilibrium)
   svi["MODE1.AQ.A"] = 1;
   svi["MODE1.AQ.B"] = 2;
 
-  auto forcing_set = MakeSet(reaction, phase_prefixes, spi, svi);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, spi, svi);
 
   MatrixPolicy params(1, 2, 0.0);
   params[0][0] = k_forward;
@@ -2062,7 +2063,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionAtEquilibrium)
   vars[0][2] = B_eq;
 
   MatrixPolicy forcing(1, 3, 0.0);
-  forcing_set.template AddForcingTerms<MatrixPolicy>(params, vars, forcing);
+  forcing_set.AddForcingTerms(params, vars, forcing);
 
   EXPECT_NEAR(forcing[0][1], 0.0, 1.0e-14);  // A: net rate = 0 at equilibrium
   EXPECT_NEAR(forcing[0][2], 0.0, 1.0e-14);  // B: net rate = 0 at equilibrium
@@ -2108,7 +2109,7 @@ TEST(DissolvedReversibleReaction, JacobianFDZeroSolvent)
   LocalSMP jacobian(jac_builder);
   jacobian.Fill(0.0);
 
-  DissolvedReversibleReactionSet jacobian_set(reaction, phase_prefixes, spi, svi, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, spi, svi, jacobian);
 
   MatrixPolicy params(1, 2, 0.0);
   params[0][0] = k_forward;
@@ -2119,7 +2120,7 @@ TEST(DissolvedReversibleReaction, JacobianFDZeroSolvent)
   vars[0][2] = 0.3;
 
   // Should not crash or produce NaN/Inf
-  jacobian_set.template SubtractJacobianTerms<MatrixPolicy, LocalSMP>(params, vars, jacobian);
+  jacobian_set.SubtractJacobianTerms(params, vars, jacobian);
   for (const auto& elem : jac_elements)
   {
     double val = jacobian[0][elem.first][elem.second];

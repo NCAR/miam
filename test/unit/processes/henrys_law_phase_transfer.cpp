@@ -40,7 +40,7 @@ namespace
   /// Builds an `HenrysLawPhaseTransferSet` bound to a fresh sparse-Jacobian pattern derived
   /// from `process.NonZeroJacobianElements(...)`. Used by tests that only need forcing.
   template<typename Providers>
-  HenrysLawPhaseTransferSet MakeHLPTSet(
+  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> MakeHLPTSet(
       const HenrysLawPhaseTransfer& process,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
@@ -53,7 +53,8 @@ namespace
     for (const auto& elem : elements)
       builder = builder.WithElement(elem.first, elem.second);
     SparseMatrixPolicy pattern(builder);
-    return HenrysLawPhaseTransferSet(process, phase_prefixes, state_parameter_indices, state_variable_indices, pattern, providers);
+    return HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy>(
+        process, phase_prefixes, state_parameter_indices, state_variable_indices, pattern, providers);
   }
 
   micm::Species MakeGasSpecies()
@@ -416,7 +417,7 @@ TEST(HenrysLawPhaseTransfer, ForcingFunctionBasicRates)
 
   MatrixPolicy forcing_terms(1, 3, 0.0);
 
-  forcing_func.template AddForcingTerms<MatrixPolicy>(state_parameters, state_variables, forcing_terms, providers);
+  forcing_func.AddForcingTerms(state_parameters, state_variables, forcing_terms, providers);
 
   // Compute expected net rate
   auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
@@ -476,7 +477,7 @@ TEST(HenrysLawPhaseTransfer, ForcingFunctionMultipleCells)
     state_variables[i][2] = solvent;
   }
 
-  forcing_func.template AddForcingTerms<MatrixPolicy>(state_parameters, state_variables, forcing_terms, providers);
+  forcing_func.AddForcingTerms(state_parameters, state_variables, forcing_terms, providers);
 
   auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
@@ -527,7 +528,7 @@ TEST(HenrysLawPhaseTransfer, ForcingFunctionMassConservation)
   state_variables[0][2] = 55000.0;
 
   MatrixPolicy forcing_terms(1, 3, 0.0);
-  forcing_func.template AddForcingTerms<MatrixPolicy>(state_parameters, state_variables, forcing_terms, providers);
+  forcing_func.AddForcingTerms(state_parameters, state_variables, forcing_terms, providers);
 
   // Mass conservation: gas forcing + aq forcing = 0
   EXPECT_NEAR(forcing_terms[0][0] + forcing_terms[0][1], 0.0, 1e-20);
@@ -568,7 +569,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionDirectEntries)
   SparseMatrixPolicy jacobian(builder);
   jacobian.Fill(0.0);
 
-  HenrysLawPhaseTransferSet jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
+  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
 
   double T = 298.15;
   double hlc = HLC_ref;
@@ -585,7 +586,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionDirectEntries)
   state_variables[0][1] = aq_conc;
   state_variables[0][2] = solvent_conc;
 
-  jac_func_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(state_parameters, state_variables, jacobian, providers);
+  jac_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian, providers);
 
   auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
@@ -636,7 +637,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionSymmetry)
   SparseMatrixPolicy jacobian(builder);
   jacobian.Fill(0.0);
 
-  HenrysLawPhaseTransferSet jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
+  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = HLC_ref;
@@ -647,7 +648,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionSymmetry)
   state_variables[0][1] = 0.01;
   state_variables[0][2] = 55000.0;
 
-  jac_func_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(state_parameters, state_variables, jacobian, providers);
+  jac_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian, providers);
 
   // J[gas,x] = -J[aq,x] for all x
   EXPECT_NEAR(jacobian[0][0][0] + jacobian[0][1][0], 0.0, 1e-20);  // x = gas
@@ -689,7 +690,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionFiniteDifference)
   jacobian.Fill(0.0);
 
   auto forcing_func = MakeHLPTSet(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
-  HenrysLawPhaseTransferSet jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
+  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = HLC_ref;
@@ -704,7 +705,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionFiniteDifference)
   state_variables[0][1] = aq_conc;
   state_variables[0][2] = solvent_conc;
 
-  jac_func_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(state_parameters, state_variables, jacobian, providers);
+  jac_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian, providers);
 
   // Finite difference for each state variable column j
   double eps = 1e-8;
@@ -730,8 +731,8 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionFiniteDifference)
     auto ff_plus = MakeHLPTSet(process, phase_prefixes, state_parameter_indices, state_variable_indices, prov_plus);
     auto ff_minus = MakeHLPTSet(process, phase_prefixes, state_parameter_indices, state_variable_indices, prov_minus);
 
-    ff_plus.template AddForcingTerms<MatrixPolicy>(state_parameters, vars_plus, forcing_plus, prov_plus);
-    ff_minus.template AddForcingTerms<MatrixPolicy>(state_parameters, vars_minus, forcing_minus, prov_minus);
+    ff_plus.AddForcingTerms(state_parameters, vars_plus, forcing_plus, prov_plus);
+    ff_minus.AddForcingTerms(state_parameters, vars_minus, forcing_minus, prov_minus);
 
     double fd_gas = (forcing_plus[0][0] - forcing_minus[0][0]) / (2.0 * h);
     double fd_aq = (forcing_plus[0][1] - forcing_minus[0][1]) / (2.0 * h);
@@ -779,7 +780,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionMultipleCells)
   SparseMatrixPolicy jacobian(builder);
   jacobian.Fill(0.0);
 
-  HenrysLawPhaseTransferSet jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
+  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
 
   MatrixPolicy state_parameters(num_cells, 2);
   MatrixPolicy state_variables(num_cells, 3);
@@ -795,7 +796,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionMultipleCells)
     state_variables[i][2] = 55000.0;
   }
 
-  jac_func_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(state_parameters, state_variables, jacobian, providers);
+  jac_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian, providers);
 
   auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
@@ -870,8 +871,8 @@ namespace
 
     // Build sparse Jacobian structure and compute analytical Jacobian
     auto jacobian = BuildJacobian(process, phase_prefixes, state_variable_indices, providers, num_blocks);
-    HenrysLawPhaseTransferSet jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
-    jac_func_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(state_parameters, state_variables, jacobian, providers);
+    HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
+    jac_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian, providers);
 
     // Build FD Jacobian — bind state_parameters into the forcing callable
     auto ff = MakeHLPTSet(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
@@ -879,7 +880,7 @@ namespace
         [&](const MatrixPolicy& vars, MatrixPolicy& out)
         {
           out.Fill(0.0);
-          ff.template AddForcingTerms<MatrixPolicy>(state_parameters, vars, out, providers);
+          ff.AddForcingTerms(state_parameters, vars, out, providers);
         },
         state_variables,
         num_vars);
@@ -960,7 +961,7 @@ TEST(HenrysLawPhaseTransfer, ForcingMultiplePhaseInstances)
   vars[0][4] = solvent2;
 
   MatrixPolicy forcing(1, 5, 0.0);
-  forcing_func.template AddForcingTerms<MatrixPolicy>(params, vars, forcing, providers);
+  forcing_func.AddForcingTerms(params, vars, forcing, providers);
 
   auto crp = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
 
@@ -1020,7 +1021,7 @@ TEST(HenrysLawPhaseTransfer, JacobianMultiplePhaseInstances)
   providers.insert(prov2.begin(), prov2.end());
 
   auto jacobian = BuildJacobian(process, phase_prefixes, state_variable_indices, providers, 1);
-  HenrysLawPhaseTransferSet jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
+  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
 
   double T = 298.15, hlc = HLC_ref;
   double gas = 1.0e-3;
@@ -1040,7 +1041,7 @@ TEST(HenrysLawPhaseTransfer, JacobianMultiplePhaseInstances)
   vars[0][3] = aq2;
   vars[0][4] = solvent2;
 
-  jac_func_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(params, vars, jacobian, providers);
+  jac_func_set.SubtractJacobianTerms(params, vars, jacobian, providers);
 
   auto crp = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
 
@@ -1230,7 +1231,7 @@ TEST(HenrysLawPhaseTransfer, ForcingMultiCellsMultiInstances)
   }
 
   MatrixPolicy forcing(num_cells, 5, 0.0);
-  forcing_func.template AddForcingTerms<MatrixPolicy>(params, vars, forcing, providers);
+  forcing_func.AddForcingTerms(params, vars, forcing, providers);
 
   auto crp = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc1 = crp.ComputeValue(r1, N1, T);
@@ -1389,8 +1390,8 @@ TEST(HenrysLawPhaseTransfer, ForcingMultipleTransferProcesses)
   vars[0][4] = h2o;
 
   MatrixPolicy forcing(1, 5, 0.0);
-  ff_CO2.template AddForcingTerms<MatrixPolicy>(params, vars, forcing, providers);
-  ff_SO2.template AddForcingTerms<MatrixPolicy>(params, vars, forcing, providers);
+  ff_CO2.AddForcingTerms(params, vars, forcing, providers);
+  ff_SO2.AddForcingTerms(params, vars, forcing, providers);
 
   auto crp_CO2 = MakeCondensationRateProvider(D_CO2, alpha, 0.044);
   auto crp_SO2 = MakeCondensationRateProvider(D_SO2, alpha, 0.064);
@@ -1475,8 +1476,8 @@ TEST(HenrysLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
 
   auto jacobian = BuildJacobian({ std::cref(proc_CO2), std::cref(proc_SO2) }, phase_prefixes, svi, providers, 1);
 
-  HenrysLawPhaseTransferSet jf_CO2_set(proc_CO2, phase_prefixes, spi, svi, jacobian, providers);
-  HenrysLawPhaseTransferSet jf_SO2_set(proc_SO2, phase_prefixes, spi, svi, jacobian, providers);
+  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jf_CO2_set(proc_CO2, phase_prefixes, spi, svi, jacobian, providers);
+  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jf_SO2_set(proc_SO2, phase_prefixes, spi, svi, jacobian, providers);
 
   double T = 298.15;
   MatrixPolicy params(1, 4);
@@ -1492,8 +1493,8 @@ TEST(HenrysLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
   vars[0][3] = 1.0e-4;
   vars[0][4] = 55000.0;
 
-  jf_CO2_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(params, vars, jacobian, providers);
-  jf_SO2_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(params, vars, jacobian, providers);
+  jf_CO2_set.SubtractJacobianTerms(params, vars, jacobian, providers);
+  jf_SO2_set.SubtractJacobianTerms(params, vars, jacobian, providers);
 
   // FD check with central differences
   double eps = 1e-7;
@@ -1510,10 +1511,10 @@ TEST(HenrysLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
     auto fp_so2 = MakeHLPTSet(proc_SO2, phase_prefixes, spi, svi, providers);
     auto fm_co2 = MakeHLPTSet(proc_CO2, phase_prefixes, spi, svi, providers);
     auto fm_so2 = MakeHLPTSet(proc_SO2, phase_prefixes, spi, svi, providers);
-    fp_co2.template AddForcingTerms<MatrixPolicy>(params, vp, fp, providers);
-    fp_so2.template AddForcingTerms<MatrixPolicy>(params, vp, fp, providers);
-    fm_co2.template AddForcingTerms<MatrixPolicy>(params, vm, fm, providers);
-    fm_so2.template AddForcingTerms<MatrixPolicy>(params, vm, fm, providers);
+    fp_co2.AddForcingTerms(params, vp, fp, providers);
+    fp_so2.AddForcingTerms(params, vp, fp, providers);
+    fm_co2.AddForcingTerms(params, vm, fm, providers);
+    fm_so2.AddForcingTerms(params, vm, fm, providers);
 
     for (std::size_t i = 0; i < nv; ++i)
     {
@@ -1664,12 +1665,12 @@ TEST(HenrysLawPhaseTransfer, ForcingAccumulates)
   vars[0][2] = 55000.0;
 
   MatrixPolicy forcing(1, 3, 0.0);
-  ff.template AddForcingTerms<MatrixPolicy>(params, vars, forcing, providers);
+  ff.AddForcingTerms(params, vars, forcing, providers);
   double f0_gas = forcing[0][0];
   double f0_aq = forcing[0][1];
 
   // Second call should accumulate
-  ff.template AddForcingTerms<MatrixPolicy>(params, vars, forcing, providers);
+  ff.AddForcingTerms(params, vars, forcing, providers);
   EXPECT_NEAR(forcing[0][0], 2.0 * f0_gas, std::abs(f0_gas) * 1e-10);
   EXPECT_NEAR(forcing[0][1], 2.0 * f0_aq, std::abs(f0_aq) * 1e-10);
 }
@@ -1693,7 +1694,7 @@ TEST(HenrysLawPhaseTransfer, JacobianAccumulates)
   auto providers = MakeTestProviders("MODE1", 2.0e-6, 5.0e8, 1.0e-4);
 
   auto jacobian = BuildJacobian(process, phase_prefixes, svi, providers, 1);
-  HenrysLawPhaseTransferSet jf_set(process, phase_prefixes, spi, svi, jacobian, providers);
+  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jf_set(process, phase_prefixes, spi, svi, jacobian, providers);
 
   MatrixPolicy params(1, 2);
   params[0][0] = HLC_ref;
@@ -1704,10 +1705,10 @@ TEST(HenrysLawPhaseTransfer, JacobianAccumulates)
   vars[0][1] = 1.0e-5;
   vars[0][2] = 55000.0;
 
-  jf_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(params, vars, jacobian, providers);
+  jf_set.SubtractJacobianTerms(params, vars, jacobian, providers);
   double j_gg_once = jacobian[0][0][0];
 
-  jf_set.template SubtractJacobianTerms<MatrixPolicy, SparseMatrixPolicy>(params, vars, jacobian, providers);
+  jf_set.SubtractJacobianTerms(params, vars, jacobian, providers);
   EXPECT_NEAR(jacobian[0][0][0], 2.0 * j_gg_once, std::abs(j_gg_once) * 1e-10);
 }
 
@@ -2003,7 +2004,7 @@ TEST(HenrysLawPhaseTransfer, ForcingFunctionZeroGasConcentration)
   vars[0][2] = 55000.0;  // [H2O]
 
   MatrixPolicy forcing(1, 3, 0.0);
-  ff.template AddForcingTerms<MatrixPolicy>(params, vars, forcing, providers);
+  ff.AddForcingTerms(params, vars, forcing, providers);
 
   auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff, N, T);
@@ -2047,7 +2048,7 @@ TEST(HenrysLawPhaseTransfer, ForcingFunctionZeroAqueousConcentration)
   vars[0][2] = 55000.0;  // [H2O]
 
   MatrixPolicy forcing(1, 3, 0.0);
-  ff.template AddForcingTerms<MatrixPolicy>(params, vars, forcing, providers);
+  ff.AddForcingTerms(params, vars, forcing, providers);
 
   auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff, N, T);
@@ -2087,7 +2088,7 @@ TEST(HenrysLawPhaseTransfer, ForcingFunctionZeroNumberConcentration)
   vars[0][2] = 55000.0;
 
   MatrixPolicy forcing(1, 3, 0.0);
-  ff.template AddForcingTerms<MatrixPolicy>(params, vars, forcing, providers);
+  ff.AddForcingTerms(params, vars, forcing, providers);
 
   // When N=0 and phi=0, k_cond_eff = phi * k_cond = 0
   EXPECT_NEAR(forcing[0][0], 0.0, 1e-30);
