@@ -98,7 +98,7 @@ namespace
     jacobian_fn(params_copy, variables, analytical_jac);
 
     // Compute finite-difference Jacobian
-    auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+    auto forcing_fn = model.ForcingFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices);
     auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing) { forcing_fn(params_copy, vars, forcing); };
 
     auto fd_jac = micm::FiniteDifferenceJacobian<DenseMatrix>(fd_wrapper, variables, num_species);
@@ -123,7 +123,7 @@ namespace
 
   /// Helper to verify constraint Jacobian (residual-based) for a given model
   void VerifyConstraintJacobian(
-      const Model& model,
+      Model& model,
       const IndexMaps& maps,
       const DenseMatrix& variables,
       const DenseMatrix& parameters,
@@ -149,13 +149,12 @@ namespace
     SparseMatrixFD analytical_jac(builder);
 
     // Compute analytical Jacobian
-    auto jac_fn = model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(
-        maps.parameter_indices, maps.variable_indices, analytical_jac);
-    jac_fn(variables, params_copy, analytical_jac);
+    model.template FinalizeConstraintSetup<SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, analytical_jac);
+    model.template SubtractConstraintJacobian<DenseMatrix, SparseMatrixFD>(params_copy, variables, analytical_jac);
 
     // Compute finite-difference Jacobian from residual function
-    auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
-    auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing) { residual_fn(vars, params_copy, forcing); };
+    auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing)
+    { model.template AddConstraintResidual<DenseMatrix>(params_copy, vars, forcing); };
 
     auto fd_jac = micm::FiniteDifferenceJacobian<DenseMatrix>(fd_wrapper, variables, num_species);
 
@@ -193,13 +192,12 @@ TEST(JacobianVerification, DissolvedReactionProcess)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 0.1;
-  auto rate = [k](const Conditions&) { return k; };
   auto reaction = DissolvedReactionBuilder{}
                       .SetPhase(aqueous_phase)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .SetRateConstant(rate)
+                      .SetRateConstant(UserDefinedConstantExpression{ k })
                       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -237,9 +235,7 @@ TEST(JacobianVerification, DissolvedReversibleReactionProcess)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k_f = 0.1, k_r = 0.05;
-  auto forward_rate = [k_f](const Conditions&) { return k_f; };
-  auto reverse_rate = [k_r](const Conditions&) { return k_r; };
-  auto reaction = DissolvedReversibleReaction{ { forward_rate }, { reverse_rate }, { A }, { B }, C, aqueous_phase };
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_f }, UserDefinedConstantExpression{ k_r }, { A }, { B }, C, aqueous_phase };
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -392,12 +388,12 @@ TEST(JacobianVerification, MultipleProcessesCombined)
                        .SetReactants({ A })
                        .SetProducts({ B })
                        .SetSolvent(S)
-                       .SetRateConstant([](const Conditions&) { return 0.1; })
+                       .SetRateConstant(UserDefinedConstantExpression{ 0.1 })
                        .Build();
 
   // C ⇌ D (reversible)
   auto reaction2 = DissolvedReversibleReaction{
-    { [](const Conditions&) { return 0.2; } }, { [](const Conditions&) { return 0.05; } }, { C }, { D }, S, aqueous_phase
+    UserDefinedConstantExpression{ 0.2 }, UserDefinedConstantExpression{ 0.05 }, { C }, { D }, S, aqueous_phase
   };
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -593,7 +589,7 @@ TEST(JacobianVerification, ProcessAndConstraintsCombined)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(S)
-                      .SetRateConstant([k](const Conditions&) { return k; })
+                      .SetRateConstant(UserDefinedConstantExpression{ k })
                       .Build();
 
   auto equil = DissolvedEquilibriumConstraintBuilder()
@@ -717,13 +713,12 @@ TEST(JacobianVerification, DissolvedReactionDampingRange)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 0.1;
-  auto rate = [k](const Conditions&) { return k; };
   auto reaction = DissolvedReactionBuilder{}
                       .SetPhase(aqueous_phase)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .SetRateConstant(rate)
+                      .SetRateConstant(UserDefinedConstantExpression{ k })
                       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -751,7 +746,7 @@ TEST(JacobianVerification, DissolvedReactionDampingRange)
 
   // At extreme low solvent (near/below eps), FD can't resolve the steep damping gradient.
   // Verify finiteness instead.
-  auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+  auto forcing_fn = model.ForcingFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices);
   auto jac_nz = model.NonZeroJacobianElements(maps.variable_indices);
   auto jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
   for (const auto& elem : jac_nz)
@@ -799,9 +794,7 @@ TEST(JacobianVerification, DissolvedReversibleReactionDampingRange)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k_f = 0.1, k_r = 0.05;
-  auto forward_rate = [k_f](const Conditions&) { return k_f; };
-  auto reverse_rate = [k_r](const Conditions&) { return k_r; };
-  auto reaction = DissolvedReversibleReaction{ { forward_rate }, { reverse_rate }, { A }, { B }, C, aqueous_phase };
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_f }, UserDefinedConstantExpression{ k_r }, { A }, { B }, C, aqueous_phase };
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ reaction });
@@ -827,7 +820,7 @@ TEST(JacobianVerification, DissolvedReversibleReactionDampingRange)
   }
 
   // At extreme low solvent, verify finiteness only
-  auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+  auto forcing_fn = model.ForcingFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices);
   auto jac_nz = model.NonZeroJacobianElements(maps.variable_indices);
   auto jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
   for (const auto& elem : jac_nz)
@@ -910,14 +903,12 @@ TEST(JacobianVerification, DissolvedEquilibriumConstraintDampingRange)
   }
 
   // At extreme low solvent, verify finiteness only
-  auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
   auto jac_nz = model.NonZeroConstraintJacobianElements(maps.variable_indices);
   auto jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
   for (const auto& elem : jac_nz)
     jac_builder = jac_builder.WithElement(elem.first, elem.second);
   SparseMatrixFD jac(jac_builder);
-  auto jac_fn =
-      model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, jac);
+  model.template FinalizeConstraintSetup<SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, jac);
 
   for (double sol : { 1.0e-10, 1.0e-15, 0.0 })
   {
@@ -938,12 +929,12 @@ TEST(JacobianVerification, DissolvedEquilibriumConstraintDampingRange)
     update_fn(conditions, parameters);
 
     DenseMatrix residual(1, maps.num_variables, 0.0);
-    residual_fn(variables, parameters, residual);
+    model.template AddConstraintResidual<DenseMatrix>(parameters, variables, residual);
     for (std::size_t j = 0; j < maps.num_variables; ++j)
       EXPECT_TRUE(std::isfinite(residual[0][j])) << "residual[" << j << "] is not finite at sol=" << sol;
 
     jac.Fill(0.0);
-    jac_fn(variables, parameters, jac);
+    model.template SubtractConstraintJacobian<DenseMatrix, SparseMatrixFD>(parameters, variables, jac);
     for (const auto& v : jac.AsVector())
       EXPECT_TRUE(std::isfinite(v)) << "Constraint Jacobian element is not finite at sol=" << sol;
   }
@@ -969,7 +960,7 @@ TEST(JacobianVerification, CombinedProcessAndConstraintZeroSolvent)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(S)
-                      .SetRateConstant([k](const Conditions&) { return k; })
+                      .SetRateConstant(UserDefinedConstantExpression{ k })
                       .Build();
 
   auto equil = DissolvedEquilibriumConstraintBuilder()
@@ -1015,7 +1006,7 @@ TEST(JacobianVerification, CombinedProcessAndConstraintZeroSolvent)
   cons_update_fn(conditions, parameters);
 
   // Process forcing/Jacobian finiteness
-  auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+  auto forcing_fn = model.ForcingFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices);
   DenseMatrix forcing(1, maps.num_variables, 0.0);
   forcing_fn(parameters, variables, forcing);
   for (std::size_t j = 0; j < maps.num_variables; ++j)
@@ -1033,20 +1024,18 @@ TEST(JacobianVerification, CombinedProcessAndConstraintZeroSolvent)
     EXPECT_TRUE(std::isfinite(v)) << "Process Jacobian element is not finite at sol=0";
 
   // Constraint residual/Jacobian finiteness
-  auto residual_fn = model.ConstraintResidualFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
   DenseMatrix residual(1, maps.num_variables, 0.0);
-  residual_fn(variables, parameters, residual);
-  for (std::size_t j = 0; j < maps.num_variables; ++j)
-    EXPECT_TRUE(std::isfinite(residual[0][j])) << "Constraint residual[" << j << "] is not finite at sol=0";
-
   auto cons_nz = model.NonZeroConstraintJacobianElements(maps.variable_indices);
   auto cons_jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
   for (const auto& elem : cons_nz)
     cons_jac_builder = cons_jac_builder.WithElement(elem.first, elem.second);
   SparseMatrixFD cons_jac(cons_jac_builder);
-  auto cons_jac_fn =
-      model.ConstraintJacobianFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, cons_jac);
-  cons_jac_fn(variables, parameters, cons_jac);
+  model.template FinalizeConstraintSetup<SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, cons_jac);
+  model.template AddConstraintResidual<DenseMatrix>(parameters, variables, residual);
+  for (std::size_t j = 0; j < maps.num_variables; ++j)
+    EXPECT_TRUE(std::isfinite(residual[0][j])) << "Constraint residual[" << j << "] is not finite at sol=0";
+
+  model.template SubtractConstraintJacobian<DenseMatrix, SparseMatrixFD>(parameters, variables, cons_jac);
   for (const auto& v : cons_jac.AsVector())
     EXPECT_TRUE(std::isfinite(v)) << "Constraint Jacobian element is not finite at sol=0";
 }
@@ -1071,7 +1060,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSingleReactant)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .SetRateConstant([](const Conditions&) { return 0.5; })
+                      .SetRateConstant(UserDefinedConstantExpression{ 0.5 })
                       .SetMinHalflife(t_half)
                       .Build();
 
@@ -1119,7 +1108,7 @@ TEST(JacobianVerification, DissolvedReactionCappedTwoReactants)
                       .SetReactants({ A, B })
                       .SetProducts({ P })
                       .SetSolvent(S)
-                      .SetRateConstant([](const Conditions&) { return 1.0; })
+                      .SetRateConstant(UserDefinedConstantExpression{ 1.0 })
                       .SetMinHalflife(t_half)
                       .Build();
 
@@ -1168,7 +1157,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSolventRange)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .SetRateConstant([](const Conditions&) { return 1.0; })
+                      .SetRateConstant(UserDefinedConstantExpression{ 1.0 })
                       .SetMinHalflife(1.0)
                       .Build();
 
@@ -1196,7 +1185,7 @@ TEST(JacobianVerification, DissolvedReactionCappedSolventRange)
   }
 
   // At extreme low solvent, verify finiteness
-  auto forcing_fn = model.ForcingFunction<DenseMatrix>(maps.parameter_indices, maps.variable_indices);
+  auto forcing_fn = model.ForcingFunction<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices);
   auto jac_nz = model.NonZeroJacobianElements(maps.variable_indices);
   auto jac_builder = SparseMatrixFD::Create(maps.num_variables).SetNumberOfBlocks(1).InitialValue(0.0);
   for (const auto& elem : jac_nz)
@@ -1248,7 +1237,7 @@ TEST(JacobianVerification, DissolvedReactionCappedMultiBlock)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .SetRateConstant([](const Conditions&) { return 2.0; })
+                      .SetRateConstant(UserDefinedConstantExpression{ 2.0 })
                       .SetMinHalflife(0.1)
                       .Build();
 
@@ -1307,15 +1296,13 @@ namespace
       const UniformSection& droplet,
       const std::unordered_map<std::string, double>& concentrations)
   {
-    auto rate_fn = [k](const Conditions&) { return k; };
-
     // Build uncapped model
     auto rxn_uncapped = DissolvedReactionBuilder()
                             .SetPhase(phase)
                             .SetReactants(reactants)
                             .SetProducts(products)
                             .SetSolvent(solvent)
-                            .SetRateConstant(rate_fn)
+                            .SetRateConstant(UserDefinedConstantExpression{ k })
                             .Build();
     auto model_uncapped = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model_uncapped.AddProcesses({ rxn_uncapped });
@@ -1326,7 +1313,7 @@ namespace
                           .SetReactants(reactants)
                           .SetProducts(products)
                           .SetSolvent(solvent)
-                          .SetRateConstant(rate_fn)
+                          .SetRateConstant(UserDefinedConstantExpression{ k })
                           .SetMinHalflife(min_halflife)
                           .Build();
     auto model_capped = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -1356,9 +1343,9 @@ namespace
 
     // Compare forcing
     DenseMatrix forcing_u(1, n, 0.0), forcing_c(1, n, 0.0);
-    model_uncapped.ForcingFunction<DenseMatrix>(maps_u.parameter_indices, maps_u.variable_indices)(
+    model_uncapped.ForcingFunction<DenseMatrix, SparseMatrixFD>(maps_u.parameter_indices, maps_u.variable_indices)(
         params_u, variables, forcing_u);
-    model_capped.ForcingFunction<DenseMatrix>(maps_c.parameter_indices, maps_c.variable_indices)(
+    model_capped.ForcingFunction<DenseMatrix, SparseMatrixFD>(maps_c.parameter_indices, maps_c.variable_indices)(
         params_c, variables, forcing_c);
 
     double max_forcing_rel = 0.0;

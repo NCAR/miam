@@ -4,7 +4,9 @@
 #pragma once
 
 #include <miam/math/condensation_rate.hpp>
+#include <miam/processes/constants/rate_expression.hpp>
 #include <miam/representations/aerosol_property.hpp>
+#include <miam/representations/aerosol_property_descriptor.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 #include <miam/util/uuid.hpp>
@@ -14,14 +16,17 @@
 #include <micm/system/species.hpp>
 #include <micm/util/constants.hpp>
 #include <micm/util/matrix.hpp>
+#include <micm/util/types.hpp>
 
 #include <cmath>
 #include <functional>
 #include <map>
+#include <memory>
 #include <set>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 namespace miam
@@ -38,11 +43,11 @@ namespace miam
   class HenrysLawPhaseTransfer
   {
    public:
-    std::function<double(const micm::Conditions& conditions)> henrys_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
-    micm::Species gas_species_;                                                      ///< Gas-phase species
-    micm::Species condensed_species_;                                                ///< Condensed-phase solute species
-    micm::Species solvent_;                                                          ///< Condensed-phase solvent species
-    micm::Phase condensed_phase_;                                                    ///< The condensed phase
+    HenrysLawConstantExpression henrys_law_constant_;   ///< HLC(T) expression [mol m⁻³ Pa⁻¹]
+    micm::Species gas_species_;                         ///< Gas-phase species
+    micm::Species condensed_species_;                   ///< Condensed-phase solute species
+    micm::Species solvent_;                             ///< Condensed-phase solvent species
+    micm::Phase condensed_phase_;                       ///< The condensed phase
     double diffusion_coefficient_;      ///< Gas-phase diffusion coefficient [m² s⁻¹]
     double accommodation_coefficient_;  ///< Mass accommodation coefficient [dimensionless]
     double gas_molecular_weight_;       ///< Gas-phase molecular weight [kg mol⁻¹]
@@ -54,7 +59,7 @@ namespace miam
 
     /// @brief Constructor
     HenrysLawPhaseTransfer(
-        std::function<double(const micm::Conditions& conditions)> henrys_law_constant,
+        HenrysLawConstantExpression henrys_law_constant,
         const micm::Species& gas_species,
         const micm::Species& condensed_species,
         const micm::Species& solvent,
@@ -64,7 +69,7 @@ namespace miam
         double gas_molecular_weight,
         double solvent_molecular_weight,
         double solvent_density)
-        : henrys_law_constant_(henrys_law_constant),
+        : henrys_law_constant_(std::move(henrys_law_constant)),
           gas_species_(gas_species),
           condensed_species_(condensed_species),
           solvent_(solvent),
@@ -199,25 +204,23 @@ namespace miam
       return elements;
     }
 
-    /// @brief Returns non-zero Jacobian elements (common interface overload with providers)
-    template<typename DenseMatrixPolicy>
+    /// @brief Returns non-zero Jacobian elements including indirect dependencies through aerosol descriptors.
     std::set<std::pair<std::size_t, std::size_t>> NonZeroJacobianElements(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-        const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>>& providers) const
+        const auto& descriptors) const
     {
       auto elements = NonZeroJacobianElements(phase_prefixes, state_variable_indices);
       auto gas_idx = state_variable_indices.at(gas_species_.name_);
 
-      // Add indirect dependencies through aerosol property providers
-      for (const auto& [prefix, prov_map] : providers)
+      for (const auto& [prefix, desc_map] : descriptors)
       {
         std::size_t aq_idx =
             state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
 
-        for (const auto& [prop, provider] : prov_map)
+        for (const auto& [prop, descriptor] : desc_map)
         {
-          for (std::size_t var_j : provider.dependent_variable_indices)
+          for (std::size_t var_j : DependentVariableIndices(descriptor))
           {
             elements.insert({ gas_idx, var_j });
             elements.insert({ aq_idx, var_j });
@@ -258,539 +261,48 @@ namespace miam
         }
       }
 
-      DenseMatrixPolicy dummy{ 1, state_parameter_indices.size(), 0.0 };
-      typename DenseMatrixPolicy::template VectorType<micm::Conditions> dummy_conditions;
-
-      return DenseMatrixPolicy::Function(
-          [this, hlc_indices, temp_indices](auto&& conditions, auto&& params)
-          {
-            for (std::size_t i = 0; i < hlc_indices.size(); ++i)
-            {
-              params.ForEachRow(
-                  [&](const micm::Conditions& cond, double& hlc, double& T)
-                  {
-                    hlc = henrys_law_constant_(cond);
-                    T = cond.temperature_;
-                  },
-                  conditions,
-                  params.GetColumnView(hlc_indices[i]),
-                  params.GetColumnView(temp_indices[i]));
-            }
-          },
-          dummy_conditions,
-          dummy);
+      // The returned callable loops over phase instances on the host and dispatches one kernel
+      // per instance. The MICM_LAMBDA lives in `MakeHlcUpdateFn` (a function template) rather than
+      // the generic std::visit lambda, which NVCC forbids for extended __host__ __device__ lambdas.
+      return std::visit(
+          [&](const auto& hlc_expr)
+          { return MakeHlcUpdateFn<DenseMatrixPolicy>(hlc_expr, hlc_indices, temp_indices); },
+          henrys_law_constant_);
     }
 
-    /// @brief Returns a function that calculates the forcing terms (common interface with providers)
-    template<typename DenseMatrixPolicy>
-    std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ForcingFunction(
-        const std::map<std::string, std::set<std::string>>& phase_prefixes,
-        const auto& state_parameter_indices,
-        const auto& state_variable_indices,
-        std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> providers) const
+    /// @brief Builds the HLC/temperature update callable for one concrete expression alternative.
+    /// @details Public because NVCC forbids private functions that define an extended lambda.
+    template<typename DenseMatrixPolicy, typename HlcT>
+    static std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>
+    MakeHlcUpdateFn(
+        const HlcT& hlc_expr, std::vector<std::size_t> hlc_indices, std::vector<std::size_t> temp_indices)
     {
-      auto gas_idx = state_variable_indices.at(gas_species_.name_);
-
-      struct InstanceData
+      const HlcT hlc_copy = hlc_expr;
+      return [hlc_indices = std::move(hlc_indices), temp_indices = std::move(temp_indices), hlc_copy](
+                 const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions,
+                 DenseMatrixPolicy& params)
       {
-        std::size_t aq_species_idx;
-        std::size_t solvent_species_idx;
-        std::size_t hlc_param_idx;
-        std::size_t temperature_param_idx;
-        double molar_volume;  ///< Solvent molar volume [m³ mol⁻¹] = solvent_molecular_weight / solvent_density
-        AerosolPropertyProvider<DenseMatrixPolicy> r_eff_provider;
-        AerosolPropertyProvider<DenseMatrixPolicy> N_provider;
-        AerosolPropertyProvider<DenseMatrixPolicy> phi_provider;
-        CondensationRateProvider cond_rate_provider;
-      };
-
-      std::vector<InstanceData> instances;
-      auto my_phase_it = phase_prefixes.find(condensed_phase_.name_);
-      if (my_phase_it != phase_prefixes.end())
-      {
-        for (const auto& prefix : my_phase_it->second)
+        for (std::size_t i = 0; i < hlc_indices.size(); ++i)
         {
-          auto prov_it = providers.find(prefix);
-          if (prov_it == providers.end())
-            continue;
-          const auto& prov_map = prov_it->second;
-          InstanceData inst;
-          inst.aq_species_idx =
-              state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
-          inst.solvent_species_idx = state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
-          inst.hlc_param_idx = state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc");
-          inst.temperature_param_idx =
-              state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
-          inst.molar_volume = solvent_molecular_weight_ / solvent_density_;
-          inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
-          inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
-          inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
-          inst.cond_rate_provider =
-              MakeCondensationRateProvider(diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
-          instances.push_back(std::move(inst));
-        }
-      }
-
-      // Create Function-wrapped inner loops — one per instance, built at setup time.
-      DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-      DenseMatrixPolicy dummy_state_variables{ 1, state_variable_indices.size(), 0.0 };
-      DenseMatrixPolicy dummy_buf{ 1, 1, 0.0 };
-
-      using InnerFuncType = std::function<void(
-          const DenseMatrixPolicy&,
-          const DenseMatrixPolicy&,
-          DenseMatrixPolicy&,
-          const DenseMatrixPolicy&,
-          const DenseMatrixPolicy&,
-          const DenseMatrixPolicy&)>;
-      std::vector<InnerFuncType> inner_functions;
-
-      for (const auto& inst : instances)
-      {
-        auto inner = DenseMatrixPolicy::Function(
-            [inst, gas_idx](
-                auto&& state_parameters,
-                auto&& state_variables,
-                auto&& forcing_terms,
-                auto&& r_eff_view,
-                auto&& N_view,
-                auto&& phi_view)
-            {
-              auto net = forcing_terms.GetRowVariable();
-
-              // Compute net transfer rate
-              state_parameters.ForEachRow(
-                  [&inst](
-                      const double& r_eff,
-                      const double& N,
-                      const double& phi,
-                      const double& hlc,
-                      const double& T,
-                      const double& gas,
-                      const double& aq,
-                      const double& solvent,
-                      double& net_val)
-                  {
-                    double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
-                    double kc_eff = phi * kc;
-                    double ke_eff = kc_eff / (hlc * micm::constants::GAS_CONSTANT * T);
-                    double fv = solvent * inst.molar_volume;
-                    net_val = kc_eff * gas - ke_eff * aq / fv;
-                  },
-                  r_eff_view.GetConstColumnView(0),
-                  N_view.GetConstColumnView(0),
-                  phi_view.GetConstColumnView(0),
-                  state_parameters.GetConstColumnView(inst.hlc_param_idx),
-                  state_parameters.GetConstColumnView(inst.temperature_param_idx),
-                  state_variables.GetConstColumnView(gas_idx),
-                  state_variables.GetConstColumnView(inst.aq_species_idx),
-                  state_variables.GetConstColumnView(inst.solvent_species_idx),
-                  net);
-
-              // Apply to gas forcing (subtract)
-              state_parameters.ForEachRow(
-                  [](const double& net_val, double& f_gas) { f_gas -= net_val; }, net, forcing_terms.GetColumnView(gas_idx));
-
-              // Apply to aq forcing (add)
-              state_parameters.ForEachRow(
-                  [](const double& net_val, double& f_aq) { f_aq += net_val; },
-                  net,
-                  forcing_terms.GetColumnView(inst.aq_species_idx));
-            },
-            dummy_state_parameters,
-            dummy_state_variables,
-            dummy_state_variables,
-            dummy_buf,
-            dummy_buf,
-            dummy_buf);
-        inner_functions.push_back(std::move(inner));
-      }
-
-      return [instances = std::move(instances), inner_functions = std::move(inner_functions)](
-                 const DenseMatrixPolicy& state_parameters,
-                 const DenseMatrixPolicy& state_variables,
-                 DenseMatrixPolicy& forcing_terms)
-      {
-        std::size_t num_rows = state_parameters.NumRows();
-
-        for (std::size_t i = 0; i < instances.size(); ++i)
-        {
-          const auto& inst = instances[i];
-
-          // Pre-compute aerosol properties into temp buffers (full-matrix calls)
-          DenseMatrixPolicy r_eff_buf{ num_rows, 1, 0.0 };
-          DenseMatrixPolicy N_buf{ num_rows, 1, 0.0 };
-          DenseMatrixPolicy phi_buf{ num_rows, 1, 0.0 };
-          inst.r_eff_provider.ComputeValue(state_parameters, state_variables, r_eff_buf);
-          inst.N_provider.ComputeValue(state_parameters, state_variables, N_buf);
-          inst.phi_provider.ComputeValue(state_parameters, state_variables, phi_buf);
-
-          // Call the Function-wrapped inner loop with actual data
-          inner_functions[i](state_parameters, state_variables, forcing_terms, r_eff_buf, N_buf, phi_buf);
-        }
-      };
-    }
-
-    /// @brief Returns a function that calculates Jacobian contributions (common interface with providers)
-    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
-    std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> JacobianFunction(
-        const std::map<std::string, std::set<std::string>>& phase_prefixes,
-        const auto& state_parameter_indices,
-        const auto& state_variable_indices,
-        const SparseMatrixPolicy& jacobian,
-        std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> providers) const
-    {
-      auto gas_idx = state_variable_indices.at(gas_species_.name_);
-
-      struct InstanceData
-      {
-        std::size_t aq_species_idx;
-        std::size_t solvent_species_idx;
-        std::size_t hlc_param_idx;
-        std::size_t temperature_param_idx;
-        double molar_volume;  ///< Solvent molar volume [m³ mol⁻¹] = solvent_molecular_weight / solvent_density
-        AerosolPropertyProvider<DenseMatrixPolicy> r_eff_provider;
-        AerosolPropertyProvider<DenseMatrixPolicy> N_provider;
-        AerosolPropertyProvider<DenseMatrixPolicy> phi_provider;
-        CondensationRateProvider cond_rate_provider;
-        std::size_t n_r_eff_deps;
-        std::size_t n_N_deps;
-        std::size_t n_phi_deps;
-        // Jacobian indices stored in a flat Matrix<std::size_t> (1 x N) for use with GetBlockView via *jac_id++
-        // Layout: [6 direct] [2*n_r_eff_deps indirect_r_eff] [2*n_N_deps indirect_N] [2*n_phi_deps indirect_phi]
-        micm::Matrix<std::size_t> jac_indices;
-      };
-
-      std::vector<InstanceData> jac_instances;
-      auto my_jac_phase_it = phase_prefixes.find(condensed_phase_.name_);
-      if (my_jac_phase_it != phase_prefixes.end())
-      {
-        for (const auto& prefix : my_jac_phase_it->second)
-        {
-          auto prov_it = providers.find(prefix);
-          if (prov_it == providers.end())
-            continue;
-          const auto& prov_map = prov_it->second;
-          InstanceData inst;
-          inst.aq_species_idx =
-              state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
-          inst.solvent_species_idx = state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
-          inst.hlc_param_idx = state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc");
-          inst.temperature_param_idx =
-              state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".temperature");
-          inst.molar_volume = solvent_molecular_weight_ / solvent_density_;
-          inst.r_eff_provider = prov_map.at(AerosolProperty::EffectiveRadius);
-          inst.N_provider = prov_map.at(AerosolProperty::NumberConcentration);
-          inst.phi_provider = prov_map.at(AerosolProperty::PhaseVolumeFraction);
-          inst.cond_rate_provider =
-              MakeCondensationRateProvider(diffusion_coefficient_, accommodation_coefficient_, gas_molecular_weight_);
-          inst.n_r_eff_deps = prov_map.at(AerosolProperty::EffectiveRadius).dependent_variable_indices.size();
-          inst.n_N_deps = prov_map.at(AerosolProperty::NumberConcentration).dependent_variable_indices.size();
-          inst.n_phi_deps = prov_map.at(AerosolProperty::PhaseVolumeFraction).dependent_variable_indices.size();
-
-          std::size_t aq_idx = inst.aq_species_idx;
-          std::size_t solvent_idx = inst.solvent_species_idx;
-
-          // Build flat Jacobian index vector
-          std::size_t total_indices = 6 + 2 * inst.n_r_eff_deps + 2 * inst.n_N_deps + 2 * inst.n_phi_deps;
-          inst.jac_indices = micm::Matrix<std::size_t>(1, total_indices);
-          std::size_t idx = 0;
-
-          // Direct entries (6 total)
-          inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, gas_idx, gas_idx);
-          inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, gas_idx, aq_idx);
-          inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, gas_idx, solvent_idx);
-          inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, aq_idx, gas_idx);
-          inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, aq_idx, aq_idx);
-          inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, aq_idx, solvent_idx);
-
-          // Indirect through r_eff
-          for (std::size_t var_j : prov_map.at(AerosolProperty::EffectiveRadius).dependent_variable_indices)
-          {
-            inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, gas_idx, var_j);
-            inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, aq_idx, var_j);
-          }
-          // Indirect through N
-          for (std::size_t var_j : prov_map.at(AerosolProperty::NumberConcentration).dependent_variable_indices)
-          {
-            inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, gas_idx, var_j);
-            inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, aq_idx, var_j);
-          }
-          // Indirect through phi
-          for (std::size_t var_j : prov_map.at(AerosolProperty::PhaseVolumeFraction).dependent_variable_indices)
-          {
-            inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, gas_idx, var_j);
-            inst.jac_indices[0][idx++] = jacobian.VectorIndex(0, aq_idx, var_j);
-          }
-
-          jac_instances.push_back(std::move(inst));
-        }
-      }
-
-      // Build Function-wrapped inner loops per instance
-      DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-      DenseMatrixPolicy dummy_state_variables{ 1, state_variable_indices.size(), 0.0 };
-      DenseMatrixPolicy dummy_buf{ 1, 1, 0.0 };
-      DenseMatrixPolicy dummy_partials{ 1, 1, 0.0 };
-
-      using InnerJacFuncType = std::function<void(
-          const DenseMatrixPolicy&,
-          const DenseMatrixPolicy&,
-          SparseMatrixPolicy&,
-          const DenseMatrixPolicy&,
-          const DenseMatrixPolicy&,
-          const DenseMatrixPolicy&,
-          const DenseMatrixPolicy&,
-          const DenseMatrixPolicy&,
-          const DenseMatrixPolicy&)>;
-      std::vector<InnerJacFuncType> inner_jac_functions;
-
-      for (const auto& inst : jac_instances)
-      {
-        inner_jac_functions.push_back(SparseMatrixPolicy::Function(
-            [inst, gas_idx](
-                auto&& state_parameters,
-                auto&& state_variables,
-                auto&& jacobian_values,
-                auto&& r_eff_view,
-                auto&& N_view,
-                auto&& phi_view,
-                auto&& r_eff_partials_view,
-                auto&& N_partials_view,
-                auto&& phi_partials_view)
-            {
-              auto jac_id = inst.jac_indices.AsVector().begin();
-
-              // Pre-extract BlockViews sequentially to avoid unspecified argument evaluation order
-              auto bv_gg = jacobian_values.GetBlockView(*jac_id++);
-              auto bv_ga = jacobian_values.GetBlockView(*jac_id++);
-              auto bv_gs = jacobian_values.GetBlockView(*jac_id++);
-              auto bv_ag = jacobian_values.GetBlockView(*jac_id++);
-              auto bv_aa = jacobian_values.GetBlockView(*jac_id++);
-              auto bv_as = jacobian_values.GetBlockView(*jac_id++);
-
-              // Read inputs and compute direct Jacobian entries
-              jacobian_values.ForEachBlock(
-                  [&inst](
-                      const double& r_eff,
-                      const double& N,
-                      const double& phi,
-                      const double& hlc,
-                      const double& T,
-                      const double& gas,
-                      const double& aq,
-                      const double& solvent,
-                      double& j_gg,
-                      double& j_ga,
-                      double& j_gs,
-                      double& j_ag,
-                      double& j_aa,
-                      double& j_as)
-                  {
-                    double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
-                    double ke = kc / (hlc * micm::constants::GAS_CONSTANT * T);
-                    double fv = solvent * inst.molar_volume;
-                    // -J[gas, gas] = +φ · k_cond
-                    j_gg += phi * kc;
-                    // -J[gas, aq] = -φ · k_evap / f_v
-                    j_ga -= phi * ke / fv;
-                    // -J[gas, solvent] = +φ · k_evap · [aq] / (f_v · [solvent])
-                    j_gs += phi * ke * aq / (fv * solvent);
-                    // -J[aq, gas] = -φ · k_cond
-                    j_ag -= phi * kc;
-                    // -J[aq, aq] = +φ · k_evap / f_v
-                    j_aa += phi * ke / fv;
-                    // -J[aq, solvent] = -φ · k_evap · [aq] / (f_v · [solvent])
-                    j_as -= phi * ke * aq / (fv * solvent);
-                  },
-                  r_eff_view.GetConstColumnView(0),
-                  N_view.GetConstColumnView(0),
-                  phi_view.GetConstColumnView(0),
-                  state_parameters.GetConstColumnView(inst.hlc_param_idx),
-                  state_parameters.GetConstColumnView(inst.temperature_param_idx),
-                  state_variables.GetConstColumnView(gas_idx),
-                  state_variables.GetConstColumnView(inst.aq_species_idx),
-                  state_variables.GetConstColumnView(inst.solvent_species_idx),
-                  bv_gg,
-                  bv_ga,
-                  bv_gs,
-                  bv_ag,
-                  bv_aa,
-                  bv_as);
-
-              // Indirect entries through r_eff
-              for (std::size_t k = 0; k < inst.n_r_eff_deps; ++k)
+          const std::size_t hlc_idx = hlc_indices[i];
+          const std::size_t temp_idx = temp_indices[i];
+          DenseMatrixPolicy::Function(
+              MICM_LAMBDA(
+                  const typename DenseMatrixPolicy::template VectorType<micm::Conditions>::ConstViewType& conditions_view,
+                  const typename DenseMatrixPolicy::ViewType& params_view)
               {
-                auto bv_r_gas = jacobian_values.GetBlockView(*jac_id++);
-                auto bv_r_aq = jacobian_values.GetBlockView(*jac_id++);
-                jacobian_values.ForEachBlock(
-                    [&inst](
-                        const double& r_eff,
-                        const double& N,
-                        const double& phi,
-                        const double& hlc,
-                        const double& T,
-                        const double& gas,
-                        const double& aq,
-                        const double& solvent,
-                        const double& dr_dvar,
-                        double& j_gas,
-                        double& j_aq)
+                params_view.ForEachRowStrict(
+                    [hlc_copy](const micm::Conditions& cond, micm::Real& hlc, micm::Real& T)
                     {
-                      double kc_dummy, dk_dr, dk_dN_unused;
-                      inst.cond_rate_provider.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr, dk_dN_unused);
-                      double dke_dr = dk_dr / (hlc * micm::constants::GAS_CONSTANT * T);
-                      double fv = solvent * inst.molar_volume;
-                      double eff = phi * (dk_dr * dr_dvar * gas - dke_dr * dr_dvar * aq / fv);
-                      j_gas += eff;
-                      j_aq -= eff;
+                      hlc = hlc_copy.Calculate(cond);
+                      T = cond.temperature_;
                     },
-                    r_eff_view.GetConstColumnView(0),
-                    N_view.GetConstColumnView(0),
-                    phi_view.GetConstColumnView(0),
-                    state_parameters.GetConstColumnView(inst.hlc_param_idx),
-                    state_parameters.GetConstColumnView(inst.temperature_param_idx),
-                    state_variables.GetConstColumnView(gas_idx),
-                    state_variables.GetConstColumnView(inst.aq_species_idx),
-                    state_variables.GetConstColumnView(inst.solvent_species_idx),
-                    r_eff_partials_view.GetConstColumnView(k),
-                    bv_r_gas,
-                    bv_r_aq);
-              }
-
-              // Indirect entries through N
-              for (std::size_t k = 0; k < inst.n_N_deps; ++k)
-              {
-                auto bv_N_gas = jacobian_values.GetBlockView(*jac_id++);
-                auto bv_N_aq = jacobian_values.GetBlockView(*jac_id++);
-                jacobian_values.ForEachBlock(
-                    [&inst](
-                        const double& r_eff,
-                        const double& N,
-                        const double& phi,
-                        const double& hlc,
-                        const double& T,
-                        const double& gas,
-                        const double& aq,
-                        const double& solvent,
-                        const double& dN_dvar,
-                        double& j_gas,
-                        double& j_aq)
-                    {
-                      double kc_dummy, dk_dr_unused, dk_dN;
-                      inst.cond_rate_provider.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr_unused, dk_dN);
-                      double dke_dN = dk_dN / (hlc * micm::constants::GAS_CONSTANT * T);
-                      double fv = solvent * inst.molar_volume;
-                      double eff = phi * (dk_dN * dN_dvar * gas - dke_dN * dN_dvar * aq / fv);
-                      j_gas += eff;
-                      j_aq -= eff;
-                    },
-                    r_eff_view.GetConstColumnView(0),
-                    N_view.GetConstColumnView(0),
-                    phi_view.GetConstColumnView(0),
-                    state_parameters.GetConstColumnView(inst.hlc_param_idx),
-                    state_parameters.GetConstColumnView(inst.temperature_param_idx),
-                    state_variables.GetConstColumnView(gas_idx),
-                    state_variables.GetConstColumnView(inst.aq_species_idx),
-                    state_variables.GetConstColumnView(inst.solvent_species_idx),
-                    N_partials_view.GetConstColumnView(k),
-                    bv_N_gas,
-                    bv_N_aq);
-              }
-
-              // Indirect entries through φ_p (negated: MICM solver expects -J)
-              for (std::size_t k = 0; k < inst.n_phi_deps; ++k)
-              {
-                auto bv_phi_gas = jacobian_values.GetBlockView(*jac_id++);
-                auto bv_phi_aq = jacobian_values.GetBlockView(*jac_id++);
-                jacobian_values.ForEachBlock(
-                    [&inst](
-                        const double& r_eff,
-                        const double& N,
-                        const double& phi,
-                        const double& hlc,
-                        const double& T,
-                        const double& gas,
-                        const double& aq,
-                        const double& solvent,
-                        const double& dphi_dvar,
-                        double& j_gas,
-                        double& j_aq)
-                    {
-                      double kc = inst.cond_rate_provider.ComputeValue(r_eff, N, T);
-                      double ke = kc / (hlc * micm::constants::GAS_CONSTANT * T);
-                      double fv = solvent * inst.molar_volume;
-                      double R = kc * gas - ke * aq / fv;
-                      j_gas += R * dphi_dvar;
-                      j_aq -= R * dphi_dvar;
-                    },
-                    r_eff_view.GetConstColumnView(0),
-                    N_view.GetConstColumnView(0),
-                    phi_view.GetConstColumnView(0),
-                    state_parameters.GetConstColumnView(inst.hlc_param_idx),
-                    state_parameters.GetConstColumnView(inst.temperature_param_idx),
-                    state_variables.GetConstColumnView(gas_idx),
-                    state_variables.GetConstColumnView(inst.aq_species_idx),
-                    state_variables.GetConstColumnView(inst.solvent_species_idx),
-                    phi_partials_view.GetConstColumnView(k),
-                    bv_phi_gas,
-                    bv_phi_aq);
-              }
-            },
-            dummy_state_parameters,
-            dummy_state_variables,
-            jacobian,
-            dummy_buf,
-            dummy_buf,
-            dummy_buf,
-            dummy_partials,
-            dummy_partials,
-            dummy_partials));
-      }
-
-      return [jac_instances = std::move(jac_instances), inner_jac_functions = std::move(inner_jac_functions), gas_idx](
-                 const DenseMatrixPolicy& state_parameters,
-                 const DenseMatrixPolicy& state_variables,
-                 SparseMatrixPolicy& jacobian_matrix)
-      {
-        std::size_t num_blocks = jacobian_matrix.NumberOfBlocks();
-
-        for (std::size_t i = 0; i < jac_instances.size(); ++i)
-        {
-          const auto& inst = jac_instances[i];
-
-          // Pre-compute aerosol properties (full-matrix calls)
-          DenseMatrixPolicy r_eff_buf{ num_blocks, 1, 0.0 };
-          DenseMatrixPolicy N_buf{ num_blocks, 1, 0.0 };
-          DenseMatrixPolicy phi_buf{ num_blocks, 1, 0.0 };
-          inst.r_eff_provider.ComputeValue(state_parameters, state_variables, r_eff_buf);
-          inst.N_provider.ComputeValue(state_parameters, state_variables, N_buf);
-          inst.phi_provider.ComputeValue(state_parameters, state_variables, phi_buf);
-
-          // Pre-compute partials
-          DenseMatrixPolicy r_eff_partials{ num_blocks, std::max(inst.n_r_eff_deps, std::size_t(1)), 0.0 };
-          if (inst.n_r_eff_deps > 0)
-            inst.r_eff_provider.ComputeValueAndDerivatives(state_parameters, state_variables, r_eff_buf, r_eff_partials);
-
-          DenseMatrixPolicy N_partials{ num_blocks, std::max(inst.n_N_deps, std::size_t(1)), 0.0 };
-          if (inst.n_N_deps > 0)
-            inst.N_provider.ComputeValueAndDerivatives(state_parameters, state_variables, N_buf, N_partials);
-
-          DenseMatrixPolicy phi_partials{ num_blocks, std::max(inst.n_phi_deps, std::size_t(1)), 0.0 };
-          if (inst.n_phi_deps > 0)
-            inst.phi_provider.ComputeValueAndDerivatives(state_parameters, state_variables, phi_buf, phi_partials);
-
-          // Call the Function-wrapped inner loop
-          inner_jac_functions[i](
-              state_parameters,
-              state_variables,
-              jacobian_matrix,
-              r_eff_buf,
-              N_buf,
-              phi_buf,
-              r_eff_partials,
-              N_partials,
-              phi_partials);
+                    conditions_view,
+                    params_view.GetColumnView(hlc_idx),
+                    params_view.GetColumnView(temp_idx));
+              },
+              conditions,
+              params)(conditions, params);
         }
       };
     }

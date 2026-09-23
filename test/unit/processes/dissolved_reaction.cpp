@@ -3,6 +3,7 @@
 
 #include <miam/processes/dissolved_reaction.hpp>
 #include <miam/processes/dissolved_reaction_builder.hpp>
+#include <miam/processes/dissolved_reaction_set.hpp>
 
 #include <micm/process/rate_constant/arrhenius_rate_constant.hpp>
 #include <micm/process/rate_constant/rate_constant_functions.hpp>
@@ -27,6 +28,25 @@ template<class U>
 using Vector = typename MatrixPolicy::template VectorType<U>;
 namespace
 {
+  /// Builds a `DissolvedReactionSet` bound to a fresh sparse-Jacobian pattern derived from
+  /// `reaction.NonZeroJacobianElements(...)`; used to drive both `AddForcingTerms` and
+  /// `SubtractJacobianTerms` in the tests below.
+  template<typename Dense = MatrixPolicy, typename Sparse = SparseMatrixPolicy>
+  DissolvedReactionSet<Dense, Sparse> MakeSet(
+      const DissolvedReaction& reaction,
+      const std::map<std::string, std::set<std::string>>& phase_prefixes,
+      const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+      const std::unordered_map<std::string, std::size_t>& state_variable_indices,
+      std::size_t num_blocks = 1)
+  {
+    auto elements = reaction.NonZeroJacobianElements(phase_prefixes, state_variable_indices);
+    auto builder = Sparse::Create(state_variable_indices.size()).SetNumberOfBlocks(num_blocks).InitialValue(0.0);
+    for (const auto& elem : elements)
+      builder = builder.WithElement(elem.first, elem.second);
+    Sparse pattern(builder);
+    return DissolvedReactionSet<Dense, Sparse>(
+        reaction, phase_prefixes, state_parameter_indices, state_variable_indices, pattern);
+  }
 
   /// @brief Compare analytical Jacobian against central finite-difference approximation
   ///        using MICM's FiniteDifferenceJacobian / CompareJacobianToFiniteDifference utilities.
@@ -49,17 +69,17 @@ namespace
     SparseMatrixPolicy jacobian(jac_builder);
     jacobian.Fill(0.0);
 
-    auto jac_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
-        phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
-    jac_func(state_parameters, state_variables, jacobian);
+    DissolvedReactionSet<MatrixPolicy, SparseMatrixPolicy> reaction_set(
+        reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+    reaction_set.SubtractJacobianTerms(
+        state_parameters, state_variables, jacobian);
 
     // Build FD Jacobian — bind state_parameters into the forcing callable
-    auto ff = reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
     auto fd_jac = micm::FiniteDifferenceJacobian<MatrixPolicy>(
         [&](const MatrixPolicy& vars, MatrixPolicy& out)
         {
           out.Fill(0.0);
-          ff(state_parameters, vars, out);
+          reaction_set.AddForcingTerms(state_parameters, vars, out);
         },
         state_variables,
         num_vars);
@@ -89,9 +109,9 @@ TEST(DissolvedReaction, SpeciesUsedWithSinglePrefix)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = UserDefinedConstantExpression{ 0.1 };
 
-  DissolvedReaction reaction{ { rate },
+  DissolvedReaction reaction{ rate,
                               { a },    // reactants
                               { b },    // products
                               solvent,  // solvent
@@ -118,9 +138,9 @@ TEST(DissolvedReaction, SpeciesUsedWithMultiplePrefixes)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = UserDefinedConstantExpression{ 0.1 };
 
-  DissolvedReaction reaction{ { rate },
+  DissolvedReaction reaction{ rate,
                               { a, b },  // reactants
                               { c },     // products
                               solvent,   // solvent
@@ -152,9 +172,9 @@ TEST(DissolvedReaction, SpeciesUsedWithNoMatchingPhase)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = UserDefinedConstantExpression{ 0.1 };
 
-  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ rate, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["ORGANIC"].insert("AEROSOL_MODE");
@@ -170,9 +190,9 @@ TEST(DissolvedReaction, SpeciesUsedDuplicateHandling)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = UserDefinedConstantExpression{ 0.1 };
 
-  DissolvedReaction reaction{ { rate },
+  DissolvedReaction reaction{ rate,
                               { a },  // reactants
                               { b },  // products
                               a,      // solvent (same as reactant)
@@ -206,9 +226,9 @@ TEST(DissolvedReaction, NonZeroJacobianElementsBasic)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = UserDefinedConstantExpression{ 0.1 };
 
-  DissolvedReaction reaction{ { rate },
+  DissolvedReaction reaction{ rate,
                               { a },     // 1 reactant
                               { b, c },  // 2 products
                               solvent,
@@ -258,9 +278,9 @@ TEST(DissolvedReaction, NonZeroJacobianElementsMultipleReactants)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = UserDefinedConstantExpression{ 0.1 };
 
-  DissolvedReaction reaction{ { rate },
+  DissolvedReaction reaction{ rate,
                               { a, b },  // 2 reactants
                               { c },     // 1 product
                               solvent,
@@ -294,10 +314,10 @@ TEST(DissolvedReaction, NonZeroJacobianElementsMultiplePrefixes)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = UserDefinedConstantExpression{ 0.1 };
 
   // A -> B with solvent S
-  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ rate, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL_DROP");
@@ -332,9 +352,9 @@ TEST(DissolvedReaction, UpdateStateParametersFunctionBasic)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
   double k = 0.1;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = UserDefinedConstantExpression{ k };
 
-  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ rate, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -371,9 +391,9 @@ TEST(DissolvedReaction, UpdateStateParametersFunctionTemperatureDependent)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1 * std::exp(-3000.0 / conditions.temperature_); };
+  auto rate = ArrheniusExpression{ { .A_ = 0.1, .C_ = -3000.0 } };
 
-  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ rate, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROPLET");
@@ -413,9 +433,9 @@ TEST(DissolvedReaction, UpdateStateParametersFunctionMissingParameter)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = UserDefinedConstantExpression{ 0.1 };
 
-  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ rate, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -442,10 +462,10 @@ TEST(DissolvedReaction, ForcingFunctionBasicRates)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
   double k = 0.1;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = UserDefinedConstantExpression{ k };
 
   // A -> B with solvent S
-  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ rate, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -460,8 +480,7 @@ TEST(DissolvedReaction, ForcingFunctionBasicRates)
   state_variable_indices["MODE1.AQUEOUS.B"] = 1;
   state_variable_indices["MODE1.AQUEOUS.S"] = 2;
 
-  auto forcing_func =
-      reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_func_set = MakeSet<MatrixPolicy, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(1, 1);
   state_parameters[0][0] = k;
@@ -473,7 +492,7 @@ TEST(DissolvedReaction, ForcingFunctionBasicRates)
 
   MatrixPolicy forcing_terms(1, 3, 0.0);
 
-  forcing_func(state_parameters, state_variables, forcing_terms);
+  forcing_func_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // rate = k / [S]^(1-1) * [A] = k * [A] = 0.1 * 2.0 = 0.2
   double expected_rate = k * 2.0;
@@ -498,10 +517,10 @@ TEST(DissolvedReaction, ForcingFunctionSolventNormalization)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { solvent } } };
 
   double k = 1.0;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = UserDefinedConstantExpression{ k };
 
   // A + B -> C with solvent S
-  DissolvedReaction reaction{ { rate },
+  DissolvedReaction reaction{ rate,
                               { a, b },  // 2 reactants
                               { c },     // 1 product
                               solvent,
@@ -521,8 +540,7 @@ TEST(DissolvedReaction, ForcingFunctionSolventNormalization)
   state_variable_indices["DROP.AQUEOUS.C"] = 2;
   state_variable_indices["DROP.AQUEOUS.S"] = 3;
 
-  auto forcing_func =
-      reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_func_set = MakeSet<MatrixPolicy, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(1, 1);
   state_parameters[0][0] = k;
@@ -535,7 +553,7 @@ TEST(DissolvedReaction, ForcingFunctionSolventNormalization)
 
   MatrixPolicy forcing_terms(1, 4, 0.0);
 
-  forcing_func(state_parameters, state_variables, forcing_terms);
+  forcing_func_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // rate = k / [S]^(2-1) * [A] * [B] = k / [S] * [A] * [B]
   double expected_rate = k / 50.0 * 0.001 * 0.002;
@@ -558,10 +576,10 @@ TEST(DissolvedReaction, ForcingFunctionMultipleProducts)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { solvent } } };
 
   double k = 2.0;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = UserDefinedConstantExpression{ k };
 
   // A -> B + C with solvent S
-  DissolvedReaction reaction{ { rate },
+  DissolvedReaction reaction{ rate,
                               { a },     // 1 reactant
                               { b, c },  // 2 products
                               solvent,
@@ -581,8 +599,7 @@ TEST(DissolvedReaction, ForcingFunctionMultipleProducts)
   state_variable_indices["DROP.AQUEOUS.C"] = 2;
   state_variable_indices["DROP.AQUEOUS.S"] = 3;
 
-  auto forcing_func =
-      reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_func_set = MakeSet<MatrixPolicy, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(1, 1);
   state_parameters[0][0] = k;
@@ -595,7 +612,7 @@ TEST(DissolvedReaction, ForcingFunctionMultipleProducts)
 
   MatrixPolicy forcing_terms(1, 4, 0.0);
 
-  forcing_func(state_parameters, state_variables, forcing_terms);
+  forcing_func_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // rate = k / [S]^(1-1) * [A] = k * [A] = 2.0 * 3.0 = 6.0
   double expected_rate = k * 3.0;
@@ -617,9 +634,9 @@ TEST(DissolvedReaction, ForcingFunctionMultipleCells)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
   double k = 0.1;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = UserDefinedConstantExpression{ k };
 
-  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ rate, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -634,8 +651,7 @@ TEST(DissolvedReaction, ForcingFunctionMultipleCells)
   state_variable_indices["MODE1.AQUEOUS.B"] = 1;
   state_variable_indices["MODE1.AQUEOUS.S"] = 2;
 
-  auto forcing_func =
-      reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_func_set = MakeSet<MatrixPolicy, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(3, 1);
   MatrixPolicy state_variables(3, 3);
@@ -649,7 +665,7 @@ TEST(DissolvedReaction, ForcingFunctionMultipleCells)
     state_variables[i][2] = 55.0;           // [S]
   }
 
-  forcing_func(state_parameters, state_variables, forcing_terms);
+  forcing_func_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   for (std::size_t i = 0; i < 3; ++i)
   {
@@ -673,9 +689,9 @@ TEST(DissolvedReaction, ForcingFunctionMultiplePhaseInstances)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
   double k = 0.1;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = UserDefinedConstantExpression{ k };
 
-  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ rate, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL_DROP");
@@ -694,8 +710,7 @@ TEST(DissolvedReaction, ForcingFunctionMultiplePhaseInstances)
   state_variable_indices["LARGE_DROP.AQUEOUS.B"] = 4;
   state_variable_indices["LARGE_DROP.AQUEOUS.S"] = 5;
 
-  auto forcing_func =
-      reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_func_set = MakeSet<MatrixPolicy, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(1, 1);
   state_parameters[0][0] = k;
@@ -712,7 +727,7 @@ TEST(DissolvedReaction, ForcingFunctionMultiplePhaseInstances)
 
   MatrixPolicy forcing_terms(1, 6, 0.0);
 
-  forcing_func(state_parameters, state_variables, forcing_terms);
+  forcing_func_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // Small drop: rate = k * [A] = 0.1 * 2.0 = 0.2
   double rate_small = k * 2.0;
@@ -743,10 +758,10 @@ TEST(DissolvedReaction, JacobianFunctionBasicPartials)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
   double k = 0.1;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = UserDefinedConstantExpression{ k };
 
   // A -> B with solvent S
-  DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
+  DissolvedReaction reaction{ rate, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -770,8 +785,7 @@ TEST(DissolvedReaction, JacobianFunctionBasicPartials)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  auto jacobian_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
-      phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_func_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 1);
   state_parameters[0][0] = k;
@@ -781,7 +795,7 @@ TEST(DissolvedReaction, JacobianFunctionBasicPartials)
   state_variables[0][1] = 0.5;   // [B]
   state_variables[0][2] = 55.0;  // [S]
 
-  jacobian_func(state_parameters, state_variables, jacobian);
+  jacobian_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // For A -> B (1 reactant, n_r = 1):
   // rate = k / [S]^0 * [A] = k * [A]
@@ -811,10 +825,10 @@ TEST(DissolvedReaction, JacobianFunctionMultipleReactants)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { solvent } } };
 
   double k = 1.0;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = UserDefinedConstantExpression{ k };
 
   // A + B -> C with solvent S
-  DissolvedReaction reaction{ { rate },
+  DissolvedReaction reaction{ rate,
                               { a, b },  // 2 reactants
                               { c },     // 1 product
                               solvent,
@@ -843,8 +857,7 @@ TEST(DissolvedReaction, JacobianFunctionMultipleReactants)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  auto jacobian_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
-      phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_func_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 1);
   state_parameters[0][0] = k;
@@ -855,7 +868,7 @@ TEST(DissolvedReaction, JacobianFunctionMultipleReactants)
   state_variables[0][2] = 0.0;    // [C]
   state_variables[0][3] = 50.0;   // [S]
 
-  jacobian_func(state_parameters, state_variables, jacobian);
+  jacobian_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // rate = k / [S] * [A] * [B]
   // d(rate)/d[A] = k / [S] * [B] = 1.0 / 50.0 * 0.002 = 4e-5
@@ -898,11 +911,11 @@ TEST(DissolvedReaction, JacobianFunctionSolventPartial)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c } } };
 
   double k = 2.0;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = UserDefinedConstantExpression{ k };
 
   // A + C -> B with solvent C (solvent is a reactant)
   // n_r = 2, rate = k / [C]^1 * [A] * [C] = k * [A]
-  DissolvedReaction reaction{ { rate },
+  DissolvedReaction reaction{ rate,
                               { a, c },  // 2 reactants (C is also solvent)
                               { b },     // 1 product
                               c,         // solvent = reactant C
@@ -930,8 +943,7 @@ TEST(DissolvedReaction, JacobianFunctionSolventPartial)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  auto jacobian_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
-      phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_func_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 1);
   state_parameters[0][0] = k;
@@ -941,7 +953,7 @@ TEST(DissolvedReaction, JacobianFunctionSolventPartial)
   state_variables[0][1] = 40.0;  // [C] (solvent and reactant)
   state_variables[0][2] = 0.0;   // [B]
 
-  jacobian_func(state_parameters, state_variables, jacobian);
+  jacobian_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // rate = k / [C]^(2-1) * [A] * [C] = k * [A]
   // d(rate)/d[A] = k / [C] * [C] = k
@@ -975,7 +987,7 @@ TEST(DissolvedReaction, JacobianFDUnimolecular)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
 
   double k = 0.1;
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase };
+  DissolvedReaction reaction{ UserDefinedConstantExpression{ k }, { a }, { b }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1006,7 +1018,7 @@ TEST(DissolvedReaction, JacobianFDBimolecular)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { s } } };
 
   double k = 1.0;
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a, b }, { c }, s, phase };
+  DissolvedReaction reaction{ UserDefinedConstantExpression{ k }, { a, b }, { c }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1037,7 +1049,7 @@ TEST(DissolvedReaction, JacobianFDMultiCell)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
 
   double k = 0.5;
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase };
+  DissolvedReaction reaction{ UserDefinedConstantExpression{ k }, { a }, { b }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1073,7 +1085,7 @@ TEST(DissolvedReaction, JacobianFDMultiPhaseInstance)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
 
   double k = 0.2;
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase };
+  DissolvedReaction reaction{ UserDefinedConstantExpression{ k }, { a }, { b }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -1107,7 +1119,7 @@ TEST(DissolvedReaction, JacobianFDSolventIsReactant)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c } } };
 
   double k = 2.0;
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a, c }, { b }, c, phase };
+  DissolvedReaction reaction{ UserDefinedConstantExpression{ k }, { a, c }, { b }, c, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1144,7 +1156,7 @@ TEST(DissolvedReaction, ForcingFunctionSolventFloorZeroSolvent)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { s } } };
 
   double k = 1.0;
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a, b }, { c }, s, phase };
+  DissolvedReaction reaction{ UserDefinedConstantExpression{ k }, { a, b }, { c }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1155,7 +1167,7 @@ TEST(DissolvedReaction, ForcingFunctionSolventFloorZeroSolvent)
     { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.C", 2 }, { "DROP.AQUEOUS.S", 3 }
   };
 
-  auto ff = reaction.ForcingFunction<VM>(phase_prefixes, spi, svi);
+  auto ff_set = MakeSet<VM, SparseMatrixPolicy>(reaction, phase_prefixes, spi, svi);
 
   VM params(1, 1);
   params[0][0] = k;
@@ -1166,7 +1178,7 @@ TEST(DissolvedReaction, ForcingFunctionSolventFloorZeroSolvent)
   vars[0][3] = 0.0;  // [S] = 0
   VM forcing(1, 4, 0.0);
 
-  ff(params, vars, forcing);
+  ff_set.AddForcingTerms(params, vars, forcing);
 
   // rate = k * 0 / (0+eps)^2 * [A]*[B] → 0
   EXPECT_NEAR(forcing[0][0], 0.0, 1e-10) << "Forcing should be zero when [S]=0";
@@ -1186,7 +1198,7 @@ TEST(DissolvedReaction, JacobianFunctionSolventFloorZeroSolvent)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { s } } };
 
   double k = 1.0;
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a, b }, { c }, s, phase };
+  DissolvedReaction reaction{ UserDefinedConstantExpression{ k }, { a, b }, { c }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1204,7 +1216,7 @@ TEST(DissolvedReaction, JacobianFunctionSolventFloorZeroSolvent)
   SparseMatrixPolicy jacobian(jac_builder);
   jacobian.Fill(0.0);
 
-  auto jac_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(phase_prefixes, spi, svi, jacobian);
+  DissolvedReactionSet<MatrixPolicy, SparseMatrixPolicy> jac_func_set(reaction, phase_prefixes, spi, svi, jacobian);
 
   MatrixPolicy params(1, 1);
   params[0][0] = k;
@@ -1213,7 +1225,7 @@ TEST(DissolvedReaction, JacobianFunctionSolventFloorZeroSolvent)
   vars[0][1] = 0.002;
   vars[0][2] = 0.0;
   vars[0][3] = 0.0;  // [S] = 0
-  jac_func(params, vars, jacobian);
+  jac_func_set.SubtractJacobianTerms(params, vars, jacobian);
 
   // When [S] = 0 the rate r = k*[S]/([S]+δ)^n_r * ∏Ri = 0, so
   // ∂r/∂[Ri] = k*[S]/([S]+δ)^n_r * ∏_{j≠i}Rj → 0 naturally (reactant/product columns).
@@ -1265,8 +1277,8 @@ TEST(DissolvedReaction, ForcingFunctionCappedUncappedRegime)
   double k = 1.0e-6;    // very slow
   double t_half = 1.0;  // short half-life → r_max = [A] / t_half = large compared to r
 
-  DissolvedReaction uncapped{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase };
-  DissolvedReaction capped{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half };
+  DissolvedReaction uncapped{ UserDefinedConstantExpression{ k }, { a }, { b }, s, phase };
+  DissolvedReaction capped{ UserDefinedConstantExpression{ k }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1278,8 +1290,8 @@ TEST(DissolvedReaction, ForcingFunctionCappedUncappedRegime)
                                                     { "DROP.AQUEOUS.B", 1 },
                                                     { "DROP.AQUEOUS.S", 2 } };
 
-  auto ff_u = uncapped.ForcingFunction<VM>(phase_prefixes, spi_u, svi);
-  auto ff_c = capped.ForcingFunction<VM>(phase_prefixes, spi_c, svi);
+  auto ff_u_set = MakeSet<VM, SparseMatrixPolicy>(uncapped, phase_prefixes, spi_u, svi);
+  auto ff_c_set = MakeSet<VM, SparseMatrixPolicy>(capped, phase_prefixes, spi_c, svi);
 
   VM params(1, 1);
   params[0][0] = k;
@@ -1291,8 +1303,8 @@ TEST(DissolvedReaction, ForcingFunctionCappedUncappedRegime)
   // r = k * [A] = 1e-6; r_max = [A] / t_half = 1.0 → r << r_max
   VM forcing_u(1, 3, 0.0);
   VM forcing_c(1, 3, 0.0);
-  ff_u(params, vars, forcing_u);
-  ff_c(params, vars, forcing_c);
+  ff_u_set.AddForcingTerms(params, vars, forcing_u);
+  ff_c_set.AddForcingTerms(params, vars, forcing_c);
 
   EXPECT_NEAR(forcing_c[0][0], forcing_u[0][0], std::abs(forcing_u[0][0]) * 1e-10)
       << "Capped should equal uncapped when rate << r_max";
@@ -1312,7 +1324,7 @@ TEST(DissolvedReaction, ForcingFunctionCappedSaturatedRegime)
   double k = 1.0e6;        // very fast reaction
   double t_half = 1000.0;  // long half-life → r_max = [A] / t_half = small
 
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half };
+  DissolvedReaction reaction{ UserDefinedConstantExpression{ k }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1322,7 +1334,7 @@ TEST(DissolvedReaction, ForcingFunctionCappedSaturatedRegime)
                                                     { "DROP.AQUEOUS.B", 1 },
                                                     { "DROP.AQUEOUS.S", 2 } };
 
-  auto ff = reaction.ForcingFunction<VM>(phase_prefixes, spi, svi);
+  auto ff_set = MakeSet<VM, SparseMatrixPolicy>(reaction, phase_prefixes, spi, svi);
 
   VM params(1, 1);
   params[0][0] = k;
@@ -1335,7 +1347,7 @@ TEST(DissolvedReaction, ForcingFunctionCappedSaturatedRegime)
   // r = k * [A] = 1e6; r_max = [A] / t_half = 1e-3 → rate >> r_max
   // expected capped rate ≈ r_max = A / t_half (tanh(u) ≈ 1)
   VM forcing(1, 3, 0.0);
-  ff(params, vars, forcing);
+  ff_set.AddForcingTerms(params, vars, forcing);
 
   double r_max = A / t_half;
   EXPECT_NEAR(forcing[0][0], -r_max, r_max * 1e-6) << "Capped forcing should approach -r_max in saturated regime";
@@ -1353,7 +1365,7 @@ TEST(DissolvedReaction, JacobianFDCappedUncappedRegime)
   double k = 1.0e-5;    // slow reaction, uncapped
   double t_half = 0.1;  // r_max = [A]/t_half >> r
 
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half };
+  DissolvedReaction reaction{ UserDefinedConstantExpression{ k }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1384,7 +1396,7 @@ TEST(DissolvedReaction, JacobianFDCappedSaturatedRegime)
   double k = 1.0e5;  // fast reaction, deeply capped
   double t_half = 1000.0;
 
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half };
+  DissolvedReaction reaction{ UserDefinedConstantExpression{ k }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1420,7 +1432,7 @@ TEST(DissolvedReaction, JacobianFDCappedBimolecular)
   double k = 50.0;       // moderately fast
   double t_half = 10.0;  // r_max = min(A,B) / t_half
 
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a, b }, { c }, s, phase, 1.0e-20, t_half };
+  DissolvedReaction reaction{ UserDefinedConstantExpression{ k }, { a, b }, { c }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");

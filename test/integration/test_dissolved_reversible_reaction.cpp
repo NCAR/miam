@@ -53,12 +53,9 @@ TEST(DissolvedReversibleReactionIntegration, SimpleAtoB)
   double k_reverse = 0.05;  // s^-1
 
   // Create rate constant functions (temperature-independent)
-  auto forward_rate = [k_forward](const Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const Conditions& conditions) { return k_reverse; };
-
   // Create reversible reaction: A <-> B with solvent C
-  auto reaction = DissolvedReversibleReaction{ { forward_rate },
-                                               { reverse_rate },
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                               UserDefinedConstantExpression{ k_reverse },
                                                { A },  // reactants
                                                { B },  // products
                                                C,      // solvent
@@ -174,13 +171,9 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsReactant)
   // Rate constants
   double k_forward = 1.0e-3;   // s^-1
   double k_reverse = 1.0e-11;  // s^-1
-
-  auto forward_rate = [k_forward](const Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const Conditions& conditions) { return k_reverse; };
-
   // Create reversible reaction: A + C <-> B with solvent C
-  auto reaction = DissolvedReversibleReaction{ { forward_rate },
-                                               { reverse_rate },
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                               UserDefinedConstantExpression{ k_reverse },
                                                { A, C },  // reactants: A + C
                                                { B },     // products: B
                                                C,         // solvent
@@ -302,15 +295,11 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsProduct)
   // Rate constants
   double k_forward = 1.0e-11;  // s^-1 (very slow forward)
   double k_reverse = 1.0e-3;   // s^-1 (fast reverse)
-
-  auto forward_rate = [k_forward](const Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const Conditions& conditions) { return k_reverse; };
-
   // Create reversible reaction: A ⇌ B + C with solvent C
   // Forward: k_f/[C]^0 × [A] = k_f × [A] (no solvent dependence)
   // Reverse: k_r/[C]^1 × [B] × [C] = k_r × [B] (C cancels)
-  auto reaction = DissolvedReversibleReaction{ { forward_rate },
-                                               { reverse_rate },
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                               UserDefinedConstantExpression{ k_reverse },
                                                { A },     // reactants: A
                                                { B, C },  // products: B + C
                                                C,         // solvent
@@ -430,13 +419,9 @@ TEST(DissolvedReversibleReactionIntegration, MultiPhaseInstances)
   // Rate constants for small droplets
   double k_forward = 0.1;   // s^-1
   double k_reverse = 0.05;  // s^-1
-
-  auto k_forward_calc = [k_forward](const Conditions& conditions) { return k_forward; };
-  auto k_reverse_calc = [k_reverse](const Conditions& conditions) { return k_reverse; };
-
   // Create reaction for small droplets: A ⇌ B
-  auto reaction = DissolvedReversibleReaction{ k_forward_calc,
-                                               k_reverse_calc,
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                               UserDefinedConstantExpression{ k_reverse },
                                                { A },  // reactants
                                                { B },  // products
                                                C,      // solvent

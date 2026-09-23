@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <miam/processes/constants/rate_expression.hpp>
 #include <miam/processes/dissolved_reversible_reaction.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
@@ -11,18 +12,22 @@
 #include <micm/process/rate_constant/rate_constant_functions.hpp>
 #include <micm/system/conditions.hpp>
 
-#include <functional>
+#include <concepts>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
+#include <utility>
+#include <variant>
 
 namespace miam
 {
   /// @brief A dissolved reversible reaction builder
   /// @details Builder class for constructing DissolvedReversibleReaction objects.
   ///
-  ///          Exactly two of {forward rate constant, reverse rate
-  ///          constant, equilibrium constant} must be determinable; the third is derived.
+  ///          Exactly two of {forward rate constant, reverse rate constant,
+  ///          equilibrium constant} must be provided; the third is derived at
+  ///          `Build()` time by wrapping the two into a `CombinedExpression`.
   class DissolvedReversibleReactionBuilder
   {
    public:
@@ -66,43 +71,44 @@ namespace miam
       return *this;
     }
 
-    /// @brief Sets the forward rate constant function
-    DissolvedReversibleReactionBuilder& SetForwardRateConstant(const auto& forward_rate_constant)
+    /// @brief Sets the forward rate constant from any operand-expression alternative
+    template<class Expression>
+      requires std::constructible_from<detail::CombinedExpressionOperand, Expression>
+    DissolvedReversibleReactionBuilder& SetForwardRateConstant(Expression expression)
     {
-      forward_rate_constant_ = [forward_rate_constant](const micm::Conditions& conditions)
-      { return forward_rate_constant.Calculate(conditions); };
+      forward_rate_constant_ = detail::CombinedExpressionOperand{ std::move(expression) };
       return *this;
     }
 
-    /// @brief Sets the forward rate constant from Arrhenius parameters
+    /// @brief Sets the forward rate constant from MICM Arrhenius parameters
     DissolvedReversibleReactionBuilder& SetForwardRateConstant(const micm::ArrheniusRateConstantParameters& params)
     {
-      forward_rate_constant_ = [params](const micm::Conditions& conditions)
-      { return micm::CalculateArrhenius(params, conditions.temperature_, conditions.pressure_); };
+      forward_rate_constant_ = detail::CombinedExpressionOperand{ ArrheniusExpression{ params } };
       return *this;
     }
 
-    /// @brief Sets the reverse rate constant function
-    DissolvedReversibleReactionBuilder& SetReverseRateConstant(const auto& reverse_rate_constant)
+    /// @brief Sets the reverse rate constant from any operand-expression alternative
+    template<class Expression>
+      requires std::constructible_from<detail::CombinedExpressionOperand, Expression>
+    DissolvedReversibleReactionBuilder& SetReverseRateConstant(Expression expression)
     {
-      reverse_rate_constant_ = [reverse_rate_constant](const micm::Conditions& conditions)
-      { return reverse_rate_constant.Calculate(conditions); };
+      reverse_rate_constant_ = detail::CombinedExpressionOperand{ std::move(expression) };
       return *this;
     }
 
-    /// @brief Sets the reverse rate constant from Arrhenius parameters
+    /// @brief Sets the reverse rate constant from MICM Arrhenius parameters
     DissolvedReversibleReactionBuilder& SetReverseRateConstant(const micm::ArrheniusRateConstantParameters& params)
     {
-      reverse_rate_constant_ = [params](const micm::Conditions& conditions)
-      { return micm::CalculateArrhenius(params, conditions.temperature_, conditions.pressure_); };
+      reverse_rate_constant_ = detail::CombinedExpressionOperand{ ArrheniusExpression{ params } };
       return *this;
     }
 
-    /// @brief Sets the equilibrium constant function
-    DissolvedReversibleReactionBuilder& SetEquilibriumConstant(const auto& equilibrium_constant)
+    /// @brief Sets the equilibrium constant from any operand-expression alternative
+    template<class Expression>
+      requires std::constructible_from<detail::CombinedExpressionOperand, Expression>
+    DissolvedReversibleReactionBuilder& SetEquilibriumConstant(Expression expression)
     {
-      equilibrium_constant_ = [equilibrium_constant](const micm::Conditions& conditions)
-      { return equilibrium_constant.Calculate(conditions); };
+      equilibrium_constant_ = detail::CombinedExpressionOperand{ std::move(expression) };
       return *this;
     }
 
@@ -138,13 +144,10 @@ namespace miam
             "DissolvedReversibleReactionBuilder requires the solvent to be set.");
       }
 
-      int num_set = 0;
-      if (forward_rate_constant_)
-        ++num_set;
-      if (reverse_rate_constant_)
-        ++num_set;
-      if (equilibrium_constant_)
-        ++num_set;
+      const bool has_fwd = forward_rate_constant_.has_value();
+      const bool has_rev = reverse_rate_constant_.has_value();
+      const bool has_eq = equilibrium_constant_.has_value();
+      const int num_set = (has_fwd ? 1 : 0) + (has_rev ? 1 : 0) + (has_eq ? 1 : 0);
       if (num_set != 2)
       {
         throw MiamException(
@@ -154,49 +157,44 @@ namespace miam
             "equilibrium constant must be set.");
       }
 
-      // If equilibrium constant is set, compute the missing rate constant
-      auto fwd_rc = forward_rate_constant_;
-      auto rev_rc = reverse_rate_constant_;
-      if (equilibrium_constant_)
-      {
-        if (!forward_rate_constant_)
-        {
-          // Capture the necessary functions by value to avoid dangling references
-          auto eq_const = equilibrium_constant_;
-          auto rev_const = reverse_rate_constant_;
-          fwd_rc = [eq_const, rev_const](const micm::Conditions& conditions)
-          {
-            double K_eq = eq_const(conditions);
-            double k_r = rev_const(conditions);
-            return K_eq * k_r;
-          };
-        }
-        else if (!reverse_rate_constant_)
-        {
-          // Capture the necessary functions by value to avoid dangling references
-          auto eq_const = equilibrium_constant_;
-          auto fwd_const = forward_rate_constant_;
-          rev_rc = [eq_const, fwd_const](const micm::Conditions& conditions)
-          {
-            double K_eq = eq_const(conditions);
-            double k_f = fwd_const(conditions);
-            return k_f / K_eq;
-          };
-        }
-      }
-      return DissolvedReversibleReaction(fwd_rc, rev_rc, reactants_, products_, solvent_, phase_, solvent_floor_);
+      RateConstantExpression forward = ResolveForward();
+      RateConstantExpression reverse = ResolveReverse();
+      return DissolvedReversibleReaction(
+          std::move(forward), std::move(reverse), reactants_, products_, solvent_, phase_, solvent_floor_);
     }
 
    private:
-    micm::Phase phase_;                     ///< Phase in which the reaction occurs
-    bool phase_is_set_ = false;             ///< Flag to track if the phase has been set
-    std::vector<micm::Species> reactants_;  ///< Reactant species
-    std::vector<micm::Species> products_;   ///< Product species
-    micm::Species solvent_;                 ///< Solvent species
-    bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
-    std::function<double(const micm::Conditions& conditions)> forward_rate_constant_;  ///< Forward rate constant function
-    std::function<double(const micm::Conditions& conditions)> reverse_rate_constant_;  ///< Reverse rate constant function
-    std::function<double(const micm::Conditions& conditions)> equilibrium_constant_;   ///< Equilibrium constant function
-    double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
+    /// @brief Lift an operand variant into the outer `RateConstantExpression` variant.
+    static RateConstantExpression OperandToRateConstant(const detail::CombinedExpressionOperand& operand)
+    {
+      return std::visit([](const auto& expr) -> RateConstantExpression { return expr; }, operand);
+    }
+
+    /// @brief Return the forward rate constant, deriving it from `K_eq * k_r` if unset.
+    RateConstantExpression ResolveForward() const
+    {
+      if (forward_rate_constant_.has_value())
+        return OperandToRateConstant(*forward_rate_constant_);
+      return CombinedExpression{ *equilibrium_constant_, *reverse_rate_constant_, CombinedExpressionOp::Multiply };
+    }
+
+    /// @brief Return the reverse rate constant, deriving it from `k_f / K_eq` if unset.
+    RateConstantExpression ResolveReverse() const
+    {
+      if (reverse_rate_constant_.has_value())
+        return OperandToRateConstant(*reverse_rate_constant_);
+      return CombinedExpression{ *forward_rate_constant_, *equilibrium_constant_, CombinedExpressionOp::Divide };
+    }
+
+    micm::Phase phase_;
+    bool phase_is_set_ = false;
+    std::vector<micm::Species> reactants_;
+    std::vector<micm::Species> products_;
+    micm::Species solvent_;
+    bool solvent_is_set_ = false;
+    std::optional<detail::CombinedExpressionOperand> forward_rate_constant_;
+    std::optional<detail::CombinedExpressionOperand> reverse_rate_constant_;
+    std::optional<detail::CombinedExpressionOperand> equilibrium_constant_;
+    double solvent_floor_{ 1.0e-20 };
   };
 }  // namespace miam

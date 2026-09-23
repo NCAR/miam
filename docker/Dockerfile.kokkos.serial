@@ -1,0 +1,25 @@
+FROM fedora:latest
+
+RUN dnf -y update \
+    && dnf -y install \
+        cmake \
+        gcc-c++ \
+        gdb \
+        git \
+        ninja-build \
+    && dnf clean all
+
+# copy the MIAM code
+COPY . /miam/
+
+# build the library and run the tests
+RUN mkdir /build \
+      && cd /build \
+      && cmake \
+        -G Ninja \
+        -D CMAKE_BUILD_TYPE=release \
+        -D MIAM_ENABLE_KOKKOS=TRUE \
+        ../miam \
+      && ninja install -j 8
+
+WORKDIR /build

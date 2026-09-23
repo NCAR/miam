@@ -13,3 +13,7 @@ create_standard_test(NAME jacobian_verification SOURCES test_jacobian_verificati
 create_standard_test(NAME cam_cloud_chemistry SOURCES test_cam_cloud_chemistry.cpp)
 create_standard_test(NAME solvent_robustness SOURCES test_solvent_robustness.cpp)
 create_standard_test(NAME aqueous_carbonic_acid SOURCES test_aqueous_carbonic_acid.cpp)
+
+if(MIAM_ENABLE_KOKKOS)
+  add_subdirectory(kokkos)
+endif()

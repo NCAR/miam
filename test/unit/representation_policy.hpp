@@ -4,6 +4,7 @@
 #pragma once
 
 #include <miam/representations/aerosol_property.hpp>
+#include <miam/representations/aerosol_property_descriptor.hpp>
 
 #include <micm/system/phase.hpp>
 #include <micm/util/matrix.hpp>
@@ -144,29 +145,30 @@ inline void buildIndexMaps(
 }
 
 // Check analytic partials against central finite differences
+template<class Descriptor>
 inline void checkFiniteDifferences(
-    const miam::AerosolPropertyProvider<micm::Matrix<double>>& provider,
+    const Descriptor& descriptor,
     micm::Matrix<double>& params,
     micm::Matrix<double>& vars)
 {
   using Mat = micm::Matrix<double>;
-  std::size_t n_deps = provider.dependent_variable_indices.size();
+  std::size_t n_deps = miam::DependentVariableIndices(descriptor).size();
   Mat result(1, 1, 0.0);
-  Mat partials(1, n_deps, 0.0);
-  provider.ComputeValueAndDerivatives(params, vars, result, partials);
+  Mat partials(1, std::max(n_deps, std::size_t(1)), 0.0);
+  miam::EvaluateAerosolPropertyAndDerivatives(descriptor, params, vars, result, partials);
 
   for (std::size_t k = 0; k < n_deps; ++k)
   {
-    std::size_t var_idx = provider.dependent_variable_indices[k];
+    std::size_t var_idx = miam::DependentVariableIndices(descriptor)[k];
     double orig = vars[0][var_idx];
     double h = std::max(std::abs(orig) * 1.0e-5, 1.0e-8);
 
     Mat r_plus(1, 1, 0.0);
     Mat r_minus(1, 1, 0.0);
     vars[0][var_idx] = orig + h;
-    provider.ComputeValue(params, vars, r_plus);
+    miam::EvaluateAerosolProperty(descriptor, params, vars, r_plus);
     vars[0][var_idx] = orig - h;
-    provider.ComputeValue(params, vars, r_minus);
+    miam::EvaluateAerosolProperty(descriptor, params, vars, r_minus);
     vars[0][var_idx] = orig;
 
     double fd = (r_plus[0][0] - r_minus[0][0]) / (2.0 * h);
@@ -208,13 +210,13 @@ void testPhaseVolumeFractionSinglePhase()
   std::unordered_map<std::string, std::size_t> var_indices, param_indices;
   buildIndexMaps(var_names, param_names, var_indices, param_indices);
 
-  auto provider = model.template GetPropertyProvider<Mat>(
+  auto provider = model.template GetPropertyDescriptor<Mat>(
       miam::AerosolProperty::PhaseVolumeFraction, param_indices, var_indices, "PHASE1");
 
   // Single phase → no dependent variables, always 1.0
-  EXPECT_TRUE(provider.dependent_variable_indices.empty());
-  EXPECT_TRUE(provider.ComputeValue);
-  EXPECT_TRUE(provider.ComputeValueAndDerivatives);
+  EXPECT_TRUE(miam::DependentVariableIndices(provider).empty());
+  
+  
 
   Mat params(1, param_names.size(), 0.0);
   Mat vars(1, var_names.size(), 0.0);
@@ -225,11 +227,11 @@ void testPhaseVolumeFractionSinglePhase()
     vars[0][nc_it->second] = 1.0e9;
 
   Mat result(1, 1, 0.0);
-  provider.ComputeValue(params, vars, result);
+  miam::EvaluateAerosolProperty(provider, params, vars, result);
   EXPECT_DOUBLE_EQ(result[0][0], 1.0);
 
   Mat partials(1, 0, 0.0);
-  provider.ComputeValueAndDerivatives(params, vars, result, partials);
+  miam::EvaluateAerosolPropertyAndDerivatives(provider, params, vars, result, partials);
   EXPECT_DOUBLE_EQ(result[0][0], 1.0);
 }
 
@@ -247,17 +249,17 @@ void testPhaseVolumeFractionMultiPhase()
   std::unordered_map<std::string, std::size_t> var_indices, param_indices;
   buildIndexMaps(var_names, param_names, var_indices, param_indices);
 
-  auto phi1_provider = model.template GetPropertyProvider<Mat>(
+  auto phi1_provider = model.template GetPropertyDescriptor<Mat>(
       miam::AerosolProperty::PhaseVolumeFraction, param_indices, var_indices, "PHASE1");
-  auto phi2_provider = model.template GetPropertyProvider<Mat>(
+  auto phi2_provider = model.template GetPropertyDescriptor<Mat>(
       miam::AerosolProperty::PhaseVolumeFraction, param_indices, var_indices, "PHASE2");
 
-  EXPECT_FALSE(phi1_provider.dependent_variable_indices.empty());
-  EXPECT_FALSE(phi2_provider.dependent_variable_indices.empty());
-  EXPECT_TRUE(phi1_provider.ComputeValue);
-  EXPECT_TRUE(phi2_provider.ComputeValue);
-  EXPECT_TRUE(phi1_provider.ComputeValueAndDerivatives);
-  EXPECT_TRUE(phi2_provider.ComputeValueAndDerivatives);
+  EXPECT_FALSE(miam::DependentVariableIndices(phi1_provider).empty());
+  EXPECT_FALSE(miam::DependentVariableIndices(phi2_provider).empty());
+  
+  
+  
+  
 
   Mat params(1, param_names.size(), 0.0);
   Mat vars(1, var_names.size(), 0.0);
@@ -272,8 +274,8 @@ void testPhaseVolumeFractionMultiPhase()
   Mat result1(1, 1, 0.0);
   Mat result2(1, 1, 0.0);
 
-  phi1_provider.ComputeValue(params, vars, result1);
-  phi2_provider.ComputeValue(params, vars, result2);
+  miam::EvaluateAerosolProperty(phi1_provider, params, vars, result1);
+  miam::EvaluateAerosolProperty(phi2_provider, params, vars, result2);
 
   EXPECT_NEAR(result1[0][0], 1.0 / 3.0, 1.0e-12);
   EXPECT_NEAR(result2[0][0], 2.0 / 3.0, 1.0e-12);
@@ -299,10 +301,10 @@ void testEffectiveRadiusProvider()
   buildIndexMaps(var_names, param_names, var_indices, param_indices);
 
   auto provider =
-      model.template GetPropertyProvider<Mat>(miam::AerosolProperty::EffectiveRadius, param_indices, var_indices);
+      model.template GetPropertyDescriptor<Mat>(miam::AerosolProperty::EffectiveRadius, param_indices, var_indices);
 
-  EXPECT_TRUE(provider.ComputeValue);
-  EXPECT_TRUE(provider.ComputeValueAndDerivatives);
+  
+  
 
   Mat params(1, param_names.size(), 0.0);
   Mat vars(1, var_names.size(), 0.0);
@@ -310,7 +312,7 @@ void testEffectiveRadiusProvider()
   setTestVariables(vars, var_indices);
 
   Mat result(1, 1, 0.0);
-  provider.ComputeValue(params, vars, result);
+  miam::EvaluateAerosolProperty(provider, params, vars, result);
   EXPECT_GT(result[0][0], 0.0);
 
   checkFiniteDifferences(provider, params, vars);
@@ -331,11 +333,11 @@ void testNumberConcentrationProvider()
   buildIndexMaps(var_names, param_names, var_indices, param_indices);
 
   auto provider =
-      model.template GetPropertyProvider<Mat>(miam::AerosolProperty::NumberConcentration, param_indices, var_indices);
+      model.template GetPropertyDescriptor<Mat>(miam::AerosolProperty::NumberConcentration, param_indices, var_indices);
 
-  EXPECT_TRUE(provider.ComputeValue);
-  EXPECT_TRUE(provider.ComputeValueAndDerivatives);
-  EXPECT_FALSE(provider.dependent_variable_indices.empty());
+  
+  
+  EXPECT_FALSE(miam::DependentVariableIndices(provider).empty());
 
   Mat params(1, param_names.size(), 0.0);
   Mat vars(1, var_names.size(), 0.0);
@@ -343,7 +345,7 @@ void testNumberConcentrationProvider()
   setTestVariables(vars, var_indices);
 
   Mat result(1, 1, 0.0);
-  provider.ComputeValue(params, vars, result);
+  miam::EvaluateAerosolProperty(provider, params, vars, result);
   EXPECT_GT(result[0][0], 0.0);
 
   checkFiniteDifferences(provider, params, vars);

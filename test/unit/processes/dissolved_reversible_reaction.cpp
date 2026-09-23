@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <miam/processes/dissolved_reversible_reaction.hpp>
+#include <miam/processes/dissolved_reversible_reaction_set.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
@@ -22,6 +23,25 @@ template<class U>
 using Vector = typename MatrixPolicy::template VectorType<U>;
 namespace
 {
+  /// Builds a `DissolvedReversibleReactionSet` bound to a fresh sparse-Jacobian pattern
+  /// derived from `reaction.NonZeroJacobianElements(...)`; used to drive both `AddForcingTerms`
+  /// and `SubtractJacobianTerms` in the tests below.
+  template<typename Dense = MatrixPolicy, typename Sparse = SparseMatrixPolicy>
+  DissolvedReversibleReactionSet<Dense, Sparse> MakeSet(
+      const DissolvedReversibleReaction& reaction,
+      const std::map<std::string, std::set<std::string>>& phase_prefixes,
+      const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+      const std::unordered_map<std::string, std::size_t>& state_variable_indices,
+      std::size_t num_blocks = 1)
+  {
+    auto elements = reaction.NonZeroJacobianElements(phase_prefixes, state_variable_indices);
+    auto builder = Sparse::Create(state_variable_indices.size()).SetNumberOfBlocks(num_blocks).InitialValue(0.0);
+    for (const auto& elem : elements)
+      builder = builder.WithElement(elem.first, elem.second);
+    Sparse pattern(builder);
+    return DissolvedReversibleReactionSet<Dense, Sparse>(
+        reaction, phase_prefixes, state_parameter_indices, state_variable_indices, pattern);
+  }
 
   /// @brief Compare analytical Jacobian against central finite-difference approximation
   ///        using MICM’s FiniteDifferenceJacobian / CompareJacobianToFiniteDifference utilities.
@@ -44,17 +64,16 @@ namespace
     SparseMatrixPolicy jacobian(jac_builder);
     jacobian.Fill(0.0);
 
-    auto jac_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
-        phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
-    jac_func(state_parameters, state_variables, jacobian);
+    DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> reaction_set(
+        reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+    reaction_set.SubtractJacobianTerms(
+        state_parameters, state_variables, jacobian);
 
-    // Build FD Jacobian — bind state_parameters into the forcing callable
-    auto ff = reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
     auto fd_jac = micm::FiniteDifferenceJacobian<MatrixPolicy>(
         [&](const MatrixPolicy& vars, MatrixPolicy& out)
         {
           out.Fill(0.0);
-          ff(state_parameters, vars, out);
+          reaction_set.AddForcingTerms(state_parameters, vars, out);
         },
         state_variables,
         num_vars);
@@ -80,11 +99,11 @@ TEST(DissolvedReversibleReaction, SpeciesUsedWithSinglePrefix)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
+  auto forward_rate = UserDefinedConstantExpression{ 1.0e-14 };
+  auto reverse_rate = UserDefinedConstantExpression{ 1.0e11 };
 
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
+  DissolvedReversibleReaction reaction{ forward_rate,
+                                        reverse_rate,
                                         { h2o },      // reactants
                                         { hp, ohm },  // products
                                         h2o,          // solvent
@@ -111,11 +130,11 @@ TEST(DissolvedReversibleReaction, SpeciesUsedWithMultiplePrefixes)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { co2 }, { h2o }, { h2co3 } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-3; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e2; };
+  auto forward_rate = UserDefinedConstantExpression{ 1.0e-3 };
+  auto reverse_rate = UserDefinedConstantExpression{ 1.0e2 };
 
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
+  DissolvedReversibleReaction reaction{ forward_rate,
+                                        reverse_rate,
                                         { co2, h2o },  // reactants
                                         { h2co3 },     // products
                                         h2o,           // solvent
@@ -150,11 +169,11 @@ TEST(DissolvedReversibleReaction, SpeciesUsedWithNoMatchingPhase)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { co2 }, { h2o }, { h2co3 } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-3; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e2; };
+  auto forward_rate = UserDefinedConstantExpression{ 1.0e-3 };
+  auto reverse_rate = UserDefinedConstantExpression{ 1.0e2 };
 
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
+  DissolvedReversibleReaction reaction{ forward_rate,
+                                        reverse_rate,
                                         { co2, h2o },  // reactants
                                         { h2co3 },     // products
                                         h2o,           // solvent
@@ -176,11 +195,11 @@ TEST(DissolvedReversibleReaction, SpeciesUsedDuplicateHandling)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { hp }, { hco3m }, { co32m } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-10; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
+  auto forward_rate = UserDefinedConstantExpression{ 1.0e-10 };
+  auto reverse_rate = UserDefinedConstantExpression{ 1.0e11 };
 
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
+  DissolvedReversibleReaction reaction{ forward_rate,
+                                        reverse_rate,
                                         { hco3m },      // reactants
                                         { hp, co32m },  // products
                                         hco3m,          // solvent (same as reactant)
@@ -209,10 +228,10 @@ TEST(DissolvedReversibleReaction, SpeciesUsedComplexReaction)
 
   auto phase = micm::Phase{ "LIQUID", { { a }, { b }, { c }, { d }, { solvent } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 2.0; };
+  auto forward_rate = UserDefinedConstantExpression{ 1.0 };
+  auto reverse_rate = UserDefinedConstantExpression{ 2.0 };
 
-  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate },
+  DissolvedReversibleReaction reaction{ forward_rate, reverse_rate,
                                         { a, b },  // 2 reactants
                                         { c, d },  // 2 products
                                         solvent,          phase };
@@ -246,12 +265,12 @@ TEST(DissolvedReversibleReaction, NonZeroJacobianElementsBasic)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
+  auto forward_rate = UserDefinedConstantExpression{ 1.0e-14 };
+  auto reverse_rate = UserDefinedConstantExpression{ 1.0e11 };
 
   // H2O <-> H+ + OH-
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
+  DissolvedReversibleReaction reaction{ forward_rate,
+                                        reverse_rate,
                                         { h2o },      // reactants
                                         { hp, ohm },  // products
                                         h2o,          // solvent
@@ -294,12 +313,12 @@ TEST(DissolvedReversibleReaction, NonZeroJacobianElementsMultipleReactants)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { co2 }, { h2o }, { h2co3 } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-3; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e2; };
+  auto forward_rate = UserDefinedConstantExpression{ 1.0e-3 };
+  auto reverse_rate = UserDefinedConstantExpression{ 1.0e2 };
 
   // CO2 + H2O <-> H2CO3
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
+  DissolvedReversibleReaction reaction{ forward_rate,
+                                        reverse_rate,
                                         { co2, h2o },  // 2 reactants
                                         { h2co3 },     // 1 product
                                         h2o,           // solvent
@@ -331,10 +350,10 @@ TEST(DissolvedReversibleReaction, NonZeroJacobianElementsMultiplePrefixes)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
+  auto forward_rate = UserDefinedConstantExpression{ 1.0e-14 };
+  auto reverse_rate = UserDefinedConstantExpression{ 1.0e11 };
 
-  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
+  DissolvedReversibleReaction reaction{ forward_rate, reverse_rate, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   // Two representations of the same phase
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -371,10 +390,10 @@ TEST(DissolvedReversibleReaction, NonZeroJacobianElementsComplexReaction)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { hco3m }, { hp }, { co32m }, { h2o } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-10; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
+  auto forward_rate = UserDefinedConstantExpression{ 1.0e-10 };
+  auto reverse_rate = UserDefinedConstantExpression{ 1.0e11 };
 
-  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { hco3m }, { hp, co32m }, h2o, aqueous_phase };
+  DissolvedReversibleReaction reaction{ forward_rate, reverse_rate, { hco3m }, { hp, co32m }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE");
@@ -416,10 +435,10 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionBasic)
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = UserDefinedConstantExpression{ k_forward };
+  auto reverse_rate = UserDefinedConstantExpression{ k_reverse };
 
-  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
+  DissolvedReversibleReaction reaction{ forward_rate, reverse_rate, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -464,12 +483,10 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionTemperatureDepend
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
 
   // Create temperature-dependent rate constants (Arrhenius-like)
-  auto forward_rate = [](const micm::Conditions& conditions)
-  { return 1.0e-14 * std::exp(-3000.0 / conditions.temperature_); };
-  auto reverse_rate = [](const micm::Conditions& conditions)
-  { return 1.0e11 * std::exp(-2000.0 / conditions.temperature_); };
+  auto forward_rate = ArrheniusExpression{ { .A_ = 1.0e-14, .C_ = -3000.0 } };
+  auto reverse_rate = ArrheniusExpression{ { .A_ = 1.0e11, .C_ = -2000.0 } };
 
-  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
+  DissolvedReversibleReaction reaction{ forward_rate, reverse_rate, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROPLET");
@@ -523,10 +540,10 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionMissingParameter)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
+  auto forward_rate = UserDefinedConstantExpression{ 1.0e-14 };
+  auto reverse_rate = UserDefinedConstantExpression{ 1.0e11 };
 
-  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
+  DissolvedReversibleReaction reaction{ forward_rate, reverse_rate, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -552,13 +569,11 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionMultipleCells)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { co2 }, { h2o }, { h2co3 } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions)
-  {
-    return 1.0e-3 * conditions.pressure_ / 101325.0;  // Pressure-dependent
-  };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e2; };
+  // Temperature-dependent forward rate: k_f = 1.0e-3 * exp(-1000 / T)
+  auto forward_rate = ArrheniusExpression{ { .A_ = 1.0e-3, .C_ = -1000.0 } };
+  auto reverse_rate = UserDefinedConstantExpression{ 1.0e2 };
 
-  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { co2, h2o }, { h2co3 }, h2o, aqueous_phase };
+  DissolvedReversibleReaction reaction{ forward_rate, reverse_rate, { co2, h2o }, { h2co3 }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("CLOUD");
@@ -575,12 +590,12 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionMultipleCells)
   // Create state parameters matrix (5 grid cells, 2 parameters)
   MatrixPolicy state_parameters(5, 2, 0.0);
 
-  // Create conditions with different pressures
+  // Create conditions with different temperatures
   typename MatrixPolicy::template VectorType<micm::Conditions> conditions(5);
   for (std::size_t i = 0; i < 5; ++i)
   {
-    conditions[i].temperature_ = 298.15;
-    conditions[i].pressure_ = 101325.0 * (1.0 + 0.1 * i);  // Varying pressure
+    conditions[i].temperature_ = 298.15 + 10.0 * i;
+    conditions[i].pressure_ = 101325.0;
   }
 
   // Apply the update function
@@ -589,7 +604,7 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionMultipleCells)
   // Verify the rate constants
   for (std::size_t i_cell = 0; i_cell < 5; ++i_cell)
   {
-    double expected_k_f = 1.0e-3 * (1.0 + 0.1 * i_cell);
+    double expected_k_f = 1.0e-3 * std::exp(-1000.0 / conditions[i_cell].temperature_);
     EXPECT_NEAR(state_parameters[i_cell][0], expected_k_f, 1e-7);
     EXPECT_EQ(state_parameters[i_cell][1], 1.0e2);
   }
@@ -612,12 +627,12 @@ TEST(DissolvedReversibleReaction, ForcingFunctionBasicRates)
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = UserDefinedConstantExpression{ k_forward };
+  auto reverse_rate = UserDefinedConstantExpression{ k_reverse };
 
   // H2O <-> H+ + OH-
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
+  DissolvedReversibleReaction reaction{ forward_rate,
+                                        reverse_rate,
                                         { h2o },      // reactants
                                         { hp, ohm },  // products
                                         h2o,          // solvent
@@ -638,8 +653,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionBasicRates)
   state_variable_indices["MODE1.AQUEOUS.H+"] = 1;
   state_variable_indices["MODE1.AQUEOUS.OH-"] = 2;
 
-  auto forcing_func =
-      reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   // Create state parameters (1 cell, 2 parameters)
   MatrixPolicy state_parameters(1, 2);
@@ -656,7 +670,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionBasicRates)
   MatrixPolicy forcing_terms(1, 3, 0.0);
 
   // Apply the forcing function
-  forcing_func(state_parameters, state_variables, forcing_terms);
+  forcing_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // Calculate expected rates
   // Forward rate = k_f / [H2O]^(n_reactants-1) * [H2O] = k_f * [H2O] / [H2O]^0 = k_f * [H2O]
@@ -685,12 +699,12 @@ TEST(DissolvedReversibleReaction, ForcingFunctionSolventNormalization)
   double k_forward = 1.0e-3;
   double k_reverse = 1.0e2;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = UserDefinedConstantExpression{ k_forward };
+  auto reverse_rate = UserDefinedConstantExpression{ k_reverse };
 
   // CO2 + H2O <-> H2CO3
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
+  DissolvedReversibleReaction reaction{ forward_rate,
+                                        reverse_rate,
                                         { co2, h2o },  // 2 reactants
                                         { h2co3 },     // 1 product
                                         h2o,           // solvent
@@ -711,8 +725,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionSolventNormalization)
   state_variable_indices["DROP.AQUEOUS.H2O"] = 1;
   state_variable_indices["DROP.AQUEOUS.H2CO3"] = 2;
 
-  auto forcing_func =
-      reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -725,7 +738,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionSolventNormalization)
 
   MatrixPolicy forcing_terms(1, 3, 0.0);
 
-  forcing_func(state_parameters, state_variables, forcing_terms);
+  forcing_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // Forward rate = k_f / [H2O]^(2-1) * [CO2] * [H2O] = k_f / [H2O] * [CO2] * [H2O]
   double forward_rate_val = k_forward / std::pow(50.0, 1) * 0.001 * 50.0;
@@ -755,11 +768,11 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleReactantsProducts)
   double k_forward = 2.0;
   double k_reverse = 3.0;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = UserDefinedConstantExpression{ k_forward };
+  auto reverse_rate = UserDefinedConstantExpression{ k_reverse };
 
   // A + B <-> C + D
-  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate },
+  DissolvedReversibleReaction reaction{ forward_rate, reverse_rate,
                                         { a, b },  // 2 reactants
                                         { c, d },  // 2 products
                                         solvent,          phase };
@@ -781,8 +794,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleReactantsProducts)
   state_variable_indices["REP1.LIQUID.D"] = 3;
   state_variable_indices["REP1.LIQUID.SOLVENT"] = 4;
 
-  auto forcing_func =
-      reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -797,7 +809,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleReactantsProducts)
 
   MatrixPolicy forcing_terms(1, 5, 0.0);
 
-  forcing_func(state_parameters, state_variables, forcing_terms);
+  forcing_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // Forward rate = k_f / [solvent]^(2-1) * [A] * [B] = k_f / [solvent] * [A] * [B]
   double forward_rate_val = k_forward / 40.0 * 2.0 * 3.0;
@@ -827,10 +839,10 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleCells)
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = UserDefinedConstantExpression{ k_forward };
+  auto reverse_rate = UserDefinedConstantExpression{ k_reverse };
 
-  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
+  DissolvedReversibleReaction reaction{ forward_rate, reverse_rate, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -847,8 +859,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleCells)
   state_variable_indices["MODE1.AQUEOUS.H+"] = 1;
   state_variable_indices["MODE1.AQUEOUS.OH-"] = 2;
 
-  auto forcing_func =
-      reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   // Test with 3 cells
   MatrixPolicy state_parameters(3, 2);
@@ -865,7 +876,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleCells)
     state_variables[i][2] = 1.0e-7 * (i + 1);  // Different [OH-]
   }
 
-  forcing_func(state_parameters, state_variables, forcing_terms);
+  forcing_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // Verify each cell independently
   for (std::size_t i = 0; i < 3; ++i)
@@ -896,10 +907,10 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultiplePhaseInstances)
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = UserDefinedConstantExpression{ k_forward };
+  auto reverse_rate = UserDefinedConstantExpression{ k_reverse };
 
-  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
+  DissolvedReversibleReaction reaction{ forward_rate, reverse_rate, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   // Two phase instances (e.g., small and large drops)
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -918,8 +929,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultiplePhaseInstances)
   state_variable_indices["LARGE_DROP.AQUEOUS.H+"] = 4;
   state_variable_indices["LARGE_DROP.AQUEOUS.OH-"] = 5;
 
-  auto forcing_func =
-      reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, state_parameter_indices, state_variable_indices);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -937,7 +947,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultiplePhaseInstances)
 
   MatrixPolicy forcing_terms(1, 6, 0.0);
 
-  forcing_func(state_parameters, state_variables, forcing_terms);
+  forcing_set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
 
   // Verify small drop
   double forward_small = k_forward * 50.0;
@@ -972,12 +982,12 @@ TEST(DissolvedReversibleReaction, JacobianFunctionBasicPartials)
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = UserDefinedConstantExpression{ k_forward };
+  auto reverse_rate = UserDefinedConstantExpression{ k_reverse };
 
   // H2O <-> H+ + OH-
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
+  DissolvedReversibleReaction reaction{ forward_rate,
+                                        reverse_rate,
                                         { h2o },      // 1 reactant
                                         { hp, ohm },  // 2 products
                                         h2o,          // solvent
@@ -1008,8 +1018,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionBasicPartials)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  auto jacobian_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
-      phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -1020,7 +1029,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionBasicPartials)
   state_variables[0][1] = 1.0e-7;  // [H+]
   state_variables[0][2] = 1.0e-7;  // [OH-]
 
-  jacobian_func(state_parameters, state_variables, jacobian);
+  jacobian_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // Expected partial derivatives:
   // d[H2O]/d[H2O] = -k_f + k_r * [H+] * [OH-] * (1-1) / [H2O]^1 = -k_f - k_r * [H+] * [OH-] / [H2O]^2
@@ -1070,12 +1079,12 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleReactantsProducts)
   double k_forward = 1.0e-3;
   double k_reverse = 1.0e2;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = UserDefinedConstantExpression{ k_forward };
+  auto reverse_rate = UserDefinedConstantExpression{ k_reverse };
 
   // CO2 + H2O <-> H2CO3
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
+  DissolvedReversibleReaction reaction{ forward_rate,
+                                        reverse_rate,
                                         { co2, h2o },  // 2 reactants
                                         { h2co3 },     // 1 product
                                         h2o,           // solvent
@@ -1105,8 +1114,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleReactantsProducts)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  auto jacobian_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
-      phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -1117,7 +1125,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleReactantsProducts)
   state_variables[0][1] = 50.0;    // [H2O]
   state_variables[0][2] = 0.0005;  // [H2CO3]
 
-  jacobian_func(state_parameters, state_variables, jacobian);
+  jacobian_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // Expected partials for CO2 + H2O <-> H2CO3:
   // Forward rate = k_f / [H2O] * [CO2] * [H2O]
@@ -1174,12 +1182,12 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSigns)
   double k_forward = 1.0e-10;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = UserDefinedConstantExpression{ k_forward };
+  auto reverse_rate = UserDefinedConstantExpression{ k_reverse };
 
   // HCO3- <-> H+ + CO32-
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
+  DissolvedReversibleReaction reaction{ forward_rate,
+                                        reverse_rate,
                                         { hco3m },      // 1 reactant
                                         { hp, co32m },  // 2 products
                                         h2o,            // solvent
@@ -1210,8 +1218,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSigns)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  auto jacobian_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
-      phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -1223,7 +1230,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSigns)
   state_variables[0][2] = 5.0e-8;  // [CO32-]
   state_variables[0][3] = 55.0;    // [H2O]
 
-  jacobian_func(state_parameters, state_variables, jacobian);
+  jacobian_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // Check signs (stored as -J, so all signs are flipped vs. the actual Jacobian):
   // - Reactant w.r.t. reactant: positive (actual J negative)
@@ -1267,10 +1274,10 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleCells)
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = UserDefinedConstantExpression{ k_forward };
+  auto reverse_rate = UserDefinedConstantExpression{ k_reverse };
 
-  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
+  DissolvedReversibleReaction reaction{ forward_rate, reverse_rate, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -1296,8 +1303,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleCells)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  auto jacobian_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
-      phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   // Test with 3 cells
   MatrixPolicy state_parameters(3, 2);
@@ -1312,7 +1318,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleCells)
     state_variables[i][2] = 1.0e-7 * (i + 1);  // Different [OH-]
   }
 
-  jacobian_func(state_parameters, state_variables, jacobian);
+  jacobian_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // Verify each cell independently
   for (std::size_t i = 0; i < 3; ++i)
@@ -1347,10 +1353,10 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultiplePhaseInstances)
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = UserDefinedConstantExpression{ k_forward };
+  auto reverse_rate = UserDefinedConstantExpression{ k_reverse };
 
-  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
+  DissolvedReversibleReaction reaction{ forward_rate, reverse_rate, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   // Two phase instances
   std::map<std::string, std::set<std::string>> phase_prefixes;
@@ -1378,8 +1384,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultiplePhaseInstances)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  auto jacobian_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
-      phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -1395,7 +1400,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultiplePhaseInstances)
   state_variables[0][4] = 2.0e-7;  // [H+]
   state_variables[0][5] = 2.0e-7;  // [OH-]
 
-  jacobian_func(state_parameters, state_variables, jacobian);
+  jacobian_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // Verify small drop elements are populated
   EXPECT_NE(jacobian[0][0][0], 0.0);  // d[H2O_small]/d[H2O_small]
@@ -1423,13 +1428,13 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSimpleDistinctSpecies)
   double k_forward = 2.0;
   double k_reverse = 3.0;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = UserDefinedConstantExpression{ k_forward };
+  auto reverse_rate = UserDefinedConstantExpression{ k_reverse };
 
   // foo <-> bar (with solvent baz)
   // With 1 reactant and 1 product, there's no solvent concentration dependence
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
+  DissolvedReversibleReaction reaction{ forward_rate,
+                                        reverse_rate,
                                         { foo },  // 1 reactant
                                         { bar },  // 1 product
                                         baz,      // solvent
@@ -1462,8 +1467,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSimpleDistinctSpecies)
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  auto jacobian_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
-      phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -1474,7 +1478,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSimpleDistinctSpecies)
   state_variables[0][1] = 5.0;   // [bar]
   state_variables[0][2] = 50.0;  // [baz]
 
-  jacobian_func(state_parameters, state_variables, jacobian);
+  jacobian_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // For foo <-> bar:
   // Forward rate = k_f / [baz]^(N_reactants - 1) * [foo] = k_f / [baz]^0 * [foo] = k_f * [foo]
@@ -1521,13 +1525,13 @@ TEST(DissolvedReversibleReaction, JacobianFunctionTwoReactantsWithSolventDepende
   double k_forward = 2.0;
   double k_reverse = 3.0;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = UserDefinedConstantExpression{ k_forward };
+  auto reverse_rate = UserDefinedConstantExpression{ k_reverse };
 
   // foo + qux <-> bar (with solvent baz)
   // With 2 reactants, forward rate has solvent dependence: k_f / [baz]^1
-  DissolvedReversibleReaction reaction{ { forward_rate },
-                                        { reverse_rate },
+  DissolvedReversibleReaction reaction{ forward_rate,
+                                        reverse_rate,
                                         { foo, qux },  // 2 reactants
                                         { bar },       // 1 product
                                         baz,           // solvent
@@ -1560,8 +1564,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionTwoReactantsWithSolventDepende
   SparseMatrixPolicy jacobian(jacobian_builder);
   jacobian.Fill(0.0);
 
-  auto jacobian_func = reaction.JacobianFunction<MatrixPolicy, SparseMatrixPolicy>(
-      phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = k_forward;
@@ -1573,7 +1576,7 @@ TEST(DissolvedReversibleReaction, JacobianFunctionTwoReactantsWithSolventDepende
   state_variables[0][2] = 5.0;   // [bar]
   state_variables[0][3] = 50.0;  // [baz]
 
-  jacobian_func(state_parameters, state_variables, jacobian);
+  jacobian_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
 
   // Forward rate = k_f / [baz]^(2-1) * [foo] * [qux] = k_f / [baz] * [foo] * [qux]
   // Reverse rate = k_r / [baz]^(1-1) * [bar] = k_r * [bar]
@@ -1618,8 +1621,8 @@ TEST(DissolvedReversibleReaction, JacobianFDForwardOnly)
 
   double k_forward = 1.0e-14;
   double k_reverse = 0.0;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                               UserDefinedConstantExpression{ k_reverse },
                                                { h2o },
                                                { hp, ohm },
                                                h2o,
@@ -1657,8 +1660,8 @@ TEST(DissolvedReversibleReaction, JacobianFDReverseOnly)
 
   double k_forward = 0.0;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                               UserDefinedConstantExpression{ k_reverse },
                                                { h2o },
                                                { hp, ohm },
                                                h2o,
@@ -1696,8 +1699,8 @@ TEST(DissolvedReversibleReaction, JacobianFDBidirectional)
 
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                               UserDefinedConstantExpression{ k_reverse },
                                                { h2o },
                                                { hp, ohm },
                                                h2o,
@@ -1735,8 +1738,8 @@ TEST(DissolvedReversibleReaction, JacobianFDMultiCell)
 
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                               UserDefinedConstantExpression{ k_reverse },
                                                { h2o },
                                                { hp, ohm },
                                                h2o,
@@ -1787,8 +1790,8 @@ TEST(DissolvedReversibleReaction, JacobianFDMultipleReactantsProducts)
 
   double k_forward = 0.05;
   double k_reverse = 0.02;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                               UserDefinedConstantExpression{ k_reverse },
                                                { a, b },
                                                { c, d },
                                                h2o,
@@ -1830,8 +1833,8 @@ TEST(DissolvedReversibleReaction, JacobianFDMultipleInstances)
 
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                               UserDefinedConstantExpression{ k_reverse },
                                                { h2o },
                                                { hp, ohm },
                                                h2o,
@@ -1877,8 +1880,8 @@ TEST(DissolvedReversibleReaction, JacobianFDSolventIsReactant)
 
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                               UserDefinedConstantExpression{ k_reverse },
                                                { h2o },
                                                { hp, ohm },
                                                h2o,
@@ -1923,8 +1926,8 @@ TEST(DissolvedReversibleReaction, ForcingFunctionZeroReactant)
 
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                               UserDefinedConstantExpression{ k_reverse },
                                                { h2o },
                                                { hp, ohm },
                                                h2o,
@@ -1942,7 +1945,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionZeroReactant)
   svi["MODE1.AQUEOUS.H+"] = 1;
   svi["MODE1.AQUEOUS.OH-"] = 2;
 
-  auto ff = reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, spi, svi);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, spi, svi);
 
   MatrixPolicy params(1, 2, 0.0);
   params[0][0] = k_forward;
@@ -1953,7 +1956,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionZeroReactant)
   vars[0][2] = 1.0e-4;
 
   MatrixPolicy forcing(1, 3, 0.0);
-  ff(params, vars, forcing);
+  forcing_set.AddForcingTerms(params, vars, forcing);
 
   // forward_rate = k_f * [H2O] / ([H2O] + eps)^1 * [H2O] → ~0 when [H2O]=0
   EXPECT_NEAR(forcing[0][0], 0.0, 1.0e-20);  // H2O: forcing ≈ 0 (forward ~ 0, reverse ~ 0 due to floor)
@@ -1974,8 +1977,8 @@ TEST(DissolvedReversibleReaction, ForcingFunctionZeroProduct)
 
   double k_forward = 0.1;
   double k_reverse = 0.2;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                               UserDefinedConstantExpression{ k_reverse },
                                                { a },
                                                { b },
                                                solvent,
@@ -1993,7 +1996,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionZeroProduct)
   svi["MODE1.AQ.A"] = 1;
   svi["MODE1.AQ.B"] = 2;
 
-  auto ff = reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, spi, svi);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, spi, svi);
 
   MatrixPolicy params(1, 2, 0.0);
   params[0][0] = k_forward;
@@ -2005,7 +2008,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionZeroProduct)
   vars[0][2] = 0.0;  // [B] = 0 → reverse rate = 0
 
   MatrixPolicy forcing(1, 3, 0.0);
-  ff(params, vars, forcing);
+  forcing_set.AddForcingTerms(params, vars, forcing);
 
   // forward_rate = k_f * [S] / ([S]+eps)^1 * [A] ≈ k_f * [A]
   double fwd = k_forward * S / (S + 1.0e-20) * 0.5;
@@ -2026,8 +2029,8 @@ TEST(DissolvedReversibleReaction, ForcingFunctionAtEquilibrium)
 
   double k_forward = 0.1;
   double k_reverse = 0.3;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                               UserDefinedConstantExpression{ k_reverse },
                                                { a },
                                                { b },
                                                solvent,
@@ -2045,7 +2048,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionAtEquilibrium)
   svi["MODE1.AQ.A"] = 1;
   svi["MODE1.AQ.B"] = 2;
 
-  auto ff = reaction.ForcingFunction<MatrixPolicy>(phase_prefixes, spi, svi);
+  auto forcing_set = MakeSet<micm::VectorMatrix<double>, SparseMatrixPolicy>(reaction, phase_prefixes, spi, svi);
 
   MatrixPolicy params(1, 2, 0.0);
   params[0][0] = k_forward;
@@ -2060,7 +2063,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionAtEquilibrium)
   vars[0][2] = B_eq;
 
   MatrixPolicy forcing(1, 3, 0.0);
-  ff(params, vars, forcing);
+  forcing_set.AddForcingTerms(params, vars, forcing);
 
   EXPECT_NEAR(forcing[0][1], 0.0, 1.0e-14);  // A: net rate = 0 at equilibrium
   EXPECT_NEAR(forcing[0][2], 0.0, 1.0e-14);  // B: net rate = 0 at equilibrium
@@ -2080,8 +2083,8 @@ TEST(DissolvedReversibleReaction, JacobianFDZeroSolvent)
 
   double k_forward = 0.1;
   double k_reverse = 0.05;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                               UserDefinedConstantExpression{ k_reverse },
                                                { a },
                                                { b },
                                                solvent,
@@ -2106,7 +2109,7 @@ TEST(DissolvedReversibleReaction, JacobianFDZeroSolvent)
   LocalSMP jacobian(jac_builder);
   jacobian.Fill(0.0);
 
-  auto jac_func = reaction.JacobianFunction<MatrixPolicy, LocalSMP>(phase_prefixes, spi, svi, jacobian);
+  DissolvedReversibleReactionSet<MatrixPolicy, SparseMatrixPolicy> jacobian_set(reaction, phase_prefixes, spi, svi, jacobian);
 
   MatrixPolicy params(1, 2, 0.0);
   params[0][0] = k_forward;
@@ -2117,7 +2120,7 @@ TEST(DissolvedReversibleReaction, JacobianFDZeroSolvent)
   vars[0][2] = 0.3;
 
   // Should not crash or produce NaN/Inf
-  jac_func(params, vars, jacobian);
+  jacobian_set.SubtractJacobianTerms(params, vars, jacobian);
   for (const auto& elem : jac_elements)
   {
     double val = jacobian[0][elem.first][elem.second];
