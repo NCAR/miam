@@ -4,15 +4,15 @@
 #pragma once
 
 #include <miam/constraints/dissolved_equilibrium_constraint.hpp>
-#include <miam/constraints/dissolved_equilibrium_constraint_set.hpp>
+#include <miam/constraints/dissolved_equilibrium_constraint_evaluator.hpp>
 #include <miam/constraints/henrys_law_equilibrium_constraint.hpp>
-#include <miam/constraints/henrys_law_equilibrium_constraint_set.hpp>
+#include <miam/constraints/henrys_law_equilibrium_constraint_evaluator.hpp>
 #include <miam/constraints/linear_constraint.hpp>
-#include <miam/constraints/linear_constraint_set.hpp>
+#include <miam/constraints/linear_constraint_evaluator.hpp>
 #include <miam/processes.hpp>
-#include <miam/processes/dissolved_reaction_set.hpp>
-#include <miam/processes/dissolved_reversible_reaction_set.hpp>
-#include <miam/processes/henrys_law_phase_transfer_set.hpp>
+#include <miam/processes/dissolved_reaction_evaluator.hpp>
+#include <miam/processes/dissolved_reversible_reaction_evaluator.hpp>
+#include <miam/processes/henrys_law_phase_transfer_evaluator.hpp>
 #include <miam/representations.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
@@ -61,14 +61,15 @@ namespace miam
     mutable std::any cached_constraint_update_fns_{};
     mutable std::any cached_constraint_init_fns_{};
 
-    // Solve-time companion Sets, built by FinalizeProcessSetup / FinalizeConstraintSetup for the
-    // solver's <DenseMatrixPolicy, SparseMatrixPolicy> pair. `process_sets_` and `constraint_sets_`
-    // hold a `std::shared_ptr<const ProcessSets<DP, SP>>` / `ConstraintSets<DP, SP>`, so copies of
-    // the Model share them. The `*_fn_` members hold DP-only closures over the same Sets for the
-    // solve-time methods that MICM calls with only DP.
-    std::any process_sets_{};
+    // Solve-time evaluators, built by FinalizeProcessSetup / FinalizeConstraintSetup for the
+    // solver's <DenseMatrixPolicy, SparseMatrixPolicy> pair. `process_evaluators_` and
+    // `constraint_evaluators_` hold a `std::shared_ptr<const ProcessEvaluators<DP, SP>>` /
+    // `ConstraintEvaluators<DP, SP>`, so copies of the Model share them. The `*_fn_` members hold
+    // DP-only closures over the same evaluators for the solve-time methods that MICM calls with
+    // only DP.
+    std::any process_evaluators_{};
     std::any process_forcing_fn_{};
-    std::any constraint_sets_{};
+    std::any constraint_evaluators_{};
     std::any constraint_residual_fn_{};
 
     /// @brief Returns the total state size (number of variables, number of parameters)
@@ -268,7 +269,7 @@ namespace miam
     }
 
     /// @brief Returns a function that calculates forcing terms.
-    /// @details `SparseMatrixPolicy` is required so that process Sets can pre-compute Jacobian flat IDs at build time.
+    /// @details `SparseMatrixPolicy` is required so that process evaluators can pre-compute Jacobian flat IDs at build time.
     template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
     std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ForcingFunction(
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
@@ -283,35 +284,35 @@ namespace miam
         jacobian_builder = jacobian_builder.WithElement(elem.first, elem.second);
       SparseMatrixPolicy jacobian_pattern(jacobian_builder);
 
-      std::vector<DissolvedReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>> dr_sets;
-      std::vector<DissolvedReversibleReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>> drr_sets;
-      std::vector<HenrysLawPhaseTransferSet<DenseMatrixPolicy, SparseMatrixPolicy>> hlpt_sets;
+      std::vector<DissolvedReactionEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> dr_evaluators;
+      std::vector<DissolvedReversibleReactionEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> drr_evaluators;
+      std::vector<HenrysLawPhaseTransferEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> hlpt_evaluators;
       ForEachProcess(
           [&](const auto& process)
           {
             using P = std::decay_t<decltype(process)>;
             if constexpr (std::is_same_v<P, DissolvedReaction>)
-              dr_sets.emplace_back(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian_pattern);
+              dr_evaluators.emplace_back(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian_pattern);
             else if constexpr (std::is_same_v<P, DissolvedReversibleReaction>)
-              drr_sets.emplace_back(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian_pattern);
+              drr_evaluators.emplace_back(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian_pattern);
             else if constexpr (std::is_same_v<P, HenrysLawPhaseTransfer>)
-              hlpt_sets.emplace_back(
+              hlpt_evaluators.emplace_back(
                   process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian_pattern, descriptors);
           });
-      return [dr_sets = std::move(dr_sets),
-              drr_sets = std::move(drr_sets),
-              hlpt_sets = std::move(hlpt_sets),
+      return [dr_evaluators = std::move(dr_evaluators),
+              drr_evaluators = std::move(drr_evaluators),
+              hlpt_evaluators = std::move(hlpt_evaluators),
               descriptors = std::move(descriptors)](
                  const DenseMatrixPolicy& state_parameters,
                  const DenseMatrixPolicy& state_variables,
                  DenseMatrixPolicy& forcing_terms)
       {
-        for (const auto& set : dr_sets)
-          set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
-        for (const auto& set : drr_sets)
-          set.AddForcingTerms(state_parameters, state_variables, forcing_terms);
-        for (const auto& set : hlpt_sets)
-          set.AddForcingTerms(state_parameters, state_variables, forcing_terms, descriptors);
+        for (const auto& evaluator : dr_evaluators)
+          evaluator.AddForcingTerms(state_parameters, state_variables, forcing_terms);
+        for (const auto& evaluator : drr_evaluators)
+          evaluator.AddForcingTerms(state_parameters, state_variables, forcing_terms);
+        for (const auto& evaluator : hlpt_evaluators)
+          evaluator.AddForcingTerms(state_parameters, state_variables, forcing_terms, descriptors);
       };
     }
 
@@ -325,35 +326,35 @@ namespace miam
       auto phase_prefixes = CollectPhaseStatePrefixes();
       auto descriptors =
           BuildDescriptors<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
-      std::vector<DissolvedReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>> dr_sets;
-      std::vector<DissolvedReversibleReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>> drr_sets;
-      std::vector<HenrysLawPhaseTransferSet<DenseMatrixPolicy, SparseMatrixPolicy>> hlpt_sets;
+      std::vector<DissolvedReactionEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> dr_evaluators;
+      std::vector<DissolvedReversibleReactionEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> drr_evaluators;
+      std::vector<HenrysLawPhaseTransferEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> hlpt_evaluators;
       ForEachProcess(
           [&](const auto& process)
           {
             using P = std::decay_t<decltype(process)>;
             if constexpr (std::is_same_v<P, DissolvedReaction>)
-              dr_sets.emplace_back(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+              dr_evaluators.emplace_back(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
             else if constexpr (std::is_same_v<P, DissolvedReversibleReaction>)
-              drr_sets.emplace_back(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+              drr_evaluators.emplace_back(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
             else if constexpr (std::is_same_v<P, HenrysLawPhaseTransfer>)
-              hlpt_sets.emplace_back(
+              hlpt_evaluators.emplace_back(
                   process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, descriptors);
           });
-      return [dr_sets = std::move(dr_sets),
-              drr_sets = std::move(drr_sets),
-              hlpt_sets = std::move(hlpt_sets),
+      return [dr_evaluators = std::move(dr_evaluators),
+              drr_evaluators = std::move(drr_evaluators),
+              hlpt_evaluators = std::move(hlpt_evaluators),
               descriptors = std::move(descriptors)](
                  const DenseMatrixPolicy& state_parameters,
                  const DenseMatrixPolicy& state_variables,
                  SparseMatrixPolicy& jacobian)
       {
-        for (const auto& set : dr_sets)
-          set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
-        for (const auto& set : drr_sets)
-          set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
-        for (const auto& set : hlpt_sets)
-          set.SubtractJacobianTerms(state_parameters, state_variables, jacobian, descriptors);
+        for (const auto& evaluator : dr_evaluators)
+          evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
+        for (const auto& evaluator : drr_evaluators)
+          evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
+        for (const auto& evaluator : hlpt_evaluators)
+          evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian, descriptors);
       };
     }
 
@@ -507,12 +508,12 @@ namespace miam
 
       auto phase_prefixes = CollectPhaseStatePrefixes();
       // Reference (CPU) descriptor map used only to enumerate `n_deps` counts for
-      // Jacobian flat-ID layout in HenrysLawPhaseTransferSet.
+      // Jacobian flat-ID layout in HenrysLawPhaseTransferEvaluator.
       using ReferenceDense = micm::Matrix<double>;
       auto reference_descriptors =
           BuildDescriptors<ReferenceDense>(phase_prefixes, state_parameter_indices, state_variable_indices);
 
-      auto sets = std::make_shared<ProcessSets<DenseMatrixPolicy, SparseMatrixPolicy>>();
+      auto evaluators = std::make_shared<ProcessEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>>();
       for (const auto& process : processes_)
       {
         std::visit(
@@ -521,32 +522,32 @@ namespace miam
               using P = std::decay_t<decltype(p)>;
               if constexpr (std::is_same_v<P, DissolvedReaction>)
               {
-                sets->dissolved_reactions_.emplace_back(
+                evaluators->dissolved_reactions_.emplace_back(
                     p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
               }
               else if constexpr (std::is_same_v<P, DissolvedReversibleReaction>)
               {
-                sets->dissolved_reversible_reactions_.emplace_back(
+                evaluators->dissolved_reversible_reactions_.emplace_back(
                     p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
               }
               else if constexpr (std::is_same_v<P, HenrysLawPhaseTransfer>)
               {
-                sets->henrys_law_phase_transfers_.emplace_back(
+                evaluators->henrys_law_phase_transfers_.emplace_back(
                     p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, reference_descriptors);
               }
             },
             process);
       }
-      if (!sets->henrys_law_phase_transfers_.empty())
-        sets->descriptors_ =
+      if (!evaluators->henrys_law_phase_transfers_.empty())
+        evaluators->descriptors_ =
             BuildDescriptors<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
 
-      std::shared_ptr<const ProcessSets<DenseMatrixPolicy, SparseMatrixPolicy>> shared_sets = std::move(sets);
+      std::shared_ptr<const ProcessEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>> shared_evaluators = std::move(evaluators);
       process_forcing_fn_ = ForcingFn<DenseMatrixPolicy>(
-          [shared_sets](
+          [shared_evaluators](
               const DenseMatrixPolicy& state_parameters, const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& forcing)
-          { shared_sets->AddForcingTerms(state_parameters, state_variables, forcing); });
-      process_sets_ = std::move(shared_sets);
+          { shared_evaluators->AddForcingTerms(state_parameters, state_variables, forcing); });
+      process_evaluators_ = std::move(shared_evaluators);
     }
 
     /// @brief Cache build-time indices for constraint solve-time methods
@@ -564,7 +565,7 @@ namespace miam
 
       auto phase_prefixes = CollectPhaseStatePrefixes();
 
-      auto sets = std::make_shared<ConstraintSets<DenseMatrixPolicy, SparseMatrixPolicy>>();
+      auto evaluators = std::make_shared<ConstraintEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>>();
       for (const auto& constraint : constraints_)
       {
         std::visit(
@@ -572,23 +573,23 @@ namespace miam
             {
               using C = std::decay_t<decltype(c)>;
               if constexpr (std::is_same_v<C, LinearConstraint>)
-                sets->linear_.emplace_back(c, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+                evaluators->linear_.emplace_back(c, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
               else if constexpr (std::is_same_v<C, DissolvedEquilibriumConstraint>)
-                sets->dissolved_equilibrium_.emplace_back(
+                evaluators->dissolved_equilibrium_.emplace_back(
                     c, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
               else if constexpr (std::is_same_v<C, HenrysLawEquilibriumConstraint>)
-                sets->henrys_law_equilibrium_.emplace_back(
+                evaluators->henrys_law_equilibrium_.emplace_back(
                     c, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
             },
             constraint);
       }
 
-      std::shared_ptr<const ConstraintSets<DenseMatrixPolicy, SparseMatrixPolicy>> shared_sets = std::move(sets);
+      std::shared_ptr<const ConstraintEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>> shared_evaluators = std::move(evaluators);
       constraint_residual_fn_ = ForcingFn<DenseMatrixPolicy>(
-          [shared_sets](
+          [shared_evaluators](
               const DenseMatrixPolicy& state_parameters, const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& forcing)
-          { shared_sets->AddResidual(state_parameters, state_variables, forcing); });
-      constraint_sets_ = std::move(shared_sets);
+          { shared_evaluators->AddResidual(state_parameters, state_variables, forcing); });
+      constraint_evaluators_ = std::move(shared_evaluators);
     }
 
     /// @brief Solve-time: refresh temperature-/pressure-dependent process parameters
@@ -634,9 +635,9 @@ namespace miam
         const DenseMatrixPolicy& state_variables,
         SparseMatrixPolicy& jacobian) const
     {
-      using SetsPtr = std::shared_ptr<const ProcessSets<DenseMatrixPolicy, SparseMatrixPolicy>>;
-      if (process_sets_.has_value())
-        std::any_cast<const SetsPtr&>(process_sets_)->SubtractJacobianTerms(state_parameters, state_variables, jacobian);
+      using SetsPtr = std::shared_ptr<const ProcessEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>>;
+      if (process_evaluators_.has_value())
+        std::any_cast<const SetsPtr&>(process_evaluators_)->SubtractJacobianTerms(state_parameters, state_variables, jacobian);
     }
 
     /// @brief Solve-time: refresh temperature-/pressure-dependent constraint parameters
@@ -713,9 +714,9 @@ namespace miam
         const DenseMatrixPolicy& state_variables,
         SparseMatrixPolicy& jacobian) const
     {
-      using SetsPtr = std::shared_ptr<const ConstraintSets<DenseMatrixPolicy, SparseMatrixPolicy>>;
-      if (constraint_sets_.has_value())
-        std::any_cast<const SetsPtr&>(constraint_sets_)->SubtractJacobian(state_parameters, state_variables, jacobian);
+      using SetsPtr = std::shared_ptr<const ConstraintEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>>;
+      if (constraint_evaluators_.has_value())
+        std::any_cast<const SetsPtr&>(constraint_evaluators_)->SubtractJacobian(state_parameters, state_variables, jacobian);
     }
 
    private:
@@ -725,13 +726,13 @@ namespace miam
     template<typename DenseMatrixPolicy>
     using ForcingFn = std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>;
 
-    /// @brief Process Sets built by FinalizeProcessSetup for one <DP, SP> pair
+    /// @brief Process evaluators built by FinalizeProcessSetup for one <DP, SP> pair
     template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
-    struct ProcessSets
+    struct ProcessEvaluators
     {
-      std::vector<DissolvedReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>> dissolved_reactions_;
-      std::vector<DissolvedReversibleReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>> dissolved_reversible_reactions_;
-      std::vector<HenrysLawPhaseTransferSet<DenseMatrixPolicy, SparseMatrixPolicy>> henrys_law_phase_transfers_;
+      std::vector<DissolvedReactionEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> dissolved_reactions_;
+      std::vector<DissolvedReversibleReactionEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> dissolved_reversible_reactions_;
+      std::vector<HenrysLawPhaseTransferEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> henrys_law_phase_transfers_;
       DescriptorMap<DenseMatrixPolicy> descriptors_;
 
       void AddForcingTerms(
@@ -739,12 +740,12 @@ namespace miam
           const DenseMatrixPolicy& state_variables,
           DenseMatrixPolicy& forcing) const
       {
-        for (const auto& set : dissolved_reactions_)
-          set.AddForcingTerms(state_parameters, state_variables, forcing);
-        for (const auto& set : dissolved_reversible_reactions_)
-          set.AddForcingTerms(state_parameters, state_variables, forcing);
-        for (const auto& set : henrys_law_phase_transfers_)
-          set.AddForcingTerms(state_parameters, state_variables, forcing, descriptors_);
+        for (const auto& evaluator : dissolved_reactions_)
+          evaluator.AddForcingTerms(state_parameters, state_variables, forcing);
+        for (const auto& evaluator : dissolved_reversible_reactions_)
+          evaluator.AddForcingTerms(state_parameters, state_variables, forcing);
+        for (const auto& evaluator : henrys_law_phase_transfers_)
+          evaluator.AddForcingTerms(state_parameters, state_variables, forcing, descriptors_);
       }
 
       void SubtractJacobianTerms(
@@ -752,34 +753,34 @@ namespace miam
           const DenseMatrixPolicy& state_variables,
           SparseMatrixPolicy& jacobian) const
       {
-        for (const auto& set : dissolved_reactions_)
-          set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
-        for (const auto& set : dissolved_reversible_reactions_)
-          set.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
-        for (const auto& set : henrys_law_phase_transfers_)
-          set.SubtractJacobianTerms(state_parameters, state_variables, jacobian, descriptors_);
+        for (const auto& evaluator : dissolved_reactions_)
+          evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
+        for (const auto& evaluator : dissolved_reversible_reactions_)
+          evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
+        for (const auto& evaluator : henrys_law_phase_transfers_)
+          evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian, descriptors_);
       }
     };
 
-    /// @brief Constraint Sets built by FinalizeConstraintSetup for one <DP, SP> pair
+    /// @brief Constraint evaluators built by FinalizeConstraintSetup for one <DP, SP> pair
     template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
-    struct ConstraintSets
+    struct ConstraintEvaluators
     {
-      std::vector<LinearConstraintSet<DenseMatrixPolicy, SparseMatrixPolicy>> linear_;
-      std::vector<DissolvedEquilibriumConstraintSet<DenseMatrixPolicy, SparseMatrixPolicy>> dissolved_equilibrium_;
-      std::vector<HenrysLawEquilibriumConstraintSet<DenseMatrixPolicy, SparseMatrixPolicy>> henrys_law_equilibrium_;
+      std::vector<LinearConstraintEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> linear_;
+      std::vector<DissolvedEquilibriumConstraintEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> dissolved_equilibrium_;
+      std::vector<HenrysLawEquilibriumConstraintEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> henrys_law_equilibrium_;
 
       void AddResidual(
           const DenseMatrixPolicy& state_parameters,
           const DenseMatrixPolicy& state_variables,
           DenseMatrixPolicy& forcing) const
       {
-        for (const auto& set : linear_)
-          set.AddResidual(state_variables, state_parameters, forcing);
-        for (const auto& set : dissolved_equilibrium_)
-          set.AddResidual(state_variables, state_parameters, forcing);
-        for (const auto& set : henrys_law_equilibrium_)
-          set.AddResidual(state_variables, state_parameters, forcing);
+        for (const auto& evaluator : linear_)
+          evaluator.AddResidual(state_variables, state_parameters, forcing);
+        for (const auto& evaluator : dissolved_equilibrium_)
+          evaluator.AddResidual(state_variables, state_parameters, forcing);
+        for (const auto& evaluator : henrys_law_equilibrium_)
+          evaluator.AddResidual(state_variables, state_parameters, forcing);
       }
 
       void SubtractJacobian(
@@ -787,12 +788,12 @@ namespace miam
           const DenseMatrixPolicy& state_variables,
           SparseMatrixPolicy& jacobian) const
       {
-        for (const auto& set : linear_)
-          set.SubtractJacobian(state_variables, state_parameters, jacobian);
-        for (const auto& set : dissolved_equilibrium_)
-          set.SubtractJacobian(state_variables, state_parameters, jacobian);
-        for (const auto& set : henrys_law_equilibrium_)
-          set.SubtractJacobian(state_variables, state_parameters, jacobian);
+        for (const auto& evaluator : linear_)
+          evaluator.SubtractJacobian(state_variables, state_parameters, jacobian);
+        for (const auto& evaluator : dissolved_equilibrium_)
+          evaluator.SubtractJacobian(state_variables, state_parameters, jacobian);
+        for (const auto& evaluator : henrys_law_equilibrium_)
+          evaluator.SubtractJacobian(state_variables, state_parameters, jacobian);
       }
     };
 

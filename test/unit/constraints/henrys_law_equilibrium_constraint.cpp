@@ -3,7 +3,7 @@
 
 #include <miam/constraints/henrys_law_equilibrium_constraint.hpp>
 #include <miam/constraints/henrys_law_equilibrium_constraint_builder.hpp>
-#include <miam/constraints/henrys_law_equilibrium_constraint_set.hpp>
+#include <miam/constraints/henrys_law_equilibrium_constraint_evaluator.hpp>
 #include <miam/math/condensation_rate.hpp>
 
 #include <micm/system/conditions.hpp>
@@ -60,7 +60,7 @@ namespace
 namespace
 {
   template<typename Dense, typename Sparse>
-  HenrysLawEquilibriumConstraintSet<Dense, Sparse> MakeSet(
+  HenrysLawEquilibriumConstraintEvaluator<Dense, Sparse> MakeEvaluator(
       const HenrysLawEquilibriumConstraint& constraint,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
@@ -72,7 +72,7 @@ namespace
     for (const auto& elem : elements)
       builder = builder.WithElement(elem.first, elem.second);
     Sparse pattern(builder);
-    return HenrysLawEquilibriumConstraintSet<Dense, Sparse>(
+    return HenrysLawEquilibriumConstraintEvaluator<Dense, Sparse>(
         constraint, phase_prefixes, state_parameter_indices, state_variable_indices, pattern);
   }
 }  // namespace
@@ -231,7 +231,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualSingleInstance)
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
-  auto residual_fn_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, state_indices);
+  auto residual_fn_evaluator = MakeEvaluator<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, state_indices);
 
   double gas_conc = 1.0e-6;
   double aq_conc = 0.5;
@@ -243,7 +243,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualSingleInstance)
   state_variables[0][2] = solvent_conc;
 
   DMP residual{ 1, 3, 0.0 };
-  residual_fn_set.AddResidual(state_variables, state_params, residual);
+  residual_fn_evaluator.AddResidual(state_variables, state_params, residual);
 
   double f_v = solvent_conc * water_molecular_weight / water_density;
   double hlc_rt = HLC * micm::constants::GAS_CONSTANT * T;
@@ -285,7 +285,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualMultipleInstances)
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
-  auto residual_fn_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, state_indices);
+  auto residual_fn_evaluator = MakeEvaluator<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, state_indices);
 
   DMP state_variables{ 1, 5, 0.0 };
   state_variables[0][0] = 1.0e-5;  // [A_g]
@@ -295,7 +295,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualMultipleInstances)
   state_variables[0][4] = 200.0;   // SMALL [H2O]
 
   DMP residual{ 1, 5, 0.0 };
-  residual_fn_set.AddResidual(state_variables, state_params, residual);
+  residual_fn_evaluator.AddResidual(state_variables, state_params, residual);
 
   double hlc_rt = HLC * micm::constants::GAS_CONSTANT * T;
   double gas_conc = 1.0e-5;
@@ -347,7 +347,7 @@ TEST(HenrysLawEquilibriumConstraint, JacobianSingleInstance)
     builder.WithElement(row, col);
   SMP jacobian(builder);
 
-  HenrysLawEquilibriumConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, pi, state_indices, jacobian);
+  HenrysLawEquilibriumConstraintEvaluator<DMP, SMP> jac_fn_evaluator(constraint, phase_prefixes, pi, state_indices, jacobian);
 
   double gas_conc = 1.0e-6;
   double solvent_conc = 300.0;
@@ -359,7 +359,7 @@ TEST(HenrysLawEquilibriumConstraint, JacobianSingleInstance)
 
   for (auto& v : jacobian.AsVector())
     v = 0.0;
-  jac_fn_set.SubtractJacobian(state_variables, state_params, jacobian);
+  jac_fn_evaluator.SubtractJacobian(state_variables, state_params, jacobian);
 
   double hlc_rt = HLC * micm::constants::GAS_CONSTANT * T;
   double f_v = solvent_conc * water_molecular_weight / water_density;
@@ -514,18 +514,18 @@ namespace
 
     // Build sparse Jacobian structure and compute analytical Jacobian
     auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, state_indices, num_blocks);
-    HenrysLawEquilibriumConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, param_idx, state_indices, jacobian);
-    jac_fn_set.SubtractJacobian(state_variables, state_params, jacobian);
+    HenrysLawEquilibriumConstraintEvaluator<DMP, SMP> jac_fn_evaluator(constraint, phase_prefixes, param_idx, state_indices, jacobian);
+    jac_fn_evaluator.SubtractJacobian(state_variables, state_params, jacobian);
 
     // Build FD Jacobian — bind state_params into the residual callable
     // Use perturbation=1e-7 to match old central-difference scheme: h = max(|x|, 1) * 1e-7.
     // Use atol=rtol=1e-5 to match old rel_tol tolerance.
-    auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_idx, state_indices);
+    auto rf_evaluator = MakeEvaluator<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, param_idx, state_indices);
     auto fd_jac = micm::FiniteDifferenceJacobian<DMP>(
         [&](const DMP& vars, DMP& out)
         {
           out.Fill(0.0);
-          rf_set.AddResidual(vars, state_params, out);
+          rf_evaluator.AddResidual(vars, state_params, out);
         },
         state_variables,
         num_vars,
@@ -657,9 +657,9 @@ TEST(HenrysLawEquilibriumConstraint, ResidualMultipleCells)
   sv[2][1] = 0.01;
   sv[2][2] = 0.017;
 
-  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
+  auto rf_evaluator = MakeEvaluator<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
   DMP residual{ nc, 3, 0.0 };
-  rf_set.AddResidual(sv, sp, residual);
+  rf_evaluator.AddResidual(sv, sp, residual);
 
   for (std::size_t c = 0; c < nc; ++c)
   {
@@ -806,7 +806,7 @@ TEST(HenrysLawEquilibriumConstraint, JacobianAccumulates)
   auto sp = InitHlcRt(constraint, phase_prefixes, pi, 1, T);
 
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  HenrysLawEquilibriumConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, pi, si, jacobian);
+  HenrysLawEquilibriumConstraintEvaluator<DMP, SMP> jac_fn_evaluator(constraint, phase_prefixes, pi, si, jacobian);
 
   DMP sv{ 1, 3, 0.0 };
   sv[0][0] = 1.0e-6;
@@ -814,13 +814,13 @@ TEST(HenrysLawEquilibriumConstraint, JacobianAccumulates)
   sv[0][2] = 300.0;
 
   // First call
-  jac_fn_set.SubtractJacobian(sv, sp, jacobian);
+  jac_fn_evaluator.SubtractJacobian(sv, sp, jacobian);
   double j10_once = jacobian.AsVector()[jacobian.VectorIndex(0, 1, 0)];
   double j11_once = jacobian.AsVector()[jacobian.VectorIndex(0, 1, 1)];
   double j12_once = jacobian.AsVector()[jacobian.VectorIndex(0, 1, 2)];
 
   // Second call accumulates
-  jac_fn_set.SubtractJacobian(sv, sp, jacobian);
+  jac_fn_evaluator.SubtractJacobian(sv, sp, jacobian);
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 1, 0)], 2.0 * j10_once, std::abs(j10_once) * 1e-12);
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 1, 1)], 2.0 * j11_once, 1e-12);
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 1, 2)], 2.0 * j12_once, std::abs(j12_once) * 1e-12);
@@ -852,7 +852,7 @@ TEST(HenrysLawEquilibriumConstraint, ResidualSetsNotAccumulates)
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   auto sp = InitHlcRt(constraint, phase_prefixes, pi, 1, T);
 
-  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
+  auto rf_evaluator = MakeEvaluator<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
 
   DMP sv{ 1, 3, 0.0 };
   sv[0][0] = 1.0e-6;
@@ -860,10 +860,10 @@ TEST(HenrysLawEquilibriumConstraint, ResidualSetsNotAccumulates)
   sv[0][2] = 300.0;
 
   DMP residual{ 1, 3, 999.0 };
-  rf_set.AddResidual(sv, sp, residual);
+  rf_evaluator.AddResidual(sv, sp, residual);
   double val1 = residual[0][1];
 
-  rf_set.AddResidual(sv, sp, residual);
+  rf_evaluator.AddResidual(sv, sp, residual);
   EXPECT_NEAR(residual[0][1], val1, 1e-15);
 }
 
@@ -909,9 +909,9 @@ TEST(HenrysLawEquilibriumConstraint, TemperatureDependentHlcMultiCell)
   sv[2][2] = 0.017;
 
   // Check residuals with per-cell HLC*R*T
-  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
+  auto rf_evaluator = MakeEvaluator<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
   DMP residual{ nc, 3, 0.0 };
-  rf_set.AddResidual(sv, sp, residual);
+  rf_evaluator.AddResidual(sv, sp, residual);
 
   for (std::size_t c = 0; c < nc; ++c)
   {
@@ -1005,7 +1005,7 @@ TEST(HenrysLawEquilibriumConstraint, JacobianMultipleInstancesAnalytical)
   auto sp = InitHlcRt(constraint, phase_prefixes, pi, 1, T);
 
   auto jacobian = BuildConstraintJacobian(constraint, phase_prefixes, si, 1);
-  HenrysLawEquilibriumConstraintSet<DMP, SMP> jac_fn_set(constraint, phase_prefixes, pi, si, jacobian);
+  HenrysLawEquilibriumConstraintEvaluator<DMP, SMP> jac_fn_evaluator(constraint, phase_prefixes, pi, si, jacobian);
 
   DMP sv{ 1, 5, 0.0 };
   sv[0][0] = 1.0e-5;  // gas
@@ -1014,7 +1014,7 @@ TEST(HenrysLawEquilibriumConstraint, JacobianMultipleInstancesAnalytical)
   sv[0][3] = 0.1;     // SMALL aq
   sv[0][4] = 200.0;   // SMALL solvent
 
-  jac_fn_set.SubtractJacobian(sv, sp, jacobian);
+  jac_fn_evaluator.SubtractJacobian(sv, sp, jacobian);
 
   double hlc_rt = HLC * micm::constants::GAS_CONSTANT * T;
   double Mw_rho = water_molecular_weight / water_density;
@@ -1063,9 +1063,9 @@ TEST(HenrysLawEquilibriumConstraint, LargeHLC)
   sv[0][1] = 0.1;
   sv[0][2] = 0.017;
 
-  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
+  auto rf_evaluator = MakeEvaluator<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
   DMP residual{ 1, 3, 0.0 };
-  rf_set.AddResidual(sv, sp, residual);
+  rf_evaluator.AddResidual(sv, sp, residual);
 
   double hlc_rt = HLC * micm::constants::GAS_CONSTANT * T;
   double fv = 0.017 * water_molecular_weight / water_density;
@@ -1111,8 +1111,8 @@ TEST(HenrysLawEquilibriumConstraint, CopiedConstraintProducesSameResults)
   sv[0][1] = 0.5;
   sv[0][2] = 300.0;
 
-  auto rf_orig_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(original, phase_prefixes, pi_orig, si);
-  auto rf_copy_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(copy, phase_prefixes, pi_copy, si);
+  auto rf_orig_set = MakeEvaluator<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(original, phase_prefixes, pi_orig, si);
+  auto rf_copy_set = MakeEvaluator<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(copy, phase_prefixes, pi_copy, si);
 
   DMP res_orig{ 1, 3, 0.0 };
   DMP res_copy{ 1, 3, 0.0 };
@@ -1159,9 +1159,9 @@ TEST(HenrysLawEquilibriumConstraint, ResidualZeroAtEquilibrium)
   sv[0][1] = aq_conc_eq;
   sv[0][2] = solvent_conc;
 
-  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
+  auto rf_evaluator = MakeEvaluator<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
   DMP residual{ 1, 3, 0.0 };
-  rf_set.AddResidual(sv, sp, residual);
+  rf_evaluator.AddResidual(sv, sp, residual);
 
   EXPECT_NEAR(residual[0][1], 0.0, 1e-15);
 }
@@ -1298,8 +1298,8 @@ namespace
 
     // Residual: each cell independently
     VDM residual{ num_cells, 3, 0.0 };
-    auto rf_set = MakeSet<VDM, VSM>(constraint, phase_prefixes, pi, si);
-    rf_set.AddResidual(state_variables, state_params, residual);
+    auto rf_evaluator = MakeEvaluator<VDM, VSM>(constraint, phase_prefixes, pi, si);
+    rf_evaluator.AddResidual(state_variables, state_params, residual);
 
     for (std::size_t c = 0; c < num_cells; ++c)
     {
@@ -1320,8 +1320,8 @@ namespace
       jac_builder = jac_builder.WithElement(row, col);
     VSM jacobian(jac_builder);
 
-    HenrysLawEquilibriumConstraintSet<VDM, VSM> jac_fn_set(constraint, phase_prefixes, pi, si, jacobian);
-    jac_fn_set.SubtractJacobian(state_variables, state_params, jacobian);
+    HenrysLawEquilibriumConstraintEvaluator<VDM, VSM> jac_fn_evaluator(constraint, phase_prefixes, pi, si, jacobian);
+    jac_fn_evaluator.SubtractJacobian(state_variables, state_params, jacobian);
 
     // FD check per cell
     double eps = 1e-7;
@@ -1337,8 +1337,8 @@ namespace
 
         VDM rp(num_cells, 3, 0.0);
         VDM rm(num_cells, 3, 0.0);
-        rf_set.AddResidual(vp, state_params, rp);
-        rf_set.AddResidual(vm, state_params, rm);
+        rf_evaluator.AddResidual(vp, state_params, rp);
+        rf_evaluator.AddResidual(vm, state_params, rm);
 
         for (std::size_t i = 0; i < si.size(); ++i)
         {
@@ -1421,9 +1421,9 @@ TEST(HenrysLawEquilibriumConstraint, ResidualZeroGasConcentration)
   sv[0][1] = A_aq_conc;
   sv[0][2] = 300.0;
 
-  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
+  auto rf_evaluator = MakeEvaluator<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
   DMP residual{ 1, 3, 0.0 };
-  rf_set.AddResidual(sv, sp, residual);
+  rf_evaluator.AddResidual(sv, sp, residual);
 
   EXPECT_NEAR(residual[0][1], -A_aq_conc, 1.0e-12);
 }
@@ -1460,9 +1460,9 @@ TEST(HenrysLawEquilibriumConstraint, ResidualZeroAqueousConcentration)
   sv[0][1] = 0.0;  // [A_aq] = 0
   sv[0][2] = H2O_conc;
 
-  auto rf_set = MakeSet<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
+  auto rf_evaluator = MakeEvaluator<DMP, micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>>(constraint, phase_prefixes, pi, si);
   DMP residual{ 1, 3, 0.0 };
-  rf_set.AddResidual(sv, sp, residual);
+  rf_evaluator.AddResidual(sv, sp, residual);
 
   double f_v = H2O_conc * water_molecular_weight / water_density;
   double hlc_rt = HLC * micm::constants::GAS_CONSTANT * T;

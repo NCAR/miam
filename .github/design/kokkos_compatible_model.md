@@ -204,7 +204,7 @@ SparseMatrixPolicy>` template class that owns policy-typed index caches:
 namespace miam
 {
   template<class DenseMatrixPolicy, class SparseMatrixPolicy>
-  class DissolvedReactionSet
+  class DissolvedReactionEvaluator
   {
    private:
     template<class U>
@@ -224,7 +224,7 @@ namespace miam
     micm::Real  min_halflife_ = 0.0;
 
    public:
-    DissolvedReactionSet(
+    DissolvedReactionEvaluator(
         const DissolvedReaction& config,
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, micm::Index>& state_parameter_indices,
@@ -262,7 +262,7 @@ trivially copyable data (a couple of `micm::Index` values and
 
 ```cpp
 template<class DenseMatrixPolicy, class SparseMatrixPolicy>
-void DissolvedReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>::AddForcingTerms(
+void DissolvedReactionEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>::AddForcingTerms(
     const DenseMatrixPolicy& state_parameters,
     const DenseMatrixPolicy& state_variables,
     DenseMatrixPolicy& forcing) const
@@ -314,16 +314,16 @@ void DissolvedReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>::AddForcingTerm
 `SubtractJacobianTerms` reads pre-computed flat IDs from
 `jacobian_flat_ids_.GetView()` and calls `jacobian_view.GetBlockView(flat_id)`.
 
-`DissolvedReversibleReactionSet` and `HenrysLawPhaseTransferSet` follow the
+`DissolvedReversibleReactionEvaluator` and `HenrysLawPhaseTransferEvaluator` follow the
 same shape with their own `Vector<micm::Index>` caches; the constraint Sets
-(`DissolvedEquilibriumConstraintSet`, `HenrysLawEquilibriumConstraintSet`,
-`LinearConstraintSet`) each expose `AddConstraintResidual` and
+(`DissolvedEquilibriumConstraintEvaluator`, `HenrysLawEquilibriumConstraintEvaluator`,
+`LinearConstraintEvaluator`) each expose `AddConstraintResidual` and
 `SubtractConstraintJacobian` instead of `AddForcingTerms` and
 `SubtractJacobianTerms`, matching MICM's
 `stub_aerosol_with_constraints::AddConstraintResidual` and
 `SubtractConstraintJacobian`.
 
-`HenrysLawPhaseTransferSet` additionally captures its
+`HenrysLawPhaseTransferEvaluator` additionally captures its
 `AerosolPropertyDescriptor` by value into `MICM_LAMBDA` and calls
 `EvaluateAerosolPropertyAndDerivatives(...)` inline from the kernel body.
 
@@ -343,17 +343,17 @@ namespace miam
   template<class DenseMatrixPolicy, class SparseMatrixPolicy>
   struct ProcessSetCollection
   {
-    std::vector<DissolvedReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>>            dissolved_reactions_;
-    std::vector<DissolvedReversibleReactionSet<DenseMatrixPolicy, SparseMatrixPolicy>>  reversible_reactions_;
-    std::vector<HenrysLawPhaseTransferSet<DenseMatrixPolicy, SparseMatrixPolicy>>       phase_transfers_;
+    std::vector<DissolvedReactionEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>>            dissolved_reactions_;
+    std::vector<DissolvedReversibleReactionEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>>  reversible_reactions_;
+    std::vector<HenrysLawPhaseTransferEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>>       phase_transfers_;
   };
 
   template<class DenseMatrixPolicy, class SparseMatrixPolicy>
   struct ConstraintSetCollection
   {
-    std::vector<DissolvedEquilibriumConstraintSet<DenseMatrixPolicy, SparseMatrixPolicy>> dissolved_equilibrium_constraints_;
-    std::vector<HenrysLawEquilibriumConstraintSet<DenseMatrixPolicy, SparseMatrixPolicy>> henrys_law_equilibrium_constraints_;
-    std::vector<LinearConstraintSet<DenseMatrixPolicy, SparseMatrixPolicy>>               linear_constraints_;
+    std::vector<DissolvedEquilibriumConstraintEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> dissolved_equilibrium_constraints_;
+    std::vector<HenrysLawEquilibriumConstraintEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> henrys_law_equilibrium_constraints_;
+    std::vector<LinearConstraintEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>>               linear_constraints_;
   };
 }
 ```
@@ -554,7 +554,7 @@ class Model
 |-|-|
 | A | `processes/constants/rate_expression.hpp` (new); the six config `.hpp` + `_builder.hpp` pairs — drop `std::function` members and `std::function`-taking builder overloads outright |
 | B | `representations/aerosol_property.hpp` (rewrite — POD descriptor); `representations/aerosol_property_evaluator.hpp` (new); `representations/single_moment_mode.hpp`, `two_moment_mode.hpp`, `uniform_section.hpp` (rename `GetPropertyProvider` → `GetPropertyDescriptor`) |
-| C | Six new headers: `processes/dissolved_reaction_set.hpp`, `processes/dissolved_reversible_reaction_set.hpp`, `processes/henrys_law_phase_transfer_set.hpp`, `constraints/dissolved_equilibrium_constraint_set.hpp`, `constraints/henrys_law_equilibrium_constraint_set.hpp`, `constraints/linear_constraint_set.hpp`. The corresponding six config headers keep their build-time query methods and public data; every `*Function<...>()` factory is deleted. |
+| C | Six new headers: `processes/dissolved_reaction_evaluator.hpp`, `processes/dissolved_reversible_reaction_evaluator.hpp`, `processes/henrys_law_phase_transfer_evaluator.hpp`, `constraints/dissolved_equilibrium_constraint_evaluator.hpp`, `constraints/henrys_law_equilibrium_constraint_evaluator.hpp`, `constraints/linear_constraint_evaluator.hpp`. The corresponding six config headers keep their build-time query methods and public data; every `*Function<...>()` factory is deleted. |
 | D | `model/model.hpp` — delete all `std::function`-returning factories and the seven `mutable std::any` caches; add `ProcessSetCollection<DenseMatrixPolicy, SparseMatrixPolicy>`, `ConstraintSetCollection<DenseMatrixPolicy, SparseMatrixPolicy>`, and the `ConstantsBucket` companions; add the lazy-init trigger inside `AddForcingTerms<DenseMatrixPolicy>` / `SubtractJacobianTerms<DenseMatrixPolicy, SparseMatrixPolicy>` / their constraint mates. |
 
 ## Test migration
@@ -617,8 +617,8 @@ expands the set of `test_kokkos_cam_cloud_chemistry` steps that pass.
 |-|-|-|
 | 1 | Layer A. Add `RateExpression` classes + variant aliases. Update all six builders' constant-setters to require an expression variant (or a concrete alternative). `std::function` overloads deleted. Ad-hoc lambda constants in tests rewritten to `UserDefinedConstantExpression{ .value_ = k }` or `ArrheniusExpression{ .params_ = ... }`. | 0/9 — plumbing only |
 | 2 | Layer B. POD `AerosolPropertyDescriptor` + evaluators. Three representations updated. `HenrysLawPhaseTransfer` consumer swap. | 0/9 |
-| 3 | Layer C for `DissolvedReactionSet`. Build the Set class + `.CopyToDevice()`. `Model` routes `DissolvedReaction` through the new Set; leaves the other two process types on the existing paths behind a variant + `if constexpr`. Delete all OLD `DissolvedReaction::*Function<...>()` factories. Migrate `DissolvedReaction` unit tests. | 0/9 — no test exercises only `DissolvedReaction` |
-| 4 | Layer C for `DissolvedReversibleReactionSet` and `HenrysLawPhaseTransferSet`. Delete their OLD `*Function<...>()` factories. Delete `Model`'s process-side `mutable std::any` glue. Migrate their unit tests. | Processes are Kokkos-safe; steps that use only constraints still fail. |
+| 3 | Layer C for `DissolvedReactionEvaluator`. Build the Set class + `.CopyToDevice()`. `Model` routes `DissolvedReaction` through the new Set; leaves the other two process types on the existing paths behind a variant + `if constexpr`. Delete all OLD `DissolvedReaction::*Function<...>()` factories. Migrate `DissolvedReaction` unit tests. | 0/9 — no test exercises only `DissolvedReaction` |
+| 4 | Layer C for `DissolvedReversibleReactionEvaluator` and `HenrysLawPhaseTransferEvaluator`. Delete their OLD `*Function<...>()` factories. Delete `Model`'s process-side `mutable std::any` glue. Migrate their unit tests. | Processes are Kokkos-safe; steps that use only constraints still fail. |
 | 5 | Layer C for the three constraint Sets + Layer D (`Model` collapse: delete the seven `mutable std::any` caches, replace with `ProcessSetCollection` / `ConstraintSetCollection` + `ConstantsBucket`). Delete every remaining `*Function<...>()` factory on both `Model` and every config class. Migrate `test_jacobian_verification`, remaining unit tests, and Step 5 of the CAM cloud policy. | **All 9/9 `KokkosCamCloudChemistry.*` steps pass on Kokkos-serial.** |
 
 ## Decisions locked in

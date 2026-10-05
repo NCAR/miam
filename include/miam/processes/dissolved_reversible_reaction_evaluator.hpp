@@ -20,9 +20,9 @@
 
 namespace miam
 {
-  /// @brief Solve-time companion to `DissolvedReversibleReaction`, mirroring `micm::ProcessSet`.
+  /// @brief Solve-time companion to `DissolvedReversibleReaction` (one instance; not batched).
   template<class DenseMatrixPolicy, class SparseMatrixPolicy>
-  class DissolvedReversibleReactionSet
+  class DissolvedReversibleReactionEvaluator
   {
    public:
     template<class U>
@@ -70,9 +70,9 @@ namespace miam
       }
     };
 
-    DissolvedReversibleReactionSet() = default;
+    DissolvedReversibleReactionEvaluator() = default;
 
-    DissolvedReversibleReactionSet(
+    DissolvedReversibleReactionEvaluator(
         const DissolvedReversibleReaction& config,
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
@@ -94,7 +94,7 @@ namespace miam
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
             MIAM_INTERNAL_MISSING_PHASE_PREFIX,
-            "DissolvedReversibleReactionSet: phase " + config.phase_.name_ +
+            "DissolvedReversibleReactionEvaluator: phase " + config.phase_.name_ +
                 " not found in phase_prefixes for process " + config.uuid_);
       const auto& prefixes = phase_it->second;
       const micm::Index num_phases = static_cast<micm::Index>(prefixes.size());
@@ -436,7 +436,7 @@ namespace miam
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
             MIAM_INTERNAL_MISSING_STATE_PARAMETER,
-            "DissolvedReversibleReactionSet: state parameter " + key + " not found");
+            "DissolvedReversibleReactionEvaluator: state parameter " + key + " not found");
       return it->second;
     }
 
@@ -452,7 +452,7 @@ namespace miam
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
             MIAM_INTERNAL_MISSING_STATE_VARIABLE,
-            "DissolvedReversibleReactionSet: state variable " + key + " not found");
+            "DissolvedReversibleReactionEvaluator: state variable " + key + " not found");
       return it->second;
     }
 

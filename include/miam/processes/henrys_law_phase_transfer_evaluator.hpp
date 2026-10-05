@@ -25,13 +25,13 @@
 
 namespace miam
 {
-  /// @brief Solve-time companion to `HenrysLawPhaseTransfer`, mirroring `micm::ProcessSet`.
+  /// @brief Solve-time companion to `HenrysLawPhaseTransfer` (one instance; not batched).
   /// @details Per-phase-instance scalars and jacobian flat-IDs are stored in
   ///          `SparseMatrixPolicy::VectorType<Index>` containers. Aerosol-property evaluation
   ///          runs on host for each instance; the resulting buffers plus per-instance scalars
   ///          are handed to a `DP::Function` / `SP::Function` kernel via `MICM_LAMBDA`.
   template<class DenseMatrixPolicy, class SparseMatrixPolicy>
-  class HenrysLawPhaseTransferSet
+  class HenrysLawPhaseTransferEvaluator
   {
    public:
     template<class U>
@@ -76,10 +76,10 @@ namespace miam
       }
     };
 
-    HenrysLawPhaseTransferSet() = default;
+    HenrysLawPhaseTransferEvaluator() = default;
 
     template<class DescriptorMap>
-    HenrysLawPhaseTransferSet(
+    HenrysLawPhaseTransferEvaluator(
         const HenrysLawPhaseTransfer& config,
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
@@ -98,7 +98,7 @@ namespace miam
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
             MIAM_INTERNAL_MISSING_PHASE_PREFIX,
-            "HenrysLawPhaseTransferSet: phase " + config.condensed_phase_.name_ +
+            "HenrysLawPhaseTransferEvaluator: phase " + config.condensed_phase_.name_ +
                 " not found in phase_prefixes for process " + config.uuid_);
 
       prefixes_.clear();
@@ -540,7 +540,7 @@ namespace miam
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
             MIAM_INTERNAL_MISSING_STATE_VARIABLE,
-            "HenrysLawPhaseTransferSet: state variable " + species_name + " not found");
+            "HenrysLawPhaseTransferEvaluator: state variable " + species_name + " not found");
       return it->second;
     }
 

@@ -18,10 +18,10 @@
 
 namespace miam
 {
-  /// @brief Solve-time companion to `HenrysLawEquilibriumConstraint`, mirroring `micm::ProcessSet`.
+  /// @brief Solve-time companion to `HenrysLawEquilibriumConstraint` (one instance; not batched).
   /// @details G = HLC * R * T * f_v * [A_g] - [A_aq]; f_v = [S] * solvent_molecular_weight / solvent_density.
   template<class DenseMatrixPolicy, class SparseMatrixPolicy>
-  class HenrysLawEquilibriumConstraintSet
+  class HenrysLawEquilibriumConstraintEvaluator
   {
    public:
     template<class U>
@@ -66,9 +66,9 @@ namespace miam
       }
     };
 
-    HenrysLawEquilibriumConstraintSet() = default;
+    HenrysLawEquilibriumConstraintEvaluator() = default;
 
-    HenrysLawEquilibriumConstraintSet(
+    HenrysLawEquilibriumConstraintEvaluator(
         const HenrysLawEquilibriumConstraint& config,
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
@@ -80,7 +80,7 @@ namespace miam
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
             MIAM_INTERNAL_MISSING_STATE_VARIABLE,
-            "HenrysLawEquilibriumConstraintSet: gas species '" + config.gas_species_.name_ + "' not found");
+            "HenrysLawEquilibriumConstraintEvaluator: gas species '" + config.gas_species_.name_ + "' not found");
       const auto gas_idx = static_cast<micm::Index>(gas_it->second);
       const micm::Real molar_volume = config.solvent_molecular_weight_ / config.solvent_density_;
 
@@ -89,7 +89,7 @@ namespace miam
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
             MIAM_INTERNAL_MISSING_PHASE_PREFIX,
-            "HenrysLawEquilibriumConstraintSet: phase " + config.condensed_phase_.name_ + " not found");
+            "HenrysLawEquilibriumConstraintEvaluator: phase " + config.condensed_phase_.name_ + " not found");
 
       const auto num_phases = static_cast<micm::Index>(phase_it->second.size());
 

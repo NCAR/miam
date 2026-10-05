@@ -13,7 +13,6 @@
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
 #include <micm/util/constants.hpp>
-#include <micm/util/matrix.hpp>
 #include <micm/util/types.hpp>
 
 #include <functional>
@@ -222,85 +221,6 @@ namespace miam
               params)(conditions, params);
         }
       };
-    }
-
-   private:
-    /// @brief Helper struct for state variable indices across phase instances
-    struct StateVariableIndices
-    {
-      std::size_t number_of_phase_instances_;
-      std::size_t gas_idx_;                       ///< Gas species index (shared across instances)
-      std::vector<std::size_t> aq_indices_;       ///< Condensed species index per instance
-      std::vector<std::size_t> solvent_indices_;  ///< Solvent index per instance
-    };
-
-    /// @brief Helper struct for Jacobian sparse matrix indices
-    struct JacobianIndices
-    {
-      std::vector<std::size_t> gas_jac_indices_;      ///< [aq_row, gas_col] per instance (block 0)
-      std::vector<std::size_t> aq_jac_indices_;       ///< [aq_row, aq_col] per instance (block 0)
-      std::vector<std::size_t> solvent_jac_indices_;  ///< [aq_row, solvent_col] per instance (block 0)
-      std::size_t block_stride_;                      ///< Flat vector stride between blocks
-    };
-
-    /// @brief Build state variable indices for all phase instances
-    StateVariableIndices GetStateVariableIndices(
-        const std::map<std::string, std::set<std::string>>& phase_prefixes,
-        const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
-    {
-      StateVariableIndices indices;
-      auto gas_it = state_variable_indices.find(gas_species_.name_);
-      if (gas_it == state_variable_indices.end())
-        throw MiamException(
-            MIAM_ERROR_CATEGORY_INTERNAL,
-            MIAM_INTERNAL_MISSING_STATE_VARIABLE,
-            "HenrysLawEquilibriumConstraint: Gas species " + gas_species_.name_ + " not found in state_variable_indices");
-      indices.gas_idx_ = gas_it->second;
-
-      auto phase_it = phase_prefixes.find(condensed_phase_.name_);
-      if (phase_it == phase_prefixes.end())
-      {
-        throw MiamException(
-            MIAM_ERROR_CATEGORY_INTERNAL,
-            MIAM_INTERNAL_MISSING_PHASE_PREFIX,
-            "HenrysLawEquilibriumConstraint: Phase " + condensed_phase_.name_ + " not found in phase_prefixes");
-      }
-      const auto& prefixes = phase_it->second;
-      indices.number_of_phase_instances_ = prefixes.size();
-      indices.aq_indices_.resize(prefixes.size());
-      indices.solvent_indices_.resize(prefixes.size());
-
-      std::size_t i_phase = 0;
-      for (const auto& prefix : prefixes)
-      {
-        indices.aq_indices_[i_phase] =
-            state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + condensed_species_.name_);
-        indices.solvent_indices_[i_phase] =
-            state_variable_indices.at(prefix + "." + condensed_phase_.name_ + "." + solvent_.name_);
-        ++i_phase;
-      }
-      return indices;
-    }
-
-    /// @brief Build Jacobian sparse matrix indices for all phase instances
-    JacobianIndices GetJacobianIndices(const StateVariableIndices& var_indices, const auto& jacobian) const
-    {
-      JacobianIndices jac_indices;
-      std::size_t num_blocks = jacobian.NumberOfBlocks();
-      std::size_t block_stride = jacobian.FlatBlockSize();
-      jac_indices.gas_jac_indices_.resize(var_indices.number_of_phase_instances_);
-      jac_indices.aq_jac_indices_.resize(var_indices.number_of_phase_instances_);
-      jac_indices.solvent_jac_indices_.resize(var_indices.number_of_phase_instances_);
-      jac_indices.block_stride_ = block_stride;
-
-      for (std::size_t i_phase = 0; i_phase < var_indices.number_of_phase_instances_; ++i_phase)
-      {
-        std::size_t aq_row = var_indices.aq_indices_[i_phase];
-        jac_indices.gas_jac_indices_[i_phase] = jacobian.VectorIndex(0, aq_row, var_indices.gas_idx_);
-        jac_indices.aq_jac_indices_[i_phase] = jacobian.VectorIndex(0, aq_row, aq_row);
-        jac_indices.solvent_jac_indices_[i_phase] = jacobian.VectorIndex(0, aq_row, var_indices.solvent_indices_[i_phase]);
-      }
-      return jac_indices;
     }
   };
 }  // namespace miam

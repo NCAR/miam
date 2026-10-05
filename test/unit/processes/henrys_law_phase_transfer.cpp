@@ -5,7 +5,7 @@
 #include <miam/processes/constants/henrys_law_constant.hpp>
 #include <miam/processes/henrys_law_phase_transfer.hpp>
 #include <miam/processes/henrys_law_phase_transfer_builder.hpp>
-#include <miam/processes/henrys_law_phase_transfer_set.hpp>
+#include <miam/processes/henrys_law_phase_transfer_evaluator.hpp>
 
 #include "../../util/constant_aerosol_property_descriptor.hpp"
 #include "../../util/linear_aerosol_property_descriptor.hpp"
@@ -37,10 +37,10 @@ namespace
   constexpr double solvent_density = 1000.0;          // kg m^-3 (H2O)
   constexpr double HLC_ref = 3.4e-2;                  // mol m^-3 Pa^-1
 
-  /// Builds an `HenrysLawPhaseTransferSet` bound to a fresh sparse-Jacobian pattern derived
+  /// Builds an `HenrysLawPhaseTransferEvaluator` bound to a fresh sparse-Jacobian pattern derived
   /// from `process.NonZeroJacobianElements(...)`. Used by tests that only need forcing.
   template<typename Providers>
-  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> MakeHLPTSet(
+  HenrysLawPhaseTransferEvaluator<MatrixPolicy, SparseMatrixPolicy> MakeHLPTEvaluator(
       const HenrysLawPhaseTransfer& process,
       const std::map<std::string, std::set<std::string>>& phase_prefixes,
       const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
@@ -53,7 +53,7 @@ namespace
     for (const auto& elem : elements)
       builder = builder.WithElement(elem.first, elem.second);
     SparseMatrixPolicy pattern(builder);
-    return HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy>(
+    return HenrysLawPhaseTransferEvaluator<MatrixPolicy, SparseMatrixPolicy>(
         process, phase_prefixes, state_parameter_indices, state_variable_indices, pattern, providers);
   }
 
@@ -398,7 +398,7 @@ TEST(HenrysLawPhaseTransfer, ForcingFunctionBasicRates)
 
   auto providers = MakeTestProviders("MODE1", r_eff_val, N_val, phi_val);
 
-  auto forcing_func = MakeHLPTSet(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
+  auto forcing_func = MakeHLPTEvaluator(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
 
   double T = 298.15;
   double hlc = HLC_ref;
@@ -457,7 +457,7 @@ TEST(HenrysLawPhaseTransfer, ForcingFunctionMultipleCells)
 
   auto providers = MakeTestProviders("MODE1", r_eff_val, N_val, phi_val);
 
-  auto forcing_func = MakeHLPTSet(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
+  auto forcing_func = MakeHLPTEvaluator(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
 
   std::size_t num_cells = 3;
   MatrixPolicy state_parameters(num_cells, 2);
@@ -516,7 +516,7 @@ TEST(HenrysLawPhaseTransfer, ForcingFunctionMassConservation)
 
   auto providers = MakeTestProviders("MODE1", 2.0e-6, 5.0e8, 1.0e-4);
 
-  auto forcing_func = MakeHLPTSet(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
+  auto forcing_func = MakeHLPTEvaluator(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = HLC_ref;
@@ -569,7 +569,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionDirectEntries)
   SparseMatrixPolicy jacobian(builder);
   jacobian.Fill(0.0);
 
-  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
+  HenrysLawPhaseTransferEvaluator<MatrixPolicy, SparseMatrixPolicy> jac_func_evaluator(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
 
   double T = 298.15;
   double hlc = HLC_ref;
@@ -586,7 +586,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionDirectEntries)
   state_variables[0][1] = aq_conc;
   state_variables[0][2] = solvent_conc;
 
-  jac_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian, providers);
+  jac_func_evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian, providers);
 
   auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
@@ -637,7 +637,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionSymmetry)
   SparseMatrixPolicy jacobian(builder);
   jacobian.Fill(0.0);
 
-  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
+  HenrysLawPhaseTransferEvaluator<MatrixPolicy, SparseMatrixPolicy> jac_func_evaluator(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = HLC_ref;
@@ -648,7 +648,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionSymmetry)
   state_variables[0][1] = 0.01;
   state_variables[0][2] = 55000.0;
 
-  jac_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian, providers);
+  jac_func_evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian, providers);
 
   // J[gas,x] = -J[aq,x] for all x
   EXPECT_NEAR(jacobian[0][0][0] + jacobian[0][1][0], 0.0, 1e-20);  // x = gas
@@ -689,8 +689,8 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionFiniteDifference)
   SparseMatrixPolicy jacobian(builder);
   jacobian.Fill(0.0);
 
-  auto forcing_func = MakeHLPTSet(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
-  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
+  auto forcing_func = MakeHLPTEvaluator(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
+  HenrysLawPhaseTransferEvaluator<MatrixPolicy, SparseMatrixPolicy> jac_func_evaluator(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
 
   MatrixPolicy state_parameters(1, 2);
   state_parameters[0][0] = HLC_ref;
@@ -705,7 +705,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionFiniteDifference)
   state_variables[0][1] = aq_conc;
   state_variables[0][2] = solvent_conc;
 
-  jac_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian, providers);
+  jac_func_evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian, providers);
 
   // Finite difference for each state variable column j
   double eps = 1e-8;
@@ -728,8 +728,8 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionFiniteDifference)
     // Need fresh providers for each call since they're consumed
     auto prov_plus = MakeTestProviders("MODE1", r_eff_val, N_val, phi_val);
     auto prov_minus = MakeTestProviders("MODE1", r_eff_val, N_val, phi_val);
-    auto ff_plus = MakeHLPTSet(process, phase_prefixes, state_parameter_indices, state_variable_indices, prov_plus);
-    auto ff_minus = MakeHLPTSet(process, phase_prefixes, state_parameter_indices, state_variable_indices, prov_minus);
+    auto ff_plus = MakeHLPTEvaluator(process, phase_prefixes, state_parameter_indices, state_variable_indices, prov_plus);
+    auto ff_minus = MakeHLPTEvaluator(process, phase_prefixes, state_parameter_indices, state_variable_indices, prov_minus);
 
     ff_plus.AddForcingTerms(state_parameters, vars_plus, forcing_plus, prov_plus);
     ff_minus.AddForcingTerms(state_parameters, vars_minus, forcing_minus, prov_minus);
@@ -780,7 +780,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionMultipleCells)
   SparseMatrixPolicy jacobian(builder);
   jacobian.Fill(0.0);
 
-  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
+  HenrysLawPhaseTransferEvaluator<MatrixPolicy, SparseMatrixPolicy> jac_func_evaluator(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
 
   MatrixPolicy state_parameters(num_cells, 2);
   MatrixPolicy state_variables(num_cells, 3);
@@ -796,7 +796,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFunctionMultipleCells)
     state_variables[i][2] = 55000.0;
   }
 
-  jac_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian, providers);
+  jac_func_evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian, providers);
 
   auto cond_rate_provider = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
   double kc = cond_rate_provider.ComputeValue(r_eff_val, N_val, T);
@@ -871,11 +871,11 @@ namespace
 
     // Build sparse Jacobian structure and compute analytical Jacobian
     auto jacobian = BuildJacobian(process, phase_prefixes, state_variable_indices, providers, num_blocks);
-    HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
-    jac_func_set.SubtractJacobianTerms(state_parameters, state_variables, jacobian, providers);
+    HenrysLawPhaseTransferEvaluator<MatrixPolicy, SparseMatrixPolicy> jac_func_evaluator(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
+    jac_func_evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian, providers);
 
     // Build FD Jacobian — bind state_parameters into the forcing callable
-    auto ff = MakeHLPTSet(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
+    auto ff = MakeHLPTEvaluator(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
     auto fd_jac = micm::FiniteDifferenceJacobian<MatrixPolicy>(
         [&](const MatrixPolicy& vars, MatrixPolicy& out)
         {
@@ -939,7 +939,7 @@ TEST(HenrysLawPhaseTransfer, ForcingMultiplePhaseInstances)
   providers.insert(prov1.begin(), prov1.end());
   providers.insert(prov2.begin(), prov2.end());
 
-  auto forcing_func = MakeHLPTSet(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
+  auto forcing_func = MakeHLPTEvaluator(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
 
   double T = 298.15;
   double hlc = HLC_ref;
@@ -1021,7 +1021,7 @@ TEST(HenrysLawPhaseTransfer, JacobianMultiplePhaseInstances)
   providers.insert(prov2.begin(), prov2.end());
 
   auto jacobian = BuildJacobian(process, phase_prefixes, state_variable_indices, providers, 1);
-  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jac_func_set(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
+  HenrysLawPhaseTransferEvaluator<MatrixPolicy, SparseMatrixPolicy> jac_func_evaluator(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
 
   double T = 298.15, hlc = HLC_ref;
   double gas = 1.0e-3;
@@ -1041,7 +1041,7 @@ TEST(HenrysLawPhaseTransfer, JacobianMultiplePhaseInstances)
   vars[0][3] = aq2;
   vars[0][4] = solvent2;
 
-  jac_func_set.SubtractJacobianTerms(params, vars, jacobian, providers);
+  jac_func_evaluator.SubtractJacobianTerms(params, vars, jacobian, providers);
 
   auto crp = MakeCondensationRateProvider(D_g, alpha, gas_molecular_weight);
 
@@ -1210,7 +1210,7 @@ TEST(HenrysLawPhaseTransfer, ForcingMultiCellsMultiInstances)
   providers.insert(prov1.begin(), prov1.end());
   providers.insert(prov2.begin(), prov2.end());
 
-  auto forcing_func = MakeHLPTSet(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
+  auto forcing_func = MakeHLPTEvaluator(process, phase_prefixes, state_parameter_indices, state_variable_indices, providers);
 
   std::size_t num_cells = 3;
   MatrixPolicy params(num_cells, 4);
@@ -1368,8 +1368,8 @@ TEST(HenrysLawPhaseTransfer, ForcingMultipleTransferProcesses)
   double r = 2.0e-6, N = 5.0e8, phi = 1.0e-4;
   auto providers = MakeTestProviders("MODE1", r, N, phi);
 
-  auto ff_CO2 = MakeHLPTSet(proc_CO2, phase_prefixes, spi, svi, providers);
-  auto ff_SO2 = MakeHLPTSet(proc_SO2, phase_prefixes, spi, svi, providers);
+  auto ff_CO2 = MakeHLPTEvaluator(proc_CO2, phase_prefixes, spi, svi, providers);
+  auto ff_SO2 = MakeHLPTEvaluator(proc_SO2, phase_prefixes, spi, svi, providers);
 
   double T = 298.15;
   MatrixPolicy params(1, 4);
@@ -1476,8 +1476,8 @@ TEST(HenrysLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
 
   auto jacobian = BuildJacobian({ std::cref(proc_CO2), std::cref(proc_SO2) }, phase_prefixes, svi, providers, 1);
 
-  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jf_CO2_set(proc_CO2, phase_prefixes, spi, svi, jacobian, providers);
-  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jf_SO2_set(proc_SO2, phase_prefixes, spi, svi, jacobian, providers);
+  HenrysLawPhaseTransferEvaluator<MatrixPolicy, SparseMatrixPolicy> jf_CO2_set(proc_CO2, phase_prefixes, spi, svi, jacobian, providers);
+  HenrysLawPhaseTransferEvaluator<MatrixPolicy, SparseMatrixPolicy> jf_SO2_set(proc_SO2, phase_prefixes, spi, svi, jacobian, providers);
 
   double T = 298.15;
   MatrixPolicy params(1, 4);
@@ -1507,10 +1507,10 @@ TEST(HenrysLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
     vm[0][j] -= h;
 
     MatrixPolicy fp(1, nv, 0.0), fm(1, nv, 0.0);
-    auto fp_co2 = MakeHLPTSet(proc_CO2, phase_prefixes, spi, svi, providers);
-    auto fp_so2 = MakeHLPTSet(proc_SO2, phase_prefixes, spi, svi, providers);
-    auto fm_co2 = MakeHLPTSet(proc_CO2, phase_prefixes, spi, svi, providers);
-    auto fm_so2 = MakeHLPTSet(proc_SO2, phase_prefixes, spi, svi, providers);
+    auto fp_co2 = MakeHLPTEvaluator(proc_CO2, phase_prefixes, spi, svi, providers);
+    auto fp_so2 = MakeHLPTEvaluator(proc_SO2, phase_prefixes, spi, svi, providers);
+    auto fm_co2 = MakeHLPTEvaluator(proc_CO2, phase_prefixes, spi, svi, providers);
+    auto fm_so2 = MakeHLPTEvaluator(proc_SO2, phase_prefixes, spi, svi, providers);
     fp_co2.AddForcingTerms(params, vp, fp, providers);
     fp_so2.AddForcingTerms(params, vp, fp, providers);
     fm_co2.AddForcingTerms(params, vm, fm, providers);
@@ -1653,7 +1653,7 @@ TEST(HenrysLawPhaseTransfer, ForcingAccumulates)
 
   auto providers = MakeTestProviders("MODE1", 2.0e-6, 5.0e8, 1.0e-4);
 
-  auto ff = MakeHLPTSet(process, phase_prefixes, spi, svi, providers);
+  auto ff = MakeHLPTEvaluator(process, phase_prefixes, spi, svi, providers);
 
   MatrixPolicy params(1, 2);
   params[0][0] = HLC_ref;
@@ -1694,7 +1694,7 @@ TEST(HenrysLawPhaseTransfer, JacobianAccumulates)
   auto providers = MakeTestProviders("MODE1", 2.0e-6, 5.0e8, 1.0e-4);
 
   auto jacobian = BuildJacobian(process, phase_prefixes, svi, providers, 1);
-  HenrysLawPhaseTransferSet<MatrixPolicy, SparseMatrixPolicy> jf_set(process, phase_prefixes, spi, svi, jacobian, providers);
+  HenrysLawPhaseTransferEvaluator<MatrixPolicy, SparseMatrixPolicy> jf_evaluator(process, phase_prefixes, spi, svi, jacobian, providers);
 
   MatrixPolicy params(1, 2);
   params[0][0] = HLC_ref;
@@ -1705,10 +1705,10 @@ TEST(HenrysLawPhaseTransfer, JacobianAccumulates)
   vars[0][1] = 1.0e-5;
   vars[0][2] = 55000.0;
 
-  jf_set.SubtractJacobianTerms(params, vars, jacobian, providers);
+  jf_evaluator.SubtractJacobianTerms(params, vars, jacobian, providers);
   double j_gg_once = jacobian[0][0][0];
 
-  jf_set.SubtractJacobianTerms(params, vars, jacobian, providers);
+  jf_evaluator.SubtractJacobianTerms(params, vars, jacobian, providers);
   EXPECT_NEAR(jacobian[0][0][0], 2.0 * j_gg_once, std::abs(j_gg_once) * 1e-10);
 }
 
@@ -1992,7 +1992,7 @@ TEST(HenrysLawPhaseTransfer, ForcingFunctionZeroGasConcentration)
 
   double r_eff = 1.0e-6, N = 1.0e8, phi = 1.0e-6;
   auto providers = MakeTestProviders("MODE1", r_eff, N, phi);
-  auto ff = MakeHLPTSet(process, phase_prefixes, spi, svi, providers);
+  auto ff = MakeHLPTEvaluator(process, phase_prefixes, spi, svi, providers);
 
   double T = 298.15;
   MatrixPolicy params(1, 2, 0.0);
@@ -2036,7 +2036,7 @@ TEST(HenrysLawPhaseTransfer, ForcingFunctionZeroAqueousConcentration)
 
   double r_eff = 1.0e-6, N = 1.0e8, phi = 1.0e-6;
   auto providers = MakeTestProviders("MODE1", r_eff, N, phi);
-  auto ff = MakeHLPTSet(process, phase_prefixes, spi, svi, providers);
+  auto ff = MakeHLPTEvaluator(process, phase_prefixes, spi, svi, providers);
 
   double T = 298.15;
   MatrixPolicy params(1, 2, 0.0);
@@ -2077,7 +2077,7 @@ TEST(HenrysLawPhaseTransfer, ForcingFunctionZeroNumberConcentration)
   svi["MODE1.AQUEOUS.H2O"] = 2;
 
   auto providers = MakeTestProviders("MODE1", 1.0e-6, 0.0, 0.0);  // N=0, phi=0
-  auto ff = MakeHLPTSet(process, phase_prefixes, spi, svi, providers);
+  auto ff = MakeHLPTEvaluator(process, phase_prefixes, spi, svi, providers);
 
   MatrixPolicy params(1, 2, 0.0);
   params[0][0] = HLC_ref;

@@ -17,12 +17,12 @@
 
 namespace miam
 {
-  /// @brief Solve-time companion to `LinearConstraint`, mirroring `micm::ProcessSet`.
+  /// @brief Solve-time companion to `LinearConstraint` (one instance; not batched).
   /// @details Indices/coefficients are stored in `SparseMatrixPolicy::VectorType<T>` so they
   ///          are device-accessible via `.GetView()`. A POD `Views` bundle is captured by
   ///          value in every `MICM_LAMBDA`.
   template<class DenseMatrixPolicy, class SparseMatrixPolicy>
-  class LinearConstraintSet
+  class LinearConstraintEvaluator
   {
    public:
     template<class U>
@@ -64,9 +64,9 @@ namespace miam
       }
     };
 
-    LinearConstraintSet() = default;
+    LinearConstraintEvaluator() = default;
 
-    LinearConstraintSet(
+    LinearConstraintEvaluator(
         const LinearConstraint& config,
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,

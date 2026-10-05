@@ -19,10 +19,10 @@
 
 namespace miam
 {
-  /// @brief Solve-time companion to `DissolvedEquilibriumConstraint`, mirroring `micm::ProcessSet`.
+  /// @brief Solve-time companion to `DissolvedEquilibriumConstraint` (one instance; not batched).
   /// @details G = k_eq * [S] * prod([R_i]) / ([S]+eps)^n_r - [S] * prod([P_j]) / ([S]+eps)^n_p.
   template<class DenseMatrixPolicy, class SparseMatrixPolicy>
-  class DissolvedEquilibriumConstraintSet
+  class DissolvedEquilibriumConstraintEvaluator
   {
    public:
     template<class U>
@@ -76,9 +76,9 @@ namespace miam
       }
     };
 
-    DissolvedEquilibriumConstraintSet() = default;
+    DissolvedEquilibriumConstraintEvaluator() = default;
 
-    DissolvedEquilibriumConstraintSet(
+    DissolvedEquilibriumConstraintEvaluator(
         const DissolvedEquilibriumConstraint& config,
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
@@ -94,7 +94,7 @@ namespace miam
         throw MiamException(
             MIAM_ERROR_CATEGORY_INTERNAL,
             MIAM_INTERNAL_MISSING_PHASE_PREFIX,
-            "DissolvedEquilibriumConstraintSet: phase " + config.phase_.name_ + " not found");
+            "DissolvedEquilibriumConstraintEvaluator: phase " + config.phase_.name_ + " not found");
 
       const auto num_phases = static_cast<micm::Index>(phase_it->second.size());
 
