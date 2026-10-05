@@ -2,7 +2,7 @@
 # Preamble
 cmake_minimum_required(VERSION 3.24)
 
-project(miam VERSION 0.0.0 
+project(miam VERSION 0.1.0
         LANGUAGES CXX
         DESCRIPTION "Model-Independent Aerosol Module"
         HOMEPAGE_URL "https://github.com/NCAR/miam")
