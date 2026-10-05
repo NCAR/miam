@@ -17,11 +17,6 @@ assignees: ''
 ## Deployment
 
 - [ ] Create a new branch (do **not** name it `release`)
-- [ ] Run the CMake configure step from the MICM source directory:
-  ```
-  cmake -B build -S .
-  ```
-  This forces CMake to write the correct version file into the include directory.
 - [ ] On GitHub, merge `main` into `release` — **do NOT squash and merge**
   - Alternatively, merge locally and push: `git checkout release && git merge main && git push`
 - [ ] Create a tag and add release notes on GitHub
