@@ -216,7 +216,7 @@ namespace miam_test_cam_cloud_chemistry
     for (const auto& elem : nz_elements)
       builder = builder.WithElement(elem.first, elem.second);
     SparseMatrixFD analytical_jac(builder);
-    model.template FinalizeConstraintSetup<SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, analytical_jac);
+    model.template FinalizeConstraintSetup<DenseMatrix, SparseMatrixFD>(maps.parameter_indices, maps.variable_indices, analytical_jac);
     model.template SubtractConstraintJacobian<DenseMatrix, SparseMatrixFD>(params_copy, variables, analytical_jac);
     auto fd_wrapper = [&](const DenseMatrix& vars, DenseMatrix& forcing)
     { model.template AddConstraintResidual<DenseMatrix>(params_copy, vars, forcing); };
