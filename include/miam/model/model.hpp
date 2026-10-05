@@ -56,10 +56,11 @@ namespace miam
     std::unordered_map<std::string, std::size_t> state_parameter_indices_{};
     std::unordered_map<std::string, std::size_t> state_variable_indices_{};
 
-    // Lazy caches for per-process / per-constraint std::function objects.
-    mutable std::any cached_process_update_fns_{};
-    mutable std::any cached_constraint_update_fns_{};
-    mutable std::any cached_constraint_init_fns_{};
+    // Per-process / per-constraint parameter update closures, built at Finalize for the solver's
+    // DenseMatrixPolicy. Each holds a `std::vector<UpdateFn<DP>>` or `std::vector<InitFn<DP>>`.
+    std::any process_update_fns_{};
+    std::any constraint_update_fns_{};
+    std::any constraint_init_fns_{};
 
     // Solve-time evaluators, built by FinalizeProcessSetup / FinalizeConstraintSetup for the
     // solver's <DenseMatrixPolicy, SparseMatrixPolicy> pair. `process_evaluators_` and
@@ -504,9 +505,17 @@ namespace miam
     {
       state_parameter_indices_ = state_parameter_indices;
       state_variable_indices_ = state_variable_indices;
-      cached_process_update_fns_.reset();
 
       auto phase_prefixes = CollectPhaseStatePrefixes();
+
+      std::vector<UpdateFn<DenseMatrixPolicy>> update_fns;
+      ForEachProcess(
+          [&](const auto& process)
+          {
+            update_fns.push_back(process.template UpdateStateParametersFunction<DenseMatrixPolicy>(
+                phase_prefixes, state_parameter_indices));
+          });
+      process_update_fns_ = std::move(update_fns);
       // Reference (CPU) descriptor map used only to enumerate `n_deps` counts for
       // Jacobian flat-ID layout in HenrysLawPhaseTransferEvaluator.
       using ReferenceDense = micm::Matrix<double>;
@@ -560,10 +569,27 @@ namespace miam
     {
       state_parameter_indices_ = state_parameter_indices;
       state_variable_indices_ = state_variable_indices;
-      cached_constraint_update_fns_.reset();
-      cached_constraint_init_fns_.reset();
 
       auto phase_prefixes = CollectPhaseStatePrefixes();
+
+      std::vector<UpdateFn<DenseMatrixPolicy>> update_fns;
+      std::vector<InitFn<DenseMatrixPolicy>> init_fns;
+      ForEachConstraint(
+          [&](const auto& c)
+          {
+            update_fns.push_back(
+                c.template UpdateConstraintParametersFunction<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices));
+            if constexpr (requires {
+                            c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
+                                phase_prefixes, state_parameter_indices, state_variable_indices);
+                          })
+            {
+              init_fns.push_back(c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
+                  phase_prefixes, state_parameter_indices, state_variable_indices));
+            }
+          });
+      constraint_update_fns_ = std::move(update_fns);
+      constraint_init_fns_ = std::move(init_fns);
 
       auto evaluators = std::make_shared<ConstraintEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>>();
       for (const auto& constraint : constraints_)
@@ -598,23 +624,9 @@ namespace miam
         const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions,
         DenseMatrixPolicy& state_parameters) const
     {
-      using FnType = std::function<void(
-          const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>;
-      using CacheType = std::vector<FnType>;
-      if (!cached_process_update_fns_.has_value())
-      {
-        CacheType cache;
-        auto phase_prefixes = CollectPhaseStatePrefixes();
-        ForEachProcess(
-            [&](const auto& process)
-            {
-              cache.push_back(process.template UpdateStateParametersFunction<DenseMatrixPolicy>(
-                  phase_prefixes, state_parameter_indices_));
-            });
-        cached_process_update_fns_ = std::move(cache);
-      }
-      for (auto& fn : std::any_cast<CacheType&>(cached_process_update_fns_))
-        fn(conditions, state_parameters);
+      if (process_update_fns_.has_value())
+        for (const auto& fn : std::any_cast<const std::vector<UpdateFn<DenseMatrixPolicy>>&>(process_update_fns_))
+          fn(conditions, state_parameters);
     }
 
     /// @brief Solve-time: add process forcing (tendency) contributions
@@ -635,9 +647,9 @@ namespace miam
         const DenseMatrixPolicy& state_variables,
         SparseMatrixPolicy& jacobian) const
     {
-      using SetsPtr = std::shared_ptr<const ProcessEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>>;
+      using EvaluatorsPtr = std::shared_ptr<const ProcessEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>>;
       if (process_evaluators_.has_value())
-        std::any_cast<const SetsPtr&>(process_evaluators_)->SubtractJacobianTerms(state_parameters, state_variables, jacobian);
+        std::any_cast<const EvaluatorsPtr&>(process_evaluators_)->SubtractJacobianTerms(state_parameters, state_variables, jacobian);
     }
 
     /// @brief Solve-time: refresh temperature-/pressure-dependent constraint parameters
@@ -646,23 +658,9 @@ namespace miam
         const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions,
         DenseMatrixPolicy& state_parameters) const
     {
-      using FnType = std::function<void(
-          const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>;
-      using CacheType = std::vector<FnType>;
-      if (!cached_constraint_update_fns_.has_value())
-      {
-        CacheType cache;
-        auto phase_prefixes = CollectPhaseStatePrefixes();
-        ForEachConstraint(
-            [&](const auto& c)
-            {
-              cache.push_back(c.template UpdateConstraintParametersFunction<DenseMatrixPolicy>(
-                  phase_prefixes, state_parameter_indices_));
-            });
-        cached_constraint_update_fns_ = std::move(cache);
-      }
-      for (auto& fn : std::any_cast<CacheType&>(cached_constraint_update_fns_))
-        fn(conditions, state_parameters);
+      if (constraint_update_fns_.has_value())
+        for (const auto& fn : std::any_cast<const std::vector<UpdateFn<DenseMatrixPolicy>>&>(constraint_update_fns_))
+          fn(conditions, state_parameters);
     }
 
     /// @brief Solve-time: diagnose constraint parameters from current state
@@ -671,28 +669,9 @@ namespace miam
         const DenseMatrixPolicy& state_variables,
         DenseMatrixPolicy& state_parameters) const
     {
-      using FnType = std::function<void(const DenseMatrixPolicy&, DenseMatrixPolicy&)>;
-      using CacheType = std::vector<FnType>;
-      if (!cached_constraint_init_fns_.has_value())
-      {
-        CacheType cache;
-        auto phase_prefixes = CollectPhaseStatePrefixes();
-        ForEachConstraint(
-            [&](const auto& c)
-            {
-              if constexpr (requires {
-                              c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
-                                  phase_prefixes, state_parameter_indices_, state_variable_indices_);
-                            })
-              {
-                cache.push_back(c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
-                    phase_prefixes, state_parameter_indices_, state_variable_indices_));
-              }
-            });
-        cached_constraint_init_fns_ = std::move(cache);
-      }
-      for (auto& fn : std::any_cast<CacheType&>(cached_constraint_init_fns_))
-        fn(state_variables, state_parameters);
+      if (constraint_init_fns_.has_value())
+        for (const auto& fn : std::any_cast<const std::vector<InitFn<DenseMatrixPolicy>>&>(constraint_init_fns_))
+          fn(state_variables, state_parameters);
     }
 
     /// @brief Solve-time: add constraint residual G(y) to algebraic forcing rows
@@ -714,14 +693,21 @@ namespace miam
         const DenseMatrixPolicy& state_variables,
         SparseMatrixPolicy& jacobian) const
     {
-      using SetsPtr = std::shared_ptr<const ConstraintEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>>;
+      using EvaluatorsPtr = std::shared_ptr<const ConstraintEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>>;
       if (constraint_evaluators_.has_value())
-        std::any_cast<const SetsPtr&>(constraint_evaluators_)->SubtractJacobian(state_parameters, state_variables, jacobian);
+        std::any_cast<const EvaluatorsPtr&>(constraint_evaluators_)->SubtractJacobian(state_parameters, state_variables, jacobian);
     }
 
    private:
     template<typename DenseMatrixPolicy>
     using DescriptorMap = std::map<std::string, std::map<AerosolProperty, AerosolPropertyDescriptor<DenseMatrixPolicy>>>;
+
+    template<typename DenseMatrixPolicy>
+    using UpdateFn =
+        std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>;
+
+    template<typename DenseMatrixPolicy>
+    using InitFn = std::function<void(const DenseMatrixPolicy&, DenseMatrixPolicy&)>;
 
     template<typename DenseMatrixPolicy>
     using ForcingFn = std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>;
