@@ -12,6 +12,7 @@
 #include <micm/util/types.hpp>
 
 #include <cmath>
+#include <cstdint>
 #include <variant>
 
 namespace miam
@@ -151,6 +152,58 @@ namespace miam
     ///          types and to bound the compile-time expression tree at one level.
     using CombinedExpressionOperand =
         std::variant<ArrheniusExpression, VantHoffExpression, UserDefinedConstantExpression>;
+
+    /// @brief Device-callable form of `CombinedExpressionOperand`.
+    /// @details `std::visit` cannot run in device code, so the operand stores every alternative
+    ///          and a tag, and `Calculate` selects the alternative with a `switch`.
+    class DeviceExpressionOperand
+    {
+     public:
+      enum class Kind : std::uint8_t
+      {
+        Arrhenius,
+        VantHoff,
+        UserDefinedConstant
+      };
+
+      Kind kind_ = Kind::UserDefinedConstant;
+      ArrheniusExpression arrhenius_{};
+      VantHoffExpression vant_hoff_{};
+      UserDefinedConstantExpression user_defined_constant_{};
+
+      DeviceExpressionOperand() = default;
+
+      /// @brief Host-side conversion from the variant operand.
+      DeviceExpressionOperand(const CombinedExpressionOperand& operand)
+      {
+        if (const auto* arrhenius = std::get_if<ArrheniusExpression>(&operand))
+        {
+          kind_ = Kind::Arrhenius;
+          arrhenius_ = *arrhenius;
+        }
+        else if (const auto* vant_hoff = std::get_if<VantHoffExpression>(&operand))
+        {
+          kind_ = Kind::VantHoff;
+          vant_hoff_ = *vant_hoff;
+        }
+        else
+        {
+          kind_ = Kind::UserDefinedConstant;
+          user_defined_constant_ = std::get<UserDefinedConstantExpression>(operand);
+        }
+      }
+
+      MICM_DEVICE_FUNCTION micm::Real Calculate(const micm::Conditions& conditions) const
+      {
+        switch (kind_)
+        {
+          case Kind::Arrhenius: return arrhenius_.Calculate(conditions);
+          case Kind::VantHoff: return vant_hoff_.Calculate(conditions);
+          case Kind::UserDefinedConstant: break;
+        }
+        return user_defined_constant_.Calculate(conditions);
+      }
+    };
   }  // namespace detail
 
   /// @brief Product or quotient of two non-composite expressions.
@@ -163,8 +216,8 @@ namespace miam
   class CombinedExpression
   {
    public:
-    detail::CombinedExpressionOperand left_;
-    detail::CombinedExpressionOperand right_;
+    detail::DeviceExpressionOperand left_;
+    detail::DeviceExpressionOperand right_;
     CombinedExpressionOp op_ = CombinedExpressionOp::Multiply;
 
     CombinedExpression() = default;
@@ -172,16 +225,16 @@ namespace miam
         detail::CombinedExpressionOperand left,
         detail::CombinedExpressionOperand right,
         CombinedExpressionOp op)
-        : left_(std::move(left)),
-          right_(std::move(right)),
+        : left_(left),
+          right_(right),
           op_(op)
     {
     }
 
     MICM_DEVICE_FUNCTION micm::Real Calculate(const micm::Conditions& conditions) const
     {
-      const micm::Real l = std::visit([&](const auto& expr) { return expr.Calculate(conditions); }, left_);
-      const micm::Real r = std::visit([&](const auto& expr) { return expr.Calculate(conditions); }, right_);
+      const micm::Real l = left_.Calculate(conditions);
+      const micm::Real r = right_.Calculate(conditions);
       return op_ == CombinedExpressionOp::Multiply ? l * r : l / r;
     }
   };
