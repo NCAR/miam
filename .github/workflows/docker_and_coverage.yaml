@@ -26,6 +26,7 @@ jobs:
           - Dockerfile.memcheck
           - Dockerfile.intel
           - Dockerfile.nvhpc
+          - Dockerfile.kokkos.serial
         build_type: [Release]
     steps:
       - uses: actions/checkout@v4
@@ -39,8 +40,12 @@ jobs:
         run: docker build -t miam -f docker/${{ matrix.dockerfile }} . --build-arg MIAM_GIT_TAG=${{ github.sha }} --build-arg BUILD_TYPE=${{ matrix.build_type }}
 
       - name: Run tests in container
-        if: matrix.dockerfile != 'Dockerfile.coverage' && matrix.dockerfile != 'Dockerfile.docs'
+        if: matrix.dockerfile != 'Dockerfile.coverage' && matrix.dockerfile != 'Dockerfile.docs' && matrix.dockerfile != 'Dockerfile.kokkos.serial'
         run: docker run --name test-container -t miam bash -c 'make test ARGS="--rerun-failed --output-on-failure -j8"'
+
+      - name: Run Kokkos tests in container
+        if: matrix.dockerfile == 'Dockerfile.kokkos.serial'
+        run: docker run --name test-container -t miam bash -c 'ctest --output-on-failure -j8'
 
       - name: Run coverage tests in container
         if: matrix.dockerfile == 'Dockerfile.coverage'
