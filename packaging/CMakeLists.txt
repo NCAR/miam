@@ -1,46 +1,55 @@
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
-set(INSTALL_PREFIX "miam-${PROJECT_VERSION}" )
+
+# MICM is either fetched and built here (then MIAM installs it with its own targets) or found
+# as an installed package (then miamConfig.cmake finds it again with find_dependency).
+set(MIAM_INSTALL_TARGETS miam)
+set(MIAM_BUNDLES_MICM OFF)
+if(TARGET micm)
+  get_target_property(_micm_is_imported micm IMPORTED)
+  if(NOT _micm_is_imported)
+    set(MIAM_BUNDLES_MICM ON)
+    list(APPEND MIAM_INSTALL_TARGETS micm)
+    if(MIAM_ENABLE_KOKKOS)
+      list(APPEND MIAM_INSTALL_TARGETS micm_kokkos)
+    endif()
+  endif()
+endif()
 
 install(
-  TARGETS 
-    miam 
-    micm
-  EXPORT 
+  TARGETS
+    ${MIAM_INSTALL_TARGETS}
+  EXPORT
     miam_Exports
-  LIBRARY DESTINATION ${INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}
-  INCLUDES DESTINATION ${INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}
-  PUBLIC_HEADER DESTINATION ${INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
-
-if(MIAM_ENABLE_KOKKOS)
-  install(
-    TARGETS micm_kokkos
-    EXPORT miam_Exports
-    LIBRARY DESTINATION ${INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}
-    INCLUDES DESTINATION ${INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}
-    PUBLIC_HEADER DESTINATION ${INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}
-  )
-endif()
 
 install(
   DIRECTORY
     ${PROJECT_SOURCE_DIR}/include/miam
   DESTINATION
-    ${INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}
+    ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
+if(MIAM_BUNDLES_MICM)
+  install(
+    DIRECTORY
+      ${micm_SOURCE_DIR}/include/micm
+    DESTINATION
+      ${CMAKE_INSTALL_INCLUDEDIR}
+  )
+endif()
+
 # install the cmake config files
-set(cmake_config_install_location ${INSTALL_PREFIX}/cmake)
+set(cmake_config_install_location ${CMAKE_INSTALL_LIBDIR}/cmake/miam)
 
 install(
-  EXPORT 
+  EXPORT
     miam_Exports
-  DESTINATION 
+  DESTINATION
     ${cmake_config_install_location}
   NAMESPACE musica::
 )
