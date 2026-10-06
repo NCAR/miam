@@ -67,6 +67,11 @@ namespace miam
     };
 
     HenrysLawEquilibriumConstraintEvaluator() = default;
+    // `views_` points into this object's own index storage, so a copy would point into the original.
+    HenrysLawEquilibriumConstraintEvaluator(const HenrysLawEquilibriumConstraintEvaluator&) = delete;
+    HenrysLawEquilibriumConstraintEvaluator& operator=(const HenrysLawEquilibriumConstraintEvaluator&) = delete;
+    HenrysLawEquilibriumConstraintEvaluator(HenrysLawEquilibriumConstraintEvaluator&&) noexcept = default;
+    HenrysLawEquilibriumConstraintEvaluator& operator=(HenrysLawEquilibriumConstraintEvaluator&&) noexcept = default;
 
     HenrysLawEquilibriumConstraintEvaluator(
         const HenrysLawEquilibriumConstraint& config,

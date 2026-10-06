@@ -65,6 +65,11 @@ namespace miam
     };
 
     LinearConstraintEvaluator() = default;
+    // `views_` points into this object's own index storage, so a copy would point into the original.
+    LinearConstraintEvaluator(const LinearConstraintEvaluator&) = delete;
+    LinearConstraintEvaluator& operator=(const LinearConstraintEvaluator&) = delete;
+    LinearConstraintEvaluator(LinearConstraintEvaluator&&) noexcept = default;
+    LinearConstraintEvaluator& operator=(LinearConstraintEvaluator&&) noexcept = default;
 
     LinearConstraintEvaluator(
         const LinearConstraint& config,

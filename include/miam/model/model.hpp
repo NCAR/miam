@@ -277,44 +277,19 @@ namespace miam
         const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
     {
       auto phase_prefixes = CollectPhaseStatePrefixes();
-      auto descriptors =
-          BuildDescriptors<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
       auto nz_elements = NonZeroJacobianElements(state_variable_indices);
       auto jacobian_builder = SparseMatrixPolicy::Create(state_variable_indices.size()).InitialValue(0.0);
       for (const auto& elem : nz_elements)
         jacobian_builder = jacobian_builder.WithElement(elem.first, elem.second);
       SparseMatrixPolicy jacobian_pattern(jacobian_builder);
 
-      std::vector<DissolvedReactionEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> dr_evaluators;
-      std::vector<DissolvedReversibleReactionEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> drr_evaluators;
-      std::vector<HenrysLawPhaseTransferEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> hlpt_evaluators;
-      ForEachProcess(
-          [&](const auto& process)
-          {
-            using P = std::decay_t<decltype(process)>;
-            if constexpr (std::is_same_v<P, DissolvedReaction>)
-              dr_evaluators.emplace_back(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian_pattern);
-            else if constexpr (std::is_same_v<P, DissolvedReversibleReaction>)
-              drr_evaluators.emplace_back(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian_pattern);
-            else if constexpr (std::is_same_v<P, HenrysLawPhaseTransfer>)
-              hlpt_evaluators.emplace_back(
-                  process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian_pattern, descriptors);
-          });
-      return [dr_evaluators = std::move(dr_evaluators),
-              drr_evaluators = std::move(drr_evaluators),
-              hlpt_evaluators = std::move(hlpt_evaluators),
-              descriptors = std::move(descriptors)](
+      auto evaluators = BuildProcessEvaluators<DenseMatrixPolicy>(
+          phase_prefixes, state_parameter_indices, state_variable_indices, jacobian_pattern);
+      return [evaluators](
                  const DenseMatrixPolicy& state_parameters,
                  const DenseMatrixPolicy& state_variables,
                  DenseMatrixPolicy& forcing_terms)
-      {
-        for (const auto& evaluator : dr_evaluators)
-          evaluator.AddForcingTerms(state_parameters, state_variables, forcing_terms);
-        for (const auto& evaluator : drr_evaluators)
-          evaluator.AddForcingTerms(state_parameters, state_variables, forcing_terms);
-        for (const auto& evaluator : hlpt_evaluators)
-          evaluator.AddForcingTerms(state_parameters, state_variables, forcing_terms, descriptors);
-      };
+      { evaluators->AddForcingTerms(state_parameters, state_variables, forcing_terms); };
     }
 
     /// @brief Returns a function that calculates Jacobian contributions
@@ -324,39 +299,13 @@ namespace miam
         const std::unordered_map<std::string, std::size_t>& state_variable_indices,
         const SparseMatrixPolicy& jacobian) const
     {
-      auto phase_prefixes = CollectPhaseStatePrefixes();
-      auto descriptors =
-          BuildDescriptors<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
-      std::vector<DissolvedReactionEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> dr_evaluators;
-      std::vector<DissolvedReversibleReactionEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> drr_evaluators;
-      std::vector<HenrysLawPhaseTransferEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> hlpt_evaluators;
-      ForEachProcess(
-          [&](const auto& process)
-          {
-            using P = std::decay_t<decltype(process)>;
-            if constexpr (std::is_same_v<P, DissolvedReaction>)
-              dr_evaluators.emplace_back(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
-            else if constexpr (std::is_same_v<P, DissolvedReversibleReaction>)
-              drr_evaluators.emplace_back(process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
-            else if constexpr (std::is_same_v<P, HenrysLawPhaseTransfer>)
-              hlpt_evaluators.emplace_back(
-                  process, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, descriptors);
-          });
-      return [dr_evaluators = std::move(dr_evaluators),
-              drr_evaluators = std::move(drr_evaluators),
-              hlpt_evaluators = std::move(hlpt_evaluators),
-              descriptors = std::move(descriptors)](
+      auto evaluators = BuildProcessEvaluators<DenseMatrixPolicy>(
+          CollectPhaseStatePrefixes(), state_parameter_indices, state_variable_indices, jacobian);
+      return [evaluators](
                  const DenseMatrixPolicy& state_parameters,
                  const DenseMatrixPolicy& state_variables,
                  SparseMatrixPolicy& jacobian)
-      {
-        for (const auto& evaluator : dr_evaluators)
-          evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
-        for (const auto& evaluator : drr_evaluators)
-          evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
-        for (const auto& evaluator : hlpt_evaluators)
-          evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian, descriptors);
-      };
+      { evaluators->SubtractJacobianTerms(state_parameters, state_variables, jacobian); };
     }
 
     // ── HasConstraints concept methods ──
@@ -516,42 +465,9 @@ namespace miam
                 phase_prefixes, state_parameter_indices));
           });
       process_update_fns_ = std::move(update_fns);
-      // Reference (CPU) descriptor map used only to enumerate `n_deps` counts for
-      // Jacobian flat-ID layout in HenrysLawPhaseTransferEvaluator.
-      using ReferenceDense = micm::Matrix<double>;
-      auto reference_descriptors =
-          BuildDescriptors<ReferenceDense>(phase_prefixes, state_parameter_indices, state_variable_indices);
 
-      auto evaluators = std::make_shared<ProcessEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>>();
-      for (const auto& process : processes_)
-      {
-        std::visit(
-            [&](const auto& p)
-            {
-              using P = std::decay_t<decltype(p)>;
-              if constexpr (std::is_same_v<P, DissolvedReaction>)
-              {
-                evaluators->dissolved_reactions_.emplace_back(
-                    p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
-              }
-              else if constexpr (std::is_same_v<P, DissolvedReversibleReaction>)
-              {
-                evaluators->dissolved_reversible_reactions_.emplace_back(
-                    p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
-              }
-              else if constexpr (std::is_same_v<P, HenrysLawPhaseTransfer>)
-              {
-                evaluators->henrys_law_phase_transfers_.emplace_back(
-                    p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, reference_descriptors);
-              }
-            },
-            process);
-      }
-      if (!evaluators->henrys_law_phase_transfers_.empty())
-        evaluators->descriptors_ =
-            BuildDescriptors<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
-
-      std::shared_ptr<const ProcessEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>> shared_evaluators = std::move(evaluators);
+      auto shared_evaluators = BuildProcessEvaluators<DenseMatrixPolicy>(
+          phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
       process_forcing_fn_ = ForcingFn<DenseMatrixPolicy>(
           [shared_evaluators](
               const DenseMatrixPolicy& state_parameters, const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& forcing)
@@ -782,6 +698,53 @@ namespace miam
           evaluator.SubtractJacobian(state_variables, state_parameters, jacobian);
       }
     };
+
+    /// @brief Builds the process evaluators for one <DP, SP> pair. The result is shared, because
+    ///        the evaluators hold views into their own index storage and must not be copied.
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    std::shared_ptr<const ProcessEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>> BuildProcessEvaluators(
+        const std::map<std::string, std::set<std::string>>& phase_prefixes,
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices,
+        const SparseMatrixPolicy& jacobian) const
+    {
+      // Reference (CPU) descriptor map used only to enumerate `n_deps` counts for
+      // Jacobian flat-ID layout in HenrysLawPhaseTransferEvaluator.
+      using ReferenceDense = micm::Matrix<double>;
+      auto reference_descriptors =
+          BuildDescriptors<ReferenceDense>(phase_prefixes, state_parameter_indices, state_variable_indices);
+
+      auto evaluators = std::make_shared<ProcessEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>>();
+      for (const auto& process : processes_)
+      {
+        std::visit(
+            [&](const auto& p)
+            {
+              using P = std::decay_t<decltype(p)>;
+              if constexpr (std::is_same_v<P, DissolvedReaction>)
+              {
+                evaluators->dissolved_reactions_.emplace_back(
+                    p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+              }
+              else if constexpr (std::is_same_v<P, DissolvedReversibleReaction>)
+              {
+                evaluators->dissolved_reversible_reactions_.emplace_back(
+                    p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+              }
+              else if constexpr (std::is_same_v<P, HenrysLawPhaseTransfer>)
+              {
+                evaluators->henrys_law_phase_transfers_.emplace_back(
+                    p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, reference_descriptors);
+              }
+            },
+            process);
+      }
+      if (!evaluators->henrys_law_phase_transfers_.empty())
+        evaluators->descriptors_ =
+            BuildDescriptors<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+
+      return evaluators;
+    }
 
     /// @brief Iterate over all registered processes with a generic callable
     template<typename Func>

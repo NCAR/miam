@@ -77,6 +77,11 @@ namespace miam
     };
 
     DissolvedReactionEvaluator() = default;
+    // `views_` points into this object's own index storage, so a copy would point into the original.
+    DissolvedReactionEvaluator(const DissolvedReactionEvaluator&) = delete;
+    DissolvedReactionEvaluator& operator=(const DissolvedReactionEvaluator&) = delete;
+    DissolvedReactionEvaluator(DissolvedReactionEvaluator&&) noexcept = default;
+    DissolvedReactionEvaluator& operator=(DissolvedReactionEvaluator&&) noexcept = default;
 
     DissolvedReactionEvaluator(
         const DissolvedReaction& config,

@@ -77,6 +77,11 @@ namespace miam
     };
 
     DissolvedEquilibriumConstraintEvaluator() = default;
+    // `views_` points into this object's own index storage, so a copy would point into the original.
+    DissolvedEquilibriumConstraintEvaluator(const DissolvedEquilibriumConstraintEvaluator&) = delete;
+    DissolvedEquilibriumConstraintEvaluator& operator=(const DissolvedEquilibriumConstraintEvaluator&) = delete;
+    DissolvedEquilibriumConstraintEvaluator(DissolvedEquilibriumConstraintEvaluator&&) noexcept = default;
+    DissolvedEquilibriumConstraintEvaluator& operator=(DissolvedEquilibriumConstraintEvaluator&&) noexcept = default;
 
     DissolvedEquilibriumConstraintEvaluator(
         const DissolvedEquilibriumConstraint& config,

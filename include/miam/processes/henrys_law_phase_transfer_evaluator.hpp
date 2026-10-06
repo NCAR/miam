@@ -77,6 +77,11 @@ namespace miam
     };
 
     HenrysLawPhaseTransferEvaluator() = default;
+    // `views_` points into this object's own index storage, so a copy would point into the original.
+    HenrysLawPhaseTransferEvaluator(const HenrysLawPhaseTransferEvaluator&) = delete;
+    HenrysLawPhaseTransferEvaluator& operator=(const HenrysLawPhaseTransferEvaluator&) = delete;
+    HenrysLawPhaseTransferEvaluator(HenrysLawPhaseTransferEvaluator&&) noexcept = default;
+    HenrysLawPhaseTransferEvaluator& operator=(HenrysLawPhaseTransferEvaluator&&) noexcept = default;
 
     template<class DescriptorMap>
     HenrysLawPhaseTransferEvaluator(
