@@ -1,5 +1,18 @@
 @PACKAGE_INIT@
 
+include(CMakeFindDependencyMacro)
+
+# MIAM installs MICM with its own targets only when MIAM fetched and built MICM.
+# Otherwise the exported miam target names musica::micm, so find the MICM package again.
+if(NOT @MIAM_BUNDLES_MICM@)
+  find_dependency(micm)
+endif()
+
+# With MIAM_ENABLE_KOKKOS, the exported targets name Kokkos::kokkos in their interface.
+if(@MIAM_ENABLE_KOKKOS@)
+  find_dependency(Kokkos)
+endif()
+
 include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@_Exports.cmake")
 
 check_required_components("@PROJECT_NAME@")

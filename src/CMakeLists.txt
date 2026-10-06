@@ -22,6 +22,10 @@ target_link_libraries(miam
     musica::micm
 )
 
+if(MIAM_ENABLE_KOKKOS)
+  target_link_libraries(miam INTERFACE musica::micm_kokkos)
+endif()
+
 set_target_properties(miam PROPERTIES
   ARCHIVE_OUTPUT_DIRECTORY ${MIAM_LIB_DIR}
   LIBRARY_OUTPUT_DIRECTORY ${MIAM_LIB_DIR}
