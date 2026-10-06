@@ -270,12 +270,10 @@ namespace miam
       {
         auto per_instance = ResolvePerInstanceTerms(phase_prefixes, state_variable_indices);
         std::vector<std::size_t> param_indices;
-        std::size_t i = 0;
         for (const auto& prefix : phase_prefixes.at(algebraic_phase_.name_))
         {
           auto param_name = "LC_" + uuid_ + "_" + prefix + "_constant";
           param_indices.push_back(state_parameter_indices.at(param_name));
-          ++i;
         }
 
         // The returned host callable loops over instances/terms on the host, dispatching one

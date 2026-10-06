@@ -23,8 +23,10 @@
 
 namespace miam
 {
-  /// @brief Effective radius of a single-moment log-normal aerosol mode: `r_eff = GMD * exp(2.5 * ln^2(GSD))`.
-  /// @details Depends only on the mode's two shape parameters (GMD, GSD); has no state-variable dependencies.
+  /// @brief Effective radius of a single-moment log-normal aerosol mode: `r_eff = r_g * exp(2.5 * ln^2(GSD))`,
+  ///        where `r_g` is the geometric mean radius.
+  /// @details Depends only on the mode's two shape parameters (geometric mean radius `r_g`, GSD);
+  ///          has no state-variable dependencies.
   template<typename DenseMatrixPolicy>
   class SingleMomentModeEffectiveRadiusDescriptor
   {
@@ -91,8 +93,9 @@ namespace miam
   };
 
   /// @brief Number concentration for a single-moment log-normal aerosol mode:
-  ///        `N = (Σ_k [species_k] · MW_k / ρ_k) / V_s`, with `V_s = (4/3)·π·GMD³·exp(4.5·ln²(GSD))`.
-  /// @details Depends on GMD, GSD, and the aqueous-species concentrations attached to the mode.
+  ///        `N = (Σ_k [species_k] · MW_k / ρ_k) / V_s`, with `V_s = (4/3)·π·r_g³·exp(4.5·ln²(GSD))`,
+  ///        where `r_g` is the geometric mean radius.
+  /// @details Depends on the geometric mean radius `r_g`, GSD, and the aqueous-species concentrations attached to the mode.
   template<typename DenseMatrixPolicy>
   class SingleMomentModeNumberConcentrationDescriptor
   {
