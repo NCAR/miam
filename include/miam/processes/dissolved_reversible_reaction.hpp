@@ -3,7 +3,9 @@
 
 #pragma once
 
+#include <miam/processes/constants/rate_expression.hpp>
 #include <miam/representations/aerosol_property.hpp>
+#include <miam/representations/aerosol_property_descriptor.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 #include <miam/util/uuid.hpp>
@@ -12,6 +14,7 @@
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
 #include <micm/util/matrix.hpp>
+#include <micm/util/types.hpp>
 
 #include <cmath>
 #include <functional>
@@ -19,6 +22,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace miam
@@ -51,13 +55,13 @@ namespace miam
   class DissolvedReversibleReaction
   {
    public:
-    std::function<double(const micm::Conditions& conditions)> forward_rate_constant_;  ///< Forward rate constant function
-    std::function<double(const micm::Conditions& conditions)> reverse_rate_constant_;  ///< Reverse rate constant function
-    std::vector<micm::Species> reactants_;                                             ///< Reactant species
-    std::vector<micm::Species> products_;                                              ///< Product species
-    micm::Species solvent_;                                                            ///< Solvent species
-    micm::Phase phase_;  ///< Phase in which the reaction occurs
-    std::string uuid_;   ///< Unique identifier for the reaction
+    RateConstantExpression forward_rate_constant_;  ///< Forward rate constant expression
+    RateConstantExpression reverse_rate_constant_;  ///< Reverse rate constant expression
+    std::vector<micm::Species> reactants_;          ///< Reactant species
+    std::vector<micm::Species> products_;           ///< Product species
+    micm::Species solvent_;                         ///< Solvent species
+    micm::Phase phase_;                             ///< Phase in which the reaction occurs
+    std::string uuid_;                              ///< Unique identifier for the reaction
     double solvent_floor_{
       1.0e-20
     };  ///< Floor [mol m⁻³] added to [S] in ([S]+δ)^n denominator to prevent singularity as [S] → 0
@@ -66,15 +70,15 @@ namespace miam
 
     /// @brief Constructor
     DissolvedReversibleReaction(
-        std::function<double(const micm::Conditions& conditions)> forward_rate_constant,
-        std::function<double(const micm::Conditions& conditions)> reverse_rate_constant,
+        RateConstantExpression forward_rate_constant,
+        RateConstantExpression reverse_rate_constant,
         const std::vector<micm::Species>& reactants,
         const std::vector<micm::Species>& products,
         micm::Species solvent,
         micm::Phase phase,
         double solvent_floor = 1.0e-20)
-        : forward_rate_constant_(forward_rate_constant),
-          reverse_rate_constant_(reverse_rate_constant),
+        : forward_rate_constant_(std::move(forward_rate_constant)),
+          reverse_rate_constant_(std::move(reverse_rate_constant)),
           reactants_(reactants),
           products_(products),
           solvent_(solvent),
@@ -217,11 +221,10 @@ namespace miam
 
     /// @brief Returns non-zero Jacobian elements (common interface overload accepting providers)
     /// @details Delegates to the existing two-argument version; providers are unused.
-    template<typename DenseMatrixPolicy>
     std::set<std::pair<std::size_t, std::size_t>> NonZeroJacobianElements(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices,
-        const std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>>& /* providers */)
+        const auto& /* providers */)
         const
     {
       return NonZeroJacobianElements(phase_prefixes, state_variable_indices);
@@ -261,315 +264,49 @@ namespace miam
       }
       std::size_t forward_index = state_parameter_indices.at(forward_param);
       std::size_t reverse_index = state_parameter_indices.at(reverse_param);
+      std::size_t num_params = state_parameter_indices.size();
 
-      // Set up dummy arguments to build the function
-      DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
+      // Hoist both variant visits to the host so the concrete expression PODs are captured by
+      // value into MICM_LAMBDA (built inside `MakeReversibleUpdateFn`, a function template, so the
+      // extended lambda is not nested in the generic std::visit lambda, which NVCC forbids).
+      return std::visit(
+          [forward_index, reverse_index, num_params](const auto& fwd_expr, const auto& rev_expr)
+          { return MakeReversibleUpdateFn<DenseMatrixPolicy>(fwd_expr, rev_expr, forward_index, reverse_index, num_params); },
+          forward_rate_constant_,
+          reverse_rate_constant_);
+    }
+
+    /// @brief Builds the forward/reverse rate-constant update callable for concrete expression alternatives.
+    /// @details Public because NVCC forbids private functions that define an extended lambda.
+    template<typename DenseMatrixPolicy, typename FwdT, typename RevT>
+    static std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>
+    MakeReversibleUpdateFn(
+        const FwdT& fwd_expr, const RevT& rev_expr, std::size_t forward_index, std::size_t reverse_index, std::size_t num_params)
+    {
+      const FwdT fwd_copy = fwd_expr;
+      const RevT rev_copy = rev_expr;
+      DenseMatrixPolicy state_parameters{ 1, num_params, 0.0 };
       typename DenseMatrixPolicy::template VectorType<micm::Conditions> conditions_vector;
-
-      // return a function that updates the forward and reverse rate constant parameters based on the current conditions
       return DenseMatrixPolicy::Function(
-          [this, forward_index, reverse_index](auto&& conditions, auto&& params)
+          MICM_LAMBDA(
+              const typename DenseMatrixPolicy::template VectorType<micm::Conditions>::ConstViewType& conditions_view,
+              const typename DenseMatrixPolicy::ViewType& params_view)
           {
-            params.ForEachRow(
-                [&](const micm::Conditions& condition, double& parameter) { parameter = forward_rate_constant_(condition); },
-                conditions,
-                params.GetColumnView(forward_index));
-            params.ForEachRow(
-                [&](const micm::Conditions& condition, double& parameter) { parameter = reverse_rate_constant_(condition); },
-                conditions,
-                params.GetColumnView(reverse_index));
+            params_view.ForEachRowStrict(
+                [fwd_copy](const micm::Conditions& condition, micm::Real& parameter)
+                { parameter = fwd_copy.Calculate(condition); },
+                conditions_view,
+                params_view.GetColumnView(forward_index));
+            params_view.ForEachRowStrict(
+                [rev_copy](const micm::Conditions& condition, micm::Real& parameter)
+                { parameter = rev_copy.Calculate(condition); },
+                conditions_view,
+                params_view.GetColumnView(reverse_index));
           },
           conditions_vector,
           state_parameters);
     }
 
-    /// @brief Returns a function that calculates the forcing terms for this process
-    /// @param phase_prefixes Map of phase names to sets of state variable prefixes (prefix does not include phase or
-    /// species names)
-    /// @param state_parameter_indices Map of state parameter names to their corresponding indices in the state parameter
-    /// vector
-    /// @param state_variable_indices Map of state variable names to their corresponding indices in the state variable
-    /// vector
-    /// @return Function that calculates the forcing terms for this process
-    template<typename DenseMatrixPolicy>
-    std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ForcingFunction(
-        const std::map<std::string, std::set<std::string>>& phase_prefixes,
-        const auto& state_parameter_indices,  // acts like std::unordered_map<std::string, std::size_t>
-        const auto& state_variable_indices,   // acts like std::unordered_map<std::string, std::size_t>
-        std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> /* providers */
-    ) const
-    {
-      return ForcingFunction<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
-    }
-
-    /// @brief Returns a function that calculates the forcing terms for this process (original)
-    template<typename DenseMatrixPolicy>
-    std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ForcingFunction(
-        const std::map<std::string, std::set<std::string>>& phase_prefixes,
-        const auto& state_parameter_indices,  // acts like std::unordered_map<std::string, std::size_t>
-        const auto& state_variable_indices    // acts like std::unordered_map<std::string, std::size_t>
-    ) const
-    {
-      StateVariableIndices variable_indices = GetStateVariableIndices(phase_prefixes, state_variable_indices);
-      auto [forward_index, reverse_index] = GetParameterIndices(state_parameter_indices);
-      DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-      DenseMatrixPolicy dummy_state_variables{ 1, state_variable_indices.size(), 0.0 };
-      return DenseMatrixPolicy::Function(
-          [this, variable_indices, forward_index, reverse_index](
-              auto&& state_parameters, auto&& state_variables, auto&& forcing_terms)
-          {
-            auto forward_rate = forcing_terms.GetRowVariable();
-            auto reverse_rate = forcing_terms.GetRowVariable();
-            const double eps = solvent_floor_;
-            const std::size_t n_r = reactants_.size();
-            const std::size_t n_p = products_.size();
-
-            // For each phase instance, calculate the reaction rate and update the forcing terms for reactants and products
-            for (std::size_t i_phase = 0; i_phase < variable_indices.number_of_phase_instances_; ++i_phase)
-            {
-              // Calculate the damped forward and reverse rates
-              state_parameters.ForEachRow(
-                  [&](const double& forward_rate_constant,
-                      const double& reverse_rate_constant,
-                      const double& solvent,
-                      double& forward_rate,
-                      double& reverse_rate)
-                  {
-                    forward_rate = forward_rate_constant * solvent / std::pow(solvent + eps, n_r);
-                    reverse_rate = reverse_rate_constant * solvent / std::pow(solvent + eps, n_p);
-                  },
-                  state_parameters.GetConstColumnView(forward_index),
-                  state_parameters.GetConstColumnView(reverse_index),
-                  state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
-                  forward_rate,
-                  reverse_rate);
-              for (std::size_t r = 0; r < reactants_.size(); ++r)
-              {
-                state_variables.ForEachRow(
-                    [&](const double& reactant, double& forward_rate) { forward_rate *= reactant; },
-                    state_variables.GetConstColumnView(variable_indices.reactant_indices_[i_phase][r]),
-                    forward_rate);
-              }
-              for (std::size_t p = 0; p < products_.size(); ++p)
-              {
-                state_variables.ForEachRow(
-                    [&](const double& product, double& reverse_rate) { reverse_rate *= product; },
-                    state_variables.GetConstColumnView(variable_indices.product_indices_[i_phase][p]),
-                    reverse_rate);
-              }
-
-              // Apply the reaction rates to the forcing terms for reactants and products
-              for (std::size_t r = 0; r < reactants_.size(); ++r)
-              {
-                state_variables.ForEachRow(
-                    [&](const double& forward_rate, const double& reverse_rate, double& forcing)
-                    {
-                      forcing -= forward_rate;
-                      forcing += reverse_rate;
-                    },
-                    forward_rate,
-                    reverse_rate,
-                    forcing_terms.GetColumnView(variable_indices.reactant_indices_[i_phase][r]));
-              }
-              for (std::size_t p = 0; p < products_.size(); ++p)
-              {
-                state_variables.ForEachRow(
-                    [&](const double& forward_rate, const double& reverse_rate, double& forcing)
-                    {
-                      forcing += forward_rate;
-                      forcing -= reverse_rate;
-                    },
-                    forward_rate,
-                    reverse_rate,
-                    forcing_terms.GetColumnView(variable_indices.product_indices_[i_phase][p]));
-              }
-            }
-          },
-          dummy_state_parameters,
-          dummy_state_variables,
-          dummy_state_variables);
-    }
-
-    /// @brief Returns a function that calculates the Jacobian contributions for this process (common interface overload)
-    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
-    std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> JacobianFunction(
-        const std::map<std::string, std::set<std::string>>& phase_prefixes,
-        const auto& state_parameter_indices,  // acts like std::unordered_map<std::string, std::size_t>
-        const auto& state_variable_indices,   // acts like std::unordered_map<std::string, std::size_t>
-        const SparseMatrixPolicy& jacobian,
-        std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> /* providers */) const
-    {
-      return JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
-          phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
-    }
-
-    /// @brief Returns a function that calculates the Jacobian contributions for this process (original)
-    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
-    std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> JacobianFunction(
-        const std::map<std::string, std::set<std::string>>& phase_prefixes,
-        const auto& state_parameter_indices,  // acts like std::unordered_map<std::string, std::size_t>
-        const auto& state_variable_indices,   // acts like std::unordered_map<std::string, std::size_t>
-        const SparseMatrixPolicy& jacobian) const
-    {
-      StateVariableIndices variable_indices = GetStateVariableIndices(phase_prefixes, state_variable_indices);
-      JacobianIndices jacobian_indices = GetJacobianIndices(variable_indices, jacobian);
-      auto [forward_index, reverse_index] = GetParameterIndices(state_parameter_indices);
-      DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-      DenseMatrixPolicy dummy_state_variables{ 1, state_variable_indices.size(), 0.0 };
-      return SparseMatrixPolicy::Function(
-          [this, variable_indices, jacobian_indices, forward_index, reverse_index](
-              auto&& state_parameters, auto&& state_variables, auto&& jacobian_values)
-          {
-            auto d_forward_rate_d_ind = jacobian_values.GetBlockVariable();
-            auto d_reverse_rate_d_ind = jacobian_values.GetBlockVariable();
-            auto jac_id = jacobian_indices.indices_.AsVector().begin();
-            const double eps = solvent_floor_;
-            const std::size_t n_r = reactants_.size();
-            const std::size_t n_p = products_.size();
-
-            // For each phase instance, calculate the partial derivatives for the Jacobian entries
-            for (std::size_t i_phase = 0; i_phase < variable_indices.number_of_phase_instances_; ++i_phase)
-            {
-              // Calculate partials for independent reactants
-              for (std::size_t i_ind = 0; i_ind < reactants_.size(); ++i_ind)
-              {
-                // dr_fwd/d[R_i] = k_f * [S] / ([S]+eps)^n_r * prod(R_j, j!=i)
-                jacobian_values.ForEachBlock(
-                    [&](const double& forward_rate_constant, const double& solvent, double& partial)
-                    { partial = forward_rate_constant * solvent / std::pow(solvent + eps, n_r); },
-                    state_parameters.GetConstColumnView(forward_index),
-                    state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
-                    d_forward_rate_d_ind);
-                // add contributions to the partial from the other reactants
-                for (std::size_t r = 0; r < reactants_.size(); ++r)
-                {
-                  if (r == i_ind)
-                    continue;  // Skip the variable we're taking the derivative with respect to
-                  jacobian_values.ForEachBlock(
-                      [&](const double& reactant, double& partial) { partial *= reactant; },
-                      state_variables.GetConstColumnView(variable_indices.reactant_indices_[i_phase][r]),
-                      d_forward_rate_d_ind);
-                }
-                // apply partial to dependent reactants (subtract: -J convention)
-                for (std::size_t i_dep = 0; i_dep < reactants_.size(); ++i_dep)
-                {
-                  jacobian_values.ForEachBlock(
-                      [&](const double& partial, double& jacobian) { jacobian += partial; },
-                      d_forward_rate_d_ind,
-                      jacobian_values.GetBlockView(*jac_id++));
-                }
-                // apply partial to dependent products (subtract: -J convention)
-                for (std::size_t i_dep = 0; i_dep < products_.size(); ++i_dep)
-                {
-                  jacobian_values.ForEachBlock(
-                      [&](const double& partial, double& jacobian) { jacobian -= partial; },
-                      d_forward_rate_d_ind,
-                      jacobian_values.GetBlockView(*jac_id++));
-                }
-              }
-              // Calculate partials for independent products
-              for (std::size_t i_ind = 0; i_ind < products_.size(); ++i_ind)
-              {
-                // dr_rev/d[P_i] = k_r * [S] / ([S]+eps)^n_p * prod(P_j, j!=i)
-                jacobian_values.ForEachBlock(
-                    [&](const double& reverse_rate_constant, const double& solvent, double& partial)
-                    { partial = reverse_rate_constant * solvent / std::pow(solvent + eps, n_p); },
-                    state_parameters.GetConstColumnView(reverse_index),
-                    state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
-                    d_reverse_rate_d_ind);
-                // add contributions to the partial from the other products
-                for (std::size_t p = 0; p < products_.size(); ++p)
-                {
-                  if (p == i_ind)
-                    continue;  // Skip the variable we're taking the derivative with respect to
-                  jacobian_values.ForEachBlock(
-                      [&](const double& product, double& partial) { partial *= product; },
-                      state_variables.GetConstColumnView(variable_indices.product_indices_[i_phase][p]),
-                      d_reverse_rate_d_ind);
-                }
-                // apply partial to dependent reactants (subtract: -J convention)
-                for (std::size_t i_dep = 0; i_dep < reactants_.size(); ++i_dep)
-                {
-                  jacobian_values.ForEachBlock(
-                      [&](const double& partial, double& jacobian) { jacobian -= partial; },
-                      d_reverse_rate_d_ind,
-                      jacobian_values.GetBlockView(*jac_id++));
-                }
-                // apply partial to dependent products (subtract: -J convention)
-                for (std::size_t i_dep = 0; i_dep < products_.size(); ++i_dep)
-                {
-                  jacobian_values.ForEachBlock(
-                      [&](const double& partial, double& jacobian) { jacobian += partial; },
-                      d_reverse_rate_d_ind,
-                      jacobian_values.GetBlockView(*jac_id++));
-                }
-              }
-              // Calculate partials for independent solvent
-              // dr/d[S] = k * (eps + (1-n)*[S]) / ([S]+eps)^(n+1) * prod([species])
-              jacobian_values.ForEachBlock(
-                  [&](const double& forward_rate_constant,
-                      const double& reverse_rate_constant,
-                      const double& solvent,
-                      double& forward_partial,
-                      double& reverse_partial)
-                  {
-                    forward_partial = forward_rate_constant * (eps + (1.0 - static_cast<int>(n_r)) * solvent) /
-                                      std::pow(solvent + eps, n_r + 1);
-                    reverse_partial = reverse_rate_constant * (eps + (1.0 - static_cast<int>(n_p)) * solvent) /
-                                      std::pow(solvent + eps, n_p + 1);
-                  },
-                  state_parameters.GetConstColumnView(forward_index),
-                  state_parameters.GetConstColumnView(reverse_index),
-                  state_variables.GetConstColumnView(variable_indices.solvent_indices_[i_phase]),
-                  d_forward_rate_d_ind,
-                  d_reverse_rate_d_ind);
-              // add contributions to the partial from the reactants/products
-              for (std::size_t r = 0; r < reactants_.size(); ++r)
-              {
-                jacobian_values.ForEachBlock(
-                    [&](const double& reactant, double& forward_partial) { forward_partial *= reactant; },
-                    state_variables.GetConstColumnView(variable_indices.reactant_indices_[i_phase][r]),
-                    d_forward_rate_d_ind);
-              }
-              for (std::size_t p = 0; p < products_.size(); ++p)
-              {
-                jacobian_values.ForEachBlock(
-                    [&](const double& product, double& reverse_partial) { reverse_partial *= product; },
-                    state_variables.GetConstColumnView(variable_indices.product_indices_[i_phase][p]),
-                    d_reverse_rate_d_ind);
-              }
-              // apply partials to dependent reactants (subtract: -J convention)
-              for (std::size_t i_dep = 0; i_dep < reactants_.size(); ++i_dep)
-              {
-                jacobian_values.ForEachBlock(
-                    [&](const double& forward_partial, const double& reverse_partial, double& jacobian)
-                    {
-                      jacobian += forward_partial;
-                      jacobian -= reverse_partial;
-                    },
-                    d_forward_rate_d_ind,
-                    d_reverse_rate_d_ind,
-                    jacobian_values.GetBlockView(*jac_id++));
-              }
-              // apply partials to dependent products (subtract: -J convention)
-              for (std::size_t i_dep = 0; i_dep < products_.size(); ++i_dep)
-              {
-                jacobian_values.ForEachBlock(
-                    [&](const double& forward_partial, const double& reverse_partial, double& jacobian)
-                    {
-                      jacobian -= forward_partial;
-                      jacobian += reverse_partial;
-                    },
-                    d_forward_rate_d_ind,
-                    d_reverse_rate_d_ind,
-                    jacobian_values.GetBlockView(*jac_id++));
-              }
-            }
-          },
-          dummy_state_parameters,
-          dummy_state_variables,
-          jacobian);
-    }
 
    private:
     /// @brief Helper struct for keeping track of state varible indices for reactants, products, and solvent across
@@ -585,38 +322,6 @@ namespace miam
       std::vector<std::size_t> solvent_indices_;  ///< Vector of state variable indices for solvent (num_prefixes)
     };
 
-    /// @brief Helper struct for keeping track of Jacobian sparse matrix elements
-    struct JacobianIndices
-    {
-      micm::Matrix<std::size_t>
-          indices_;  // Index in sparse matrix for each dependent/independent pair (num_pairs x num_prefixes)
-    };
-
-    /// @brief Helper function to return parameter indices for the forward and reverse rate constants
-    std::pair<std::size_t, std::size_t> GetParameterIndices(
-        const auto& state_parameter_indices  // acts like std::unordered_map<std::string, std::size_t>
-    ) const
-    {
-      std::string forward_param = phase_.name_ + "." + uuid_ + ".k_forward";
-      std::string reverse_param = phase_.name_ + "." + uuid_ + ".k_reverse";
-      if (state_parameter_indices.find(forward_param) == state_parameter_indices.end())
-      {
-        throw MiamException(
-            MIAM_ERROR_CATEGORY_INTERNAL,
-            MIAM_INTERNAL_MISSING_STATE_PARAMETER,
-            "Internal Error: GetParameterIndices: Forward rate constant parameter " + forward_param +
-                " not found in state_parameter_indices");
-      }
-      if (state_parameter_indices.find(reverse_param) == state_parameter_indices.end())
-      {
-        throw MiamException(
-            MIAM_ERROR_CATEGORY_INTERNAL,
-            MIAM_INTERNAL_MISSING_STATE_PARAMETER,
-            "Internal Error: GetParameterIndices: Reverse rate constant parameter " + reverse_param +
-                " not found in state_parameter_indices");
-      }
-      return { state_parameter_indices.at(forward_param), state_parameter_indices.at(reverse_param) };
-    }
 
     /// @brief Helper function to return variable indices for all species involved in the reaction
     /// @param phase_prefixes Map of phase names to sets of state variable prefixes (prefix does not include phase or
@@ -687,72 +392,5 @@ namespace miam
       return indices;
     }
 
-    /// @brief Helper function to return Jacobian sparse matrix indices for all pairs of species involved in the reaction
-    /// @param variable_indices StateVariableIndices struct containing matrices of indices for reactants, products, and
-    /// solvent
-    /// @param jacobian Sparse matrix policy object for the Jacobian structure
-    /// @return JacobianIndices struct containing a matrix of sparse matrix indices for each dependent/independent pair of
-    /// species
-    JacobianIndices GetJacobianIndices(
-        const StateVariableIndices& variable_indices,
-        const auto& jacobian  // sparse matrix policy object for the Jacobian structure
-    ) const
-    {
-      // Each reactant and each product depends on all reactants, all products, and the solvent
-      std::size_t num_pairs =
-          (reactants_.size() + products_.size()) * (reactants_.size() + products_.size() + 1);  // +1 for solvent
-      JacobianIndices jacobian_indices;
-      jacobian_indices.indices_ = micm::Matrix<std::size_t>(variable_indices.number_of_phase_instances_, num_pairs);
-      for (std::size_t i_phase = 0; i_phase < variable_indices.number_of_phase_instances_; ++i_phase)
-      {
-        std::size_t pair_index = 0;
-        // add terms for independent reactants
-        for (std::size_t i_ind = 0; i_ind < reactants_.size(); ++i_ind)
-        {
-          // ... and dependent reactants
-          for (std::size_t i_dep = 0; i_dep < reactants_.size(); ++i_dep)
-          {
-            jacobian_indices.indices_[i_phase][pair_index++] = jacobian.VectorIndex(
-                0, variable_indices.reactant_indices_[i_phase][i_dep], variable_indices.reactant_indices_[i_phase][i_ind]);
-          }
-          // ... and dependent products
-          for (std::size_t i_dep = 0; i_dep < products_.size(); ++i_dep)
-          {
-            jacobian_indices.indices_[i_phase][pair_index++] = jacobian.VectorIndex(
-                0, variable_indices.product_indices_[i_phase][i_dep], variable_indices.reactant_indices_[i_phase][i_ind]);
-          }
-        }
-        // add terms for independent products
-        for (std::size_t i_ind = 0; i_ind < products_.size(); ++i_ind)
-        {
-          // ... and dependent reactants
-          for (std::size_t i_dep = 0; i_dep < reactants_.size(); ++i_dep)
-          {
-            jacobian_indices.indices_[i_phase][pair_index++] = jacobian.VectorIndex(
-                0, variable_indices.reactant_indices_[i_phase][i_dep], variable_indices.product_indices_[i_phase][i_ind]);
-          }
-          // ... and dependent products
-          for (std::size_t i_dep = 0; i_dep < products_.size(); ++i_dep)
-          {
-            jacobian_indices.indices_[i_phase][pair_index++] = jacobian.VectorIndex(
-                0, variable_indices.product_indices_[i_phase][i_dep], variable_indices.product_indices_[i_phase][i_ind]);
-          }
-        }
-        // add terms for independent solvent
-        // ... and dependent reactants
-        for (std::size_t i_dep = 0; i_dep < reactants_.size(); ++i_dep)
-        {
-          jacobian_indices.indices_[i_phase][pair_index++] = jacobian.VectorIndex(
-              0, variable_indices.reactant_indices_[i_phase][i_dep], variable_indices.solvent_indices_[i_phase]);
-        }
-        // ... and dependent products
-        for (std::size_t i_dep = 0; i_dep < products_.size(); ++i_dep)
-        {
-          jacobian_indices.indices_[i_phase][pair_index++] = jacobian.VectorIndex(
-              0, variable_indices.product_indices_[i_phase][i_dep], variable_indices.solvent_indices_[i_phase]);
-        }
-      }
-      return jacobian_indices;
-    }
   };
 }  // namespace miam

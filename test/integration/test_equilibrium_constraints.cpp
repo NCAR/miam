@@ -52,13 +52,12 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
   double total = A0;  // total mass (B0 = C0 = 0)
 
   // Kinetic process: A → B (dissolved reaction)
-  auto rate = [k](const Conditions& conditions) { return k; };
   auto reaction = DissolvedReactionBuilder{}
                       .SetPhase(aqueous_phase)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(S)
-                      .SetRateConstant(rate)
+                      .SetRateConstant(UserDefinedConstantExpression{ k })
                       .Build();
 
   // Equilibrium constraint: B <-> C, K_eq, algebraic species = C
@@ -198,14 +197,12 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
   double K_eq = 3.0;
   double A0_small = 1.0;
   double A0_large = 2.0;
-
-  auto rate = [k](const Conditions& conditions) { return k; };
   auto reaction = DissolvedReactionBuilder{}
                       .SetPhase(aqueous_phase)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(S)
-                      .SetRateConstant(rate)
+                      .SetRateConstant(UserDefinedConstantExpression{ k })
                       .Build();
 
   // Equilibrium constraint: C = K_eq * B (C is algebraic)
@@ -322,14 +319,12 @@ TEST(EquilibriumConstraintsIntegration, InconsistentInitialConditions)
   double K_eq = 2.0;
   double A0 = 1.0;
   double total = A0;
-
-  auto rate = [k](const Conditions& conditions) { return k; };
   auto reaction = DissolvedReactionBuilder{}
                       .SetPhase(aqueous_phase)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(S)
-                      .SetRateConstant(rate)
+                      .SetRateConstant(UserDefinedConstantExpression{ k })
                       .Build();
 
   auto equil = DissolvedEquilibriumConstraintBuilder()

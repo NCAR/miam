@@ -31,19 +31,14 @@ namespace
 
     auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
     auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
-
-    auto rate = [k](const Conditions& conditions) { return k; };
     auto reaction = DissolvedReactionBuilder{}
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
                         .SetProducts({ B })
                         .SetSolvent(S)
-                        .SetRateConstant(rate)
+                        .SetRateConstant(UserDefinedConstantExpression{ k })
                         .Build();
-
-    auto forward_rate = [k_f](const Conditions& conditions) { return k_f; };
-    auto reverse_rate = [k_r](const Conditions& conditions) { return k_r; };
-    auto reversible = DissolvedReversibleReaction{ { forward_rate }, { reverse_rate }, { B }, { C }, S, aqueous_phase };
+    auto reversible = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_f }, UserDefinedConstantExpression{ k_r }, { B }, { C }, S, aqueous_phase };
 
     auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model.AddProcesses({ reaction });
@@ -121,19 +116,14 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
 
     auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
     auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
-
-    auto rate = [k](const Conditions& conditions) { return k; };
     auto reaction = DissolvedReactionBuilder{}
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
                         .SetProducts({ B })
                         .SetSolvent(S)
-                        .SetRateConstant(rate)
+                        .SetRateConstant(UserDefinedConstantExpression{ k })
                         .Build();
-
-    auto forward_rate = [k_f](const Conditions& conditions) { return k_f; };
-    auto reverse_rate = [k_r](const Conditions& conditions) { return k_r; };
-    auto reversible = DissolvedReversibleReaction{ { forward_rate }, { reverse_rate }, { B }, { C }, S, aqueous_phase };
+    auto reversible = DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_f }, UserDefinedConstantExpression{ k_r }, { B }, { C }, S, aqueous_phase };
 
     auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model.AddProcesses({ reaction });
@@ -185,14 +175,12 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
 
     auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
     auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
-
-    auto rate = [k](const Conditions& conditions) { return k; };
     auto reaction = DissolvedReactionBuilder{}
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
                         .SetProducts({ B })
                         .SetSolvent(S)
-                        .SetRateConstant(rate)
+                        .SetRateConstant(UserDefinedConstantExpression{ k })
                         .Build();
 
     auto equil = DissolvedEquilibriumConstraintBuilder()

@@ -28,15 +28,13 @@ TEST(DissolvedReactionIntegration, SimpleFirstOrderDecay)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 0.1;  // s^-1
-  auto rate = [k](const Conditions& conditions) { return k; };
-
   // A -> B with solvent C
   auto reaction = DissolvedReactionBuilder{}
                       .SetPhase(aqueous_phase)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .SetRateConstant(rate)
+                      .SetRateConstant(UserDefinedConstantExpression{ k })
                       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -122,8 +120,6 @@ TEST(DissolvedReactionIntegration, SolventAsReactant)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 1.0e-3;
-  auto rate = [k](const Conditions& conditions) { return k; };
-
   // A + C -> B with solvent C
   // rate = k / [C]^(2-1) * [A] * [C] = k * [A]
   auto reaction = DissolvedReactionBuilder{}
@@ -131,7 +127,7 @@ TEST(DissolvedReactionIntegration, SolventAsReactant)
                       .SetReactants({ A, C })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .SetRateConstant(rate)
+                      .SetRateConstant(UserDefinedConstantExpression{ k })
                       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -218,8 +214,6 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 1.0e-3;
-  auto rate = [k](const Conditions& conditions) { return k; };
-
   // A -> B + C with solvent C
   // rate = k * [A] (1 reactant, no solvent normalization)
   auto reaction = DissolvedReactionBuilder{}
@@ -227,7 +221,7 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
                       .SetReactants({ A })
                       .SetProducts({ B, C })
                       .SetSolvent(C)
-                      .SetRateConstant(rate)
+                      .SetRateConstant(UserDefinedConstantExpression{ k })
                       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -316,15 +310,12 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
   auto large_droplet = UniformSection{ "DROPLET_LARGE", { aqueous } };
 
   double k = 0.1;
-
-  auto k_calc = [k](const Conditions& conditions) { return k; };
-
   auto reaction = DissolvedReactionBuilder{}
                       .SetPhase(aqueous)
                       .SetReactants({ A })
                       .SetProducts({ B })
                       .SetSolvent(C)
-                      .SetRateConstant(k_calc)
+                      .SetRateConstant(UserDefinedConstantExpression{ k })
                       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { small_droplet, large_droplet } };
@@ -433,8 +424,6 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 1.0;
-  auto rate = [k](const Conditions& conditions) { return k; };
-
   // A + B -> C with solvent S
   // rate = k / [S] * [A] * [B]
   auto reaction = DissolvedReactionBuilder{}
@@ -442,7 +431,7 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
                       .SetReactants({ A, B })
                       .SetProducts({ C })
                       .SetSolvent(S)
-                      .SetRateConstant(rate)
+                      .SetRateConstant(UserDefinedConstantExpression{ k })
                       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -541,8 +530,6 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 1.0;  // s^-1
-  auto rate = [k](const Conditions& conditions) { return k; };
-
   double t_half = 10.0;  // seconds
 
   // A + B -> C with min_halflife cap
@@ -553,7 +540,7 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
                       .SetSolvent(S)
                       .SetSolventFloor(1.0e-20)
                       .SetMinHalflife(t_half)
-                      .SetRateConstant(rate)
+                      .SetRateConstant(UserDefinedConstantExpression{ k })
                       .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };

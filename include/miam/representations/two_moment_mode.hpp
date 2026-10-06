@@ -4,6 +4,7 @@
 #pragma once
 
 #include <miam/representations/aerosol_property.hpp>
+#include <miam/representations/phase_volume_fraction_descriptor.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 
@@ -16,10 +17,253 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <utility>
+#include <variant>
 #include <vector>
 
 namespace miam
 {
+  /// @brief Effective radius for a two-moment log-normal mode:
+  ///        `r_eff = r_mean * exp(2.5·ln²(GSD))`, `r_mean = cbrt(3·V_mean / (4π))`, `V_mean = V_total / N`.
+  /// @details Depends on GSD, the mode's number concentration state variable, and the aqueous-species
+  ///          concentrations attached to the mode.
+  template<typename DenseMatrixPolicy>
+  class TwoMomentModeEffectiveRadiusDescriptor
+  {
+   public:
+    template<typename U>
+    using Vector = typename DenseMatrixPolicy::template VectorType<U>;
+
+    struct View
+    {
+      std::size_t gsd_parameter_index_ = 0;
+      std::size_t nc_variable_index_ = 0;
+      typename Vector<std::size_t>::ConstViewType species_variable_indices_{};
+      typename Vector<double>::ConstViewType species_molar_volumes_{};
+    };
+
+    TwoMomentModeEffectiveRadiusDescriptor() = default;
+
+    TwoMomentModeEffectiveRadiusDescriptor(
+        std::size_t gsd_parameter_index,
+        std::size_t nc_variable_index,
+        std::vector<std::size_t> species_variable_indices,
+        std::vector<double> species_molar_volumes)
+        : gsd_parameter_index_(gsd_parameter_index),
+          nc_variable_index_(nc_variable_index),
+          species_variable_indices_(std::move(species_variable_indices)),
+          species_molar_volumes_(std::move(species_molar_volumes))
+    {
+      dependent_variable_indices_.assign(species_variable_indices_.begin(), species_variable_indices_.end());
+      dependent_variable_indices_.push_back(nc_variable_index_);
+      species_variable_indices_.CopyToDevice();
+      species_molar_volumes_.CopyToDevice();
+    }
+
+    View GetView() const
+    {
+      return { gsd_parameter_index_, nc_variable_index_, species_variable_indices_.GetView(), species_molar_volumes_.GetView() };
+    }
+
+    const std::vector<std::size_t>& DependentVariableIndices() const
+    {
+      return dependent_variable_indices_;
+    }
+
+    void Evaluate(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        DenseMatrixPolicy& result) const
+    {
+      const auto view = GetView();
+      DenseMatrixPolicy::Function(
+          MICM_LAMBDA(const typename DenseMatrixPolicy::ConstViewType& params_view, const typename DenseMatrixPolicy::ConstViewType& vars_view, const typename DenseMatrixPolicy::ViewType& result_view)
+          {
+            auto r = result_view.GetColumnView(0);
+            params_view.ForEachRowStrict([](double& v) { v = 0.0; }, r);
+            const std::size_t n = view.species_variable_indices_.size();
+            for (std::size_t k = 0; k < n; ++k)
+            {
+              const double mv = view.species_molar_volumes_[k];
+              params_view.ForEachRowStrict(
+                  [mv](const double& c, double& V) { V += c * mv; },
+                  vars_view.GetConstColumnView(view.species_variable_indices_[k]),
+                  r);
+            }
+            params_view.ForEachRowStrict(
+                [](const double& gsd, const double& nc, double& r_eff)
+                {
+                  const double ln_gsd = std::log(gsd);
+                  const double V_mean = r_eff / nc;
+                  const double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
+                  r_eff = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
+                },
+                params_view.GetConstColumnView(view.gsd_parameter_index_),
+                vars_view.GetConstColumnView(view.nc_variable_index_),
+                r);
+          },
+          state_parameters,
+          state_variables,
+          result)(state_parameters, state_variables, result);
+    }
+
+    void EvaluateAndDerivatives(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        DenseMatrixPolicy& result,
+        DenseMatrixPolicy& partials) const
+    {
+      const auto view = GetView();
+      DenseMatrixPolicy::Function(
+          MICM_LAMBDA(const typename DenseMatrixPolicy::ConstViewType& params_view, const typename DenseMatrixPolicy::ConstViewType& vars_view, const typename DenseMatrixPolicy::ViewType& result_view, const typename DenseMatrixPolicy::ViewType& partials_view)
+          {
+            auto V_total = result_view.GetRowVariable();
+            params_view.ForEachRowStrict([](double& v) { v = 0.0; }, V_total);
+            const std::size_t n = view.species_variable_indices_.size();
+            for (std::size_t k = 0; k < n; ++k)
+            {
+              const double mv = view.species_molar_volumes_[k];
+              params_view.ForEachRowStrict(
+                  [mv](const double& c, double& V) { V += c * mv; },
+                  vars_view.GetConstColumnView(view.species_variable_indices_[k]),
+                  V_total);
+            }
+            for (std::size_t k = 0; k < n; ++k)
+            {
+              const double mv = view.species_molar_volumes_[k];
+              params_view.ForEachRowStrict(
+                  [mv](const double& gsd, const double& nc, const double& V_total_row, double& dr)
+                  {
+                    const double ln_gsd = std::log(gsd);
+                    const double V_mean = V_total_row / nc;
+                    const double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
+                    const double r_eff = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
+                    dr = r_eff * mv / (3.0 * V_total_row);
+                  },
+                  params_view.GetConstColumnView(view.gsd_parameter_index_),
+                  vars_view.GetConstColumnView(view.nc_variable_index_),
+                  V_total,
+                  partials_view.GetColumnView(k));
+            }
+            params_view.ForEachRowStrict(
+                [](const double& gsd, const double& nc, const double& V_total_row, double& dr_dN)
+                {
+                  const double ln_gsd = std::log(gsd);
+                  const double V_mean = V_total_row / nc;
+                  const double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
+                  const double r_eff = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
+                  dr_dN = -r_eff / (3.0 * nc);
+                },
+                params_view.GetConstColumnView(view.gsd_parameter_index_),
+                vars_view.GetConstColumnView(view.nc_variable_index_),
+                V_total,
+                partials_view.GetColumnView(n));
+            params_view.ForEachRowStrict(
+                [](const double& gsd, const double& nc, const double& V_total_row, double& r_out)
+                {
+                  const double ln_gsd = std::log(gsd);
+                  const double V_mean = V_total_row / nc;
+                  const double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
+                  r_out = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
+                },
+                params_view.GetConstColumnView(view.gsd_parameter_index_),
+                vars_view.GetConstColumnView(view.nc_variable_index_),
+                V_total,
+                result_view.GetColumnView(0));
+          },
+          state_parameters,
+          state_variables,
+          result,
+          partials)(state_parameters, state_variables, result, partials);
+    }
+
+   private:
+    std::size_t gsd_parameter_index_ = 0;
+    std::size_t nc_variable_index_ = 0;
+    Vector<std::size_t> species_variable_indices_{};
+    Vector<double> species_molar_volumes_{};
+    std::vector<std::size_t> dependent_variable_indices_{};
+  };
+
+  /// @brief Number concentration for a two-moment log-normal mode: `N = state_variables[NUMBER_CONCENTRATION]`.
+  /// @details Trivially just returns the stored NC state variable and reports `dN/dN = 1`.
+  template<typename DenseMatrixPolicy>
+  class TwoMomentModeNumberConcentrationDescriptor
+  {
+   public:
+    struct View
+    {
+      std::size_t nc_variable_index_ = 0;
+    };
+
+    TwoMomentModeNumberConcentrationDescriptor() = default;
+
+    explicit TwoMomentModeNumberConcentrationDescriptor(std::size_t nc_variable_index)
+        : view_{ nc_variable_index },
+          dependent_variable_indices_{ nc_variable_index }
+    {
+    }
+
+    View GetView() const
+    {
+      return view_;
+    }
+
+    const std::vector<std::size_t>& DependentVariableIndices() const
+    {
+      return dependent_variable_indices_;
+    }
+
+    void Evaluate(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        DenseMatrixPolicy& result) const
+    {
+      const auto view = view_;
+      DenseMatrixPolicy::Function(
+          MICM_LAMBDA(const typename DenseMatrixPolicy::ConstViewType& params_view, const typename DenseMatrixPolicy::ConstViewType& vars_view, const typename DenseMatrixPolicy::ViewType& result_view)
+          {
+            params_view.ForEachRowStrict(
+                [](const double& nc, double& N) { N = nc; },
+                vars_view.GetConstColumnView(view.nc_variable_index_),
+                result_view.GetColumnView(0));
+          },
+          state_parameters,
+          state_variables,
+          result)(state_parameters, state_variables, result);
+    }
+
+    void EvaluateAndDerivatives(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        DenseMatrixPolicy& result,
+        DenseMatrixPolicy& partials) const
+    {
+      const auto view = view_;
+      DenseMatrixPolicy::Function(
+          MICM_LAMBDA(const typename DenseMatrixPolicy::ConstViewType& params_view, const typename DenseMatrixPolicy::ConstViewType& vars_view, const typename DenseMatrixPolicy::ViewType& result_view, const typename DenseMatrixPolicy::ViewType& partials_view)
+          {
+            params_view.ForEachRowStrict(
+                [](const double& nc, double& N, double& dN_dN)
+                {
+                  N = nc;
+                  dN_dN = 1.0;
+                },
+                vars_view.GetConstColumnView(view.nc_variable_index_),
+                result_view.GetColumnView(0),
+                partials_view.GetColumnView(0));
+          },
+          state_parameters,
+          state_variables,
+          result,
+          partials)(state_parameters, state_variables, result, partials);
+    }
+
+   private:
+    View view_{};
+    std::vector<std::size_t> dependent_variable_indices_{};
+  };
+
   /// @brief Two moment log-normal particle size distribution representation
   /// @details Represents a two moment log-normal distribution for aerosol or cloud particle size distributions.
   ///          Characterized by number concentration, geometric mean radius, and geometric standard deviation.
@@ -137,27 +381,25 @@ namespace miam
       return phase_prefixes;
     }
 
-    /// @brief Returns a provider for the requested aerosol property
+    /// @brief The set of concrete aerosol-property descriptor types this representation can produce.
     template<typename DenseMatrixPolicy>
-    AerosolPropertyProvider<DenseMatrixPolicy> GetPropertyProvider(
+    using DescriptorVariant = std::variant<
+        TwoMomentModeEffectiveRadiusDescriptor<DenseMatrixPolicy>,
+        TwoMomentModeNumberConcentrationDescriptor<DenseMatrixPolicy>,
+        PhaseVolumeFractionDescriptor<DenseMatrixPolicy>>;
+
+    /// @brief Returns a descriptor for the requested aerosol property.
+    template<typename DenseMatrixPolicy>
+    DescriptorVariant<DenseMatrixPolicy> GetPropertyDescriptor(
         AerosolProperty property,
         const auto& state_parameter_indices,
         const auto& state_variable_indices,
         const std::string& target_phase_name = "") const
     {
-      AerosolPropertyProvider<DenseMatrixPolicy> provider;
-      DenseMatrixPolicy dummy_params{ 1, state_parameter_indices.size(), 0.0 };
-      DenseMatrixPolicy dummy_vars{ 1, state_variable_indices.size(), 0.0 };
-      DenseMatrixPolicy dummy_result{ 1, 1, 0.0 };
-
       switch (property)
       {
         case AerosolProperty::EffectiveRadius:
         {
-          // r_eff = (3·V_total/(4π·N))^(1/3) · exp(2.5·ln²(GSD))
-          // Depends on all species variables and NUMBER_CONCENTRATION
-          std::size_t gsd_idx = state_parameter_indices.at(GeometricStandardDeviation());
-          std::size_t nc_var_idx = state_variable_indices.at(NumberConcentration());
           std::vector<std::size_t> species_indices;
           std::vector<double> molar_volumes;
           for (const auto& phase : phases_)
@@ -169,159 +411,28 @@ namespace miam
                     ps.species_.GetProperty<double>("molecular weight [kg mol-1]") /
                     ps.species_.GetProperty<double>("density [kg m-3]"));
               }
-          // dependent_variable_indices: species first, N last
-          provider.dependent_variable_indices = species_indices;
-          provider.dependent_variable_indices.push_back(nc_var_idx);
-          DenseMatrixPolicy dummy_partials{ 1, provider.dependent_variable_indices.size(), 0.0 };
-          provider.ComputeValue = DenseMatrixPolicy::Function(
-              [gsd_idx, nc_var_idx, species_indices, molar_volumes](auto&& params, auto&& vars, auto&& result)
-              {
-                auto r = result.GetColumnView(0);
-                params.ForEachRow([](double& v) { v = 0.0; }, r);
-                for (std::size_t k = 0; k < species_indices.size(); ++k)
-                  params.ForEachRow(
-                      [molar_vol = molar_volumes[k]](const double& c, double& V) { V += c * molar_vol; },
-                      vars.GetConstColumnView(species_indices[k]),
-                      r);
-                params.ForEachRow(
-                    [](const double& gsd, const double& nc, double& r_eff)
-                    {
-                      double ln_gsd = std::log(gsd);
-                      double V_mean = r_eff / nc;  // r_eff held V_total
-                      double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
-                      r_eff = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
-                    },
-                    params.GetConstColumnView(gsd_idx),
-                    vars.GetConstColumnView(nc_var_idx),
-                    r);
-              },
-              dummy_params,
-              dummy_vars,
-              dummy_result);
-          provider.ComputeValueAndDerivatives = DenseMatrixPolicy::Function(
-              [gsd_idx, nc_var_idx, species_indices, molar_volumes](
-                  auto&& params, auto&& vars, auto&& result, auto&& partials)
-              {
-                auto r = result.GetColumnView(0);
-                // Accumulate V_total into result
-                params.ForEachRow([](double& v) { v = 0.0; }, r);
-                for (std::size_t k = 0; k < species_indices.size(); ++k)
-                  params.ForEachRow(
-                      [molar_vol = molar_volumes[k]](const double& c, double& V) { V += c * molar_vol; },
-                      vars.GetConstColumnView(species_indices[k]),
-                      r);
-                // Partials w.r.t. species (while r still holds V_total)
-                // ∂r_eff/∂[species_k] = r_eff / (3·V_total) · molar_volume_k [m³ mol⁻¹]
-                for (std::size_t k = 0; k < species_indices.size(); ++k)
-                  params.ForEachRow(
-                      [molar_vol = molar_volumes[k]](const double& gsd, const double& nc, const double& V_total, double& dr)
-                      {
-                        double ln_gsd = std::log(gsd);
-                        double V_mean = V_total / nc;
-                        double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
-                        double r_eff = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
-                        dr = r_eff * molar_vol / (3.0 * V_total);
-                      },
-                      params.GetConstColumnView(gsd_idx),
-                      vars.GetConstColumnView(nc_var_idx),
-                      r,
-                      partials.GetColumnView(k));
-                // Partial w.r.t. N: ∂r_eff/∂N = -r_eff / (3·N)
-                std::size_t N_col = species_indices.size();
-                params.ForEachRow(
-                    [](const double& gsd, const double& nc, const double& V_total, double& dr_dN)
-                    {
-                      double ln_gsd = std::log(gsd);
-                      double V_mean = V_total / nc;
-                      double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
-                      double r_eff = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
-                      dr_dN = -r_eff / (3.0 * nc);
-                    },
-                    params.GetConstColumnView(gsd_idx),
-                    vars.GetConstColumnView(nc_var_idx),
-                    r,
-                    partials.GetColumnView(N_col));
-                // Now overwrite result with r_eff
-                params.ForEachRow(
-                    [](const double& gsd, const double& nc, double& r_eff)
-                    {
-                      double ln_gsd = std::log(gsd);
-                      double V_mean = r_eff / nc;  // r_eff still holds V_total
-                      double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
-                      r_eff = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
-                    },
-                    params.GetConstColumnView(gsd_idx),
-                    vars.GetConstColumnView(nc_var_idx),
-                    r);
-              },
-              dummy_params,
-              dummy_vars,
-              dummy_result,
-              dummy_partials);
-          break;
+          return TwoMomentModeEffectiveRadiusDescriptor<DenseMatrixPolicy>{
+            state_parameter_indices.at(GeometricStandardDeviation()),
+            state_variable_indices.at(NumberConcentration()),
+            std::move(species_indices),
+            std::move(molar_volumes)
+          };
         }
         case AerosolProperty::NumberConcentration:
         {
-          // N = state_variables[NUMBER_CONCENTRATION], d(N)/d(N) = 1
-          std::size_t nc_var_idx = state_variable_indices.at(NumberConcentration());
-          provider.dependent_variable_indices = { nc_var_idx };
-          DenseMatrixPolicy dummy_partials{ 1, 1, 0.0 };
-          provider.ComputeValue = DenseMatrixPolicy::Function(
-              [nc_var_idx](auto&& params, auto&& vars, auto&& result)
-              {
-                vars.ForEachRow(
-                    [](const double& nc, double& N) { N = nc; },
-                    vars.GetConstColumnView(nc_var_idx),
-                    result.GetColumnView(0));
-              },
-              dummy_params,
-              dummy_vars,
-              dummy_result);
-          provider.ComputeValueAndDerivatives = DenseMatrixPolicy::Function(
-              [nc_var_idx](auto&& params, auto&& vars, auto&& result, auto&& partials)
-              {
-                vars.ForEachRow(
-                    [](const double& nc, double& N, double& dN_dN)
-                    {
-                      N = nc;
-                      dN_dN = 1.0;
-                    },
-                    vars.GetConstColumnView(nc_var_idx),
-                    result.GetColumnView(0),
-                    partials.GetColumnView(0));
-              },
-              dummy_params,
-              dummy_vars,
-              dummy_result,
-              dummy_partials);
-          break;
+          return TwoMomentModeNumberConcentrationDescriptor<DenseMatrixPolicy>{
+            state_variable_indices.at(NumberConcentration())
+          };
         }
         case AerosolProperty::PhaseVolumeFraction:
         {
           if (phases_.size() == 1)
-          {
-            provider.dependent_variable_indices = {};
-            DenseMatrixPolicy dummy_partials{ 1, 0, 0.0 };
-            provider.ComputeValue = DenseMatrixPolicy::Function(
-                [](auto&& params, auto&& vars, auto&& result)
-                { params.ForEachRow([](double& phi) { phi = 1.0; }, result.GetColumnView(0)); },
-                dummy_params,
-                dummy_vars,
-                dummy_result);
-            provider.ComputeValueAndDerivatives = DenseMatrixPolicy::Function(
-                [](auto&& params, auto&& vars, auto&& result, auto&& partials)
-                { params.ForEachRow([](double& phi) { phi = 1.0; }, result.GetColumnView(0)); },
-                dummy_params,
-                dummy_vars,
-                dummy_result,
-                dummy_partials);
-            break;
-          }
+            return PhaseVolumeFractionDescriptor<DenseMatrixPolicy>{ {}, {}, 0, {} };
           if (target_phase_name.empty())
             throw MiamException(
                 MIAM_ERROR_CATEGORY_CONFIGURATION,
                 MIAM_CONFIGURATION_PHASE_NAME_REQUIRED,
-                "TwoMomentMode::GetPropertyProvider: target_phase_name required for PhaseVolumeFraction "
+                "TwoMomentMode::GetPropertyDescriptor: target_phase_name required for PhaseVolumeFraction "
                 "with multiple phases");
           std::vector<std::size_t> all_species;
           std::vector<double> all_molar_volumes;
@@ -353,114 +464,17 @@ namespace miam
                     ps.species_.GetProperty<double>("density [kg m-3]"));
               }
           }
-          provider.dependent_variable_indices = all_species;
-          DenseMatrixPolicy dummy_partials{ 1, all_species.size(), 0.0 };
-          provider.ComputeValue = DenseMatrixPolicy::Function(
-              [all_species, all_molar_volumes, phase_count](auto&& params, auto&& vars, auto&& result)
-              {
-                auto phi = result.GetColumnView(0);
-                auto V_phase = result.GetRowVariable();
-                params.ForEachRow(
-                    [](double& vt, double& vp)
-                    {
-                      vt = 0.0;
-                      vp = 0.0;
-                    },
-                    phi,
-                    V_phase);
-                for (std::size_t k = 0; k < all_species.size(); ++k)
-                {
-                  if (k < phase_count)
-                    params.ForEachRow(
-                        [molar_vol = all_molar_volumes[k]](const double& c, double& vt, double& vp)
-                        {
-                          double vol = c * molar_vol;
-                          vt += vol;
-                          vp += vol;
-                        },
-                        vars.GetConstColumnView(all_species[k]),
-                        phi,
-                        V_phase);
-                  else
-                    params.ForEachRow(
-                        [molar_vol = all_molar_volumes[k]](const double& c, double& vt) { vt += c * molar_vol; },
-                        vars.GetConstColumnView(all_species[k]),
-                        phi);
-                }
-                params.ForEachRow([](double& phi, const double& vp) { phi = (phi > 0.0) ? vp / phi : 1.0; }, phi, V_phase);
-              },
-              dummy_params,
-              dummy_vars,
-              dummy_result);
-          provider.ComputeValueAndDerivatives = DenseMatrixPolicy::Function(
-              [all_species, all_molar_volumes, phase_count](auto&& params, auto&& vars, auto&& result, auto&& partials)
-              {
-                auto result_col = result.GetColumnView(0);
-                auto V_phase = result.GetRowVariable();
-                auto V_total = result.GetRowVariable();
-                params.ForEachRow(
-                    [](double& vt, double& vp)
-                    {
-                      vt = 0.0;
-                      vp = 0.0;
-                    },
-                    V_total,
-                    V_phase);
-                for (std::size_t k = 0; k < all_species.size(); ++k)
-                {
-                  if (k < phase_count)
-                    params.ForEachRow(
-                        [molar_vol = all_molar_volumes[k]](const double& c, double& vt, double& vp)
-                        {
-                          double vol = c * molar_vol;
-                          vt += vol;
-                          vp += vol;
-                        },
-                        vars.GetConstColumnView(all_species[k]),
-                        V_total,
-                        V_phase);
-                  else
-                    params.ForEachRow(
-                        [molar_vol = all_molar_volumes[k]](const double& c, double& vt) { vt += c * molar_vol; },
-                        vars.GetConstColumnView(all_species[k]),
-                        V_total);
-                }
-                params.ForEachRow(
-                    [](const double& vp, const double& vt, double& phi) { phi = (vt > 0.0) ? vp / vt : 1.0; },
-                    V_phase,
-                    V_total,
-                    result_col);
-                for (std::size_t k = 0; k < all_species.size(); ++k)
-                {
-                  if (k < phase_count)
-                    params.ForEachRow(
-                        [molar_vol = all_molar_volumes[k]](const double& phi, const double& vt, double& dphi)
-                        { dphi = (vt > 0.0) ? molar_vol * (1.0 - phi) / vt : 0.0; },
-                        result_col,
-                        V_total,
-                        partials.GetColumnView(k));
-                  else
-                    params.ForEachRow(
-                        [molar_vol = all_molar_volumes[k]](const double& phi, const double& vt, double& dphi)
-                        { dphi = (vt > 0.0) ? -molar_vol * phi / vt : 0.0; },
-                        result_col,
-                        V_total,
-                        partials.GetColumnView(k));
-                }
-              },
-              dummy_params,
-              dummy_vars,
-              dummy_result,
-              dummy_partials);
-          break;
+          std::vector<std::size_t> deps = all_species;
+          return PhaseVolumeFractionDescriptor<DenseMatrixPolicy>{
+            std::move(all_species), std::move(all_molar_volumes), phase_count, std::move(deps)
+          };
         }
         default:
           throw MiamException(
               MIAM_ERROR_CATEGORY_CONFIGURATION,
               MIAM_CONFIGURATION_UNSUPPORTED_PROPERTY,
-              "TwoMomentMode: unsupported AerosolProperty");
+              "TwoMomentMode::GetPropertyDescriptor: unsupported AerosolProperty");
       }
-      return provider;
     }
 
    private:

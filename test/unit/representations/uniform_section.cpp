@@ -261,8 +261,8 @@ TEST(UniformSection, ProviderEffectiveRadius)
   std::unordered_map<std::string, std::size_t> param_idx = { { "SECT1.MIN_RADIUS", 0 }, { "SECT1.MAX_RADIUS", 1 } };
   std::unordered_map<std::string, std::size_t> var_idx = { { "SECT1.aqueous.A", 0 }, { "SECT1.aqueous.B", 1 } };
 
-  auto provider = section.GetPropertyProvider<Matrix>(AerosolProperty::EffectiveRadius, param_idx, var_idx);
-  EXPECT_TRUE(provider.dependent_variable_indices.empty());
+  auto provider = section.GetPropertyDescriptor<Matrix>(AerosolProperty::EffectiveRadius, param_idx, var_idx);
+  EXPECT_TRUE(miam::DependentVariableIndices(provider).empty());
 
   double r_min = 1.0e-6;
   double r_max = 5.0e-6;
@@ -272,12 +272,12 @@ TEST(UniformSection, ProviderEffectiveRadius)
   params[0][0] = r_min;
   params[0][1] = r_max;
 
-  provider.ComputeValue(params, vars, result);
+  EvaluateAerosolProperty(provider, params, vars, result);
   EXPECT_DOUBLE_EQ(result[0][0], 0.5 * (r_min + r_max));
 
   Matrix result2{ 1, 1, 0.0 };
   Matrix partials{ 1, 0, 0.0 };
-  provider.ComputeValueAndDerivatives(params, vars, result2, partials);
+  EvaluateAerosolPropertyAndDerivatives(provider, params, vars, result2, partials);
   EXPECT_DOUBLE_EQ(result2[0][0], 0.5 * (r_min + r_max));
 }
 
@@ -288,8 +288,8 @@ TEST(UniformSection, ProviderNumberConcentration)
   std::unordered_map<std::string, std::size_t> param_idx = { { "SECT1.MIN_RADIUS", 0 }, { "SECT1.MAX_RADIUS", 1 } };
   std::unordered_map<std::string, std::size_t> var_idx = { { "SECT1.aqueous.A", 0 }, { "SECT1.aqueous.B", 1 } };
 
-  auto provider = section.GetPropertyProvider<Matrix>(AerosolProperty::NumberConcentration, param_idx, var_idx);
-  ASSERT_EQ(provider.dependent_variable_indices.size(), 2u);
+  auto provider = section.GetPropertyDescriptor<Matrix>(AerosolProperty::NumberConcentration, param_idx, var_idx);
+  ASSERT_EQ(miam::DependentVariableIndices(provider).size(), 2u);
 
   double r_min = 1.0e-6;
   double r_max = 5.0e-6;
@@ -304,7 +304,7 @@ TEST(UniformSection, ProviderNumberConcentration)
   vars[0][0] = conc_A;
   vars[0][1] = conc_B;
 
-  provider.ComputeValue(params, vars, result);
+  EvaluateAerosolProperty(provider, params, vars, result);
 
   double r_eff = 0.5 * (r_min + r_max);
   double V_total = conc_A * mwr_A + conc_B * mwr_B;
@@ -314,7 +314,7 @@ TEST(UniformSection, ProviderNumberConcentration)
 
   Matrix result2{ 1, 1, 0.0 };
   Matrix partials{ 1, 2, 0.0 };
-  provider.ComputeValueAndDerivatives(params, vars, result2, partials);
+  EvaluateAerosolPropertyAndDerivatives(provider, params, vars, result2, partials);
   EXPECT_NEAR(result2[0][0], expected_N, std::abs(expected_N) * 1e-10);
   EXPECT_NEAR(partials[0][0], mwr_A / V_single, std::abs(mwr_A / V_single) * 1e-10);
   EXPECT_NEAR(partials[0][1], mwr_B / V_single, std::abs(mwr_B / V_single) * 1e-10);
@@ -327,14 +327,14 @@ TEST(UniformSection, ProviderPhaseVolumeFractionSinglePhase)
   std::unordered_map<std::string, std::size_t> param_idx = { { "SECT1.MIN_RADIUS", 0 }, { "SECT1.MAX_RADIUS", 1 } };
   std::unordered_map<std::string, std::size_t> var_idx = { { "SECT1.aqueous.A", 0 }, { "SECT1.aqueous.B", 1 } };
 
-  auto provider = section.GetPropertyProvider<Matrix>(AerosolProperty::PhaseVolumeFraction, param_idx, var_idx);
-  EXPECT_TRUE(provider.dependent_variable_indices.empty());
+  auto provider = section.GetPropertyDescriptor<Matrix>(AerosolProperty::PhaseVolumeFraction, param_idx, var_idx);
+  EXPECT_TRUE(miam::DependentVariableIndices(provider).empty());
 
   Matrix params{ 1, 2, 0.0 };
   Matrix vars{ 1, 2, 0.0 };
   Matrix result{ 1, 1, 0.0 };
 
-  provider.ComputeValue(params, vars, result);
+  EvaluateAerosolProperty(provider, params, vars, result);
   EXPECT_DOUBLE_EQ(result[0][0], 1.0);
 }
 

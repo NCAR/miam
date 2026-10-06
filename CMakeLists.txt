@@ -35,6 +35,7 @@ option(MIAM_ENABLE_TESTS "Build the test suite" ON)
 option(MIAM_ENABLE_MEMCHECK "Enable memory checking in tests" OFF)
 option(MIAM_ENABLE_COVERAGE "Enable code coverage output" OFF)
 option(MIAM_BUILD_DOCS "Build the documentation" OFF)
+option(MIAM_ENABLE_KOKKOS "Enable Kokkos-backed matrix / solver support (propagates to MICM)" OFF)
 
 set(MIAM_INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR})
 set(MIAM_LIB_DIR ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})

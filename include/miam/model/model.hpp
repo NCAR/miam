@@ -4,19 +4,28 @@
 #pragma once
 
 #include <miam/constraints/dissolved_equilibrium_constraint.hpp>
+#include <miam/constraints/dissolved_equilibrium_constraint_evaluator.hpp>
 #include <miam/constraints/henrys_law_equilibrium_constraint.hpp>
+#include <miam/constraints/henrys_law_equilibrium_constraint_evaluator.hpp>
 #include <miam/constraints/linear_constraint.hpp>
+#include <miam/constraints/linear_constraint_evaluator.hpp>
 #include <miam/processes.hpp>
+#include <miam/processes/dissolved_reaction_evaluator.hpp>
+#include <miam/processes/dissolved_reversible_reaction_evaluator.hpp>
+#include <miam/processes/henrys_law_phase_transfer_evaluator.hpp>
 #include <miam/representations.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 
 #include <micm/system/conditions.hpp>
+#include <micm/util/matrix.hpp>
 
 #include <algorithm>
 #include <any>
 #include <concepts>
+#include <cstddef>
 #include <functional>
+#include <map>
 #include <memory>
 #include <set>
 #include <stdexcept>
@@ -43,6 +52,26 @@ namespace miam
     std::vector<RepresentationVariant> representations_;
     std::vector<ProcessVariant> processes_{};
     std::vector<ConstraintVariant> constraints_{};
+
+    std::unordered_map<std::string, std::size_t> state_parameter_indices_{};
+    std::unordered_map<std::string, std::size_t> state_variable_indices_{};
+
+    // Per-process / per-constraint parameter update closures, built at Finalize for the solver's
+    // DenseMatrixPolicy. Each holds a `std::vector<UpdateFn<DP>>` or `std::vector<InitFn<DP>>`.
+    std::any process_update_fns_{};
+    std::any constraint_update_fns_{};
+    std::any constraint_init_fns_{};
+
+    // Solve-time evaluators, built by FinalizeProcessSetup / FinalizeConstraintSetup for the
+    // solver's <DenseMatrixPolicy, SparseMatrixPolicy> pair. `process_evaluators_` and
+    // `constraint_evaluators_` hold a `std::shared_ptr<const ProcessEvaluators<DP, SP>>` /
+    // `ConstraintEvaluators<DP, SP>`, so copies of the Model share them. The `*_fn_` members hold
+    // DP-only closures over the same evaluators for the solve-time methods that MICM calls with
+    // only DP.
+    std::any process_evaluators_{};
+    std::any process_forcing_fn_{};
+    std::any constraint_evaluators_{};
+    std::any constraint_residual_fn_{};
 
     /// @brief Returns the total state size (number of variables, number of parameters)
     std::tuple<std::size_t, std::size_t> StateSize() const
@@ -240,34 +269,27 @@ namespace miam
       };
     }
 
-    /// @brief Returns a function that calculates forcing terms
-    template<typename DenseMatrixPolicy>
+    /// @brief Returns a function that calculates forcing terms.
+    /// @details `SparseMatrixPolicy` is required so that process evaluators can pre-compute Jacobian flat IDs at build time.
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
     std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ForcingFunction(
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
     {
-      // Collect forcing functions from all processes and return a combined function
       auto phase_prefixes = CollectPhaseStatePrefixes();
-      auto providers = BuildProviders<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
-      std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>>
-          forcing_functions;
-      ForEachProcess(
-          [&](const auto& process)
-          {
-            auto forcing_fn = process.template ForcingFunction<DenseMatrixPolicy>(
-                phase_prefixes, state_parameter_indices, state_variable_indices, providers);
-            forcing_functions.push_back(forcing_fn);
-          });
-      return [forcing_functions](
+      auto nz_elements = NonZeroJacobianElements(state_variable_indices);
+      auto jacobian_builder = SparseMatrixPolicy::Create(state_variable_indices.size()).InitialValue(0.0);
+      for (const auto& elem : nz_elements)
+        jacobian_builder = jacobian_builder.WithElement(elem.first, elem.second);
+      SparseMatrixPolicy jacobian_pattern(jacobian_builder);
+
+      auto evaluators = BuildProcessEvaluators<DenseMatrixPolicy>(
+          phase_prefixes, state_parameter_indices, state_variable_indices, jacobian_pattern);
+      return [evaluators](
                  const DenseMatrixPolicy& state_parameters,
                  const DenseMatrixPolicy& state_variables,
                  DenseMatrixPolicy& forcing_terms)
-      {
-        for (const auto& fn : forcing_functions)
-        {
-          fn(state_parameters, state_variables, forcing_terms);
-        }
-      };
+      { evaluators->AddForcingTerms(state_parameters, state_variables, forcing_terms); };
     }
 
     /// @brief Returns a function that calculates Jacobian contributions
@@ -277,28 +299,13 @@ namespace miam
         const std::unordered_map<std::string, std::size_t>& state_variable_indices,
         const SparseMatrixPolicy& jacobian) const
     {
-      // Collect Jacobian functions from all processes and return a combined function
-      auto phase_prefixes = CollectPhaseStatePrefixes();
-      auto providers = BuildProviders<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
-      std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>>
-          jacobian_functions;
-      ForEachProcess(
-          [&](const auto& process)
-          {
-            auto jacobian_fn = process.template JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
-                phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, providers);
-            jacobian_functions.push_back(jacobian_fn);
-          });
-      return [jacobian_functions](
+      auto evaluators = BuildProcessEvaluators<DenseMatrixPolicy>(
+          CollectPhaseStatePrefixes(), state_parameter_indices, state_variable_indices, jacobian);
+      return [evaluators](
                  const DenseMatrixPolicy& state_parameters,
                  const DenseMatrixPolicy& state_variables,
                  SparseMatrixPolicy& jacobian)
-      {
-        for (const auto& fn : jacobian_functions)
-        {
-          fn(state_parameters, state_variables, jacobian);
-        }
-      };
+      { evaluators->SubtractJacobianTerms(state_parameters, state_variables, jacobian); };
     }
 
     // ── HasConstraints concept methods ──
@@ -435,56 +442,310 @@ namespace miam
       return elements;
     }
 
-    /// @brief Returns combined constraint residual function G(y) = 0
-    template<typename DenseMatrixPolicy>
-    std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ConstraintResidualFunction(
+    /// @brief Cache build-time indices for solve-time direct-dispatch methods
+    /// @details Called once by micm::SolverBuilder after the parameter map,
+    ///          species map, and Jacobian sparsity pattern are finalized. The builder
+    ///          supplies DenseMatrixPolicy; SparseMatrixPolicy is deduced from `jacobian`.
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    void FinalizeProcessSetup(
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
-        const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices,
+        const SparseMatrixPolicy& jacobian)
     {
+      state_parameter_indices_ = state_parameter_indices;
+      state_variable_indices_ = state_variable_indices;
+
       auto phase_prefixes = CollectPhaseStatePrefixes();
-      std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>> residual_fns;
+
+      std::vector<UpdateFn<DenseMatrixPolicy>> update_fns;
+      ForEachProcess(
+          [&](const auto& process)
+          {
+            update_fns.push_back(process.template UpdateStateParametersFunction<DenseMatrixPolicy>(
+                phase_prefixes, state_parameter_indices));
+          });
+      process_update_fns_ = std::move(update_fns);
+
+      auto shared_evaluators = BuildProcessEvaluators<DenseMatrixPolicy>(
+          phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+      process_forcing_fn_ = ForcingFn<DenseMatrixPolicy>(
+          [shared_evaluators](
+              const DenseMatrixPolicy& state_parameters, const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& forcing)
+          { shared_evaluators->AddForcingTerms(state_parameters, state_variables, forcing); });
+      process_evaluators_ = std::move(shared_evaluators);
+    }
+
+    /// @brief Cache build-time indices for constraint solve-time methods
+    /// @details The builder supplies DenseMatrixPolicy; SparseMatrixPolicy is deduced from `jacobian`.
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    void FinalizeConstraintSetup(
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices,
+        const SparseMatrixPolicy& jacobian)
+    {
+      state_parameter_indices_ = state_parameter_indices;
+      state_variable_indices_ = state_variable_indices;
+
+      auto phase_prefixes = CollectPhaseStatePrefixes();
+
+      std::vector<UpdateFn<DenseMatrixPolicy>> update_fns;
+      std::vector<InitFn<DenseMatrixPolicy>> init_fns;
       ForEachConstraint(
           [&](const auto& c)
           {
-            residual_fns.push_back(c.template ConstraintResidualFunction<DenseMatrixPolicy>(
-                phase_prefixes, state_parameter_indices, state_variable_indices));
+            update_fns.push_back(
+                c.template UpdateConstraintParametersFunction<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices));
+            if constexpr (requires {
+                            c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
+                                phase_prefixes, state_parameter_indices, state_variable_indices);
+                          })
+            {
+              init_fns.push_back(c.template InitializeConstraintParametersFunction<DenseMatrixPolicy>(
+                  phase_prefixes, state_parameter_indices, state_variable_indices));
+            }
           });
-      return [residual_fns](
-                 const DenseMatrixPolicy& state_variables,
-                 const DenseMatrixPolicy& state_parameters,
-                 DenseMatrixPolicy& residual)
+      constraint_update_fns_ = std::move(update_fns);
+      constraint_init_fns_ = std::move(init_fns);
+
+      auto evaluators = std::make_shared<ConstraintEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>>();
+      for (const auto& constraint : constraints_)
       {
-        for (const auto& fn : residual_fns)
-          fn(state_variables, state_parameters, residual);
-      };
+        std::visit(
+            [&](const auto& c)
+            {
+              using C = std::decay_t<decltype(c)>;
+              if constexpr (std::is_same_v<C, LinearConstraint>)
+                evaluators->linear_.emplace_back(c, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+              else if constexpr (std::is_same_v<C, DissolvedEquilibriumConstraint>)
+                evaluators->dissolved_equilibrium_.emplace_back(
+                    c, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+              else if constexpr (std::is_same_v<C, HenrysLawEquilibriumConstraint>)
+                evaluators->henrys_law_equilibrium_.emplace_back(
+                    c, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+            },
+            constraint);
+      }
+
+      std::shared_ptr<const ConstraintEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>> shared_evaluators = std::move(evaluators);
+      constraint_residual_fn_ = ForcingFn<DenseMatrixPolicy>(
+          [shared_evaluators](
+              const DenseMatrixPolicy& state_parameters, const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& forcing)
+          { shared_evaluators->AddResidual(state_parameters, state_variables, forcing); });
+      constraint_evaluators_ = std::move(shared_evaluators);
     }
 
-    /// @brief Returns combined constraint Jacobian function (subtracts dG/dy)
+    /// @brief Solve-time: refresh temperature-/pressure-dependent process parameters
+    template<typename DenseMatrixPolicy>
+    void UpdateStateParameters(
+        const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions,
+        DenseMatrixPolicy& state_parameters) const
+    {
+      if (process_update_fns_.has_value())
+        for (const auto& fn : std::any_cast<const std::vector<UpdateFn<DenseMatrixPolicy>>&>(process_update_fns_))
+          fn(conditions, state_parameters);
+    }
+
+    /// @brief Solve-time: add process forcing (tendency) contributions
+    template<typename DenseMatrixPolicy>
+    void AddForcingTerms(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        DenseMatrixPolicy& forcing) const
+    {
+      if (process_forcing_fn_.has_value())
+        std::any_cast<const ForcingFn<DenseMatrixPolicy>&>(process_forcing_fn_)(state_parameters, state_variables, forcing);
+    }
+
+    /// @brief Solve-time: subtract process Jacobian contributions (-J convention)
     template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
-    std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> ConstraintJacobianFunction(
+    void SubtractJacobianTerms(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        SparseMatrixPolicy& jacobian) const
+    {
+      using EvaluatorsPtr = std::shared_ptr<const ProcessEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>>;
+      if (process_evaluators_.has_value())
+        std::any_cast<const EvaluatorsPtr&>(process_evaluators_)->SubtractJacobianTerms(state_parameters, state_variables, jacobian);
+    }
+
+    /// @brief Solve-time: refresh temperature-/pressure-dependent constraint parameters
+    template<typename DenseMatrixPolicy>
+    void UpdateConstraintStateParameters(
+        const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions,
+        DenseMatrixPolicy& state_parameters) const
+    {
+      if (constraint_update_fns_.has_value())
+        for (const auto& fn : std::any_cast<const std::vector<UpdateFn<DenseMatrixPolicy>>&>(constraint_update_fns_))
+          fn(conditions, state_parameters);
+    }
+
+    /// @brief Solve-time: diagnose constraint parameters from current state
+    template<typename DenseMatrixPolicy>
+    void InitializeConstraintParameters(
+        const DenseMatrixPolicy& state_variables,
+        DenseMatrixPolicy& state_parameters) const
+    {
+      if (constraint_init_fns_.has_value())
+        for (const auto& fn : std::any_cast<const std::vector<InitFn<DenseMatrixPolicy>>&>(constraint_init_fns_))
+          fn(state_variables, state_parameters);
+    }
+
+    /// @brief Solve-time: add constraint residual G(y) to algebraic forcing rows
+    template<typename DenseMatrixPolicy>
+    void AddConstraintResidual(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        DenseMatrixPolicy& forcing) const
+    {
+      if (constraint_residual_fn_.has_value())
+        std::any_cast<const ForcingFn<DenseMatrixPolicy>&>(constraint_residual_fn_)(
+            state_parameters, state_variables, forcing);
+    }
+
+    /// @brief Solve-time: subtract dG/dy from algebraic Jacobian rows (-J convention)
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    void SubtractConstraintJacobian(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        SparseMatrixPolicy& jacobian) const
+    {
+      using EvaluatorsPtr = std::shared_ptr<const ConstraintEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>>;
+      if (constraint_evaluators_.has_value())
+        std::any_cast<const EvaluatorsPtr&>(constraint_evaluators_)->SubtractJacobian(state_parameters, state_variables, jacobian);
+    }
+
+   private:
+    template<typename DenseMatrixPolicy>
+    using DescriptorMap = std::map<std::string, std::map<AerosolProperty, AerosolPropertyDescriptor<DenseMatrixPolicy>>>;
+
+    template<typename DenseMatrixPolicy>
+    using UpdateFn =
+        std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>;
+
+    template<typename DenseMatrixPolicy>
+    using InitFn = std::function<void(const DenseMatrixPolicy&, DenseMatrixPolicy&)>;
+
+    template<typename DenseMatrixPolicy>
+    using ForcingFn = std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>;
+
+    /// @brief Process evaluators built by FinalizeProcessSetup for one <DP, SP> pair
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    struct ProcessEvaluators
+    {
+      std::vector<DissolvedReactionEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> dissolved_reactions_;
+      std::vector<DissolvedReversibleReactionEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> dissolved_reversible_reactions_;
+      std::vector<HenrysLawPhaseTransferEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> henrys_law_phase_transfers_;
+      DescriptorMap<DenseMatrixPolicy> descriptors_;
+
+      void AddForcingTerms(
+          const DenseMatrixPolicy& state_parameters,
+          const DenseMatrixPolicy& state_variables,
+          DenseMatrixPolicy& forcing) const
+      {
+        for (const auto& evaluator : dissolved_reactions_)
+          evaluator.AddForcingTerms(state_parameters, state_variables, forcing);
+        for (const auto& evaluator : dissolved_reversible_reactions_)
+          evaluator.AddForcingTerms(state_parameters, state_variables, forcing);
+        for (const auto& evaluator : henrys_law_phase_transfers_)
+          evaluator.AddForcingTerms(state_parameters, state_variables, forcing, descriptors_);
+      }
+
+      void SubtractJacobianTerms(
+          const DenseMatrixPolicy& state_parameters,
+          const DenseMatrixPolicy& state_variables,
+          SparseMatrixPolicy& jacobian) const
+      {
+        for (const auto& evaluator : dissolved_reactions_)
+          evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
+        for (const auto& evaluator : dissolved_reversible_reactions_)
+          evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian);
+        for (const auto& evaluator : henrys_law_phase_transfers_)
+          evaluator.SubtractJacobianTerms(state_parameters, state_variables, jacobian, descriptors_);
+      }
+    };
+
+    /// @brief Constraint evaluators built by FinalizeConstraintSetup for one <DP, SP> pair
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    struct ConstraintEvaluators
+    {
+      std::vector<LinearConstraintEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> linear_;
+      std::vector<DissolvedEquilibriumConstraintEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> dissolved_equilibrium_;
+      std::vector<HenrysLawEquilibriumConstraintEvaluator<DenseMatrixPolicy, SparseMatrixPolicy>> henrys_law_equilibrium_;
+
+      void AddResidual(
+          const DenseMatrixPolicy& state_parameters,
+          const DenseMatrixPolicy& state_variables,
+          DenseMatrixPolicy& forcing) const
+      {
+        for (const auto& evaluator : linear_)
+          evaluator.AddResidual(state_variables, state_parameters, forcing);
+        for (const auto& evaluator : dissolved_equilibrium_)
+          evaluator.AddResidual(state_variables, state_parameters, forcing);
+        for (const auto& evaluator : henrys_law_equilibrium_)
+          evaluator.AddResidual(state_variables, state_parameters, forcing);
+      }
+
+      void SubtractJacobian(
+          const DenseMatrixPolicy& state_parameters,
+          const DenseMatrixPolicy& state_variables,
+          SparseMatrixPolicy& jacobian) const
+      {
+        for (const auto& evaluator : linear_)
+          evaluator.SubtractJacobian(state_variables, state_parameters, jacobian);
+        for (const auto& evaluator : dissolved_equilibrium_)
+          evaluator.SubtractJacobian(state_variables, state_parameters, jacobian);
+        for (const auto& evaluator : henrys_law_equilibrium_)
+          evaluator.SubtractJacobian(state_variables, state_parameters, jacobian);
+      }
+    };
+
+    /// @brief Builds the process evaluators for one <DP, SP> pair. The result is shared, because
+    ///        the evaluators hold views into their own index storage and must not be copied.
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    std::shared_ptr<const ProcessEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>> BuildProcessEvaluators(
+        const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices,
         const SparseMatrixPolicy& jacobian) const
     {
-      auto phase_prefixes = CollectPhaseStatePrefixes();
-      std::vector<std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>> jac_fns;
-      ForEachConstraint(
-          [&](const auto& c)
-          {
-            jac_fns.push_back(c.template ConstraintJacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
-                phase_prefixes, state_parameter_indices, state_variable_indices, jacobian));
-          });
-      return [jac_fns](
-                 const DenseMatrixPolicy& state_variables,
-                 const DenseMatrixPolicy& state_parameters,
-                 SparseMatrixPolicy& jacobian_values) mutable
+      // Reference (CPU) descriptor map used only to enumerate `n_deps` counts for
+      // Jacobian flat-ID layout in HenrysLawPhaseTransferEvaluator.
+      using ReferenceDense = micm::Matrix<double>;
+      auto reference_descriptors =
+          BuildDescriptors<ReferenceDense>(phase_prefixes, state_parameter_indices, state_variable_indices);
+
+      auto evaluators = std::make_shared<ProcessEvaluators<DenseMatrixPolicy, SparseMatrixPolicy>>();
+      for (const auto& process : processes_)
       {
-        for (auto& fn : jac_fns)
-          fn(state_variables, state_parameters, jacobian_values);
-      };
+        std::visit(
+            [&](const auto& p)
+            {
+              using P = std::decay_t<decltype(p)>;
+              if constexpr (std::is_same_v<P, DissolvedReaction>)
+              {
+                evaluators->dissolved_reactions_.emplace_back(
+                    p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+              }
+              else if constexpr (std::is_same_v<P, DissolvedReversibleReaction>)
+              {
+                evaluators->dissolved_reversible_reactions_.emplace_back(
+                    p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian);
+              }
+              else if constexpr (std::is_same_v<P, HenrysLawPhaseTransfer>)
+              {
+                evaluators->henrys_law_phase_transfers_.emplace_back(
+                    p, phase_prefixes, state_parameter_indices, state_variable_indices, jacobian, reference_descriptors);
+              }
+            },
+            process);
+      }
+      if (!evaluators->henrys_law_phase_transfers_.empty())
+        evaluators->descriptors_ =
+            BuildDescriptors<DenseMatrixPolicy>(phase_prefixes, state_parameter_indices, state_variable_indices);
+
+      return evaluators;
     }
 
-   private:
     /// @brief Iterate over all registered processes with a generic callable
     template<typename Func>
     void ForEachProcess(Func&& fn) const
@@ -505,11 +766,11 @@ namespace miam
       }
     }
 
-    /// @brief Build aerosol property providers for all processes
+    /// @brief Build aerosol property descriptors for all processes.
     /// @details Queries RequiredAerosolProperties() on each process, finds the representation
-    ///          that owns each phase prefix, and calls GetPropertyProvider() to create providers.
+    ///          that owns each phase prefix, and calls GetPropertyDescriptor() to create descriptors.
     template<typename DenseMatrixPolicy>
-    std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> BuildProviders(
+    std::map<std::string, std::map<AerosolProperty, AerosolPropertyDescriptor<DenseMatrixPolicy>>> BuildDescriptors(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
@@ -529,7 +790,7 @@ namespace miam
               }
           });
 
-      std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> result;
+      std::map<std::string, std::map<AerosolProperty, AerosolPropertyDescriptor<DenseMatrixPolicy>>> result;
       if (required.empty())
         return result;
 
@@ -541,7 +802,7 @@ namespace miam
           throw MiamException(
               MIAM_ERROR_CATEGORY_INTERNAL,
               MIAM_INTERNAL_MISSING_PHASE_PREFIX,
-              "BuildProviders: phase not found: " + phase_name);
+              "BuildDescriptors: phase not found: " + phase_name);
         }
 
         for (const auto& prefix : pp_it->second)
@@ -557,8 +818,9 @@ namespace miam
                   {
                     for (const auto& prop : properties)
                     {
-                      result[prefix][prop] = r.template GetPropertyProvider<DenseMatrixPolicy>(
-                          prop, state_parameter_indices, state_variable_indices, phase_name);
+                      result[prefix][prop] = WidenDescriptorVariant<DenseMatrixPolicy>(
+                          r.template GetPropertyDescriptor<DenseMatrixPolicy>(
+                              prop, state_parameter_indices, state_variable_indices, phase_name));
                     }
                   }
                 },

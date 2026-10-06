@@ -34,8 +34,8 @@ namespace
 
     DissolvedReversibleReaction MakeReaction() const
     {
-      return DissolvedReversibleReaction{ { [kf = k_forward](const micm::Conditions&) { return kf; } },
-                                          { [kr = k_reverse](const micm::Conditions&) { return kr; } },
+      return DissolvedReversibleReaction{ UserDefinedConstantExpression{ k_forward },
+                                          UserDefinedConstantExpression{ k_reverse },
                                           { a },
                                           { b },
                                           solvent,
@@ -68,8 +68,6 @@ TEST(MiamProcessSet, ConstructFromDissolvedReversibleReaction)
   EXPECT_TRUE(ps.required_aerosol_properties_);
   EXPECT_TRUE(ps.non_zero_jacobian_elements_);
   EXPECT_TRUE(ps.update_state_parameters_function_);
-  EXPECT_TRUE(ps.get_forcing_function_);
-  EXPECT_TRUE(ps.get_jacobian_function_);
 }
 
 TEST(MiamProcessSet, ProcessParameterNames)
@@ -120,9 +118,9 @@ TEST(MiamProcessSet, NonZeroJacobianElements)
   ProcessSet ps(fix.MakeReaction());
   auto phase_prefixes = fix.MakePhaseMap();
   auto var_indices = fix.MakeVariableIndices();
-  ProcessSet::ProviderMap providers;  // empty — not used by this process
+  ProcessSet::DescriptorMap descriptors;  // empty — not used by this process
 
-  auto elements = ps.non_zero_jacobian_elements_(phase_prefixes, var_indices, providers);
+  auto elements = ps.non_zero_jacobian_elements_(phase_prefixes, var_indices, descriptors);
 
   // A <-> B with solvent: the reaction touches all 3 species
   // All pairs of (reactant, product, solvent) × (reactant, product, solvent) should appear
@@ -172,121 +170,6 @@ TEST(MiamProcessSet, UpdateStateParametersFunction)
     double val1 = state_parameters[i_cell][1];
     EXPECT_TRUE((val0 == 0.1 && val1 == 0.05) || (val0 == 0.05 && val1 == 0.1));
   }
-}
-
-TEST(MiamProcessSet, ForcingFunction)
-{
-  TestFixture fix;
-  auto reaction = fix.MakeReaction();
-  auto phase_prefixes = fix.MakePhaseMap();
-
-  auto param_names = reaction.ProcessParameterNames(phase_prefixes);
-  ProcessSet::IndexMap param_indices;
-  std::size_t idx = 0;
-  for (const auto& name : param_names)
-  {
-    param_indices[name] = idx++;
-  }
-  auto var_indices = fix.MakeVariableIndices();
-
-  // Wrap the same reaction so UUIDs match the parameter index map
-  ProcessSet ps(reaction);
-  ProcessSet::ProviderMap providers;
-
-  auto forcing_fn = ps.get_forcing_function_(phase_prefixes, param_indices, var_indices, std::move(providers));
-  EXPECT_TRUE(forcing_fn);
-
-  // Set up state: 1 grid cell, 2 params, 3 variables
-  MatrixPolicy state_parameters(1, param_names.size(), 0.0);
-  MatrixPolicy state_variables(1, 3, 0.0);
-  MatrixPolicy forcing(1, 3, 0.0);
-
-  // Fill parameters using the same wrapped process
-  auto update_fn = ps.update_state_parameters_function_(phase_prefixes, param_indices);
-  Vector<micm::Conditions> conditions(1);
-  conditions[0].temperature_ = 298.15;
-  update_fn(conditions, state_parameters);
-
-  // Set concentration: A=1.0, B=0.0, SOLVENT=0.017
-  state_variables[0][0] = 1.0;
-  state_variables[0][1] = 0.0;
-  state_variables[0][2] = 0.017;
-
-  forcing_fn(state_parameters, state_variables, forcing);
-
-  // For A <-> B with 1 reactant and 1 product:
-  //   forward = k_f * [A] / [SOLVENT]^(n_reactants-1) = k_f * [A]
-  //   reverse = k_r * [B] / [SOLVENT]^(n_products-1)  = k_r * [B]
-  //   f_A = -forward + reverse, f_B = forward - reverse
-  double forward_val = fix.k_forward * 1.0;
-  double reverse_val = fix.k_reverse * 0.0;
-  double expected_f_A = -forward_val + reverse_val;
-  double expected_f_B = forward_val - reverse_val;
-
-  EXPECT_NEAR(forcing[0][0], expected_f_A, 1e-6);
-  EXPECT_NEAR(forcing[0][1], expected_f_B, 1e-6);
-}
-
-TEST(MiamProcessSet, JacobianFunction)
-{
-  TestFixture fix;
-  auto reaction = fix.MakeReaction();
-  auto phase_prefixes = fix.MakePhaseMap();
-
-  auto param_names = reaction.ProcessParameterNames(phase_prefixes);
-  ProcessSet::IndexMap param_indices;
-  std::size_t idx = 0;
-  for (const auto& name : param_names)
-  {
-    param_indices[name] = idx++;
-  }
-  auto var_indices = fix.MakeVariableIndices();
-
-  // Build the sparse Jacobian structure
-  auto nz_elements = reaction.NonZeroJacobianElements(phase_prefixes, var_indices);
-  auto jacobian_builder = SparseMatrixPolicy::Create(3).SetNumberOfBlocks(1);
-  for (const auto& [row, col] : nz_elements)
-  {
-    jacobian_builder = jacobian_builder.WithElement(row, col);
-  }
-  SparseMatrixPolicy jacobian(jacobian_builder);
-  jacobian.Fill(0.0);
-
-  // Wrap the same reaction so UUIDs match
-  ProcessSet ps(reaction);
-  ProcessSet::ProviderMap providers;
-
-  auto jacobian_fn = ps.get_jacobian_function_(phase_prefixes, param_indices, var_indices, jacobian, std::move(providers));
-  EXPECT_TRUE(jacobian_fn);
-
-  // Set up state: 1 grid cell
-  MatrixPolicy state_parameters(1, param_names.size(), 0.0);
-  MatrixPolicy state_variables(1, 3, 0.0);
-
-  // Fill parameters using the same wrapped process
-  auto update_fn = ps.update_state_parameters_function_(phase_prefixes, param_indices);
-  Vector<micm::Conditions> conditions(1);
-  conditions[0].temperature_ = 298.15;
-  update_fn(conditions, state_parameters);
-
-  state_variables[0][0] = 1.0;    // A
-  state_variables[0][1] = 0.5;    // B
-  state_variables[0][2] = 0.017;  // SOLVENT
-
-  jacobian_fn(state_parameters, state_variables, jacobian);
-
-  // Verify non-zero Jacobian entries were written
-  bool has_nonzero = false;
-  for (const auto& [row, col] : nz_elements)
-  {
-    double val = jacobian[0][row][col];
-    if (val != 0.0)
-    {
-      has_nonzero = true;
-      break;
-    }
-  }
-  EXPECT_TRUE(has_nonzero);
 }
 
 TEST(MiamProcessSet, MoveConstruction)
