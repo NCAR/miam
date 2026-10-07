@@ -623,14 +623,14 @@ namespace miam
               // 2. Compute soft-min of reactant concentrations: C_min = (sum R_i^{-p})^{-1/p}
                 forcing_view.ForEachRowStrict(
                     [](const micm::Real& R, micm::Real& acc)
-                    { acc = std::pow(std::max(R, micm::Real(1.0e-300)), -micm::Real(10.0)); },
+                    { acc = std::pow(R > micm::Real(1.0e-300) ? R : micm::Real(1.0e-300), -micm::Real(10.0)); },
                     state_view.GetConstColumnView(reactant_view[phase * num_reactants + 0]),
                   accum);
                 for (std::size_t r = 1; r < num_reactants; ++r)
               {
                   forcing_view.ForEachRowStrict(
                       [](const micm::Real& R, micm::Real& acc)
-                      { acc += std::pow(std::max(R, micm::Real(1.0e-300)), -micm::Real(10.0)); },
+                      { acc += std::pow(R > micm::Real(1.0e-300) ? R : micm::Real(1.0e-300), -micm::Real(10.0)); },
                       state_view.GetConstColumnView(reactant_view[phase * num_reactants + r]),
                     accum);
               }
@@ -740,14 +740,14 @@ namespace miam
               // Step B: Compute soft-min sum into c_min_var
                 jac_view.ForEachBlockStrict(
                     [](const micm::Real& R, micm::Real& cm)
-                    { cm = std::pow(std::max(R, micm::Real(1.0e-300)), -micm::Real(10.0)); },
+                    { cm = std::pow(R > micm::Real(1.0e-300) ? R : micm::Real(1.0e-300), -micm::Real(10.0)); },
                     state_view.GetConstColumnView(reactant_view[phase * num_reactants + 0]),
                   c_min_var);
                 for (std::size_t r = 1; r < num_reactants; ++r)
               {
                   jac_view.ForEachBlockStrict(
                       [](const micm::Real& R, micm::Real& cm)
-                      { cm += std::pow(std::max(R, micm::Real(1.0e-300)), -micm::Real(10.0)); },
+                      { cm += std::pow(R > micm::Real(1.0e-300) ? R : micm::Real(1.0e-300), -micm::Real(10.0)); },
                       state_view.GetConstColumnView(reactant_view[phase * num_reactants + r]),
                     c_min_var);
               }
@@ -804,7 +804,7 @@ namespace miam
                          const micm::Real& R,
                          micm::Real& partial)
                     {
-                        const micm::Real ratio = cm / std::max(R, micm::Real(1.0e-300));
+                        const micm::Real ratio = cm / (R > micm::Real(1.0e-300) ? R : micm::Real(1.0e-300));
                         partial = s2 * partial + cr * std::pow(ratio, micm::Real(10.0) + 1.0);
                     },
                     sech2_var,
