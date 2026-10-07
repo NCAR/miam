@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <miam/processes/constants/rate_constant.hpp>
 #include <miam/representations/aerosol_property.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
@@ -61,7 +62,7 @@ namespace miam
   class DissolvedReaction
   {
    public:
-    std::function<double(const micm::Conditions& conditions)> rate_constant_;  ///< Rate constant function
+    RateConstant rate_constant_;  ///< Rate constant
     std::vector<micm::Species> reactants_;                                     ///< Reactant species
     std::vector<micm::Species> products_;                                      ///< Product species
     micm::Species solvent_;                                                    ///< Solvent species
@@ -78,7 +79,7 @@ namespace miam
 
     /// @brief Constructor
     DissolvedReaction(
-        std::function<double(const micm::Conditions& conditions)> rate_constant,
+        RateConstant rate_constant,
         const std::vector<micm::Species>& reactants,
         const std::vector<micm::Species>& products,
         micm::Species solvent,
@@ -257,7 +258,7 @@ namespace miam
           [this, k_index](auto&& conditions, auto&& params)
           {
             params.ForEachRow(
-                [&](const micm::Conditions& condition, double& parameter) { parameter = rate_constant_(condition); },
+                [&](const micm::Conditions& condition, double& parameter) { parameter = Calculate(rate_constant_, condition); },
                 conditions,
                 params.GetColumnView(k_index));
           },

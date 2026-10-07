@@ -89,7 +89,7 @@ TEST(DissolvedReaction, SpeciesUsedWithSinglePrefix)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = 0.1;
 
   DissolvedReaction reaction{ { rate },
                               { a },    // reactants
@@ -118,7 +118,7 @@ TEST(DissolvedReaction, SpeciesUsedWithMultiplePrefixes)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = 0.1;
 
   DissolvedReaction reaction{ { rate },
                               { a, b },  // reactants
@@ -152,7 +152,7 @@ TEST(DissolvedReaction, SpeciesUsedWithNoMatchingPhase)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = 0.1;
 
   DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
 
@@ -170,7 +170,7 @@ TEST(DissolvedReaction, SpeciesUsedDuplicateHandling)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = 0.1;
 
   DissolvedReaction reaction{ { rate },
                               { a },  // reactants
@@ -206,7 +206,7 @@ TEST(DissolvedReaction, NonZeroJacobianElementsBasic)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = 0.1;
 
   DissolvedReaction reaction{ { rate },
                               { a },     // 1 reactant
@@ -258,7 +258,7 @@ TEST(DissolvedReaction, NonZeroJacobianElementsMultipleReactants)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = 0.1;
 
   DissolvedReaction reaction{ { rate },
                               { a, b },  // 2 reactants
@@ -294,7 +294,7 @@ TEST(DissolvedReaction, NonZeroJacobianElementsMultiplePrefixes)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = 0.1;
 
   // A -> B with solvent S
   DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
@@ -332,7 +332,7 @@ TEST(DissolvedReaction, UpdateStateParametersFunctionBasic)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
   double k = 0.1;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = k;
 
   DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
 
@@ -371,7 +371,7 @@ TEST(DissolvedReaction, UpdateStateParametersFunctionTemperatureDependent)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1 * std::exp(-3000.0 / conditions.temperature_); };
+  auto rate = micm::ArrheniusRateConstantParameters{ .A_ = 0.1, .C_ = -3000.0 };
 
   DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
 
@@ -413,7 +413,7 @@ TEST(DissolvedReaction, UpdateStateParametersFunctionMissingParameter)
 
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
-  auto rate = [](const micm::Conditions& conditions) { return 0.1; };
+  auto rate = 0.1;
 
   DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
 
@@ -442,7 +442,7 @@ TEST(DissolvedReaction, ForcingFunctionBasicRates)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
   double k = 0.1;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = k;
 
   // A -> B with solvent S
   DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
@@ -498,7 +498,7 @@ TEST(DissolvedReaction, ForcingFunctionSolventNormalization)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { solvent } } };
 
   double k = 1.0;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = k;
 
   // A + B -> C with solvent S
   DissolvedReaction reaction{ { rate },
@@ -558,7 +558,7 @@ TEST(DissolvedReaction, ForcingFunctionMultipleProducts)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { solvent } } };
 
   double k = 2.0;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = k;
 
   // A -> B + C with solvent S
   DissolvedReaction reaction{ { rate },
@@ -617,7 +617,7 @@ TEST(DissolvedReaction, ForcingFunctionMultipleCells)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
   double k = 0.1;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = k;
 
   DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
 
@@ -673,7 +673,7 @@ TEST(DissolvedReaction, ForcingFunctionMultiplePhaseInstances)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
   double k = 0.1;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = k;
 
   DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
 
@@ -743,7 +743,7 @@ TEST(DissolvedReaction, JacobianFunctionBasicPartials)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { solvent } } };
 
   double k = 0.1;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = k;
 
   // A -> B with solvent S
   DissolvedReaction reaction{ { rate }, { a }, { b }, solvent, phase };
@@ -811,7 +811,7 @@ TEST(DissolvedReaction, JacobianFunctionMultipleReactants)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { solvent } } };
 
   double k = 1.0;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = k;
 
   // A + B -> C with solvent S
   DissolvedReaction reaction{ { rate },
@@ -898,7 +898,7 @@ TEST(DissolvedReaction, JacobianFunctionSolventPartial)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c } } };
 
   double k = 2.0;
-  auto rate = [k](const micm::Conditions& conditions) { return k; };
+  auto rate = k;
 
   // A + C -> B with solvent C (solvent is a reactant)
   // n_r = 2, rate = k / [C]^1 * [A] * [C] = k * [A]
@@ -975,7 +975,7 @@ TEST(DissolvedReaction, JacobianFDUnimolecular)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
 
   double k = 0.1;
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase };
+  DissolvedReaction reaction{ { k }, { a }, { b }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1006,7 +1006,7 @@ TEST(DissolvedReaction, JacobianFDBimolecular)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { s } } };
 
   double k = 1.0;
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a, b }, { c }, s, phase };
+  DissolvedReaction reaction{ { k }, { a, b }, { c }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1037,7 +1037,7 @@ TEST(DissolvedReaction, JacobianFDMultiCell)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
 
   double k = 0.5;
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase };
+  DissolvedReaction reaction{ { k }, { a }, { b }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1073,7 +1073,7 @@ TEST(DissolvedReaction, JacobianFDMultiPhaseInstance)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { s } } };
 
   double k = 0.2;
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase };
+  DissolvedReaction reaction{ { k }, { a }, { b }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("SMALL");
@@ -1107,7 +1107,7 @@ TEST(DissolvedReaction, JacobianFDSolventIsReactant)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c } } };
 
   double k = 2.0;
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a, c }, { b }, c, phase };
+  DissolvedReaction reaction{ { k }, { a, c }, { b }, c, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1144,7 +1144,7 @@ TEST(DissolvedReaction, ForcingFunctionSolventFloorZeroSolvent)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { s } } };
 
   double k = 1.0;
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a, b }, { c }, s, phase };
+  DissolvedReaction reaction{ { k }, { a, b }, { c }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1186,7 +1186,7 @@ TEST(DissolvedReaction, JacobianFunctionSolventFloorZeroSolvent)
   auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { s } } };
 
   double k = 1.0;
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a, b }, { c }, s, phase };
+  DissolvedReaction reaction{ { k }, { a, b }, { c }, s, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1265,8 +1265,8 @@ TEST(DissolvedReaction, ForcingFunctionCappedUncappedRegime)
   double k = 1.0e-6;    // very slow
   double t_half = 1.0;  // short half-life → r_max = [A] / t_half = large compared to r
 
-  DissolvedReaction uncapped{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase };
-  DissolvedReaction capped{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half };
+  DissolvedReaction uncapped{ { k }, { a }, { b }, s, phase };
+  DissolvedReaction capped{ { k }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1312,7 +1312,7 @@ TEST(DissolvedReaction, ForcingFunctionCappedSaturatedRegime)
   double k = 1.0e6;        // very fast reaction
   double t_half = 1000.0;  // long half-life → r_max = [A] / t_half = small
 
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half };
+  DissolvedReaction reaction{ { k }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1353,7 +1353,7 @@ TEST(DissolvedReaction, JacobianFDCappedUncappedRegime)
   double k = 1.0e-5;    // slow reaction, uncapped
   double t_half = 0.1;  // r_max = [A]/t_half >> r
 
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half };
+  DissolvedReaction reaction{ { k }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1384,7 +1384,7 @@ TEST(DissolvedReaction, JacobianFDCappedSaturatedRegime)
   double k = 1.0e5;  // fast reaction, deeply capped
   double t_half = 1000.0;
 
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a }, { b }, s, phase, 1.0e-20, t_half };
+  DissolvedReaction reaction{ { k }, { a }, { b }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1420,7 +1420,7 @@ TEST(DissolvedReaction, JacobianFDCappedBimolecular)
   double k = 50.0;       // moderately fast
   double t_half = 10.0;  // r_max = min(A,B) / t_half
 
-  DissolvedReaction reaction{ { [k](const micm::Conditions&) { return k; } }, { a, b }, { c }, s, phase, 1.0e-20, t_half };
+  DissolvedReaction reaction{ { k }, { a, b }, { c }, s, phase, 1.0e-20, t_half };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");

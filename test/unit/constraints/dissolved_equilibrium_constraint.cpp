@@ -58,7 +58,7 @@ namespace
 
 TEST(DissolvedEquilibriumConstraint, AlgebraicVariableNamesSinglePrefix)
 {
-  auto keq = [](const micm::Conditions&) { return 10.0; };
+  auto keq = EquilibriumConstant{ .A_ = 10.0 };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -78,7 +78,7 @@ TEST(DissolvedEquilibriumConstraint, AlgebraicVariableNamesSinglePrefix)
 
 TEST(DissolvedEquilibriumConstraint, AlgebraicVariableNamesMultiplePrefixes)
 {
-  auto keq = [](const micm::Conditions&) { return 10.0; };
+  auto keq = EquilibriumConstant{ .A_ = 10.0 };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -100,7 +100,7 @@ TEST(DissolvedEquilibriumConstraint, AlgebraicVariableNamesMultiplePrefixes)
 
 TEST(DissolvedEquilibriumConstraint, AlgebraicVariableNamesNoMatchingPhase)
 {
-  auto keq = [](const micm::Conditions&) { return 10.0; };
+  auto keq = EquilibriumConstant{ .A_ = 10.0 };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -121,7 +121,7 @@ TEST(DissolvedEquilibriumConstraint, AlgebraicVariableNamesNoMatchingPhase)
 
 TEST(DissolvedEquilibriumConstraint, SpeciesDependencies)
 {
-  auto keq = [](const micm::Conditions&) { return 10.0; };
+  auto keq = EquilibriumConstant{ .A_ = 10.0 };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -147,7 +147,7 @@ TEST(DissolvedEquilibriumConstraint, SpeciesDependencies)
 
 TEST(DissolvedEquilibriumConstraint, NonZeroJacobianElements)
 {
-  auto keq = [](const micm::Conditions&) { return 10.0; };
+  auto keq = EquilibriumConstant{ .A_ = 10.0 };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -181,7 +181,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualSimpleAB)
 {
   // G = K_eq * [A] - [B] = 0
   double K_eq = 10.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -203,7 +203,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualSimpleAB)
   using DMP = micm::Matrix<double>;
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
-  Vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1, micm::Conditions{ .temperature_ = 298.15 });
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
@@ -228,7 +228,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultiReactant)
 {
   // G = K_eq * [A]*[B] / [S] - [C] / [S]^0 = K_eq * [A]*[B]/[S] - [C]
   double K_eq = 2.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A, B })
@@ -250,7 +250,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultiReactant)
   using DMP = micm::Matrix<double>;
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
-  Vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1, micm::Conditions{ .temperature_ = 298.15 });
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
@@ -276,7 +276,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultiReactant)
 TEST(DissolvedEquilibriumConstraint, ResidualMultipleInstances)
 {
   double K_eq = 5.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -301,7 +301,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleInstances)
   using DMP = micm::Matrix<double>;
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
-  Vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1, micm::Conditions{ .temperature_ = 298.15 });
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
@@ -329,7 +329,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleInstances)
 TEST(DissolvedEquilibriumConstraint, ResidualMultipleCells)
 {
   double K_eq = 4.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -350,7 +350,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleCells)
   using DMP = micm::Matrix<double>;
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   DMP state_params{ 2, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
-  Vector<micm::Conditions> conditions(2);
+  Vector<micm::Conditions> conditions(2, micm::Conditions{ .temperature_ = 298.15 });
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
@@ -380,7 +380,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianSimpleAB)
   // G = K_eq * [A] - [B]
   // dG/dA = K_eq, dG/dB = -1
   double K_eq = 10.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -402,7 +402,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianSimpleAB)
   using SMP = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
-  Vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1, micm::Conditions{ .temperature_ = 298.15 });
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
@@ -439,7 +439,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianMultiReactant)
 {
   // G = K_eq * [A]*[B]/[S] - [C]
   double K_eq = 2.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A, B })
@@ -462,7 +462,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianMultiReactant)
   using SMP = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   DMP state_params{ 1, std::max(pi.size(), std::size_t{ 1 }), 0.0 };
-  Vector<micm::Conditions> conditions(1);
+  Vector<micm::Conditions> conditions(1, micm::Conditions{ .temperature_ = 298.15 });
   auto update_fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, pi);
   update_fn(conditions, state_params);
 
@@ -505,8 +505,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianMultiReactant)
 
 TEST(DissolvedEquilibriumConstraint, UpdateConstraintParametersTemperatureDep)
 {
-  // K_eq(T) = 1000.0 / T
-  auto keq = [](const micm::Conditions& c) { return 1000.0 / c.temperature_; };
+  auto keq = EquilibriumConstant{ .A_ = 4.0, .C_ = 1500.0, .T0_ = 250.0 };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -523,7 +522,7 @@ TEST(DissolvedEquilibriumConstraint, UpdateConstraintParametersTemperatureDep)
   auto pi = BuildParamIndices(constraint, phase_prefixes);
   ASSERT_EQ(pi.size(), 1u);
 
-  Vector<micm::Conditions> conditions(3);
+  Vector<micm::Conditions> conditions(3, micm::Conditions{ .temperature_ = 298.15 });
   conditions[0].temperature_ = 250.0;
   conditions[1].temperature_ = 300.0;
   conditions[2].temperature_ = 350.0;
@@ -533,9 +532,9 @@ TEST(DissolvedEquilibriumConstraint, UpdateConstraintParametersTemperatureDep)
   update_fn(conditions, state_params);
 
   std::size_t keq_col = pi.begin()->second;
-  EXPECT_NEAR(state_params[0][keq_col], 1000.0 / 250.0, 1.0e-12);
-  EXPECT_NEAR(state_params[1][keq_col], 1000.0 / 300.0, 1.0e-12);
-  EXPECT_NEAR(state_params[2][keq_col], 1000.0 / 350.0, 1.0e-12);
+  EXPECT_NEAR(state_params[0][keq_col], Calculate(keq, conditions[0]), 1.0e-12);
+  EXPECT_NEAR(state_params[1][keq_col], Calculate(keq, conditions[1]), 1.0e-12);
+  EXPECT_NEAR(state_params[2][keq_col], Calculate(keq, conditions[2]), 1.0e-12);
 }
 
 // ── Builder ──
@@ -543,14 +542,6 @@ TEST(DissolvedEquilibriumConstraint, UpdateConstraintParametersTemperatureDep)
 TEST(DissolvedEquilibriumConstraint, BuilderValidation)
 {
   // Requires that algebraic species is one of the products
-  struct FakeConstant
-  {
-    double Calculate(const micm::Conditions&) const
-    {
-      return 1.0;
-    }
-  };
-
   EXPECT_THROW(
       DissolvedEquilibriumConstraintBuilder()
           .SetPhase(aqueous_phase)
@@ -558,7 +549,7 @@ TEST(DissolvedEquilibriumConstraint, BuilderValidation)
           .SetProducts({ B })
           .SetAlgebraicSpecies(A)  // A is a reactant, not a product
           .SetSolvent(h2o)
-          .SetEquilibriumConstant(FakeConstant{})
+          .SetEquilibriumConstant(EquilibriumConstant{})
           .Build(),
       miam::MiamException);
 
@@ -569,7 +560,7 @@ TEST(DissolvedEquilibriumConstraint, BuilderValidation)
           .SetProducts({ B })
           .SetAlgebraicSpecies(B)
           .SetSolvent(h2o)
-          .SetEquilibriumConstant(FakeConstant{})
+          .SetEquilibriumConstant(EquilibriumConstant{})
           .Build(),
       miam::MiamException);
 
@@ -580,7 +571,7 @@ TEST(DissolvedEquilibriumConstraint, BuilderValidation)
                         .SetProducts({ B })
                         .SetAlgebraicSpecies(B)
                         .SetSolvent(h2o)
-                        .SetEquilibriumConstant(FakeConstant{})
+                        .SetEquilibriumConstant(EquilibriumConstant{})
                         .Build();
   EXPECT_EQ(constraint.algebraic_species_.name_, "B");
 }
@@ -614,7 +605,7 @@ namespace
       const std::unordered_map<std::string, std::size_t>& param_idx,
       std::size_t num_cells)
   {
-    Vector<micm::Conditions> conditions(num_cells);
+    Vector<micm::Conditions> conditions(num_cells, micm::Conditions{ .temperature_ = 298.15 });
     DMP state_params{ num_cells, std::max(param_idx.size(), std::size_t{ 1 }), 0.0 };
     auto fn = constraint.UpdateConstraintParametersFunction<DMP>(phase_prefixes, param_idx);
     fn(conditions, state_params);
@@ -685,7 +676,7 @@ namespace
 TEST(DissolvedEquilibriumConstraint, JacobianFDSimpleAB)
 {
   double K_eq = 10.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -719,7 +710,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDSimpleAB)
 TEST(DissolvedEquilibriumConstraint, JacobianFDMultiReactant)
 {
   double K_eq = 2.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A, B })
@@ -755,7 +746,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDMultiReactant)
 TEST(DissolvedEquilibriumConstraint, JacobianFDMultiProduct)
 {
   double K_eq = 0.5;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -791,7 +782,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDMultiProduct)
 TEST(DissolvedEquilibriumConstraint, JacobianFDMultiReactantMultiProduct)
 {
   double K_eq = 3.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A, B })
@@ -829,7 +820,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDMultiReactantMultiProduct)
 TEST(DissolvedEquilibriumConstraint, ResidualAndJacobianFDMultipleCells)
 {
   double K_eq = 5.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -885,7 +876,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualAndJacobianFDMultipleCells)
 TEST(DissolvedEquilibriumConstraint, MultiInstanceMultiCellFD)
 {
   double K_eq = 3.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A, B })
@@ -969,7 +960,7 @@ TEST(DissolvedEquilibriumConstraint, MultiInstanceMultiCellFD)
 TEST(DissolvedEquilibriumConstraint, ThreeInstancesFD)
 {
   double K_eq = 7.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -1038,7 +1029,7 @@ TEST(DissolvedEquilibriumConstraint, ThreeInstancesFD)
 TEST(DissolvedEquilibriumConstraint, JacobianAccumulates)
 {
   double K_eq = 10.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -1083,7 +1074,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianAccumulates)
 TEST(DissolvedEquilibriumConstraint, ResidualSetsNotAccumulates)
 {
   double K_eq = 10.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -1123,8 +1114,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualSetsNotAccumulates)
 
 TEST(DissolvedEquilibriumConstraint, TemperatureDependentKeqFD)
 {
-  // K_eq(T) = 1000.0 / T
-  auto keq = [](const micm::Conditions& c) { return 1000.0 / c.temperature_; };
+  auto keq = EquilibriumConstant{ .A_ = 4.0, .C_ = 1500.0, .T0_ = 250.0 };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -1143,7 +1133,7 @@ TEST(DissolvedEquilibriumConstraint, TemperatureDependentKeqFD)
   si["DROP.AQUEOUS.H2O"] = 2;
 
   std::size_t nc = 3;
-  Vector<micm::Conditions> conditions(nc);
+  Vector<micm::Conditions> conditions(nc, micm::Conditions{ .temperature_ = 298.15 });
   conditions[0].temperature_ = 250.0;
   conditions[1].temperature_ = 300.0;
   conditions[2].temperature_ = 350.0;
@@ -1166,9 +1156,9 @@ TEST(DissolvedEquilibriumConstraint, TemperatureDependentKeqFD)
   DMP residual{ nc, 3, 0.0 };
   rf(sv, sp, residual);
 
-  EXPECT_NEAR(residual[0][1], (1000.0 / 250.0) * 1.0 - 2.0, 1e-6);
-  EXPECT_NEAR(residual[1][1], (1000.0 / 300.0) * 0.5 - 1.0, 1e-6);
-  EXPECT_NEAR(residual[2][1], (1000.0 / 350.0) * 2.0 - 5.0, 1e-6);
+  EXPECT_NEAR(residual[0][1], Calculate(keq, conditions[0]) * 1.0 - 2.0, 1e-6);
+  EXPECT_NEAR(residual[1][1], Calculate(keq, conditions[1]) * 0.5 - 1.0, 1e-6);
+  EXPECT_NEAR(residual[2][1], Calculate(keq, conditions[2]) * 2.0 - 5.0, 1e-6);
 
   // FD check
   CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
@@ -1180,7 +1170,7 @@ TEST(DissolvedEquilibriumConstraint, LargeKeqRange)
 {
   // Very large K_eq
   double K_eq = 1.0e8;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -1221,7 +1211,7 @@ TEST(DissolvedEquilibriumConstraint, LargeKeqRange)
 TEST(DissolvedEquilibriumConstraint, CopiedConstraintProducesSameResults)
 {
   double K_eq = 10.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto original = DissolvedEquilibriumConstraintBuilder()
                       .SetPhase(aqueous_phase)
                       .SetReactants({ A, B })
@@ -1273,7 +1263,7 @@ TEST(DissolvedEquilibriumConstraint, SolventJacobianMultiReactant)
   // G = K_eq * [A]*[B] / [S] - [C]
   // dG/dS = K_eq * [A]*[B] * (-1) / [S]^2 = -K_eq*[A]*[B]/[S]^2
   double K_eq = 2.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A, B })
@@ -1320,8 +1310,8 @@ TEST(DissolvedEquilibriumConstraint, SolventJacobianMultiReactant)
 
 TEST(DissolvedEquilibriumConstraint, KitchenSinkFD)
 {
-  // A + B <-> C + H+,  K_eq(T) = 500.0 / T
-  auto keq = [](const micm::Conditions& c) { return 500.0 / c.temperature_; };
+  // A + B <-> C + H+
+  auto keq = EquilibriumConstant{ .A_ = 2.0, .C_ = 1000.0, .T0_ = 280.0 };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A, B })
@@ -1348,7 +1338,7 @@ TEST(DissolvedEquilibriumConstraint, KitchenSinkFD)
   si["M2.AQUEOUS.H2O"] = 9;
 
   std::size_t nc = 3;
-  Vector<micm::Conditions> conditions(nc);
+  Vector<micm::Conditions> conditions(nc, micm::Conditions{ .temperature_ = 298.15 });
   conditions[0].temperature_ = 280.0;
   conditions[1].temperature_ = 300.0;
   conditions[2].temperature_ = 320.0;
@@ -1398,7 +1388,7 @@ TEST(DissolvedEquilibriumConstraint, KitchenSinkFD)
 TEST(DissolvedEquilibriumConstraint, CrossInstanceIsolation)
 {
   double K_eq = 5.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -1445,7 +1435,7 @@ namespace
   template<typename VDM, typename VSM>
   void TestDissolvedConstraintVectorMatrix(std::size_t num_cells, double K_eq_val)
   {
-    auto keq_fn = [K_eq_val](const micm::Conditions&) { return K_eq_val; };
+    auto keq_fn = EquilibriumConstant{ .A_ = K_eq_val };
     auto constraint = DissolvedEquilibriumConstraintBuilder()
                           .SetPhase(aqueous_phase)
                           .SetReactants({ A })
@@ -1589,7 +1579,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualZeroReactant)
   // G = K_eq*[A]/[H2O]^0 - [B]/[H2O]^0 (n_r=1, n_p=1, same powers)
   // With [A]=0: G = -[B] (forward term vanishes, algebraic variable forced to 0)
   double K_eq = 10.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -1628,7 +1618,7 @@ TEST(DissolvedEquilibriumConstraint, ResidualExtremeKeq)
   // Very large and very small K_eq should produce numerically stable residuals
   auto make_and_eval = [&](double K_eq_val, double A_conc, double B_conc) -> double
   {
-    auto keq = [K_eq_val](const micm::Conditions&) { return K_eq_val; };
+    auto keq = EquilibriumConstant{ .A_ = K_eq_val };
     auto constraint = DissolvedEquilibriumConstraintBuilder()
                           .SetPhase(aqueous_phase)
                           .SetReactants({ A })
@@ -1681,7 +1671,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDZeroReactant)
 {
   // FD Jacobian check with [A]=0 (forward term vanishes — Jacobian still well-defined)
   double K_eq = 10.0;
-  auto keq = [K_eq](const micm::Conditions&) { return K_eq; };
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -1715,7 +1705,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDExtremeKeq)
   // FD Jacobian check at extreme K_eq values
   for (double K_eq_val : { 1.0e-10, 1.0, 1.0e10 })
   {
-    auto keq = [K_eq_val](const micm::Conditions&) { return K_eq_val; };
+    auto keq = EquilibriumConstant{ .A_ = K_eq_val };
     auto constraint = DissolvedEquilibriumConstraintBuilder()
                           .SetPhase(aqueous_phase)
                           .SetReactants({ A })

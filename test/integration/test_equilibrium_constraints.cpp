@@ -52,7 +52,7 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
   double total = A0;  // total mass (B0 = C0 = 0)
 
   // Kinetic process: A → B (dissolved reaction)
-  auto rate = [k](const Conditions& conditions) { return k; };
+  auto rate = k;
   auto reaction = DissolvedReactionBuilder{}
                       .SetPhase(aqueous_phase)
                       .SetReactants({ A })
@@ -69,7 +69,7 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
                    .SetProducts({ C })
                    .SetAlgebraicSpecies(C)
                    .SetSolvent(S)
-                   .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = K_eq }))
+                   .SetEquilibriumConstant(EquilibriumConstant{ .A_ = K_eq })
                    .Build();
 
   // Mass conservation constraint: [A] + [B] + [C] = total, algebraic species = B
@@ -199,7 +199,7 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
   double A0_small = 1.0;
   double A0_large = 2.0;
 
-  auto rate = [k](const Conditions& conditions) { return k; };
+  auto rate = k;
   auto reaction = DissolvedReactionBuilder{}
                       .SetPhase(aqueous_phase)
                       .SetReactants({ A })
@@ -215,7 +215,7 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
                    .SetProducts({ C })
                    .SetAlgebraicSpecies(C)
                    .SetSolvent(S)
-                   .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = K_eq }))
+                   .SetEquilibriumConstant(EquilibriumConstant{ .A_ = K_eq })
                    .Build();
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { small_drop, large_drop } };
@@ -323,7 +323,7 @@ TEST(EquilibriumConstraintsIntegration, InconsistentInitialConditions)
   double A0 = 1.0;
   double total = A0;
 
-  auto rate = [k](const Conditions& conditions) { return k; };
+  auto rate = k;
   auto reaction = DissolvedReactionBuilder{}
                       .SetPhase(aqueous_phase)
                       .SetReactants({ A })
@@ -338,7 +338,7 @@ TEST(EquilibriumConstraintsIntegration, InconsistentInitialConditions)
                    .SetProducts({ C })
                    .SetAlgebraicSpecies(C)
                    .SetSolvent(S)
-                   .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = K_eq }))
+                   .SetEquilibriumConstant(EquilibriumConstant{ .A_ = K_eq })
                    .Build();
 
   auto mass_cons = LinearConstraintBuilder()

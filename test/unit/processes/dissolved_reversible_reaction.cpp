@@ -80,8 +80,8 @@ TEST(DissolvedReversibleReaction, SpeciesUsedWithSinglePrefix)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
+  auto forward_rate = 1.0e-14;
+  auto reverse_rate = 1.0e11;
 
   DissolvedReversibleReaction reaction{ { forward_rate },
                                         { reverse_rate },
@@ -111,8 +111,8 @@ TEST(DissolvedReversibleReaction, SpeciesUsedWithMultiplePrefixes)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { co2 }, { h2o }, { h2co3 } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-3; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e2; };
+  auto forward_rate = 1.0e-3;
+  auto reverse_rate = 1.0e2;
 
   DissolvedReversibleReaction reaction{ { forward_rate },
                                         { reverse_rate },
@@ -150,8 +150,8 @@ TEST(DissolvedReversibleReaction, SpeciesUsedWithNoMatchingPhase)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { co2 }, { h2o }, { h2co3 } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-3; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e2; };
+  auto forward_rate = 1.0e-3;
+  auto reverse_rate = 1.0e2;
 
   DissolvedReversibleReaction reaction{ { forward_rate },
                                         { reverse_rate },
@@ -176,8 +176,8 @@ TEST(DissolvedReversibleReaction, SpeciesUsedDuplicateHandling)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { hp }, { hco3m }, { co32m } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-10; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
+  auto forward_rate = 1.0e-10;
+  auto reverse_rate = 1.0e11;
 
   DissolvedReversibleReaction reaction{ { forward_rate },
                                         { reverse_rate },
@@ -209,8 +209,8 @@ TEST(DissolvedReversibleReaction, SpeciesUsedComplexReaction)
 
   auto phase = micm::Phase{ "LIQUID", { { a }, { b }, { c }, { d }, { solvent } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 2.0; };
+  auto forward_rate = 1.0;
+  auto reverse_rate = 2.0;
 
   DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate },
                                         { a, b },  // 2 reactants
@@ -246,8 +246,8 @@ TEST(DissolvedReversibleReaction, NonZeroJacobianElementsBasic)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
+  auto forward_rate = 1.0e-14;
+  auto reverse_rate = 1.0e11;
 
   // H2O <-> H+ + OH-
   DissolvedReversibleReaction reaction{ { forward_rate },
@@ -294,8 +294,8 @@ TEST(DissolvedReversibleReaction, NonZeroJacobianElementsMultipleReactants)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { co2 }, { h2o }, { h2co3 } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-3; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e2; };
+  auto forward_rate = 1.0e-3;
+  auto reverse_rate = 1.0e2;
 
   // CO2 + H2O <-> H2CO3
   DissolvedReversibleReaction reaction{ { forward_rate },
@@ -331,8 +331,8 @@ TEST(DissolvedReversibleReaction, NonZeroJacobianElementsMultiplePrefixes)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
+  auto forward_rate = 1.0e-14;
+  auto reverse_rate = 1.0e11;
 
   DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
@@ -371,8 +371,8 @@ TEST(DissolvedReversibleReaction, NonZeroJacobianElementsComplexReaction)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { hco3m }, { hp }, { co32m }, { h2o } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-10; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
+  auto forward_rate = 1.0e-10;
+  auto reverse_rate = 1.0e11;
 
   DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { hco3m }, { hp, co32m }, h2o, aqueous_phase };
 
@@ -416,8 +416,8 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionBasic)
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = k_forward;
+  auto reverse_rate = k_reverse;
 
   DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
@@ -464,10 +464,8 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionTemperatureDepend
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
 
   // Create temperature-dependent rate constants (Arrhenius-like)
-  auto forward_rate = [](const micm::Conditions& conditions)
-  { return 1.0e-14 * std::exp(-3000.0 / conditions.temperature_); };
-  auto reverse_rate = [](const micm::Conditions& conditions)
-  { return 1.0e11 * std::exp(-2000.0 / conditions.temperature_); };
+  auto forward_rate = micm::ArrheniusRateConstantParameters{ .A_ = 1.0e-14, .C_ = -3000.0 };
+  auto reverse_rate = micm::ArrheniusRateConstantParameters{ .A_ = 1.0e11, .C_ = -2000.0 };
 
   DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
@@ -523,8 +521,8 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionMissingParameter)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { h2o }, { hp }, { ohm } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions) { return 1.0e-14; };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e11; };
+  auto forward_rate = 1.0e-14;
+  auto reverse_rate = 1.0e11;
 
   DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
@@ -552,13 +550,11 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionMultipleCells)
 
   auto aqueous_phase = micm::Phase{ "AQUEOUS", { { co2 }, { h2o }, { h2co3 } } };
 
-  auto forward_rate = [](const micm::Conditions& conditions)
-  {
-    return 1.0e-3 * conditions.pressure_ / 101325.0;  // Pressure-dependent
-  };
-  auto reverse_rate = [](const micm::Conditions& conditions) { return 1.0e2; };
+  // k_f = 1.0e-3 * (1 + P / 101325)
+  auto forward_rate = micm::ArrheniusRateConstantParameters{ .A_ = 1.0e-3, .E_ = 1.0 / 101325.0 };
+  auto reverse_rate = 1.0e2;
 
-  DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { co2, h2o }, { h2co3 }, h2o, aqueous_phase };
+  DissolvedReversibleReaction reaction{ forward_rate, reverse_rate, { co2, h2o }, { h2co3 }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("CLOUD");
@@ -589,7 +585,7 @@ TEST(DissolvedReversibleReaction, UpdateStateParametersFunctionMultipleCells)
   // Verify the rate constants
   for (std::size_t i_cell = 0; i_cell < 5; ++i_cell)
   {
-    double expected_k_f = 1.0e-3 * (1.0 + 0.1 * i_cell);
+    double expected_k_f = 1.0e-3 * (2.0 + 0.1 * i_cell);
     EXPECT_NEAR(state_parameters[i_cell][0], expected_k_f, 1e-7);
     EXPECT_EQ(state_parameters[i_cell][1], 1.0e2);
   }
@@ -612,8 +608,8 @@ TEST(DissolvedReversibleReaction, ForcingFunctionBasicRates)
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = k_forward;
+  auto reverse_rate = k_reverse;
 
   // H2O <-> H+ + OH-
   DissolvedReversibleReaction reaction{ { forward_rate },
@@ -685,8 +681,8 @@ TEST(DissolvedReversibleReaction, ForcingFunctionSolventNormalization)
   double k_forward = 1.0e-3;
   double k_reverse = 1.0e2;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = k_forward;
+  auto reverse_rate = k_reverse;
 
   // CO2 + H2O <-> H2CO3
   DissolvedReversibleReaction reaction{ { forward_rate },
@@ -755,8 +751,8 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleReactantsProducts)
   double k_forward = 2.0;
   double k_reverse = 3.0;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = k_forward;
+  auto reverse_rate = k_reverse;
 
   // A + B <-> C + D
   DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate },
@@ -827,8 +823,8 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultipleCells)
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = k_forward;
+  auto reverse_rate = k_reverse;
 
   DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
@@ -896,8 +892,8 @@ TEST(DissolvedReversibleReaction, ForcingFunctionMultiplePhaseInstances)
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = k_forward;
+  auto reverse_rate = k_reverse;
 
   DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
@@ -972,8 +968,8 @@ TEST(DissolvedReversibleReaction, JacobianFunctionBasicPartials)
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = k_forward;
+  auto reverse_rate = k_reverse;
 
   // H2O <-> H+ + OH-
   DissolvedReversibleReaction reaction{ { forward_rate },
@@ -1070,8 +1066,8 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleReactantsProducts)
   double k_forward = 1.0e-3;
   double k_reverse = 1.0e2;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = k_forward;
+  auto reverse_rate = k_reverse;
 
   // CO2 + H2O <-> H2CO3
   DissolvedReversibleReaction reaction{ { forward_rate },
@@ -1174,8 +1170,8 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSigns)
   double k_forward = 1.0e-10;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = k_forward;
+  auto reverse_rate = k_reverse;
 
   // HCO3- <-> H+ + CO32-
   DissolvedReversibleReaction reaction{ { forward_rate },
@@ -1267,8 +1263,8 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultipleCells)
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = k_forward;
+  auto reverse_rate = k_reverse;
 
   DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
@@ -1347,8 +1343,8 @@ TEST(DissolvedReversibleReaction, JacobianFunctionMultiplePhaseInstances)
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = k_forward;
+  auto reverse_rate = k_reverse;
 
   DissolvedReversibleReaction reaction{ { forward_rate }, { reverse_rate }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
@@ -1423,8 +1419,8 @@ TEST(DissolvedReversibleReaction, JacobianFunctionSimpleDistinctSpecies)
   double k_forward = 2.0;
   double k_reverse = 3.0;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = k_forward;
+  auto reverse_rate = k_reverse;
 
   // foo <-> bar (with solvent baz)
   // With 1 reactant and 1 product, there's no solvent concentration dependence
@@ -1521,8 +1517,8 @@ TEST(DissolvedReversibleReaction, JacobianFunctionTwoReactantsWithSolventDepende
   double k_forward = 2.0;
   double k_reverse = 3.0;
 
-  auto forward_rate = [k_forward](const micm::Conditions& conditions) { return k_forward; };
-  auto reverse_rate = [k_reverse](const micm::Conditions& conditions) { return k_reverse; };
+  auto forward_rate = k_forward;
+  auto reverse_rate = k_reverse;
 
   // foo + qux <-> bar (with solvent baz)
   // With 2 reactants, forward rate has solvent dependence: k_f / [baz]^1
@@ -1618,8 +1614,8 @@ TEST(DissolvedReversibleReaction, JacobianFDForwardOnly)
 
   double k_forward = 1.0e-14;
   double k_reverse = 0.0;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ { k_forward },
+                                               { k_reverse },
                                                { h2o },
                                                { hp, ohm },
                                                h2o,
@@ -1657,8 +1653,8 @@ TEST(DissolvedReversibleReaction, JacobianFDReverseOnly)
 
   double k_forward = 0.0;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ { k_forward },
+                                               { k_reverse },
                                                { h2o },
                                                { hp, ohm },
                                                h2o,
@@ -1696,8 +1692,8 @@ TEST(DissolvedReversibleReaction, JacobianFDBidirectional)
 
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ { k_forward },
+                                               { k_reverse },
                                                { h2o },
                                                { hp, ohm },
                                                h2o,
@@ -1735,8 +1731,8 @@ TEST(DissolvedReversibleReaction, JacobianFDMultiCell)
 
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ { k_forward },
+                                               { k_reverse },
                                                { h2o },
                                                { hp, ohm },
                                                h2o,
@@ -1787,8 +1783,8 @@ TEST(DissolvedReversibleReaction, JacobianFDMultipleReactantsProducts)
 
   double k_forward = 0.05;
   double k_reverse = 0.02;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ { k_forward },
+                                               { k_reverse },
                                                { a, b },
                                                { c, d },
                                                h2o,
@@ -1830,8 +1826,8 @@ TEST(DissolvedReversibleReaction, JacobianFDMultipleInstances)
 
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ { k_forward },
+                                               { k_reverse },
                                                { h2o },
                                                { hp, ohm },
                                                h2o,
@@ -1877,8 +1873,8 @@ TEST(DissolvedReversibleReaction, JacobianFDSolventIsReactant)
 
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ { k_forward },
+                                               { k_reverse },
                                                { h2o },
                                                { hp, ohm },
                                                h2o,
@@ -1923,8 +1919,8 @@ TEST(DissolvedReversibleReaction, ForcingFunctionZeroReactant)
 
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ { k_forward },
+                                               { k_reverse },
                                                { h2o },
                                                { hp, ohm },
                                                h2o,
@@ -1974,8 +1970,8 @@ TEST(DissolvedReversibleReaction, ForcingFunctionZeroProduct)
 
   double k_forward = 0.1;
   double k_reverse = 0.2;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ { k_forward },
+                                               { k_reverse },
                                                { a },
                                                { b },
                                                solvent,
@@ -2026,8 +2022,8 @@ TEST(DissolvedReversibleReaction, ForcingFunctionAtEquilibrium)
 
   double k_forward = 0.1;
   double k_reverse = 0.3;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ { k_forward },
+                                               { k_reverse },
                                                { a },
                                                { b },
                                                solvent,
@@ -2080,8 +2076,8 @@ TEST(DissolvedReversibleReaction, JacobianFDZeroSolvent)
 
   double k_forward = 0.1;
   double k_reverse = 0.05;
-  auto reaction = DissolvedReversibleReaction{ { [k_forward](const micm::Conditions&) { return k_forward; } },
-                                               { [k_reverse](const micm::Conditions&) { return k_reverse; } },
+  auto reaction = DissolvedReversibleReaction{ { k_forward },
+                                               { k_reverse },
                                                { a },
                                                { b },
                                                solvent,

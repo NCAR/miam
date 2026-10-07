@@ -75,7 +75,7 @@ TEST(HenrysLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
                            .SetCondensedSpecies(A_aq)
                            .SetSolvent(H2O)
                            .SetCondensedPhase(aqueous_phase)
-                           .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+                           .SetHenrysLawConstant(HenrysLawConstant{ .HLC_ref_ = HLC })
                            .Build();
 
   // Mass conservation: [Precursor] + [A_g] + [A_aq] = total, A_g algebraic (global)
@@ -213,7 +213,7 @@ TEST(HenrysLawEquilibriumConstraintIntegration, MultipleInstances)
                            .SetCondensedSpecies(A_aq)
                            .SetSolvent(H2O)
                            .SetCondensedPhase(aqueous_phase)
-                           .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+                           .SetHenrysLawConstant(HenrysLawConstant{ .HLC_ref_ = HLC })
                            .Build();
 
   double P0 = 1.0;

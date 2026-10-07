@@ -59,7 +59,7 @@ namespace
   /// Create a simple constant HLC function
   auto MakeConstantHLC(double hlc_value)
   {
-    return [hlc_value](const micm::Conditions& conditions) { return hlc_value; };
+    return HenrysLawConstant{ .HLC_ref_ = hlc_value };
   }
 
   /// Create a HenrysLawPhaseTransfer process with default test settings
@@ -1356,7 +1356,7 @@ TEST(HenrysLawPhaseTransfer, ForcingMultipleTransferProcesses)
   double D_CO2 = 1.5e-5, D_SO2 = 1.2e-5;
 
   auto proc_CO2 = HenrysLawPhaseTransfer(
-      [HLC_CO2](const micm::Conditions&) { return HLC_CO2; },
+      HenrysLawConstant{ .HLC_ref_ = HLC_CO2 },
       gas_CO2,
       aq_CO2,
       solvent,
@@ -1367,7 +1367,7 @@ TEST(HenrysLawPhaseTransfer, ForcingMultipleTransferProcesses)
       solvent_molecular_weight,
       solvent_density);
   auto proc_SO2 = HenrysLawPhaseTransfer(
-      [HLC_SO2](const micm::Conditions&) { return HLC_SO2; },
+      HenrysLawConstant{ .HLC_ref_ = HLC_SO2 },
       gas_SO2,
       aq_SO2,
       solvent,
@@ -1462,7 +1462,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
   double D_CO2 = 1.5e-5, D_SO2 = 1.2e-5;
 
   auto proc_CO2 = HenrysLawPhaseTransfer(
-      [HLC_CO2](const micm::Conditions&) { return HLC_CO2; },
+      HenrysLawConstant{ .HLC_ref_ = HLC_CO2 },
       gas_CO2,
       aq_CO2,
       solvent,
@@ -1473,7 +1473,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFDMultipleTransferProcesses)
       solvent_molecular_weight,
       solvent_density);
   auto proc_SO2 = HenrysLawPhaseTransfer(
-      [HLC_SO2](const micm::Conditions&) { return HLC_SO2; },
+      HenrysLawConstant{ .HLC_ref_ = HLC_SO2 },
       gas_SO2,
       aq_SO2,
       solvent,
@@ -1859,7 +1859,7 @@ TEST(HenrysLawPhaseTransfer, JacobianFDKitchenSink)
 
 TEST(HenrysLawPhaseTransferBuilder, BuildSuccess)
 {
-  HenrysLawConstantParameters hlc_params;
+  HenrysLawConstant hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
   hlc_params.C_ = 2400.0;
   hlc_params.T0_ = 298.15;
@@ -1886,7 +1886,7 @@ TEST(HenrysLawPhaseTransferBuilder, BuildSuccess)
 
 TEST(HenrysLawPhaseTransferBuilder, MissingCondensedPhaseThrows)
 {
-  HenrysLawConstantParameters hlc_params;
+  HenrysLawConstant hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
   HenrysLawConstant hlc(hlc_params);
 
@@ -1904,7 +1904,7 @@ TEST(HenrysLawPhaseTransferBuilder, MissingCondensedPhaseThrows)
 
 TEST(HenrysLawPhaseTransferBuilder, MissingGasSpeciesThrows)
 {
-  HenrysLawConstantParameters hlc_params;
+  HenrysLawConstant hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
   HenrysLawConstant hlc(hlc_params);
 
@@ -1936,7 +1936,7 @@ TEST(HenrysLawPhaseTransferBuilder, MissingHLCThrows)
 
 TEST(HenrysLawPhaseTransferBuilder, MissingDiffusionCoefficientThrows)
 {
-  HenrysLawConstantParameters hlc_params;
+  HenrysLawConstant hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
   HenrysLawConstant hlc(hlc_params);
 
@@ -1954,7 +1954,7 @@ TEST(HenrysLawPhaseTransferBuilder, MissingDiffusionCoefficientThrows)
 
 TEST(HenrysLawPhaseTransferBuilder, MissingAccommodationCoefficientThrows)
 {
-  HenrysLawConstantParameters hlc_params;
+  HenrysLawConstant hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
   HenrysLawConstant hlc(hlc_params);
 
@@ -1972,7 +1972,7 @@ TEST(HenrysLawPhaseTransferBuilder, MissingAccommodationCoefficientThrows)
 
 TEST(HenrysLawPhaseTransferBuilder, BuiltProcessHLCWorks)
 {
-  HenrysLawConstantParameters hlc_params;
+  HenrysLawConstant hlc_params;
   hlc_params.HLC_ref_ = HLC_ref;
   hlc_params.C_ = 2400.0;
   hlc_params.T0_ = 298.15;
@@ -1990,11 +1990,11 @@ TEST(HenrysLawPhaseTransferBuilder, BuiltProcessHLCWorks)
 
   micm::Conditions cond;
   cond.temperature_ = 298.15;
-  double result = process.henrys_law_constant_(cond);
+  double result = Calculate(process.henrys_law_constant_, cond);
   EXPECT_NEAR(result, HLC_ref, 1e-10);
 
   cond.temperature_ = 280.0;
-  result = process.henrys_law_constant_(cond);
+  result = Calculate(process.henrys_law_constant_, cond);
   double expected = HLC_ref * std::exp(2400.0 * (1.0 / 280.0 - 1.0 / 298.15));
   EXPECT_NEAR(result, expected, expected * 1e-10);
 }

@@ -32,7 +32,7 @@ namespace
     auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
     auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
-    auto rate = [k](const Conditions& conditions) { return k; };
+    auto rate = k;
     auto reaction = DissolvedReactionBuilder{}
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -41,8 +41,8 @@ namespace
                         .SetRateConstant(rate)
                         .Build();
 
-    auto forward_rate = [k_f](const Conditions& conditions) { return k_f; };
-    auto reverse_rate = [k_r](const Conditions& conditions) { return k_r; };
+    auto forward_rate = k_f;
+    auto reverse_rate = k_r;
     auto reversible = DissolvedReversibleReaction{ { forward_rate }, { reverse_rate }, { B }, { C }, S, aqueous_phase };
 
     auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -122,7 +122,7 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
     auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
     auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
-    auto rate = [k](const Conditions& conditions) { return k; };
+    auto rate = k;
     auto reaction = DissolvedReactionBuilder{}
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -131,8 +131,8 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
                         .SetRateConstant(rate)
                         .Build();
 
-    auto forward_rate = [k_f](const Conditions& conditions) { return k_f; };
-    auto reverse_rate = [k_r](const Conditions& conditions) { return k_r; };
+    auto forward_rate = k_f;
+    auto reverse_rate = k_r;
     auto reversible = DissolvedReversibleReaction{ { forward_rate }, { reverse_rate }, { B }, { C }, S, aqueous_phase };
 
     auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
@@ -186,7 +186,7 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
     auto aqueous_phase = Phase{ "AQUEOUS", { { A }, { B }, { C }, { S } } };
     auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
-    auto rate = [k](const Conditions& conditions) { return k; };
+    auto rate = k;
     auto reaction = DissolvedReactionBuilder{}
                         .SetPhase(aqueous_phase)
                         .SetReactants({ A })
@@ -201,7 +201,7 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
                      .SetProducts({ C })
                      .SetAlgebraicSpecies(C)
                      .SetSolvent(S)
-                     .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = K_eq }))
+                     .SetEquilibriumConstant(EquilibriumConstant{ .A_ = K_eq })
                      .Build();
 
     auto mass_cons = LinearConstraintBuilder()
@@ -331,7 +331,7 @@ TEST(KineticVsConstrained, HenrysLawPhaseTransferVsEquilibriumConstraint)
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(H2O)
-                        .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+                        .SetHenrysLawConstant(HenrysLawConstant{ .HLC_ref_ = HLC })
                         .SetDiffusionCoefficient(D_g)
                         .SetAccommodationCoefficient(accommodation)
                         .Build();
@@ -382,7 +382,7 @@ TEST(KineticVsConstrained, HenrysLawPhaseTransferVsEquilibriumConstraint)
                              .SetCondensedSpecies(A_aq)
                              .SetSolvent(H2O)
                              .SetCondensedPhase(aqueous_phase)
-                             .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC }))
+                             .SetHenrysLawConstant(HenrysLawConstant{ .HLC_ref_ = HLC })
                              .Build();
 
     auto mass_cons = LinearConstraintBuilder()

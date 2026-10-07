@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <miam/processes/constants/rate_constant.hpp>
 #include <miam/processes/dissolved_reaction.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
@@ -11,8 +12,8 @@
 #include <micm/process/rate_constant/rate_constant_functions.hpp>
 #include <micm/system/conditions.hpp>
 
-#include <functional>
 #include <map>
+#include <optional>
 #include <string>
 
 namespace miam
@@ -72,18 +73,10 @@ namespace miam
       return *this;
     }
 
-    /// @brief Sets the rate constant function
-    DissolvedReactionBuilder& SetRateConstant(std::function<double(const micm::Conditions&)> rate_constant)
+    /// @brief Sets the rate constant
+    DissolvedReactionBuilder& SetRateConstant(const RateConstant& rate_constant)
     {
-      rate_constant_ = std::move(rate_constant);
-      return *this;
-    }
-
-    /// @brief Sets the rate constant from Arrhenius rate constant parameters
-    DissolvedReactionBuilder& SetRateConstant(const micm::ArrheniusRateConstantParameters& params)
-    {
-      rate_constant_ = [params](const micm::Conditions& conditions)
-      { return micm::CalculateArrhenius(params, conditions.temperature_, conditions.pressure_); };
+      rate_constant_ = rate_constant;
       return *this;
     }
 
@@ -125,7 +118,7 @@ namespace miam
             MIAM_CONFIGURATION_MISSING_REQUIRED_PARAMETER,
             "DissolvedReactionBuilder requires the solvent to be set.");
       }
-      return DissolvedReaction(rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_, min_halflife_);
+      return DissolvedReaction(*rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_, min_halflife_);
     }
 
    private:
@@ -135,7 +128,7 @@ namespace miam
     std::vector<micm::Species> products_;                                      ///< Product species
     micm::Species solvent_;                                                    ///< Solvent species
     bool solvent_is_set_ = false;                                              ///< Flag to track if the solvent has been set
-    std::function<double(const micm::Conditions& conditions)> rate_constant_;  ///< Rate constant
+    std::optional<RateConstant> rate_constant_;  ///< Rate constant
     double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
     double min_halflife_{ 0.0 };       ///< Minimum half-life for rate capping [s]
   };
