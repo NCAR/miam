@@ -10,6 +10,11 @@ create_standard_test(NAME equilibrium_constraints_integration SOURCES test_equil
 create_standard_test(NAME henrys_law_equilibrium_constraint_integration SOURCES test_henrys_law_equilibrium_constraint.cpp)
 create_standard_test(NAME kinetic_vs_constrained SOURCES test_kinetic_vs_constrained.cpp)
 create_standard_test(NAME jacobian_verification SOURCES test_jacobian_verification.cpp)
-create_standard_test(NAME cam_cloud_chemistry SOURCES test_cam_cloud_chemistry.cpp)
+create_standard_test(NAME cam_cloud_chemistry SOURCES test_cam_cloud_chemistry_cpu.cpp)
 create_standard_test(NAME solvent_robustness SOURCES test_solvent_robustness.cpp)
 create_standard_test(NAME aqueous_carbonic_acid SOURCES test_aqueous_carbonic_acid.cpp)
+create_standard_test(NAME vector_matrix_model SOURCES test_vector_matrix_model.cpp)
+
+if(MIAM_ENABLE_KOKKOS)
+  add_subdirectory(kokkos)
+endif()
