@@ -4,12 +4,13 @@
 #pragma once
 
 #include <miam/constraints/dissolved_equilibrium_constraint.hpp>
+#include <miam/processes/constants/equilibrium_constant.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 
 #include <micm/system/conditions.hpp>
 
-#include <functional>
+#include <optional>
 #include <stdexcept>
 
 namespace miam
@@ -62,21 +63,10 @@ namespace miam
       return *this;
     }
 
-    template<typename T>
-      requires requires(const T& t, const micm::Conditions& c) {
-        { t.Calculate(c) };
-      }
-    DissolvedEquilibriumConstraintBuilder& SetEquilibriumConstant(const T& equilibrium_constant)
+    /// @brief Sets the equilibrium constant
+    DissolvedEquilibriumConstraintBuilder& SetEquilibriumConstant(const EquilibriumConstant& equilibrium_constant)
     {
-      equilibrium_constant_ = [equilibrium_constant](const micm::Conditions& conditions)
-      { return equilibrium_constant.Calculate(conditions); };
-      return *this;
-    }
-
-    DissolvedEquilibriumConstraintBuilder& SetEquilibriumConstant(
-        std::function<double(const micm::Conditions&)> equilibrium_constant)
-    {
-      equilibrium_constant_ = std::move(equilibrium_constant);
+      equilibrium_constant_ = equilibrium_constant;
       return *this;
     }
 
@@ -114,7 +104,7 @@ namespace miam
             "DissolvedEquilibriumConstraintBuilder requires the equilibrium constant to be set.");
 
       return DissolvedEquilibriumConstraint(
-          equilibrium_constant_, reactants_, products_, algebraic_species_, solvent_, phase_, solvent_floor_);
+          *equilibrium_constant_, reactants_, products_, algebraic_species_, solvent_, phase_, solvent_floor_);
     }
 
    private:
@@ -126,7 +116,7 @@ namespace miam
     bool algebraic_species_is_set_ = false;
     micm::Species solvent_;
     bool solvent_is_set_ = false;
-    std::function<double(const micm::Conditions& conditions)> equilibrium_constant_;
+    std::optional<EquilibriumConstant> equilibrium_constant_;
     double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
   };
 }  // namespace miam

@@ -81,7 +81,7 @@ TEST(HenrysLawPhaseTransferIntegration, SimpleOneInstance)
                       .SetGasSpecies(A_g)
                       .SetCondensedSpecies(A_aq)
                       .SetSolvent(H2O)
-                      .SetHenrysLawConstant(miam::HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                      .SetHenrysLawConstant(miam::HenrysLawConstant{ .HLC_ref_ = HLC_val })
                       .SetDiffusionCoefficient(D_g)
                       .SetAccommodationCoefficient(alpha)
                       .Build();
@@ -217,7 +217,7 @@ TEST(HenrysLawPhaseTransferIntegration, MultiInstanceMassConservation)
                       .SetGasSpecies(A_g)
                       .SetCondensedSpecies(A_aq)
                       .SetSolvent(H2O)
-                      .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                      .SetHenrysLawConstant(HenrysLawConstant{ .HLC_ref_ = HLC_val })
                       .SetDiffusionCoefficient(D_g)
                       .SetAccommodationCoefficient(alpha)
                       .Build();
@@ -320,7 +320,7 @@ TEST(HenrysLawPhaseTransferIntegration, TemperatureDependentHLC)
 
   auto droplet = SingleMomentMode{ "DROP", { aqueous_phase }, 5.0e-6, 1.2 };
 
-  HenrysLawConstantParameters hlc_params{ .HLC_ref_ = HLC_ref, .C_ = C, .T0_ = T0 };
+  HenrysLawConstant hlc_params{ .HLC_ref_ = HLC_ref, .C_ = C, .T0_ = T0 };
 
   auto build_transfer = [&]()
   {
@@ -442,7 +442,7 @@ TEST(HenrysLawPhaseTransferIntegration, SmallVsLargeParticleRate)
                         .SetGasSpecies(A_g)
                         .SetCondensedSpecies(A_aq)
                         .SetSolvent(H2O)
-                        .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = HLC_val }))
+                        .SetHenrysLawConstant(HenrysLawConstant{ .HLC_ref_ = HLC_val })
                         .SetDiffusionCoefficient(D_g)
                         .SetAccommodationCoefficient(alpha)
                         .Build();

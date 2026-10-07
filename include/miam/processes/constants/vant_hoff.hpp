@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include <micm/system/conditions.hpp>
+#include <micm/util/types.hpp>
+
 #include <cmath>
 
 namespace miam
@@ -21,8 +24,13 @@ namespace miam
   /// @brief The van 't Hoff form: A * exp( C * (1/T0 - 1/T) )
   /// @param p Parameters
   /// @param temperature Temperature [K]
-  inline double CalculateVantHoff(const VantHoffParameters& p, double temperature)
+  MICM_INLINE_DEVICE_FUNCTION double CalculateVantHoff(const VantHoffParameters& p, double temperature)
   {
     return p.A_ * std::exp(p.C_ * (1.0 / p.T0_ - 1.0 / temperature));
+  }
+
+  MICM_INLINE_DEVICE_FUNCTION double Calculate(const VantHoffParameters& p, const micm::Conditions& conditions)
+  {
+    return CalculateVantHoff(p, conditions.temperature_);
   }
 }  // namespace miam
