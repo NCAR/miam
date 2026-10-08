@@ -16,6 +16,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <vector>
 
 namespace miam
@@ -153,8 +154,8 @@ namespace miam
     template<typename DenseMatrixPolicy>
     AerosolPropertyProvider<DenseMatrixPolicy> GetPropertyProvider(
         AerosolProperty property,
-        const auto& state_parameter_indices,
-        const auto& state_variable_indices,
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices,
         const std::string& target_phase_name = "") const
     {
       AerosolPropertyProvider<DenseMatrixPolicy> provider;
