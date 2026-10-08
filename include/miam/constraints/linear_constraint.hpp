@@ -9,9 +9,11 @@
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
 #include <micm/util/matrix.hpp>
+#include <micm/util/types.hpp>
 
 #include <functional>
 #include <map>
+#include <memory>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -229,74 +231,62 @@ namespace miam
       if (!diagnose_from_state_)
         return [](const DenseMatrixPolicy&, DenseMatrixPolicy&) {};
 
-      bool is_global = (phase_prefixes.find(algebraic_phase_.name_) == phase_prefixes.end());
+      FlatTerms flat = GetFlatTerms(phase_prefixes, state_parameter_indices, state_variable_indices);
+      using Vector = typename DenseMatrixPolicy::template VectorType<std::size_t>;
+      Vector param_indices(flat.param_indices);
+      Vector counts(flat.counts);
+      Vector term_indices(flat.term_indices);
+      typename DenseMatrixPolicy::template VectorType<double> coefficients(flat.coefficients);
+      param_indices.CopyToDevice();
+      counts.CopyToDevice();
+      term_indices.CopyToDevice();
+      coefficients.CopyToDevice();
+      std::size_t num_instances = flat.alg_indices.size();
 
+      struct Storage
+      {
+        Vector param_indices, counts, term_indices;
+        typename DenseMatrixPolicy::template VectorType<double> coefficients;
+      };
+      auto storage = std::make_shared<Storage>(
+          Storage{ std::move(param_indices), std::move(counts), std::move(term_indices), std::move(coefficients) });
+      auto param_view = storage->param_indices.GetView();
+      auto count_view = storage->counts.GetView();
+      auto term_view = storage->term_indices.GetView();
+      auto coeff_view = storage->coefficients.GetView();
       DenseMatrixPolicy dummy_state_variables{ 1, state_variable_indices.size(), 0.0 };
       DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
 
-      if (is_global)
+      auto function = DenseMatrixPolicy::Function(
+            MICM_LAMBDA(
+                const typename DenseMatrixPolicy::ConstViewType& state_view,
+                const typename DenseMatrixPolicy::ViewType& params_view)
       {
-        auto resolved = ResolveGlobalTerms(phase_prefixes, state_variable_indices);
-        auto param_name = "LC_" + uuid_ + "_constant";
-        std::size_t param_idx = state_parameter_indices.at(param_name);
-
-        auto inner = DenseMatrixPolicy::Function(
-            [resolved, param_idx](auto&& state_variables, auto&& state_parameters)
+              std::size_t term_offset = 0;
+              for (std::size_t i_inst = 0; i_inst < num_instances; ++i_inst)
             {
-              auto total = state_parameters.GetRowVariable();
-              state_parameters.ForEachRow([](double& t) { t = 0.0; }, total);
-              for (const auto& [idx, coeff] : resolved)
-                state_parameters.ForEachRow(
-                    [coeff](const double& val, double& t) { t += coeff * val; },
-                    state_variables.GetConstColumnView(idx),
+                auto total = params_view.GetRowVariable();
+                params_view.ForEachRowStrict([](micm::Real& t) { t = 0.0; }, total);
+                for (std::size_t k = 0; k < count_view[i_inst]; ++k)
+                {
+                  const micm::Real coeff = coeff_view[term_offset + k];
+                  params_view.ForEachRowStrict(
+                      [coeff](const micm::Real& val, micm::Real& t) { t += coeff * val; },
+                      state_view.GetConstColumnView(term_view[term_offset + k]),
                     total);
-              state_parameters.ForEachRow(
-                  [](const double& t, double& param) { param = t; }, total, state_parameters.GetColumnView(param_idx));
-            },
-            dummy_state_variables,
-            dummy_state_parameters);
-
-        return
-            [inner = std::move(inner)](const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters) mutable
-        { inner(state_variables, state_parameters); };
       }
-      else
-      {
-        auto per_instance = ResolvePerInstanceTerms(phase_prefixes, state_variable_indices);
-        std::vector<std::size_t> param_indices;
-        std::size_t i = 0;
-        for (const auto& prefix : phase_prefixes.at(algebraic_phase_.name_))
-        {
-          auto param_name = "LC_" + uuid_ + "_" + prefix + "_constant";
-          param_indices.push_back(state_parameter_indices.at(param_name));
-          ++i;
-        }
-
-        auto inner = DenseMatrixPolicy::Function(
-            [per_instance, param_indices](auto&& state_variables, auto&& state_parameters)
-            {
-              for (std::size_t i_inst = 0; i_inst < param_indices.size(); ++i_inst)
-              {
-                auto total = state_parameters.GetRowVariable();
-                state_parameters.ForEachRow([](double& t) { t = 0.0; }, total);
-                for (const auto& [idx, coeff] : per_instance[i_inst])
-                  state_parameters.ForEachRow(
-                      [coeff](const double& val, double& t) { t += coeff * val; },
-                      state_variables.GetConstColumnView(idx),
-                      total);
-                state_parameters.ForEachRow(
-                    [](const double& t, double& param) { param = t; },
+                params_view.ForEachRowStrict(
+                    [](const micm::Real& t, micm::Real& param) { param = t; },
                     total,
-                    state_parameters.GetColumnView(param_indices[i_inst]));
+                    params_view.GetColumnView(param_view[i_inst]));
+                term_offset += count_view[i_inst];
               }
             },
             dummy_state_variables,
             dummy_state_parameters);
 
-        return
-            [inner = std::move(inner)](const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters) mutable
-        { inner(state_variables, state_parameters); };
-      }
+      return [storage, function](const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters) mutable
+      { function(state_variables, state_parameters); };
     }
 
     /// @brief Returns a function that computes constraint residuals G(y) = 0
@@ -309,143 +299,112 @@ namespace miam
         const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
     {
-      bool is_global = (phase_prefixes.find(algebraic_phase_.name_) == phase_prefixes.end());
       bool diagnose = diagnose_from_state_;
       double constant = constant_;
 
+      FlatTerms flat = GetFlatTerms(phase_prefixes, state_parameter_indices, state_variable_indices);
+      using Vector = typename DenseMatrixPolicy::template VectorType<std::size_t>;
+      Vector alg_indices(flat.alg_indices);
+      Vector param_indices(flat.param_indices);
+      Vector counts(flat.counts);
+      Vector term_indices(flat.term_indices);
+      typename DenseMatrixPolicy::template VectorType<double> coefficients(flat.coefficients);
+      alg_indices.CopyToDevice();
+      param_indices.CopyToDevice();
+      counts.CopyToDevice();
+      term_indices.CopyToDevice();
+      coefficients.CopyToDevice();
+      std::size_t num_instances = flat.alg_indices.size();
+
+      struct Storage
+      {
+        Vector alg_indices, param_indices, counts, term_indices;
+        typename DenseMatrixPolicy::template VectorType<double> coefficients;
+      };
+      auto storage = std::make_shared<Storage>(Storage{ std::move(alg_indices),
+                                                        std::move(param_indices),
+                                                        std::move(counts),
+                                                        std::move(term_indices),
+                                                        std::move(coefficients) });
+      auto alg_view = storage->alg_indices.GetView();
+      auto param_view = storage->param_indices.GetView();
+      auto count_view = storage->counts.GetView();
+      auto term_view = storage->term_indices.GetView();
+      auto coeff_view = storage->coefficients.GetView();
       DenseMatrixPolicy dummy_state_variables{ 1, state_variable_indices.size(), 0.0 };
 
-      if (is_global)
-      {
-        auto resolved = ResolveGlobalTerms(phase_prefixes, state_variable_indices);
-        std::size_t alg_idx = state_variable_indices.at(algebraic_species_.name_);
-
         if (diagnose)
         {
-          auto param_name = "LC_" + uuid_ + "_constant";
-          std::size_t param_idx = state_parameter_indices.at(param_name);
           DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-
-          auto inner = DenseMatrixPolicy::Function(
-              [resolved, alg_idx, param_idx](auto&& state_variables, auto&& state_parameters, auto&& residual)
+        auto function = DenseMatrixPolicy::Function(
+              MICM_LAMBDA(
+                  const typename DenseMatrixPolicy::ConstViewType& state_view,
+                  const typename DenseMatrixPolicy::ConstViewType& params_view,
+                  const typename DenseMatrixPolicy::ViewType& residual_view)
               {
-                auto sum = residual.GetRowVariable();
-                residual.ForEachRow(
-                    [](const double& param, double& s) { s = -param; }, state_parameters.GetConstColumnView(param_idx), sum);
-                for (const auto& [idx, coeff] : resolved)
-                  residual.ForEachRow(
-                      [coeff](const double& val, double& s) { s += coeff * val; },
-                      state_variables.GetConstColumnView(idx),
-                      sum);
-                residual.ForEachRow([](const double& s, double& res) { res = s; }, sum, residual.GetColumnView(alg_idx));
-              },
-              dummy_state_variables,
-              dummy_state_parameters,
-              dummy_state_variables);
-
-          return [inner = std::move(inner)](
-                     const DenseMatrixPolicy& state_variables,
-                     const DenseMatrixPolicy& state_parameters,
-                     DenseMatrixPolicy& residual) mutable { inner(state_variables, state_parameters, residual); };
-        }
-        else
-        {
-          auto inner = DenseMatrixPolicy::Function(
-              [resolved, alg_idx, constant](auto&& state_variables, auto&& residual)
-              {
-                auto sum = residual.GetRowVariable();
-                residual.ForEachRow([constant](double& s) { s = -constant; }, sum);
-                for (const auto& [idx, coeff] : resolved)
-                  residual.ForEachRow(
-                      [coeff](const double& val, double& s) { s += coeff * val; },
-                      state_variables.GetConstColumnView(idx),
-                      sum);
-                residual.ForEachRow([](const double& s, double& res) { res = s; }, sum, residual.GetColumnView(alg_idx));
-              },
-              dummy_state_variables,
-              dummy_state_variables);
-
-          return [inner = std::move(inner)](
-                     const DenseMatrixPolicy& state_variables,
-                     const DenseMatrixPolicy& /*state_parameters*/,
-                     DenseMatrixPolicy& residual) mutable { inner(state_variables, residual); };
-        }
-      }
-      else
-      {
-        auto per_instance = ResolvePerInstanceTerms(phase_prefixes, state_variable_indices);
-        std::vector<std::size_t> alg_indices;
-        for (const auto& prefix : phase_prefixes.at(algebraic_phase_.name_))
-        {
-          alg_indices.push_back(
-              state_variable_indices.at(prefix + "." + algebraic_phase_.name_ + "." + algebraic_species_.name_));
-        }
-
-        if (diagnose)
-        {
-          std::vector<std::size_t> param_indices;
-          for (const auto& prefix : phase_prefixes.at(algebraic_phase_.name_))
-          {
-            auto param_name = "LC_" + uuid_ + "_" + prefix + "_constant";
-            param_indices.push_back(state_parameter_indices.at(param_name));
-          }
-          DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-
-          auto inner = DenseMatrixPolicy::Function(
-              [per_instance, alg_indices, param_indices](auto&& state_variables, auto&& state_parameters, auto&& residual)
-              {
-                for (std::size_t i_inst = 0; i_inst < alg_indices.size(); ++i_inst)
+                std::size_t term_offset = 0;
+                for (std::size_t i_inst = 0; i_inst < num_instances; ++i_inst)
                 {
-                  auto sum = residual.GetRowVariable();
-                  residual.ForEachRow(
-                      [](const double& param, double& s) { s = -param; },
-                      state_parameters.GetConstColumnView(param_indices[i_inst]),
+                  auto sum = residual_view.GetRowVariable();
+                  residual_view.ForEachRowStrict(
+                      [](const micm::Real& param, micm::Real& s) { s = -param; },
+                      params_view.GetConstColumnView(param_view[i_inst]),
                       sum);
-                  for (const auto& [idx, coeff] : per_instance[i_inst])
-                    residual.ForEachRow(
-                        [coeff](const double& val, double& s) { s += coeff * val; },
-                        state_variables.GetConstColumnView(idx),
+                  for (std::size_t k = 0; k < count_view[i_inst]; ++k)
+                  {
+                    const micm::Real coeff = coeff_view[term_offset + k];
+                    residual_view.ForEachRowStrict(
+                        [coeff](const micm::Real& val, micm::Real& s) { s += coeff * val; },
+                        state_view.GetConstColumnView(term_view[term_offset + k]),
                         sum);
-                  residual.ForEachRow(
-                      [](const double& s, double& res) { res = s; }, sum, residual.GetColumnView(alg_indices[i_inst]));
+        }
+                  residual_view.ForEachRowStrict(
+                      [](const micm::Real& s, micm::Real& res) { res = s; },
+                      sum,
+                      residual_view.GetColumnView(alg_view[i_inst]));
+                  term_offset += count_view[i_inst];
                 }
               },
               dummy_state_variables,
               dummy_state_parameters,
               dummy_state_variables);
 
-          return [inner = std::move(inner)](
+        return [storage, function](
                      const DenseMatrixPolicy& state_variables,
                      const DenseMatrixPolicy& state_parameters,
-                     DenseMatrixPolicy& residual) mutable { inner(state_variables, state_parameters, residual); };
+                   DenseMatrixPolicy& residual) mutable { function(state_variables, state_parameters, residual); };
         }
-        else
+
+      auto function = DenseMatrixPolicy::Function(
+            MICM_LAMBDA(
+                const typename DenseMatrixPolicy::ConstViewType& state_view,
+                const typename DenseMatrixPolicy::ViewType& residual_view)
         {
-          auto inner = DenseMatrixPolicy::Function(
-              [per_instance, alg_indices, constant](auto&& state_variables, auto&& residual)
+              std::size_t term_offset = 0;
+              for (std::size_t i_inst = 0; i_inst < num_instances; ++i_inst)
               {
-                for (std::size_t i_inst = 0; i_inst < alg_indices.size(); ++i_inst)
+                auto sum = residual_view.GetRowVariable();
+                residual_view.ForEachRowStrict([constant](micm::Real& s) { s = -constant; }, sum);
+                for (std::size_t k = 0; k < count_view[i_inst]; ++k)
                 {
-                  auto sum = residual.GetRowVariable();
-                  residual.ForEachRow([constant](double& s) { s = -constant; }, sum);
-                  for (const auto& [idx, coeff] : per_instance[i_inst])
-                    residual.ForEachRow(
-                        [coeff](const double& val, double& s) { s += coeff * val; },
-                        state_variables.GetConstColumnView(idx),
+                  const micm::Real coeff = coeff_view[term_offset + k];
+                  residual_view.ForEachRowStrict(
+                      [coeff](const micm::Real& val, micm::Real& s) { s += coeff * val; },
+                      state_view.GetConstColumnView(term_view[term_offset + k]),
                         sum);
-                  residual.ForEachRow(
-                      [](const double& s, double& res) { res = s; }, sum, residual.GetColumnView(alg_indices[i_inst]));
+        }
+                residual_view.ForEachRowStrict(
+                    [](const micm::Real& s, micm::Real& res) { res = s; }, sum, residual_view.GetColumnView(alg_view[i_inst]));
+                term_offset += count_view[i_inst];
                 }
               },
               dummy_state_variables,
               dummy_state_variables);
 
-          return [inner = std::move(inner)](
+      return [storage, function](
                      const DenseMatrixPolicy& state_variables,
                      const DenseMatrixPolicy& /*state_parameters*/,
-                     DenseMatrixPolicy& residual) mutable { inner(state_variables, residual); };
-        }
-      }
+                 DenseMatrixPolicy& residual) mutable { function(state_variables, residual); };
     }
 
     /// @brief Returns a function that computes constraint Jacobian entries (subtracts dG/dy)
@@ -453,88 +412,105 @@ namespace miam
     template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
     std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> ConstraintJacobianFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
-        const std::unordered_map<std::string, std::size_t>& /*state_parameter_indices*/,
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
         const std::unordered_map<std::string, std::size_t>& state_variable_indices,
         const SparseMatrixPolicy& jacobian) const
     {
-      bool is_global = (phase_prefixes.find(algebraic_phase_.name_) == phase_prefixes.end());
+      FlatTerms flat = GetFlatTerms(phase_prefixes, state_parameter_indices, state_variable_indices);
 
-      DenseMatrixPolicy dummy_state{ 1, state_variable_indices.size(), 0.0 };
-
-      if (is_global)
+      // Pre-compute Jacobian VectorIndex offsets per instance (block 0)
+      std::vector<std::size_t> jac_ids;
+      std::size_t term_offset = 0;
+      for (std::size_t i_inst = 0; i_inst < flat.alg_indices.size(); ++i_inst)
       {
-        auto resolved = ResolveGlobalTerms(phase_prefixes, state_variable_indices);
-        std::size_t alg_row = state_variable_indices.at(algebraic_species_.name_);
+        for (std::size_t k = 0; k < flat.counts[i_inst]; ++k)
+          jac_ids.push_back(jacobian.VectorIndex(0, flat.alg_indices[i_inst], flat.term_indices[term_offset + k]));
+        term_offset += flat.counts[i_inst];
+      }
 
-        // Pre-compute Jacobian VectorIndex offsets (block 0)
-        std::vector<std::pair<std::size_t, double>> jac_entries;
-        for (const auto& [col_idx, coeff] : resolved)
-        {
-          jac_entries.push_back({ jacobian.VectorIndex(0, alg_row, col_idx), coeff });
-        }
+      typename SparseMatrixPolicy::template VectorType<std::size_t> jac_ids_vec(jac_ids);
+      typename SparseMatrixPolicy::template VectorType<double> coefficients(flat.coefficients);
+      jac_ids_vec.CopyToDevice();
+      coefficients.CopyToDevice();
+      std::size_t num_terms = jac_ids.size();
 
-        auto inner = SparseMatrixPolicy::Function(
-            [jac_entries](auto&& /*state_variables*/, auto&& jacobian_values)
+      struct Storage
+      {
+        typename SparseMatrixPolicy::template VectorType<std::size_t> jac_ids_vec;
+        typename SparseMatrixPolicy::template VectorType<double> coefficients;
+      };
+      auto storage = std::make_shared<Storage>(Storage{ std::move(jac_ids_vec), std::move(coefficients) });
+      auto jac_id_view = storage->jac_ids_vec.GetView();
+      auto coeff_view = storage->coefficients.GetView();
+
+      auto function = SparseMatrixPolicy::Function(
+            MICM_LAMBDA(const typename SparseMatrixPolicy::ViewType& jac_view)
             {
-              for (const auto& [vec_idx, coeff] : jac_entries)
+              for (std::size_t k = 0; k < num_terms; ++k)
               {
-                auto bv = jacobian_values.GetBlockView(vec_idx);
-                jacobian_values.ForEachBlock([coeff](double& j) { j -= coeff; }, bv);
+                const micm::Real coeff = coeff_view[k];
+                jac_view.ForEachBlockStrict([coeff](micm::Real& j) { j -= coeff; }, jac_view.GetBlockView(jac_id_view[k]));
               }
             },
-            dummy_state,
             jacobian);
 
-        return [inner = std::move(inner)](
-                   const DenseMatrixPolicy& state_variables,
-                   const DenseMatrixPolicy& /*state_parameters*/,
-                   SparseMatrixPolicy& jacobian_values) mutable { inner(state_variables, jacobian_values); };
-      }
-      else
-      {
-        auto per_instance = ResolvePerInstanceTerms(phase_prefixes, state_variable_indices);
-        std::vector<std::size_t> alg_rows;
-        for (const auto& prefix : phase_prefixes.at(algebraic_phase_.name_))
-        {
-          alg_rows.push_back(
-              state_variable_indices.at(prefix + "." + algebraic_phase_.name_ + "." + algebraic_species_.name_));
-        }
-
-        // Pre-compute Jacobian VectorIndex offsets per instance (block 0)
-        std::vector<std::vector<std::pair<std::size_t, double>>> jac_entries_per_instance;
-        for (std::size_t i_inst = 0; i_inst < alg_rows.size(); ++i_inst)
-        {
-          std::vector<std::pair<std::size_t, double>> inst_entries;
-          for (const auto& [col_idx, coeff] : per_instance[i_inst])
-          {
-            inst_entries.push_back({ jacobian.VectorIndex(0, alg_rows[i_inst], col_idx), coeff });
-          }
-          jac_entries_per_instance.push_back(std::move(inst_entries));
-        }
-
-        auto inner = SparseMatrixPolicy::Function(
-            [jac_entries_per_instance](auto&& /*state_variables*/, auto&& jacobian_values)
-            {
-              for (const auto& inst_entries : jac_entries_per_instance)
-              {
-                for (const auto& [vec_idx, coeff] : inst_entries)
-                {
-                  auto bv = jacobian_values.GetBlockView(vec_idx);
-                  jacobian_values.ForEachBlock([coeff](double& j) { j -= coeff; }, bv);
-                }
-              }
-            },
-            dummy_state,
-            jacobian);
-
-        return [inner = std::move(inner)](
-                   const DenseMatrixPolicy& state_variables,
-                   const DenseMatrixPolicy& /*state_parameters*/,
-                   SparseMatrixPolicy& jacobian_values) mutable { inner(state_variables, jacobian_values); };
-      }
+      return [storage, function](
+                 const DenseMatrixPolicy& /*state_variables*/,
+                 const DenseMatrixPolicy& /*state_parameters*/,
+                 SparseMatrixPolicy& jacobian_values) mutable { function(jacobian_values); };
     }
 
    private:
+    /// @brief Flattened (index, coefficient) terms of all constraint instances
+    /// @details A global constraint has one instance.
+    struct FlatTerms
+    {
+      std::vector<std::size_t> alg_indices;    ///< Algebraic row per instance
+      std::vector<std::size_t> param_indices;  ///< Diagnosed constant per instance (empty if not diagnosed)
+      std::vector<std::size_t> counts;         ///< Number of terms per instance
+      std::vector<std::size_t> term_indices;   ///< State variable index per term
+      std::vector<double> coefficients;        ///< Coefficient per term
+    };
+
+    /// @brief Resolve the terms, algebraic rows, and diagnosed parameters of all instances
+    FlatTerms GetFlatTerms(
+        const std::map<std::string, std::set<std::string>>& phase_prefixes,
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
+    {
+      FlatTerms flat;
+      std::vector<std::vector<std::pair<std::size_t, double>>> per_instance;
+      bool is_global = (phase_prefixes.find(algebraic_phase_.name_) == phase_prefixes.end());
+      if (is_global)
+      {
+        per_instance.push_back(ResolveGlobalTerms(phase_prefixes, state_variable_indices));
+        flat.alg_indices.push_back(state_variable_indices.at(algebraic_species_.name_));
+        if (diagnose_from_state_)
+          flat.param_indices.push_back(state_parameter_indices.at("LC_" + uuid_ + "_constant"));
+      }
+      else
+      {
+        per_instance = ResolvePerInstanceTerms(phase_prefixes, state_variable_indices);
+        for (const auto& prefix : phase_prefixes.at(algebraic_phase_.name_))
+        {
+          flat.alg_indices.push_back(
+              state_variable_indices.at(prefix + "." + algebraic_phase_.name_ + "." + algebraic_species_.name_));
+          if (diagnose_from_state_)
+            flat.param_indices.push_back(state_parameter_indices.at("LC_" + uuid_ + "_" + prefix + "_constant"));
+        }
+      }
+      for (const auto& terms : per_instance)
+      {
+        flat.counts.push_back(terms.size());
+        for (const auto& [idx, coeff] : terms)
+        {
+          flat.term_indices.push_back(idx);
+          flat.coefficients.push_back(coeff);
+        }
+      }
+      return flat;
+        }
+
     /// @brief Returns parameter names for diagnosed constants
     std::set<std::string> DiagnoseParamNames(const std::map<std::string, std::set<std::string>>& phase_prefixes) const
     {
