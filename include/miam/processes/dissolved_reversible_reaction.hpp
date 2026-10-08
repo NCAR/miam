@@ -24,6 +24,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -363,8 +364,8 @@ namespace miam
     template<typename DenseMatrixPolicy>
     std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ForcingFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
-        const auto& state_parameter_indices,  // acts like std::unordered_map<std::string, std::size_t>
-        const auto& state_variable_indices    // acts like std::unordered_map<std::string, std::size_t>
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices
     ) const
     {
       StateVariableIndices variable_indices = GetStateVariableIndices(phase_prefixes, state_variable_indices);
@@ -481,8 +482,8 @@ namespace miam
     template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
     std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> JacobianFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
-        const auto& state_parameter_indices,  // acts like std::unordered_map<std::string, std::size_t>
-        const auto& state_variable_indices,   // acts like std::unordered_map<std::string, std::size_t>
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices,
         const SparseMatrixPolicy& jacobian) const
     {
       StateVariableIndices variable_indices = GetStateVariableIndices(phase_prefixes, state_variable_indices);

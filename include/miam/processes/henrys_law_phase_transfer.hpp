@@ -236,7 +236,7 @@ namespace miam
     std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>
     UpdateStateParametersFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
-        const auto& state_parameter_indices) const
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices) const
     {
       std::vector<std::size_t> hlc_indices;
       std::vector<std::size_t> temp_indices;
@@ -305,8 +305,8 @@ namespace miam
     template<typename DenseMatrixPolicy>
     std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ForcingFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
-        const auto& state_parameter_indices,
-        const auto& state_variable_indices,
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices,
         std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> providers) const
     {
       auto gas_idx = state_variable_indices.at(gas_species_.name_);
@@ -464,8 +464,8 @@ namespace miam
     template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
     std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)> JacobianFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
-        const auto& state_parameter_indices,
-        const auto& state_variable_indices,
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices,
         const SparseMatrixPolicy& jacobian,
         std::map<std::string, std::map<AerosolProperty, AerosolPropertyProvider<DenseMatrixPolicy>>> providers) const
     {
