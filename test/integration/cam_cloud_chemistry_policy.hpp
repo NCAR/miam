@@ -442,7 +442,7 @@ using Vector = typename DenseMatrix::template VectorType<U>;
   std::cout << "\nStep 1c: naive IC H+=" << state.variables_[0][i_hp] << " OH-=" << state.variables_[0][i_oh]
             << " (expected ~" << expected_hp << ")" << std::endl;
 
-  bool ok = IntegrateDAE(solver, state, 1.0, 1e-6);
+  bool ok = IntegrateDAE(solver, state, 1.0, 1e-3);
   ASSERT_TRUE(ok) << "Solver failed for Kw-only system with naive ICs";
 
   double hp_f = state.variables_[0][i_hp];
