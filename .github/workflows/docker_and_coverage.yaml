@@ -27,6 +27,7 @@ jobs:
           - Dockerfile.intel
           - Dockerfile.nvhpc
           - Dockerfile.kokkos.serial
+          - Dockerfile.kokkos.cuda
         build_type: [Release]
     steps:
       - uses: actions/checkout@v4
@@ -34,13 +35,13 @@ jobs:
           submodules: recursive
 
       - name: Delete huge unnecessary tools folder
-        run: rm -rf /opt/hostedtoolcache
+        run: rm -rf /opt/hostedtoolcache /usr/share/dotnet /usr/local/lib/android /opt/ghc
 
       - name: Build Docker image
         run: docker build -t miam -f docker/${{ matrix.dockerfile }} . --build-arg MIAM_GIT_TAG=${{ github.sha }} --build-arg BUILD_TYPE=${{ matrix.build_type }}
 
       - name: Run tests in container
-        if: matrix.dockerfile != 'Dockerfile.coverage' && matrix.dockerfile != 'Dockerfile.docs' && matrix.dockerfile != 'Dockerfile.kokkos.serial'
+        if: matrix.dockerfile != 'Dockerfile.coverage' && matrix.dockerfile != 'Dockerfile.docs' && matrix.dockerfile != 'Dockerfile.kokkos.serial' && matrix.dockerfile != 'Dockerfile.kokkos.cuda'
         run: docker run --name test-container -t miam bash -c 'make test ARGS="--rerun-failed --output-on-failure -j8"'
 
       - name: Run Kokkos tests in container
