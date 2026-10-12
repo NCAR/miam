@@ -40,6 +40,9 @@ FetchContent_Declare(micm
 
 set(MICM_ENABLE_TESTS OFF)
 set(MICM_ENABLE_EXAMPLES OFF)
+if(MIAM_ENABLE_KOKKOS)
+  set(MICM_ENABLE_KOKKOS ON CACHE BOOL "Enable Kokkos support in MICM" FORCE)
+endif()
 
 FetchContent_MakeAvailable(micm)
 
