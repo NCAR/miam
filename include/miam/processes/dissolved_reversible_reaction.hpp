@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <miam/processes/constants/equilibrium_constant.hpp>
+#include <miam/processes/constants/rate_constant.hpp>
 #include <miam/representations/aerosol_property.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
@@ -16,6 +18,7 @@
 #include <cmath>
 #include <functional>
 #include <map>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -23,6 +26,10 @@
 
 namespace miam
 {
+  class DissolvedReversibleReaction;
+  inline double CalculateForwardRateConstant(const DissolvedReversibleReaction& reaction, const micm::Conditions& conditions);
+  inline double CalculateReverseRateConstant(const DissolvedReversibleReaction& reaction, const micm::Conditions& conditions);
+
   /// @brief A dissolved reversible reaction
   /// @details Dissolved reversible reactions involve reactants and products in solution, and
   ///          are characterized by both a forward and reverse rate constant. If an equilibrium
@@ -51,8 +58,10 @@ namespace miam
   class DissolvedReversibleReaction
   {
    public:
-    std::function<double(const micm::Conditions& conditions)> forward_rate_constant_;  ///< Forward rate constant function
-    std::function<double(const micm::Conditions& conditions)> reverse_rate_constant_;  ///< Reverse rate constant function
+    // Exactly two of the three constants are set. The third follows from k_f = K_eq * k_r.
+    std::optional<RateConstant> forward_rate_constant_;         ///< Forward rate constant
+    std::optional<RateConstant> reverse_rate_constant_;         ///< Reverse rate constant
+    std::optional<EquilibriumConstant> equilibrium_constant_;  ///< Equilibrium constant
     std::vector<micm::Species> reactants_;                                             ///< Reactant species
     std::vector<micm::Species> products_;                                              ///< Product species
     micm::Species solvent_;                                                            ///< Solvent species
@@ -66,15 +75,17 @@ namespace miam
 
     /// @brief Constructor
     DissolvedReversibleReaction(
-        std::function<double(const micm::Conditions& conditions)> forward_rate_constant,
-        std::function<double(const micm::Conditions& conditions)> reverse_rate_constant,
+        std::optional<RateConstant> forward_rate_constant,
+        std::optional<RateConstant> reverse_rate_constant,
         const std::vector<micm::Species>& reactants,
         const std::vector<micm::Species>& products,
         micm::Species solvent,
         micm::Phase phase,
-        double solvent_floor = 1.0e-20)
+        double solvent_floor = 1.0e-20,
+        std::optional<EquilibriumConstant> equilibrium_constant = std::nullopt)
         : forward_rate_constant_(forward_rate_constant),
           reverse_rate_constant_(reverse_rate_constant),
+          equilibrium_constant_(equilibrium_constant),
           reactants_(reactants),
           products_(products),
           solvent_(solvent),
@@ -89,7 +100,14 @@ namespace miam
     DissolvedReversibleReaction CopyWithNewUuid() const
     {
       return DissolvedReversibleReaction(
-          forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_);
+          forward_rate_constant_,
+          reverse_rate_constant_,
+          reactants_,
+          products_,
+          solvent_,
+          phase_,
+          solvent_floor_,
+          equilibrium_constant_);
     }
 
     /// @brief Returns a set of unique parameter names for this process
@@ -271,11 +289,11 @@ namespace miam
           [this, forward_index, reverse_index](auto&& conditions, auto&& params)
           {
             params.ForEachRow(
-                [&](const micm::Conditions& condition, double& parameter) { parameter = forward_rate_constant_(condition); },
+                [&](const micm::Conditions& condition, double& parameter) { parameter = CalculateForwardRateConstant(*this, condition); },
                 conditions,
                 params.GetColumnView(forward_index));
             params.ForEachRow(
-                [&](const micm::Conditions& condition, double& parameter) { parameter = reverse_rate_constant_(condition); },
+                [&](const micm::Conditions& condition, double& parameter) { parameter = CalculateReverseRateConstant(*this, condition); },
                 conditions,
                 params.GetColumnView(reverse_index));
           },
@@ -755,4 +773,20 @@ namespace miam
       return jacobian_indices;
     }
   };
+
+  inline double CalculateForwardRateConstant(const DissolvedReversibleReaction& reaction, const micm::Conditions& conditions)
+  {
+    if (reaction.forward_rate_constant_)
+      return Calculate(*reaction.forward_rate_constant_, conditions);
+    return Calculate(reaction.equilibrium_constant_.value(), conditions) *
+           Calculate(reaction.reverse_rate_constant_.value(), conditions);
+  }
+
+  inline double CalculateReverseRateConstant(const DissolvedReversibleReaction& reaction, const micm::Conditions& conditions)
+  {
+    if (reaction.reverse_rate_constant_)
+      return Calculate(*reaction.reverse_rate_constant_, conditions);
+    return Calculate(reaction.forward_rate_constant_.value(), conditions) /
+           Calculate(reaction.equilibrium_constant_.value(), conditions);
+  }
 }  // namespace miam

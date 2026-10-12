@@ -4,12 +4,13 @@
 #pragma once
 
 #include <miam/constraints/henrys_law_equilibrium_constraint.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 
 #include <micm/system/conditions.hpp>
 
-#include <functional>
+#include <optional>
 #include <stdexcept>
 
 namespace miam
@@ -48,21 +49,10 @@ namespace miam
       return *this;
     }
 
-    template<typename T>
-      requires requires(const T& t, const micm::Conditions& c) {
-        { t.Calculate(c) };
-      }
-    HenrysLawEquilibriumConstraintBuilder& SetHenrysLawConstant(const T& henrys_law_constant)
+    /// @brief Sets the Henry's Law constant
+    HenrysLawEquilibriumConstraintBuilder& SetHenrysLawConstant(const HenrysLawConstant& henrys_law_constant)
     {
-      henrys_law_constant_ = [henrys_law_constant](const micm::Conditions& conditions)
-      { return henrys_law_constant.Calculate(conditions); };
-      return *this;
-    }
-
-    HenrysLawEquilibriumConstraintBuilder& SetHenrysLawConstant(
-        std::function<double(const micm::Conditions&)> henrys_law_constant)
-    {
-      henrys_law_constant_ = std::move(henrys_law_constant);
+      henrys_law_constant_ = henrys_law_constant;
       return *this;
     }
 
@@ -98,7 +88,7 @@ namespace miam
       double solvent_density = solvent_.GetProperty<double>("density [kg m-3]");
 
       return HenrysLawEquilibriumConstraint(
-          henrys_law_constant_,
+          *henrys_law_constant_,
           gas_species_,
           condensed_species_,
           solvent_,
@@ -116,6 +106,6 @@ namespace miam
     bool solvent_is_set_ = false;
     micm::Phase condensed_phase_;
     bool condensed_phase_is_set_ = false;
-    std::function<double(const micm::Conditions& conditions)> henrys_law_constant_;
+    std::optional<HenrysLawConstant> henrys_law_constant_;
   };
 }  // namespace miam

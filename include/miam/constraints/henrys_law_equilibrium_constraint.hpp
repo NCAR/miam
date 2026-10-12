@@ -4,6 +4,7 @@
 #pragma once
 
 #include <miam/math/condensation_rate.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 #include <miam/util/uuid.hpp>
@@ -37,7 +38,7 @@ namespace miam
   class HenrysLawEquilibriumConstraint
   {
    public:
-    std::function<double(const micm::Conditions& conditions)> henrys_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
+    HenrysLawConstant henrys_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
     micm::Species gas_species_;                                                      ///< Gas-phase species
     micm::Species condensed_species_;                                                ///< Condensed-phase solute species
     micm::Species solvent_;                                                          ///< Condensed-phase solvent species
@@ -50,7 +51,7 @@ namespace miam
 
     /// @brief Constructor
     HenrysLawEquilibriumConstraint(
-        std::function<double(const micm::Conditions& conditions)> henrys_law_constant,
+        HenrysLawConstant henrys_law_constant,
         const micm::Species& gas_species,
         const micm::Species& condensed_species,
         const micm::Species& solvent,
@@ -183,18 +184,18 @@ namespace miam
           hlc_rt_indices.push_back(
               state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc_rt"));
       }
-      auto hlc_fn = henrys_law_constant_;
+      auto henrys_law_constant = henrys_law_constant_;
 
       DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
       typename DenseMatrixPolicy::template VectorType<micm::Conditions> conditions_vector;
 
       return DenseMatrixPolicy::Function(
-          [hlc_rt_indices, hlc_fn](auto&& conditions, auto&& params)
+          [hlc_rt_indices, henrys_law_constant](auto&& conditions, auto&& params)
           {
             for (const auto& hlc_rt_idx : hlc_rt_indices)
               params.ForEachRow(
-                  [hlc_fn](const micm::Conditions& cond, double& hlc_rt)
-                  { hlc_rt = hlc_fn(cond) * micm::constants::GAS_CONSTANT * cond.temperature_; },
+                  [henrys_law_constant](const micm::Conditions& cond, double& hlc_rt)
+                  { hlc_rt = Calculate(henrys_law_constant, cond) * micm::constants::GAS_CONSTANT * cond.temperature_; },
                   conditions,
                   params.GetColumnView(hlc_rt_idx));
           },

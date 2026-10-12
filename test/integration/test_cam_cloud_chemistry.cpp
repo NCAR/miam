@@ -1289,7 +1289,7 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
                    .SetReactants({ hso3m, h2o2_aq })
                    .SetProducts({ so2oohm, h2o })
                    .SetSolvent(h2o)
-                   .SetForwardRateConstant(EquilibriumConstant({ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 }))
+                   .SetForwardRateConstant(VantHoffParameters{ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 })
                    .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1725.0 }))
                    .Build();
 
@@ -1299,8 +1299,7 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
                    .SetProducts({ so4mm })
                    .SetSolvent(h2o)
                    .SetRateConstant(
-                       [](const Conditions& c) -> double
-                       { return c_H2O_M * 2.4e6 * std::exp(-4430.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
+                       VantHoffParameters{ c_H2O_M * 2.4e6, 4430.0, 298.0 })
                    .Build();
 
   // R2: HSO3⁻ + O3(aq) → SO4²⁻ + H⁺
@@ -1310,8 +1309,7 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
                   .SetProducts({ so4mm, hp })
                   .SetSolvent(h2o)
                   .SetRateConstant(
-                      [](const Conditions& c) -> double
-                      { return c_H2O_M * 3.75e5 * std::exp(-5530.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
+                      VantHoffParameters{ c_H2O_M * 3.75e5, 5530.0, 298.0 })
                   .Build();
 
   // R3: SO3²⁻ + O3(aq) → SO4²⁻
@@ -1321,8 +1319,7 @@ TEST(CamCloudChemistry, Step4_FullSystemWithKinetics)
                   .SetProducts({ so4mm })
                   .SetSolvent(h2o)
                   .SetRateConstant(
-                      [](const Conditions& c) -> double
-                      { return c_H2O_M * 1.59e9 * std::exp(-5280.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
+                      VantHoffParameters{ c_H2O_M * 1.59e9, 5280.0, 298.0 })
                   .Build();
 
   auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
@@ -1614,7 +1611,7 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
                    .SetReactants({ hso3m, h2o2_aq })
                    .SetProducts({ so2oohm, h2o })
                    .SetSolvent(h2o)
-                   .SetForwardRateConstant(EquilibriumConstant({ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 }))
+                   .SetForwardRateConstant(VantHoffParameters{ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 })
                    .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1725.0 }))
                    .Build();
 
@@ -1624,8 +1621,7 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
                    .SetProducts({ so4mm })
                    .SetSolvent(h2o)
                    .SetRateConstant(
-                       [](const Conditions& c) -> double
-                       { return c_H2O_M * 2.4e6 * std::exp(-4430.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
+                       VantHoffParameters{ c_H2O_M * 2.4e6, 4430.0, 298.0 })
                    .Build();
 
   auto rxn2 = DissolvedReactionBuilder()
@@ -1634,8 +1630,7 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
                   .SetProducts({ so4mm, hp })
                   .SetSolvent(h2o)
                   .SetRateConstant(
-                      [](const Conditions& c) -> double
-                      { return c_H2O_M * 3.75e5 * std::exp(-5530.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
+                      VantHoffParameters{ c_H2O_M * 3.75e5, 5530.0, 298.0 })
                   .Build();
 
   auto rxn3 = DissolvedReactionBuilder()
@@ -1644,8 +1639,7 @@ TEST(CamCloudChemistry, Step4b_NaiveInitialConditions)
                   .SetProducts({ so4mm })
                   .SetSolvent(h2o)
                   .SetRateConstant(
-                      [](const Conditions& c) -> double
-                      { return c_H2O_M * 1.59e9 * std::exp(-5280.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
+                      VantHoffParameters{ c_H2O_M * 1.59e9, 5280.0, 298.0 })
                   .Build();
 
   auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
@@ -1884,7 +1878,7 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
                    .SetReactants({ hso3m, h2o2_aq })
                    .SetProducts({ so2oohm, h2o })
                    .SetSolvent(h2o)
-                   .SetForwardRateConstant(EquilibriumConstant({ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 }))
+                   .SetForwardRateConstant(VantHoffParameters{ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 })
                    .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1725.0 }))
                    .Build();
 
@@ -1894,8 +1888,7 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
                    .SetProducts({ so4mm })
                    .SetSolvent(h2o)
                    .SetRateConstant(
-                       [](const Conditions& c) -> double
-                       { return c_H2O_M * 2.4e6 * std::exp(-4430.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
+                       VantHoffParameters{ c_H2O_M * 2.4e6, 4430.0, 298.0 })
                    .Build();
 
   auto rxn2 = DissolvedReactionBuilder()
@@ -1904,8 +1897,7 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
                   .SetProducts({ so4mm, hp })
                   .SetSolvent(h2o)
                   .SetRateConstant(
-                      [](const Conditions& c) -> double
-                      { return c_H2O_M * 3.75e5 * std::exp(-5530.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
+                      VantHoffParameters{ c_H2O_M * 3.75e5, 5530.0, 298.0 })
                   .Build();
 
   auto rxn3 = DissolvedReactionBuilder()
@@ -1914,8 +1906,7 @@ TEST(CamCloudChemistry, Step5_JacobianVerification)
                   .SetProducts({ so4mm })
                   .SetSolvent(h2o)
                   .SetRateConstant(
-                      [](const Conditions& c) -> double
-                      { return c_H2O_M * 1.59e9 * std::exp(-5280.0 * (1.0 / c.temperature_ - 1.0 / 298.0)); })
+                      VantHoffParameters{ c_H2O_M * 1.59e9, 5280.0, 298.0 })
                   .Build();
 
   auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };

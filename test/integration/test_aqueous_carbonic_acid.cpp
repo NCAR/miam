@@ -123,8 +123,8 @@ namespace
     auto droplet = SingleMomentMode{ "DROPLET", { aqueous_phase }, 5.0e-6, 1.2 };
 
     // CO2(aq) + H2O <-> H+ + HCO3-  (same rate constants in both tests)
-    auto rxn1 = DissolvedReversibleReaction{ { [](const Conditions&) { return k1_f; } },
-                                             { [](const Conditions&) { return k1_r; } },
+    auto rxn1 = DissolvedReversibleReaction{ { k1_f },
+                                             { k1_r },
                                              { CO2_aq },
                                              { Hp, HCO3m },
                                              H2O,
@@ -244,22 +244,22 @@ TEST(AqueousCarbonicAcid, KineticODE)
                       .SetGasSpecies(sys.CO2_g)
                       .SetCondensedSpecies(sys.CO2_aq)
                       .SetSolvent(sys.H2O)
-                      .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = K_H }))
+                      .SetHenrysLawConstant(HenrysLawConstant{ .HLC_ref_ = K_H })
                       .SetDiffusionCoefficient(D_CO2)
                       .SetAccommodationCoefficient(alpha)
                       .Build();
 
   // HCO3- <-> H+ + CO3--  (full stiff rate; stable for pure-ODE Rosenbrock)
-  auto rxn2 = DissolvedReversibleReaction{ { [](const Conditions&) { return k2_f; } },
-                                           { [](const Conditions&) { return k2_r; } },
+  auto rxn2 = DissolvedReversibleReaction{ { k2_f },
+                                           { k2_r },
                                            { sys.HCO3m },
                                            { sys.Hp, sys.CO3mm },
                                            sys.H2O,
                                            sys.aqueous_phase };
 
   // H2O <-> H+ + OH-  (H2O as reactant AND solvent gives correct Kw_miam)
-  auto rxn_w = DissolvedReversibleReaction{ { [](const Conditions&) { return kw_f; } },
-                                            { [](const Conditions&) { return kw_r; } },
+  auto rxn_w = DissolvedReversibleReaction{ { kw_f },
+                                            { kw_r },
                                             { sys.H2O },
                                             { sys.Hp, sys.OHm },
                                             sys.H2O,
@@ -418,7 +418,7 @@ TEST(AqueousCarbonicAcid, DAEConstraints)
                            .SetProducts({ sys.Hp, sys.CO3mm })
                            .SetAlgebraicSpecies(sys.CO3mm)
                            .SetSolvent(sys.H2O)
-                           .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = K2_miam }))
+                           .SetEquilibriumConstant(EquilibriumConstant{ .A_ = K2_miam })
                            .Build();
 
   // CO2(aq): Henry's Law equilibrium with CO2(g)
@@ -428,7 +428,7 @@ TEST(AqueousCarbonicAcid, DAEConstraints)
                            .SetGasSpecies(sys.CO2_g)
                            .SetCondensedSpecies(sys.CO2_aq)
                            .SetSolvent(sys.H2O)
-                           .SetHenrysLawConstant(HenrysLawConstant(HenrysLawConstantParameters{ .HLC_ref_ = K_H }))
+                           .SetHenrysLawConstant(HenrysLawConstant{ .HLC_ref_ = K_H })
                            .Build();
 
   // OH-: water autodissociation equilibrium
@@ -440,7 +440,7 @@ TEST(AqueousCarbonicAcid, DAEConstraints)
                            .SetProducts({ sys.Hp, sys.OHm })
                            .SetAlgebraicSpecies(sys.OHm)
                            .SetSolvent(sys.H2O)
-                           .SetEquilibriumConstant(EquilibriumConstant(EquilibriumConstantParameters{ .A_ = Kw_miam }))
+                           .SetEquilibriumConstant(EquilibriumConstant{ .A_ = Kw_miam })
                            .Build();
 
   // H+: charge balance  [H+] - [OH-] - [HCO3-] - 2[CO3--] = 0

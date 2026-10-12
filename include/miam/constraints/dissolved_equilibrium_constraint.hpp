@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <miam/processes/constants/equilibrium_constant.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 #include <miam/util/uuid.hpp>
@@ -42,7 +43,7 @@ namespace miam
   class DissolvedEquilibriumConstraint
   {
    public:
-    std::function<double(const micm::Conditions& conditions)> equilibrium_constant_;  ///< K_eq function
+    EquilibriumConstant equilibrium_constant_;  ///< K_eq
     std::vector<micm::Species> reactants_;                                            ///< Reactant species
     std::vector<micm::Species> products_;                                             ///< Product species
     micm::Species algebraic_species_;  ///< Product species whose ODE row is replaced
@@ -56,7 +57,7 @@ namespace miam
 
     /// @brief Constructor
     DissolvedEquilibriumConstraint(
-        std::function<double(const micm::Conditions& conditions)> equilibrium_constant,
+        EquilibriumConstant equilibrium_constant,
         const std::vector<micm::Species>& reactants,
         const std::vector<micm::Species>& products,
         const micm::Species& algebraic_species,
@@ -196,17 +197,18 @@ namespace miam
         for (const auto& prefix : phase_it->second)
           k_eq_indices.push_back(state_parameter_indices.at(prefix + "." + phase_.name_ + "." + uuid_ + ".k_eq"));
       }
-      auto eq_const_fn = equilibrium_constant_;
+      auto equilibrium_constant = equilibrium_constant_;
 
       DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
       typename DenseMatrixPolicy::template VectorType<micm::Conditions> conditions_vector;
 
       return DenseMatrixPolicy::Function(
-          [k_eq_indices, eq_const_fn](auto&& conditions, auto&& params)
+          [k_eq_indices, equilibrium_constant](auto&& conditions, auto&& params)
           {
             for (const auto& k_eq_idx : k_eq_indices)
               params.ForEachRow(
-                  [eq_const_fn](const micm::Conditions& cond, double& k_eq) { k_eq = eq_const_fn(cond); },
+                  [equilibrium_constant](const micm::Conditions& cond, double& k_eq)
+                  { k_eq = Calculate(equilibrium_constant, cond); },
                   conditions,
                   params.GetColumnView(k_eq_idx));
           },

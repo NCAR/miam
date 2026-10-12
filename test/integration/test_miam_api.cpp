@@ -134,8 +134,7 @@ TEST(MIAM, ApiExample)
                               .SetReactants({ h2o })
                               .SetProducts({ ohm, hp })
                               .SetSolvent(h2o)
-                              .SetEquilibriumConstant(EquilibriumConstant(
-                                  EquilibriumConstantParameters{ .A_ = 1.14e-2, .C_ = 2300.0, .T0_ = 298.15 }))
+                              .SetEquilibriumConstant(EquilibriumConstant{ .A_ = 1.14e-2, .C_ = 2300.0, .T0_ = 298.15 })
                               .SetReverseRateConstant(ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
                               .Build();
 
@@ -148,8 +147,7 @@ TEST(MIAM, ApiExample)
                            .SetReactants({ co2, h2o })
                            .SetProducts({ h2co3 })
                            .SetSolvent(h2o)
-                           .SetEquilibriumConstant(EquilibriumConstant(
-                               EquilibriumConstantParameters{ .A_ = 1.70e3, .C_ = 2400.0, .T0_ = 298.15 }))
+                           .SetEquilibriumConstant(EquilibriumConstant{ .A_ = 1.70e3, .C_ = 2400.0, .T0_ = 298.15 })
                            .SetReverseRateConstant(ArrheniusRateConstantParameters{ .A_ = 1.4e11, .C_ = 5.1e4 })
                            .Build();
 
@@ -162,8 +160,7 @@ TEST(MIAM, ApiExample)
                                 .SetReactants({ h2co3 })
                                 .SetProducts({ hco3m, hp })
                                 .SetSolvent(h2o)
-                                .SetEquilibriumConstant(EquilibriumConstant(
-                                    EquilibriumConstantParameters{ .A_ = 4.27e2, .C_ = 2300.0, .T0_ = 298.15 }))
+                                .SetEquilibriumConstant(EquilibriumConstant{ .A_ = 4.27e2, .C_ = 2300.0, .T0_ = 298.15 })
                                 .SetReverseRateConstant(ArrheniusRateConstantParameters{ .A_ = 2.5e10, .C_ = 4.0e4 })
                                 .Build();
 
@@ -176,8 +173,7 @@ TEST(MIAM, ApiExample)
                                 .SetReactants({ hco3m })
                                 .SetProducts({ co32m, hp })
                                 .SetSolvent(h2o)
-                                .SetEquilibriumConstant(EquilibriumConstant(
-                                    EquilibriumConstantParameters{ .A_ = 1.70e1, .C_ = 2300.0, .T0_ = 298.15 }))
+                                .SetEquilibriumConstant(EquilibriumConstant{ .A_ = 1.70e1, .C_ = 2300.0, .T0_ = 298.15 })
                                 .SetReverseRateConstant(ArrheniusRateConstantParameters{ .A_ = 6.4e9, .C_ = 3.1e4 })
                                 .Build();
 

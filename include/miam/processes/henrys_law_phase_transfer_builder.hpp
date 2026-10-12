@@ -4,6 +4,7 @@
 #pragma once
 
 #include <miam/processes/henrys_law_phase_transfer.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 
@@ -11,7 +12,7 @@
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
 
-#include <functional>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -56,10 +57,9 @@ namespace miam
     }
 
     /// @brief Sets the Henry's Law constant
-    HenrysLawPhaseTransferBuilder& SetHenrysLawConstant(const auto& henrys_law_constant)
+    HenrysLawPhaseTransferBuilder& SetHenrysLawConstant(const HenrysLawConstant& henrys_law_constant)
     {
-      henrys_law_constant_ = [henrys_law_constant](const micm::Conditions& conditions)
-      { return henrys_law_constant.Calculate(conditions); };
+      henrys_law_constant_ = henrys_law_constant;
       return *this;
     }
 
@@ -151,7 +151,7 @@ namespace miam
       double solvent_density = solvent_.GetProperty<double>("density [kg m-3]");
 
       return HenrysLawPhaseTransfer(
-          henrys_law_constant_,
+          *henrys_law_constant_,
           gas_species_,
           condensed_species_,
           solvent_,
@@ -172,7 +172,7 @@ namespace miam
     bool condensed_species_is_set_ = false;
     micm::Species solvent_;
     bool solvent_is_set_ = false;
-    std::function<double(const micm::Conditions& conditions)> henrys_law_constant_;
+    std::optional<HenrysLawConstant> henrys_law_constant_;
     double diffusion_coefficient_ = 0.0;  ///< Gas-phase diffusion coefficient [m² s⁻¹]
     bool diffusion_coefficient_is_set_ = false;
     double accommodation_coefficient_ = 0.0;  ///< Mass accommodation coefficient [dimensionless, 0–1]

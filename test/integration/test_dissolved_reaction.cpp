@@ -28,7 +28,7 @@ TEST(DissolvedReactionIntegration, SimpleFirstOrderDecay)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 0.1;  // s^-1
-  auto rate = [k](const Conditions& conditions) { return k; };
+  auto rate = k;
 
   // A -> B with solvent C
   auto reaction = DissolvedReactionBuilder{}
@@ -122,7 +122,7 @@ TEST(DissolvedReactionIntegration, SolventAsReactant)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 1.0e-3;
-  auto rate = [k](const Conditions& conditions) { return k; };
+  auto rate = k;
 
   // A + C -> B with solvent C
   // rate = k / [C]^(2-1) * [A] * [C] = k * [A]
@@ -218,7 +218,7 @@ TEST(DissolvedReactionIntegration, SolventAsProduct)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 1.0e-3;
-  auto rate = [k](const Conditions& conditions) { return k; };
+  auto rate = k;
 
   // A -> B + C with solvent C
   // rate = k * [A] (1 reactant, no solvent normalization)
@@ -317,7 +317,7 @@ TEST(DissolvedReactionIntegration, MultiPhaseInstances)
 
   double k = 0.1;
 
-  auto k_calc = [k](const Conditions& conditions) { return k; };
+  auto k_calc = k;
 
   auto reaction = DissolvedReactionBuilder{}
                       .SetPhase(aqueous)
@@ -433,7 +433,7 @@ TEST(DissolvedReactionIntegration, SecondOrderTwoReactants)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 1.0;
-  auto rate = [k](const Conditions& conditions) { return k; };
+  auto rate = k;
 
   // A + B -> C with solvent S
   // rate = k / [S] * [A] * [B]
@@ -541,7 +541,7 @@ TEST(DissolvedReactionIntegration, MinHalflifeZeroReactant)
   auto droplet = UniformSection{ "DROPLET", { aqueous_phase } };
 
   double k = 1.0;  // s^-1
-  auto rate = [k](const Conditions& conditions) { return k; };
+  auto rate = k;
 
   double t_half = 10.0;  // seconds
 

@@ -4,6 +4,7 @@
 #pragma once
 
 #include <miam/math/condensation_rate.hpp>
+#include <miam/processes/constants/henrys_law_constant.hpp>
 #include <miam/representations/aerosol_property.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
@@ -38,7 +39,7 @@ namespace miam
   class HenrysLawPhaseTransfer
   {
    public:
-    std::function<double(const micm::Conditions& conditions)> henrys_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
+    HenrysLawConstant henrys_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
     micm::Species gas_species_;                                                      ///< Gas-phase species
     micm::Species condensed_species_;                                                ///< Condensed-phase solute species
     micm::Species solvent_;                                                          ///< Condensed-phase solvent species
@@ -54,7 +55,7 @@ namespace miam
 
     /// @brief Constructor
     HenrysLawPhaseTransfer(
-        std::function<double(const micm::Conditions& conditions)> henrys_law_constant,
+        HenrysLawConstant henrys_law_constant,
         const micm::Species& gas_species,
         const micm::Species& condensed_species,
         const micm::Species& solvent,
@@ -269,7 +270,7 @@ namespace miam
               params.ForEachRow(
                   [&](const micm::Conditions& cond, double& hlc, double& T)
                   {
-                    hlc = henrys_law_constant_(cond);
+                    hlc = Calculate(henrys_law_constant_, cond);
                     T = cond.temperature_;
                   },
                   conditions,

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <miam/processes/constants/equilibrium_constant.hpp>
+#include <miam/processes/constants/rate_constant.hpp>
 #include <miam/processes/dissolved_reversible_reaction.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
@@ -11,8 +13,8 @@
 #include <micm/process/rate_constant/rate_constant_functions.hpp>
 #include <micm/system/conditions.hpp>
 
-#include <functional>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -66,43 +68,24 @@ namespace miam
       return *this;
     }
 
-    /// @brief Sets the forward rate constant function
-    DissolvedReversibleReactionBuilder& SetForwardRateConstant(const auto& forward_rate_constant)
+    /// @brief Sets the forward rate constant
+    DissolvedReversibleReactionBuilder& SetForwardRateConstant(const RateConstant& forward_rate_constant)
     {
-      forward_rate_constant_ = [forward_rate_constant](const micm::Conditions& conditions)
-      { return forward_rate_constant.Calculate(conditions); };
+      forward_rate_constant_ = forward_rate_constant;
       return *this;
     }
 
-    /// @brief Sets the forward rate constant from Arrhenius parameters
-    DissolvedReversibleReactionBuilder& SetForwardRateConstant(const micm::ArrheniusRateConstantParameters& params)
+    /// @brief Sets the reverse rate constant
+    DissolvedReversibleReactionBuilder& SetReverseRateConstant(const RateConstant& reverse_rate_constant)
     {
-      forward_rate_constant_ = [params](const micm::Conditions& conditions)
-      { return micm::CalculateArrhenius(params, conditions.temperature_, conditions.pressure_); };
+      reverse_rate_constant_ = reverse_rate_constant;
       return *this;
     }
 
-    /// @brief Sets the reverse rate constant function
-    DissolvedReversibleReactionBuilder& SetReverseRateConstant(const auto& reverse_rate_constant)
+    /// @brief Sets the equilibrium constant
+    DissolvedReversibleReactionBuilder& SetEquilibriumConstant(const EquilibriumConstant& equilibrium_constant)
     {
-      reverse_rate_constant_ = [reverse_rate_constant](const micm::Conditions& conditions)
-      { return reverse_rate_constant.Calculate(conditions); };
-      return *this;
-    }
-
-    /// @brief Sets the reverse rate constant from Arrhenius parameters
-    DissolvedReversibleReactionBuilder& SetReverseRateConstant(const micm::ArrheniusRateConstantParameters& params)
-    {
-      reverse_rate_constant_ = [params](const micm::Conditions& conditions)
-      { return micm::CalculateArrhenius(params, conditions.temperature_, conditions.pressure_); };
-      return *this;
-    }
-
-    /// @brief Sets the equilibrium constant function
-    DissolvedReversibleReactionBuilder& SetEquilibriumConstant(const auto& equilibrium_constant)
-    {
-      equilibrium_constant_ = [equilibrium_constant](const micm::Conditions& conditions)
-      { return equilibrium_constant.Calculate(conditions); };
+      equilibrium_constant_ = equilibrium_constant;
       return *this;
     }
 
@@ -154,37 +137,8 @@ namespace miam
             "equilibrium constant must be set.");
       }
 
-      // If equilibrium constant is set, compute the missing rate constant
-      auto fwd_rc = forward_rate_constant_;
-      auto rev_rc = reverse_rate_constant_;
-      if (equilibrium_constant_)
-      {
-        if (!forward_rate_constant_)
-        {
-          // Capture the necessary functions by value to avoid dangling references
-          auto eq_const = equilibrium_constant_;
-          auto rev_const = reverse_rate_constant_;
-          fwd_rc = [eq_const, rev_const](const micm::Conditions& conditions)
-          {
-            double K_eq = eq_const(conditions);
-            double k_r = rev_const(conditions);
-            return K_eq * k_r;
-          };
-        }
-        else if (!reverse_rate_constant_)
-        {
-          // Capture the necessary functions by value to avoid dangling references
-          auto eq_const = equilibrium_constant_;
-          auto fwd_const = forward_rate_constant_;
-          rev_rc = [eq_const, fwd_const](const micm::Conditions& conditions)
-          {
-            double K_eq = eq_const(conditions);
-            double k_f = fwd_const(conditions);
-            return k_f / K_eq;
-          };
-        }
-      }
-      return DissolvedReversibleReaction(fwd_rc, rev_rc, reactants_, products_, solvent_, phase_, solvent_floor_);
+      return DissolvedReversibleReaction(
+          forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_, equilibrium_constant_);
     }
 
    private:
@@ -194,9 +148,9 @@ namespace miam
     std::vector<micm::Species> products_;   ///< Product species
     micm::Species solvent_;                 ///< Solvent species
     bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
-    std::function<double(const micm::Conditions& conditions)> forward_rate_constant_;  ///< Forward rate constant function
-    std::function<double(const micm::Conditions& conditions)> reverse_rate_constant_;  ///< Reverse rate constant function
-    std::function<double(const micm::Conditions& conditions)> equilibrium_constant_;   ///< Equilibrium constant function
+    std::optional<RateConstant> forward_rate_constant_;         ///< Forward rate constant
+    std::optional<RateConstant> reverse_rate_constant_;         ///< Reverse rate constant
+    std::optional<EquilibriumConstant> equilibrium_constant_;  ///< Equilibrium constant
     double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
   };
 }  // namespace miam
