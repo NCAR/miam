@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include <miam/processes/henrys_law_phase_transfer.hpp>
 #include <miam/processes/constants/henrys_law_constant.hpp>
+#include <miam/processes/henrys_law_phase_transfer.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
 

@@ -176,29 +176,28 @@ namespace miam
           DenseMatrixPolicy example_params{ 1, state_parameter_indices.size(), 0.0 };
           DenseMatrixPolicy example_vars{ 1, state_variable_indices.size(), 0.0 };
           DenseMatrixPolicy example_result{ 1, 1, 0.0 };
-          auto value_function =
-            DenseMatrixPolicy::Function(
-                MICM_LAMBDA(
-                    const typename DenseMatrixPolicy::ConstViewType& params_view,
-                    const typename DenseMatrixPolicy::ConstViewType& /*vars_view*/,
-                    const typename DenseMatrixPolicy::ViewType& result_view) {
-                  params_view.ForEachRowStrict(
-                      [](const double& gmd, const double& gsd, double& r_eff)
-                      {
-                        const double ln_gsd = std::log(gsd);
-                        r_eff = gmd * std::exp(2.5 * ln_gsd * ln_gsd);
-                      },
-                      params_view.GetConstColumnView(gmd_idx),
-                      params_view.GetConstColumnView(gsd_idx),
-                      result_view.GetColumnView(0));
-                },
-                example_params,
-                example_vars,
-                example_result);
-          provider.ComputeValue = [value_function](
-                                      const DenseMatrixPolicy& params,
-                                      const DenseMatrixPolicy& vars,
-                                      DenseMatrixPolicy& result) mutable { value_function(params, vars, result); };
+          auto value_function = DenseMatrixPolicy::Function(
+              MICM_LAMBDA(
+                  const typename DenseMatrixPolicy::ConstViewType& params_view,
+                  const typename DenseMatrixPolicy::ConstViewType& /*vars_view*/,
+                  const typename DenseMatrixPolicy::ViewType& result_view) {
+                params_view.ForEachRowStrict(
+                    [](const double& gmd, const double& gsd, double& r_eff)
+                    {
+                      const double ln_gsd = std::log(gsd);
+                      r_eff = gmd * std::exp(2.5 * ln_gsd * ln_gsd);
+                    },
+                    params_view.GetConstColumnView(gmd_idx),
+                    params_view.GetConstColumnView(gsd_idx),
+                    result_view.GetColumnView(0));
+              },
+              example_params,
+              example_vars,
+              example_result);
+          provider.ComputeValue =
+              [value_function](
+                  const DenseMatrixPolicy& params, const DenseMatrixPolicy& vars, DenseMatrixPolicy& result) mutable
+          { value_function(params, vars, result); };
           provider.ComputeValueAndDerivatives = [compute_value = provider.ComputeValue](
                                                     const DenseMatrixPolicy& params,
                                                     const DenseMatrixPolicy& vars,
@@ -234,68 +233,65 @@ namespace miam
           DenseMatrixPolicy example_vars{ 1, state_variable_indices.size(), 0.0 };
           DenseMatrixPolicy example_result{ 1, 1, 0.0 };
           DenseMatrixPolicy example_partials{ 1, species_indices.size(), 0.0 };
-          auto value_function =
-            DenseMatrixPolicy::Function(
-                MICM_LAMBDA(
-                    const typename DenseMatrixPolicy::ConstViewType& params_view,
-                    const typename DenseMatrixPolicy::ConstViewType& vars_view,
-                    const typename DenseMatrixPolicy::ViewType& result_view) {
-                  auto N = result_view.GetColumnView(0);
-                  params_view.ForEachRowStrict([](double& v) { v = 0.0; }, N);
-                  const std::size_t n = species_view.size();
-                  for (std::size_t k = 0; k < n; ++k)
-                  {
-                    const double mv = volumes_view[k];
-                    params_view.ForEachRowStrict(
-                        [mv](const double& c, double& V) { V += c * mv; }, vars_view.GetConstColumnView(species_view[k]), N);
-                  }
+          auto value_function = DenseMatrixPolicy::Function(
+              MICM_LAMBDA(
+                  const typename DenseMatrixPolicy::ConstViewType& params_view,
+                  const typename DenseMatrixPolicy::ConstViewType& vars_view,
+                  const typename DenseMatrixPolicy::ViewType& result_view) {
+                auto N = result_view.GetColumnView(0);
+                params_view.ForEachRowStrict([](double& v) { v = 0.0; }, N);
+                const std::size_t n = species_view.size();
+                for (std::size_t k = 0; k < n; ++k)
+                {
+                  const double mv = volumes_view[k];
                   params_view.ForEachRowStrict(
-                      [](const double& gmd, const double& gsd, double& N_out)
+                      [mv](const double& c, double& V) { V += c * mv; }, vars_view.GetConstColumnView(species_view[k]), N);
+                }
+                params_view.ForEachRowStrict(
+                    [](const double& gmd, const double& gsd, double& N_out)
+                    {
+                      const double ln_gsd = std::log(gsd);
+                      const double V_s = (4.0 / 3.0) * std::numbers::pi * gmd * gmd * gmd * std::exp(4.5 * ln_gsd * ln_gsd);
+                      N_out /= V_s;
+                    },
+                    params_view.GetConstColumnView(gmd_idx),
+                    params_view.GetConstColumnView(gsd_idx),
+                    N);
+              },
+              example_params,
+              example_vars,
+              example_result);
+          provider.ComputeValue =
+              [storage, value_function](
+                  const DenseMatrixPolicy& params, const DenseMatrixPolicy& vars, DenseMatrixPolicy& result) mutable
+          { value_function(params, vars, result); };
+          const std::size_t n = species_indices.size();
+          auto partials_function = DenseMatrixPolicy::Function(
+              MICM_LAMBDA(
+                  const typename DenseMatrixPolicy::ConstViewType& params_view,
+                  const typename DenseMatrixPolicy::ConstViewType& /*vars_view*/,
+                  const typename DenseMatrixPolicy::ViewType& /*result_view*/,
+                  const typename DenseMatrixPolicy::ViewType& partials_view) {
+                for (std::size_t k = 0; k < n; ++k)
+                {
+                  const double mv = volumes_view[k];
+                  params_view.ForEachRowStrict(
+                      [mv](const double& gmd, const double& gsd, double& dN)
                       {
                         const double ln_gsd = std::log(gsd);
                         const double V_s =
                             (4.0 / 3.0) * std::numbers::pi * gmd * gmd * gmd * std::exp(4.5 * ln_gsd * ln_gsd);
-                        N_out /= V_s;
+                        dN = mv / V_s;
                       },
                       params_view.GetConstColumnView(gmd_idx),
                       params_view.GetConstColumnView(gsd_idx),
-                      N);
-                },
-                example_params,
-                example_vars,
-                example_result);
-          provider.ComputeValue = [storage, value_function](
-                                                    const DenseMatrixPolicy& params,
-                                                    const DenseMatrixPolicy& vars,
-                                      DenseMatrixPolicy& result) mutable { value_function(params, vars, result); };
-          const std::size_t n = species_indices.size();
-          auto partials_function =
-            DenseMatrixPolicy::Function(
-                MICM_LAMBDA(
-                    const typename DenseMatrixPolicy::ConstViewType& params_view,
-                    const typename DenseMatrixPolicy::ConstViewType& /*vars_view*/,
-                    const typename DenseMatrixPolicy::ViewType& /*result_view*/,
-                    const typename DenseMatrixPolicy::ViewType& partials_view) {
-                  for (std::size_t k = 0; k < n; ++k)
-                  {
-                    const double mv = volumes_view[k];
-                    params_view.ForEachRowStrict(
-                        [mv](const double& gmd, const double& gsd, double& dN)
-                        {
-                          const double ln_gsd = std::log(gsd);
-                          const double V_s =
-                              (4.0 / 3.0) * std::numbers::pi * gmd * gmd * gmd * std::exp(4.5 * ln_gsd * ln_gsd);
-                          dN = mv / V_s;
-                        },
-                        params_view.GetConstColumnView(gmd_idx),
-                        params_view.GetConstColumnView(gsd_idx),
-                        partials_view.GetColumnView(k));
-                  }
-                },
-                example_params,
-                example_vars,
-                example_result,
-                example_partials);
+                      partials_view.GetColumnView(k));
+                }
+              },
+              example_params,
+              example_vars,
+              example_result,
+              example_partials);
           provider.ComputeValueAndDerivatives = [storage, compute_value = provider.ComputeValue, partials_function, n](
                                                     const DenseMatrixPolicy& params,
                                                     const DenseMatrixPolicy& vars,

@@ -396,9 +396,7 @@ TEST(JacobianVerification, MultipleProcessesCombined)
                        .Build();
 
   // C ⇌ D (reversible)
-  auto reaction2 = DissolvedReversibleReaction{
-    { 0.2 }, { 0.05 }, { C }, { D }, S, aqueous_phase
-  };
+  auto reaction2 = DissolvedReversibleReaction{ { 0.2 }, { 0.05 }, { C }, { D }, S, aqueous_phase };
 
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses(reaction1, reaction2);
