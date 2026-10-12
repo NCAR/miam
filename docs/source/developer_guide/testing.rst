@@ -17,7 +17,6 @@ Test Structure
    │   ├── aerosol_property.cpp       # AerosolPropertyProvider tests
    │   ├── condensation_rate.cpp      # CondensationRateProvider tests
    │   ├── model.cpp                  # Model tests
-   │   ├── process_set.cpp            # ProcessSet tests
    │   ├── representation_policy.hpp  # shared test helpers
    │   ├── representations/           # representation unit tests
    │   │   ├── single_moment_mode.cpp

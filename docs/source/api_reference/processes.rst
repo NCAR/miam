@@ -23,10 +23,3 @@ HenrysLawPhaseTransfer
 .. doxygenclass:: miam::HenrysLawPhaseTransferBuilder
    :members:
    :undoc-members:
-
-MiamProcessSet
-==============
-
-.. doxygenstruct:: miam::MiamProcessSet
-   :members:
-   :undoc-members:
