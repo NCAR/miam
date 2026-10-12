@@ -181,108 +181,106 @@ namespace miam
           DenseMatrixPolicy example_vars{ 1, state_variable_indices.size(), 0.0 };
           DenseMatrixPolicy example_result{ 1, 1, 0.0 };
           DenseMatrixPolicy example_partials{ 1, provider.dependent_variable_indices.size(), 0.0 };
-          auto value_function =
-            DenseMatrixPolicy::Function(
-                MICM_LAMBDA(
-                    const typename DenseMatrixPolicy::ConstViewType& params_view,
-                    const typename DenseMatrixPolicy::ConstViewType& vars_view,
-                    const typename DenseMatrixPolicy::ViewType& result_view) {
-                  auto r = result_view.GetColumnView(0);
-                  params_view.ForEachRowStrict([](double& v) { v = 0.0; }, r);
-                  const std::size_t n = species_view.size();
-                  for (std::size_t k = 0; k < n; ++k)
-                  {
-                    const double mv = volumes_view[k];
-                    params_view.ForEachRowStrict(
-                        [mv](const double& c, double& V) { V += c * mv; }, vars_view.GetConstColumnView(species_view[k]), r);
-                  }
+          auto value_function = DenseMatrixPolicy::Function(
+              MICM_LAMBDA(
+                  const typename DenseMatrixPolicy::ConstViewType& params_view,
+                  const typename DenseMatrixPolicy::ConstViewType& vars_view,
+                  const typename DenseMatrixPolicy::ViewType& result_view) {
+                auto r = result_view.GetColumnView(0);
+                params_view.ForEachRowStrict([](double& v) { v = 0.0; }, r);
+                const std::size_t n = species_view.size();
+                for (std::size_t k = 0; k < n; ++k)
+                {
+                  const double mv = volumes_view[k];
                   params_view.ForEachRowStrict(
-                      [](const double& gsd, const double& nc, double& r_eff)
-                      {
-                        const double ln_gsd = std::log(gsd);
-                        const double V_mean = r_eff / nc;  // r_eff held V_total
-                        const double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
-                        r_eff = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
-                      },
-                      params_view.GetConstColumnView(gsd_idx),
-                      vars_view.GetConstColumnView(nc_var_idx),
-                      r);
-                },
-                example_params,
-                example_vars,
-                example_result);
-          provider.ComputeValue = [storage, value_function](
-                                                    const DenseMatrixPolicy& params,
-                                                    const DenseMatrixPolicy& vars,
-                                      DenseMatrixPolicy& result) mutable { value_function(params, vars, result); };
-          auto value_and_derivatives_function =
-            DenseMatrixPolicy::Function(
-                MICM_LAMBDA(
-                    const typename DenseMatrixPolicy::ConstViewType& params_view,
-                    const typename DenseMatrixPolicy::ConstViewType& vars_view,
-                    const typename DenseMatrixPolicy::ViewType& result_view,
-                    const typename DenseMatrixPolicy::ViewType& partials_view) {
-                  // Accumulate V_total
-                  auto V_total = result_view.GetRowVariable();
-                  params_view.ForEachRowStrict([](double& v) { v = 0.0; }, V_total);
-                  const std::size_t n = species_view.size();
-                  for (std::size_t k = 0; k < n; ++k)
-                  {
-                    const double mv = volumes_view[k];
-                    params_view.ForEachRowStrict(
-                        [mv](const double& c, double& V) { V += c * mv; },
-                        vars_view.GetConstColumnView(species_view[k]),
-                        V_total);
-                  }
-                  // Partials w.r.t. species: dr_eff/d[species_k] = r_eff / (3 * V_total) * molar_volume_k
-                  for (std::size_t k = 0; k < n; ++k)
-                  {
-                    const double mv = volumes_view[k];
-                    params_view.ForEachRowStrict(
-                        [mv](const double& gsd, const double& nc, const double& V_total_row, double& dr)
-                        {
-                          const double ln_gsd = std::log(gsd);
-                          const double V_mean = V_total_row / nc;
-                          const double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
-                          const double r_eff = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
-                          dr = r_eff * mv / (3.0 * V_total_row);
-                        },
-                        params_view.GetConstColumnView(gsd_idx),
-                        vars_view.GetConstColumnView(nc_var_idx),
-                        V_total,
-                        partials_view.GetColumnView(k));
-                  }
-                  // Partial w.r.t. N: dr_eff/dN = -r_eff / (3 * N)
+                      [mv](const double& c, double& V) { V += c * mv; }, vars_view.GetConstColumnView(species_view[k]), r);
+                }
+                params_view.ForEachRowStrict(
+                    [](const double& gsd, const double& nc, double& r_eff)
+                    {
+                      const double ln_gsd = std::log(gsd);
+                      const double V_mean = r_eff / nc;  // r_eff held V_total
+                      const double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
+                      r_eff = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
+                    },
+                    params_view.GetConstColumnView(gsd_idx),
+                    vars_view.GetConstColumnView(nc_var_idx),
+                    r);
+              },
+              example_params,
+              example_vars,
+              example_result);
+          provider.ComputeValue =
+              [storage, value_function](
+                  const DenseMatrixPolicy& params, const DenseMatrixPolicy& vars, DenseMatrixPolicy& result) mutable
+          { value_function(params, vars, result); };
+          auto value_and_derivatives_function = DenseMatrixPolicy::Function(
+              MICM_LAMBDA(
+                  const typename DenseMatrixPolicy::ConstViewType& params_view,
+                  const typename DenseMatrixPolicy::ConstViewType& vars_view,
+                  const typename DenseMatrixPolicy::ViewType& result_view,
+                  const typename DenseMatrixPolicy::ViewType& partials_view) {
+                // Accumulate V_total
+                auto V_total = result_view.GetRowVariable();
+                params_view.ForEachRowStrict([](double& v) { v = 0.0; }, V_total);
+                const std::size_t n = species_view.size();
+                for (std::size_t k = 0; k < n; ++k)
+                {
+                  const double mv = volumes_view[k];
                   params_view.ForEachRowStrict(
-                      [](const double& gsd, const double& nc, const double& V_total_row, double& dr_dN)
+                      [mv](const double& c, double& V) { V += c * mv; },
+                      vars_view.GetConstColumnView(species_view[k]),
+                      V_total);
+                }
+                // Partials w.r.t. species: dr_eff/d[species_k] = r_eff / (3 * V_total) * molar_volume_k
+                for (std::size_t k = 0; k < n; ++k)
+                {
+                  const double mv = volumes_view[k];
+                  params_view.ForEachRowStrict(
+                      [mv](const double& gsd, const double& nc, const double& V_total_row, double& dr)
                       {
                         const double ln_gsd = std::log(gsd);
                         const double V_mean = V_total_row / nc;
                         const double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
                         const double r_eff = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
-                        dr_dN = -r_eff / (3.0 * nc);
+                        dr = r_eff * mv / (3.0 * V_total_row);
                       },
                       params_view.GetConstColumnView(gsd_idx),
                       vars_view.GetConstColumnView(nc_var_idx),
                       V_total,
-                      partials_view.GetColumnView(n));
-                  params_view.ForEachRowStrict(
-                      [](const double& gsd, const double& nc, const double& V_total_row, double& r_out)
-                      {
-                        const double ln_gsd = std::log(gsd);
-                        const double V_mean = V_total_row / nc;
-                        const double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
-                        r_out = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
-                      },
-                      params_view.GetConstColumnView(gsd_idx),
-                      vars_view.GetConstColumnView(nc_var_idx),
-                      V_total,
-                      result_view.GetColumnView(0));
-                },
-                example_params,
-                example_vars,
-                example_result,
-                example_partials);
+                      partials_view.GetColumnView(k));
+                }
+                // Partial w.r.t. N: dr_eff/dN = -r_eff / (3 * N)
+                params_view.ForEachRowStrict(
+                    [](const double& gsd, const double& nc, const double& V_total_row, double& dr_dN)
+                    {
+                      const double ln_gsd = std::log(gsd);
+                      const double V_mean = V_total_row / nc;
+                      const double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
+                      const double r_eff = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
+                      dr_dN = -r_eff / (3.0 * nc);
+                    },
+                    params_view.GetConstColumnView(gsd_idx),
+                    vars_view.GetConstColumnView(nc_var_idx),
+                    V_total,
+                    partials_view.GetColumnView(n));
+                params_view.ForEachRowStrict(
+                    [](const double& gsd, const double& nc, const double& V_total_row, double& r_out)
+                    {
+                      const double ln_gsd = std::log(gsd);
+                      const double V_mean = V_total_row / nc;
+                      const double r_mean = std::cbrt(3.0 * V_mean / (4.0 * std::numbers::pi));
+                      r_out = r_mean * std::exp(2.5 * ln_gsd * ln_gsd);
+                    },
+                    params_view.GetConstColumnView(gsd_idx),
+                    vars_view.GetConstColumnView(nc_var_idx),
+                    V_total,
+                    result_view.GetColumnView(0));
+              },
+              example_params,
+              example_vars,
+              example_result,
+              example_partials);
           provider.ComputeValueAndDerivatives = [storage, value_and_derivatives_function](
                                                     const DenseMatrixPolicy& params,
                                                     const DenseMatrixPolicy& vars,
@@ -300,45 +298,43 @@ namespace miam
           DenseMatrixPolicy example_vars{ 1, state_variable_indices.size(), 0.0 };
           DenseMatrixPolicy example_result{ 1, 1, 0.0 };
           DenseMatrixPolicy example_partials{ 1, 1, 0.0 };
-          auto value_function =
-            DenseMatrixPolicy::Function(
-                MICM_LAMBDA(
-                    const typename DenseMatrixPolicy::ConstViewType& params_view,
-                    const typename DenseMatrixPolicy::ConstViewType& vars_view,
-                    const typename DenseMatrixPolicy::ViewType& result_view) {
-                  params_view.ForEachRowStrict(
-                      [](const double& nc, double& N) { N = nc; },
-                      vars_view.GetConstColumnView(nc_var_idx),
-                      result_view.GetColumnView(0));
-                },
-                example_params,
-                example_vars,
-                example_result);
-          provider.ComputeValue = [value_function](
-                                                    const DenseMatrixPolicy& params,
-                                                    const DenseMatrixPolicy& vars,
-                                      DenseMatrixPolicy& result) mutable { value_function(params, vars, result); };
-          auto value_and_derivatives_function =
-            DenseMatrixPolicy::Function(
-                MICM_LAMBDA(
-                    const typename DenseMatrixPolicy::ConstViewType& params_view,
-                    const typename DenseMatrixPolicy::ConstViewType& vars_view,
-                    const typename DenseMatrixPolicy::ViewType& result_view,
-                    const typename DenseMatrixPolicy::ViewType& partials_view) {
-                  params_view.ForEachRowStrict(
-                      [](const double& nc, double& N, double& dN_dN)
-                      {
-                        N = nc;
-                        dN_dN = 1.0;
-                      },
-                      vars_view.GetConstColumnView(nc_var_idx),
-                      result_view.GetColumnView(0),
-                      partials_view.GetColumnView(0));
-                },
-                example_params,
-                example_vars,
-                example_result,
-                example_partials);
+          auto value_function = DenseMatrixPolicy::Function(
+              MICM_LAMBDA(
+                  const typename DenseMatrixPolicy::ConstViewType& params_view,
+                  const typename DenseMatrixPolicy::ConstViewType& vars_view,
+                  const typename DenseMatrixPolicy::ViewType& result_view) {
+                params_view.ForEachRowStrict(
+                    [](const double& nc, double& N) { N = nc; },
+                    vars_view.GetConstColumnView(nc_var_idx),
+                    result_view.GetColumnView(0));
+              },
+              example_params,
+              example_vars,
+              example_result);
+          provider.ComputeValue =
+              [value_function](
+                  const DenseMatrixPolicy& params, const DenseMatrixPolicy& vars, DenseMatrixPolicy& result) mutable
+          { value_function(params, vars, result); };
+          auto value_and_derivatives_function = DenseMatrixPolicy::Function(
+              MICM_LAMBDA(
+                  const typename DenseMatrixPolicy::ConstViewType& params_view,
+                  const typename DenseMatrixPolicy::ConstViewType& vars_view,
+                  const typename DenseMatrixPolicy::ViewType& result_view,
+                  const typename DenseMatrixPolicy::ViewType& partials_view) {
+                params_view.ForEachRowStrict(
+                    [](const double& nc, double& N, double& dN_dN)
+                    {
+                      N = nc;
+                      dN_dN = 1.0;
+                    },
+                    vars_view.GetConstColumnView(nc_var_idx),
+                    result_view.GetColumnView(0),
+                    partials_view.GetColumnView(0));
+              },
+              example_params,
+              example_vars,
+              example_result,
+              example_partials);
           provider.ComputeValueAndDerivatives = [value_and_derivatives_function](
                                                     const DenseMatrixPolicy& params,
                                                     const DenseMatrixPolicy& vars,

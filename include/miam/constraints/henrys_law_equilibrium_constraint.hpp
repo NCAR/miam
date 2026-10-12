@@ -42,13 +42,13 @@ namespace miam
   {
    public:
     HenrysLawConstant henrys_law_constant_;  ///< HLC(T) function [mol m⁻³ Pa⁻¹]
-    micm::Species gas_species_;                                                      ///< Gas-phase species
-    micm::Species condensed_species_;                                                ///< Condensed-phase solute species
-    micm::Species solvent_;                                                          ///< Condensed-phase solvent species
-    micm::Phase condensed_phase_;                                                    ///< The condensed phase
-    double solvent_molecular_weight_;  ///< Solvent molecular weight [kg mol⁻¹]
-    double solvent_density_;           ///< Solvent density [kg m⁻³]
-    std::string uuid_;                 ///< Unique identifier
+    micm::Species gas_species_;              ///< Gas-phase species
+    micm::Species condensed_species_;        ///< Condensed-phase solute species
+    micm::Species solvent_;                  ///< Condensed-phase solvent species
+    micm::Phase condensed_phase_;            ///< The condensed phase
+    double solvent_molecular_weight_;        ///< Solvent molecular weight [kg mol⁻¹]
+    double solvent_density_;                 ///< Solvent density [kg m⁻³]
+    std::string uuid_;                       ///< Unique identifier
 
     HenrysLawEquilibriumConstraint() = delete;
 
@@ -198,16 +198,15 @@ namespace miam
       typename DenseMatrixPolicy::template VectorType<micm::Conditions> dummy_conditions;
 
       auto function = DenseMatrixPolicy::Function(
-              MICM_LAMBDA(
-                  const typename DenseMatrixPolicy::template VectorType<micm::Conditions>::ConstViewType& conditions_view,
-                  const typename DenseMatrixPolicy::ViewType& params_view)
-          {
-                for (std::size_t i = 0; i < num_hlc_rt; ++i)
-                params_view.ForEachRowStrict(
-                    [henrys_law_constant](const micm::Conditions& cond, micm::Real& hlc_rt)
+          MICM_LAMBDA(
+              const typename DenseMatrixPolicy::template VectorType<micm::Conditions>::ConstViewType& conditions_view,
+              const typename DenseMatrixPolicy::ViewType& params_view) {
+            for (std::size_t i = 0; i < num_hlc_rt; ++i)
+              params_view.ForEachRowStrict(
+                  [henrys_law_constant](const micm::Conditions& cond, micm::Real& hlc_rt)
                   { hlc_rt = Calculate(henrys_law_constant, cond) * micm::constants::GAS_CONSTANT * cond.temperature_; },
-                    conditions_view,
-                      params_view.GetColumnView(hlc_rt_view[i]));
+                  conditions_view,
+                  params_view.GetColumnView(hlc_rt_view[i]));
           },
           dummy_conditions,
           dummy_params);
@@ -261,25 +260,27 @@ namespace miam
       DenseMatrixPolicy dummy_params{ 1, std::max(state_parameter_indices.size(), std::size_t{ 1 }), 0.0 };
 
       auto function = DenseMatrixPolicy::Function(
-            MICM_LAMBDA(
-                const typename DenseMatrixPolicy::ConstViewType& state_view,
-                const typename DenseMatrixPolicy::ConstViewType& params_view,
-                const typename DenseMatrixPolicy::ViewType& residual_view)
-          {
-              for (std::size_t i_phase = 0; i_phase < num_phases; ++i_phase)
+          MICM_LAMBDA(
+              const typename DenseMatrixPolicy::ConstViewType& state_view,
+              const typename DenseMatrixPolicy::ConstViewType& params_view,
+              const typename DenseMatrixPolicy::ViewType& residual_view) {
+            for (std::size_t i_phase = 0; i_phase < num_phases; ++i_phase)
             {
-                const std::size_t aq_idx = aq_view[i_phase];
+              const std::size_t aq_idx = aq_view[i_phase];
               // G = HLC*R*T * f_v * [A_g] - [A_aq],  where f_v = [S] * solvent_molecular_weight / solvent_density [m³
               // mol⁻¹]
-                residual_view.ForEachRowStrict(
-                    [molar_volume](
-                        const micm::Real& hlc_rt, const micm::Real& gas, const micm::Real& aq, const micm::Real& sol, micm::Real& res)
-                  { res = hlc_rt * (sol * molar_volume) * gas - aq; },
-                    params_view.GetConstColumnView(hlc_rt_view[i_phase]),
-                    state_view.GetConstColumnView(gas_idx),
-                    state_view.GetConstColumnView(aq_idx),
-                    state_view.GetConstColumnView(solvent_view[i_phase]),
-                    residual_view.GetColumnView(aq_idx));
+              residual_view.ForEachRowStrict(
+                  [molar_volume](
+                      const micm::Real& hlc_rt,
+                      const micm::Real& gas,
+                      const micm::Real& aq,
+                      const micm::Real& sol,
+                      micm::Real& res) { res = hlc_rt * (sol * molar_volume) * gas - aq; },
+                  params_view.GetConstColumnView(hlc_rt_view[i_phase]),
+                  state_view.GetConstColumnView(gas_idx),
+                  state_view.GetConstColumnView(aq_idx),
+                  state_view.GetConstColumnView(solvent_view[i_phase]),
+                  residual_view.GetColumnView(aq_idx));
             }
           },
           dummy_state,
@@ -360,37 +361,36 @@ namespace miam
       DenseMatrixPolicy dummy_params{ 1, std::max(state_parameter_indices.size(), std::size_t{ 1 }), 0.0 };
 
       auto function = SparseMatrixPolicy::Function(
-            MICM_LAMBDA(
-                const typename DenseMatrixPolicy::ConstViewType& state_view,
-                const typename DenseMatrixPolicy::ConstViewType& params_view,
-                const typename SparseMatrixPolicy::ViewType& jac_view)
-          {
-              for (std::size_t i_phase = 0; i_phase < num_phases; ++i_phase)
+          MICM_LAMBDA(
+              const typename DenseMatrixPolicy::ConstViewType& state_view,
+              const typename DenseMatrixPolicy::ConstViewType& params_view,
+              const typename SparseMatrixPolicy::ViewType& jac_view) {
+            for (std::size_t i_phase = 0; i_phase < num_phases; ++i_phase)
             {
-                auto bv_gas = jac_view.GetBlockView(gas_jac_view[i_phase]);
-                auto bv_aq = jac_view.GetBlockView(aq_jac_view[i_phase]);
-                auto bv_sol = jac_view.GetBlockView(solvent_jac_view[i_phase]);
+              auto bv_gas = jac_view.GetBlockView(gas_jac_view[i_phase]);
+              auto bv_aq = jac_view.GetBlockView(aq_jac_view[i_phase]);
+              auto bv_sol = jac_view.GetBlockView(solvent_jac_view[i_phase]);
 
               // jac -= dG/d[A_g] = HLC*R*T * f_v
               // jac -= dG/d[A_aq] = -1
               // jac -= dG/d[S] = HLC*R*T * molar_volume [m³ mol⁻¹] * [A_g]
-                jac_view.ForEachBlockStrict(
+              jac_view.ForEachBlockStrict(
                   [molar_volume](
-                        const micm::Real& hlc_rt,
-                        const micm::Real& gas,
-                        const micm::Real& sol,
-                        micm::Real& j_gas,
-                        micm::Real& j_aq,
-                        micm::Real& j_sol)
+                      const micm::Real& hlc_rt,
+                      const micm::Real& gas,
+                      const micm::Real& sol,
+                      micm::Real& j_gas,
+                      micm::Real& j_aq,
+                      micm::Real& j_sol)
                   {
-                      const micm::Real f_v = sol * molar_volume;
+                    const micm::Real f_v = sol * molar_volume;
                     j_gas -= hlc_rt * f_v;
                     j_aq -= (-1.0);
                     j_sol -= hlc_rt * molar_volume * gas;
                   },
-                    params_view.GetConstColumnView(hlc_rt_view[i_phase]),
-                    state_view.GetConstColumnView(gas_idx),
-                    state_view.GetConstColumnView(solvent_view[i_phase]),
+                  params_view.GetConstColumnView(hlc_rt_view[i_phase]),
+                  state_view.GetConstColumnView(gas_idx),
+                  state_view.GetConstColumnView(solvent_view[i_phase]),
                   bv_gas,
                   bv_aq,
                   bv_sol);
@@ -403,7 +403,8 @@ namespace miam
       return [storage, function](
                  const DenseMatrixPolicy& state_variables,
                  const DenseMatrixPolicy& state_parameters,
-                 SparseMatrixPolicy& jacobian_values) mutable { function(state_variables, state_parameters, jacobian_values); };
+                 SparseMatrixPolicy& jacobian_values) mutable
+      { function(state_variables, state_parameters, jacobian_values); };
     }
 
    private:

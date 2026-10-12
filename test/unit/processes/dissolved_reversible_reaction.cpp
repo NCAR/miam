@@ -1614,12 +1614,7 @@ TEST(DissolvedReversibleReaction, JacobianFDForwardOnly)
 
   double k_forward = 1.0e-14;
   double k_reverse = 0.0;
-  auto reaction = DissolvedReversibleReaction{ { k_forward },
-                                               { k_reverse },
-                                               { h2o },
-                                               { hp, ohm },
-                                               h2o,
-                                               aqueous_phase };
+  auto reaction = DissolvedReversibleReaction{ { k_forward }, { k_reverse }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -1653,12 +1648,7 @@ TEST(DissolvedReversibleReaction, JacobianFDReverseOnly)
 
   double k_forward = 0.0;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { k_forward },
-                                               { k_reverse },
-                                               { h2o },
-                                               { hp, ohm },
-                                               h2o,
-                                               aqueous_phase };
+  auto reaction = DissolvedReversibleReaction{ { k_forward }, { k_reverse }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -1692,12 +1682,7 @@ TEST(DissolvedReversibleReaction, JacobianFDBidirectional)
 
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { k_forward },
-                                               { k_reverse },
-                                               { h2o },
-                                               { hp, ohm },
-                                               h2o,
-                                               aqueous_phase };
+  auto reaction = DissolvedReversibleReaction{ { k_forward }, { k_reverse }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -1731,12 +1716,7 @@ TEST(DissolvedReversibleReaction, JacobianFDMultiCell)
 
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { k_forward },
-                                               { k_reverse },
-                                               { h2o },
-                                               { hp, ohm },
-                                               h2o,
-                                               aqueous_phase };
+  auto reaction = DissolvedReversibleReaction{ { k_forward }, { k_reverse }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -1783,12 +1763,7 @@ TEST(DissolvedReversibleReaction, JacobianFDMultipleReactantsProducts)
 
   double k_forward = 0.05;
   double k_reverse = 0.02;
-  auto reaction = DissolvedReversibleReaction{ { k_forward },
-                                               { k_reverse },
-                                               { a, b },
-                                               { c, d },
-                                               h2o,
-                                               aqueous_phase };
+  auto reaction = DissolvedReversibleReaction{ { k_forward }, { k_reverse }, { a, b }, { c, d }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("DROP");
@@ -1826,12 +1801,7 @@ TEST(DissolvedReversibleReaction, JacobianFDMultipleInstances)
 
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { k_forward },
-                                               { k_reverse },
-                                               { h2o },
-                                               { hp, ohm },
-                                               h2o,
-                                               aqueous_phase };
+  auto reaction = DissolvedReversibleReaction{ { k_forward }, { k_reverse }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("LARGE");
@@ -1873,12 +1843,7 @@ TEST(DissolvedReversibleReaction, JacobianFDSolventIsReactant)
 
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { k_forward },
-                                               { k_reverse },
-                                               { h2o },
-                                               { hp, ohm },
-                                               h2o,
-                                               aqueous_phase };
+  auto reaction = DissolvedReversibleReaction{ { k_forward }, { k_reverse }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("BULK");
@@ -1919,12 +1884,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionZeroReactant)
 
   double k_forward = 1.0e-14;
   double k_reverse = 1.0e11;
-  auto reaction = DissolvedReversibleReaction{ { k_forward },
-                                               { k_reverse },
-                                               { h2o },
-                                               { hp, ohm },
-                                               h2o,
-                                               aqueous_phase };
+  auto reaction = DissolvedReversibleReaction{ { k_forward }, { k_reverse }, { h2o }, { hp, ohm }, h2o, aqueous_phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQUEOUS"].insert("MODE1");
@@ -1970,12 +1930,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionZeroProduct)
 
   double k_forward = 0.1;
   double k_reverse = 0.2;
-  auto reaction = DissolvedReversibleReaction{ { k_forward },
-                                               { k_reverse },
-                                               { a },
-                                               { b },
-                                               solvent,
-                                               phase };
+  auto reaction = DissolvedReversibleReaction{ { k_forward }, { k_reverse }, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQ"].insert("MODE1");
@@ -2022,12 +1977,7 @@ TEST(DissolvedReversibleReaction, ForcingFunctionAtEquilibrium)
 
   double k_forward = 0.1;
   double k_reverse = 0.3;
-  auto reaction = DissolvedReversibleReaction{ { k_forward },
-                                               { k_reverse },
-                                               { a },
-                                               { b },
-                                               solvent,
-                                               phase };
+  auto reaction = DissolvedReversibleReaction{ { k_forward }, { k_reverse }, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQ"].insert("MODE1");
@@ -2076,12 +2026,7 @@ TEST(DissolvedReversibleReaction, JacobianFDZeroSolvent)
 
   double k_forward = 0.1;
   double k_reverse = 0.05;
-  auto reaction = DissolvedReversibleReaction{ { k_forward },
-                                               { k_reverse },
-                                               { a },
-                                               { b },
-                                               solvent,
-                                               phase };
+  auto reaction = DissolvedReversibleReaction{ { k_forward }, { k_reverse }, { a }, { b }, solvent, phase };
 
   std::map<std::string, std::set<std::string>> phase_prefixes;
   phase_prefixes["AQ"].insert("MODE1");

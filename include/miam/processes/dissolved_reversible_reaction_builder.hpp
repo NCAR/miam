@@ -138,18 +138,25 @@ namespace miam
       }
 
       return DissolvedReversibleReaction(
-          forward_rate_constant_, reverse_rate_constant_, reactants_, products_, solvent_, phase_, solvent_floor_, equilibrium_constant_);
+          forward_rate_constant_,
+          reverse_rate_constant_,
+          reactants_,
+          products_,
+          solvent_,
+          phase_,
+          solvent_floor_,
+          equilibrium_constant_);
     }
 
    private:
-    micm::Phase phase_;                     ///< Phase in which the reaction occurs
-    bool phase_is_set_ = false;             ///< Flag to track if the phase has been set
-    std::vector<micm::Species> reactants_;  ///< Reactant species
-    std::vector<micm::Species> products_;   ///< Product species
-    micm::Species solvent_;                 ///< Solvent species
-    bool solvent_is_set_ = false;           ///< Flag to track if the solvent has been set
-    std::optional<RateConstant> forward_rate_constant_;         ///< Forward rate constant
-    std::optional<RateConstant> reverse_rate_constant_;         ///< Reverse rate constant
+    micm::Phase phase_;                                        ///< Phase in which the reaction occurs
+    bool phase_is_set_ = false;                                ///< Flag to track if the phase has been set
+    std::vector<micm::Species> reactants_;                     ///< Reactant species
+    std::vector<micm::Species> products_;                      ///< Product species
+    micm::Species solvent_;                                    ///< Solvent species
+    bool solvent_is_set_ = false;                              ///< Flag to track if the solvent has been set
+    std::optional<RateConstant> forward_rate_constant_;        ///< Forward rate constant
+    std::optional<RateConstant> reverse_rate_constant_;        ///< Reverse rate constant
     std::optional<EquilibriumConstant> equilibrium_constant_;  ///< Equilibrium constant
     double solvent_floor_{ 1.0e-20 };  ///< Floor δ [mol m⁻³] added to [S] in ([S]+δ)^n denominator; see SetSolventFloor()
   };

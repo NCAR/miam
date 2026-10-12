@@ -7,8 +7,9 @@
 
 #include <micm/Kokkos.hpp>
 
-#include <Kokkos_Core.hpp>
 #include <gtest/gtest.h>
+
+#include <Kokkos_Core.hpp>
 
 namespace policy = miam_test_cam_cloud_chemistry;
 

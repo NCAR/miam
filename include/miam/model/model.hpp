@@ -563,7 +563,8 @@ namespace miam
         const DenseMatrixPolicy& state_variables,
         DenseMatrixPolicy& forcing) const
     {
-      Call<ForcingFunctionType<DenseMatrixPolicy>>(constraint_residual_function_, state_variables, state_parameters, forcing);
+      Call<ForcingFunctionType<DenseMatrixPolicy>>(
+          constraint_residual_function_, state_variables, state_parameters, forcing);
     }
 
     template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
@@ -593,7 +594,8 @@ namespace miam
     template<typename DenseMatrixPolicy>
     using ForcingFunctionType = std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>;
     template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
-    using JacobianFunctionType = std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>;
+    using JacobianFunctionType =
+        std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>;
 
     template<typename Function, typename... Args>
     static void Call(const std::any& function, Args&&... args)

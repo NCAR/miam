@@ -27,13 +27,13 @@
 
 namespace miam_test_cam_cloud_chemistry
 {
-using namespace micm;
-using namespace miam;
+  using namespace micm;
+  using namespace miam;
 
-using DenseMatrix = micm::Matrix<double>;
-using SparseMatrixFD = micm::SparseMatrix<double, micm::SparseMatrixStandardOrdering>;
-template<class U>
-using Vector = typename DenseMatrix::template VectorType<U>;
+  using DenseMatrix = micm::Matrix<double>;
+  using SparseMatrixFD = micm::SparseMatrix<double, micm::SparseMatrixStandardOrdering>;
+  template<class U>
+  using Vector = typename DenseMatrix::template VectorType<U>;
   // M/atm -> mol m^-3 Pa^-1
   inline constexpr double M_ATM_TO_MOL_M3_PA = 1000.0 / 101325.0;
 
@@ -62,7 +62,7 @@ using Vector = typename DenseMatrix::template VectorType<U>;
 
   template<typename StateT>
   inline void SyncStateToDevice(StateT& state)
-{
+  {
     if constexpr (requires { state.variables_.CopyToDevice(); })
       state.variables_.CopyToDevice();
     if constexpr (requires { state.custom_rate_parameters_.CopyToDevice(); })
@@ -218,246 +218,234 @@ using Vector = typename DenseMatrix::template VectorType<U>;
   // SO2(g) <=> SO2(aq), with [SO2_g] + [SO2_aq] = total
   template<class BuilderPolicy>
   void Step1_SingleHLC(BuilderPolicy builder)
-{
-  double T = 280.0;
-  double HLC_ref = 1.23 * M_ATM_TO_MOL_M3_PA;
-  double C_hlc = 3120.0;
+  {
+    double T = 280.0;
+    double HLC_ref = 1.23 * M_ATM_TO_MOL_M3_PA;
+    double C_hlc = 3120.0;
 
-  auto so2_g = Species{ "SO2" };
-  auto so2_aq = Species{ "SO2_aq" };
-  auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
+    auto so2_g = Species{ "SO2" };
+    auto so2_aq = Species{ "SO2_aq" };
+    auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
 
-  Phase gas_phase{ "GAS", { so2_g } };
-  Phase aqueous_phase{ "AQUEOUS", { so2_aq, h2o } };
-  auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
+    Phase gas_phase{ "GAS", { so2_g } };
+    Phase aqueous_phase{ "AQUEOUS", { so2_aq, h2o } };
+    auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
 
-  auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
-                    .SetGasSpecies(so2_g)
-                    .SetCondensedSpecies(so2_aq)
-                    .SetSolvent(h2o)
-                    .SetCondensedPhase(aqueous_phase)
-                    .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = HLC_ref, .C_ = C_hlc }))
-                    .Build();
-
-  double gas0 = 3.01e-8;    // ~ 1 ppb
-  double total_so2 = gas0;  // aq0 = 0
-
-  auto mass_so2 = LinearConstraintBuilder()
-                      .SetAlgebraicSpecies(gas_phase, so2_g)
-                      .AddTerm(gas_phase, so2_g, 1.0)
-                      .AddTerm(aqueous_phase, so2_aq, 1.0)
-                      .DiagnoseConstantFromState()
+    auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
+                      .SetGasSpecies(so2_g)
+                      .SetCondensedSpecies(so2_aq)
+                      .SetSolvent(h2o)
+                      .SetCondensedPhase(aqueous_phase)
+                      .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = HLC_ref, .C_ = C_hlc }))
                       .Build();
 
-  auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
-  model.AddConstraints(hl_so2, mass_so2);
+    double gas0 = 3.01e-8;    // ~ 1 ppb
+    double total_so2 = gas0;  // aq0 = 0
 
-  auto system = System(gas_phase);
-  auto solver = builder
-                    .SetSystem(system)
-                    .AddExternalModel(model)
-                    .SetIgnoreUnusedSpecies(true)
-                    .Build();
+    auto mass_so2 = LinearConstraintBuilder()
+                        .SetAlgebraicSpecies(gas_phase, so2_g)
+                        .AddTerm(gas_phase, so2_g, 1.0)
+                        .AddTerm(aqueous_phase, so2_aq, 1.0)
+                        .DiagnoseConstantFromState()
+                        .Build();
 
-  State state = solver.GetState();
-  state.conditions_[0].temperature_ = T;
-  state.conditions_[0].pressure_ = 70000.0;
-  state.conditions_[0].CalculateIdealAirDensity();
+    auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
+    model.AddConstraints(hl_so2, mass_so2);
 
-  auto i_g = state.variable_map_.at("SO2");
-  auto i_aq = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
-  auto i_w = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+    auto system = System(gas_phase);
+    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
 
-  state.variables_[0][i_g] = gas0;
-  state.variables_[0][i_aq] = 0.0;
-  state.variables_[0][i_w] = C_H2O;
-  cloud.SetDefaultParameters(state);
+    State state = solver.GetState();
+    state.conditions_[0].temperature_ = T;
+    state.conditions_[0].pressure_ = 70000.0;
+    state.conditions_[0].CalculateIdealAirDensity();
 
-  // Analytical equilibrium: aq = alpha*g, g + aq = total -> g = total/(1+alpha)
-  double hlc_T = HLC_ref * std::exp(C_hlc * (1.0 / T - 1.0 / T0));
-  double alpha = hlc_T * micm::constants::GAS_CONSTANT * T * f_v;
-  double g_eq = total_so2 / (1.0 + alpha);
-  double aq_eq = total_so2 * alpha / (1.0 + alpha);
+    auto i_g = state.variable_map_.at("SO2");
+    auto i_aq = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+    auto i_w = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
 
-  bool ok1 = IntegrateDAE(solver, state, 10.0, 0.01);
-  ASSERT_TRUE(ok1);
+    state.variables_[0][i_g] = gas0;
+    state.variables_[0][i_aq] = 0.0;
+    state.variables_[0][i_w] = C_H2O;
+    cloud.SetDefaultParameters(state);
 
-  double g_f = state.variables_[0][i_g];
-  double aq_f = state.variables_[0][i_aq];
+    // Analytical equilibrium: aq = alpha*g, g + aq = total -> g = total/(1+alpha)
+    double hlc_T = HLC_ref * std::exp(C_hlc * (1.0 / T - 1.0 / T0));
+    double alpha = hlc_T * micm::constants::GAS_CONSTANT * T * f_v;
+    double g_eq = total_so2 / (1.0 + alpha);
+    double aq_eq = total_so2 * alpha / (1.0 + alpha);
 
-  EXPECT_NEAR(g_f + aq_f, total_so2, 1e-15 * total_so2) << "Mass conservation violated";
+    bool ok1 = IntegrateDAE(solver, state, 10.0, 0.01);
+    ASSERT_TRUE(ok1);
 
-  EXPECT_NEAR(g_f, g_eq, 1e-6 * total_so2) << "SO2_g equilibrium";
-  EXPECT_NEAR(aq_f, aq_eq, 1e-6 * total_so2) << "SO2_aq equilibrium";
+    double g_f = state.variables_[0][i_g];
+    double aq_f = state.variables_[0][i_aq];
 
-  std::cout << "\n=== Step 1 PASSED ===" << std::endl;
-  std::cout << "alpha=" << alpha << " g=" << g_f << " aq=" << aq_f << " total=" << g_f + aq_f << std::endl;
-}
+    EXPECT_NEAR(g_f + aq_f, total_so2, 1e-15 * total_so2) << "Mass conservation violated";
+
+    EXPECT_NEAR(g_f, g_eq, 1e-6 * total_so2) << "SO2_g equilibrium";
+    EXPECT_NEAR(aq_f, aq_eq, 1e-6 * total_so2) << "SO2_aq equilibrium";
+
+    std::cout << "\n=== Step 1 PASSED ===" << std::endl;
+    std::cout << "alpha=" << alpha << " g=" << g_f << " aq=" << aq_f << " total=" << g_f + aq_f << std::endl;
+  }
 
   // H2O <=> H+ + OH- (Kw), with charge balance [H+] = [OH-]
   template<class BuilderPolicy>
   void Step1b_KwOnly(BuilderPolicy builder)
-{
-  double T = 280.0;
+  {
+    double T = 280.0;
 
-  auto hp = Species{ "Hp" };
-  auto ohm = Species{ "OHm" };
-  auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
+    auto hp = Species{ "Hp" };
+    auto ohm = Species{ "OHm" };
+    auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
 
-  Phase gas_phase{ "GAS", {} };
-  Phase aqueous_phase{ "AQUEOUS", { hp, ohm, h2o } };
-  auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
+    Phase gas_phase{ "GAS", {} };
+    Phase aqueous_phase{ "AQUEOUS", { hp, ohm, h2o } };
+    auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
 
-  double Kw_miam = 1.0e-14 / (c_H2O_M * c_H2O_M);
+    double Kw_miam = 1.0e-14 / (c_H2O_M * c_H2O_M);
 
-  auto eq_kw = DissolvedEquilibriumConstraintBuilder()
-                   .SetPhase(aqueous_phase)
-                   .SetReactants({ h2o })
-                   .SetProducts({ hp, ohm })
-                   .SetAlgebraicSpecies(ohm)
-                   .SetSolvent(h2o)
-                   .SetEquilibriumConstant(EquilibriumConstant({ .A_ = Kw_miam, .C_ = 6710.0 }))
-                   .Build();
+    auto eq_kw = DissolvedEquilibriumConstraintBuilder()
+                     .SetPhase(aqueous_phase)
+                     .SetReactants({ h2o })
+                     .SetProducts({ hp, ohm })
+                     .SetAlgebraicSpecies(ohm)
+                     .SetSolvent(h2o)
+                     .SetEquilibriumConstant(EquilibriumConstant({ .A_ = Kw_miam, .C_ = 6710.0 }))
+                     .Build();
 
-  auto charge = LinearConstraintBuilder()
-                    .SetAlgebraicSpecies(aqueous_phase, hp)
-                    .AddTerm(aqueous_phase, hp, 1.0)
-                    .AddTerm(aqueous_phase, ohm, -1.0)
-                    .SetConstant(0.0)
-                    .Build();
+    auto charge = LinearConstraintBuilder()
+                      .SetAlgebraicSpecies(aqueous_phase, hp)
+                      .AddTerm(aqueous_phase, hp, 1.0)
+                      .AddTerm(aqueous_phase, ohm, -1.0)
+                      .SetConstant(0.0)
+                      .Build();
 
-  auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
-  model.AddConstraints(eq_kw, charge);
+    auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
+    model.AddConstraints(eq_kw, charge);
 
-  auto system = System(gas_phase);
-  auto solver = builder
-                    .SetSystem(system)
-                    .AddExternalModel(model)
-                    .SetIgnoreUnusedSpecies(true)
-                    .Build();
+    auto system = System(gas_phase);
+    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
 
-  State state = solver.GetState();
-  state.conditions_[0].temperature_ = T;
-  state.conditions_[0].pressure_ = 70000.0;
+    State state = solver.GetState();
+    state.conditions_[0].temperature_ = T;
+    state.conditions_[0].pressure_ = 70000.0;
 
-  auto i_hp = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
-  auto i_oh = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
-  auto i_w = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+    auto i_hp = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+    auto i_oh = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+    auto i_w = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
 
-  auto atol = state.absolute_tolerance_;
-  atol[i_hp] = 1e-10;
-  atol[i_oh] = 1e-10;
-  state.SetAbsoluteTolerances(atol);
+    auto atol = state.absolute_tolerance_;
+    atol[i_hp] = 1e-10;
+    atol[i_oh] = 1e-10;
+    state.SetAbsoluteTolerances(atol);
 
-  // Expected: [H+] = sqrt(Kw(T)) * C_H2O (neutral pH at T)
-  double Kw_at_T = Kw_miam * std::exp(6710.0 * (1.0 / T0 - 1.0 / T));
-  double expected_hp = std::sqrt(Kw_at_T) * C_H2O;
+    // Expected: [H+] = sqrt(Kw(T)) * C_H2O (neutral pH at T)
+    double Kw_at_T = Kw_miam * std::exp(6710.0 * (1.0 / T0 - 1.0 / T));
+    double expected_hp = std::sqrt(Kw_at_T) * C_H2O;
 
-  state.variables_[0][i_hp] = expected_hp;
-  state.variables_[0][i_oh] = expected_hp;
-  state.variables_[0][i_w] = C_H2O;
-  cloud.SetDefaultParameters(state);
+    state.variables_[0][i_hp] = expected_hp;
+    state.variables_[0][i_oh] = expected_hp;
+    state.variables_[0][i_w] = C_H2O;
+    cloud.SetDefaultParameters(state);
 
-  std::cout << "\nKw_miam=" << Kw_miam << " expected [H+]=" << expected_hp << std::endl;
+    std::cout << "\nKw_miam=" << Kw_miam << " expected [H+]=" << expected_hp << std::endl;
 
-  bool ok = IntegrateDAE(solver, state, 1.0, 0.01);
-  ASSERT_TRUE(ok) << "Solver failed for Kw-only system";
+    bool ok = IntegrateDAE(solver, state, 1.0, 0.01);
+    ASSERT_TRUE(ok) << "Solver failed for Kw-only system";
 
-  double hp_f = state.variables_[0][i_hp];
-  double oh_f = state.variables_[0][i_oh];
+    double hp_f = state.variables_[0][i_hp];
+    double oh_f = state.variables_[0][i_oh];
 
-  std::cout << "H+=" << hp_f << " OH-=" << oh_f << " expected=" << expected_hp << std::endl;
-  double pH = -std::log10(hp_f / 1000.0);
-  std::cout << "pH=" << pH << std::endl;
+    std::cout << "H+=" << hp_f << " OH-=" << oh_f << " expected=" << expected_hp << std::endl;
+    double pH = -std::log10(hp_f / 1000.0);
+    std::cout << "pH=" << pH << std::endl;
 
-  EXPECT_NEAR(hp_f, expected_hp, 0.01 * expected_hp) << "H+ equilibrium";
-  EXPECT_NEAR(oh_f, expected_hp, 0.01 * expected_hp) << "OH- equilibrium";
-  EXPECT_NEAR(hp_f, oh_f, 0.01 * expected_hp) << "Charge balance: H+ != OH-";
+    EXPECT_NEAR(hp_f, expected_hp, 0.01 * expected_hp) << "H+ equilibrium";
+    EXPECT_NEAR(oh_f, expected_hp, 0.01 * expected_hp) << "OH- equilibrium";
+    EXPECT_NEAR(hp_f, oh_f, 0.01 * expected_hp) << "Charge balance: H+ != OH-";
 
-  std::cout << "=== Step 1b PASSED ===" << std::endl;
-}
+    std::cout << "=== Step 1b PASSED ===" << std::endl;
+  }
 
   // Same system as Step 1b, with initial [H+] and [OH-] far from equilibrium.
   template<class BuilderPolicy>
   void Step1c_KwNaiveIC(BuilderPolicy builder)
-{
-  double T = 280.0;
+  {
+    double T = 280.0;
 
-  auto hp = Species{ "Hp" };
-  auto ohm = Species{ "OHm" };
-  auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
+    auto hp = Species{ "Hp" };
+    auto ohm = Species{ "OHm" };
+    auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
 
-  Phase gas_phase{ "GAS", {} };
-  Phase aqueous_phase{ "AQUEOUS", { hp, ohm, h2o } };
-  auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
+    Phase gas_phase{ "GAS", {} };
+    Phase aqueous_phase{ "AQUEOUS", { hp, ohm, h2o } };
+    auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
 
-  double Kw_miam = 1.0e-14 / (c_H2O_M * c_H2O_M);
+    double Kw_miam = 1.0e-14 / (c_H2O_M * c_H2O_M);
 
-  auto eq_kw = DissolvedEquilibriumConstraintBuilder()
-                   .SetPhase(aqueous_phase)
-                   .SetReactants({ h2o })
-                   .SetProducts({ hp, ohm })
-                   .SetAlgebraicSpecies(ohm)
-                   .SetSolvent(h2o)
-                   .SetEquilibriumConstant(EquilibriumConstant({ .A_ = Kw_miam, .C_ = 6710.0 }))
-                   .Build();
+    auto eq_kw = DissolvedEquilibriumConstraintBuilder()
+                     .SetPhase(aqueous_phase)
+                     .SetReactants({ h2o })
+                     .SetProducts({ hp, ohm })
+                     .SetAlgebraicSpecies(ohm)
+                     .SetSolvent(h2o)
+                     .SetEquilibriumConstant(EquilibriumConstant({ .A_ = Kw_miam, .C_ = 6710.0 }))
+                     .Build();
 
-  auto charge = LinearConstraintBuilder()
-                    .SetAlgebraicSpecies(aqueous_phase, hp)
-                    .AddTerm(aqueous_phase, hp, 1.0)
-                    .AddTerm(aqueous_phase, ohm, -1.0)
-                    .SetConstant(0.0)
-                    .Build();
+    auto charge = LinearConstraintBuilder()
+                      .SetAlgebraicSpecies(aqueous_phase, hp)
+                      .AddTerm(aqueous_phase, hp, 1.0)
+                      .AddTerm(aqueous_phase, ohm, -1.0)
+                      .SetConstant(0.0)
+                      .Build();
 
-  auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
-  model.AddConstraints(eq_kw, charge);
+    auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
+    model.AddConstraints(eq_kw, charge);
 
-  auto system = System(gas_phase);
-  auto solver = builder
-                    .SetSystem(system)
-                    .AddExternalModel(model)
-                    .SetIgnoreUnusedSpecies(true)
-                    .Build();
+    auto system = System(gas_phase);
+    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
 
-  State state = solver.GetState();
-  state.conditions_[0].temperature_ = T;
-  state.conditions_[0].pressure_ = 70000.0;
+    State state = solver.GetState();
+    state.conditions_[0].temperature_ = T;
+    state.conditions_[0].pressure_ = 70000.0;
 
-  auto atol = state.absolute_tolerance_;
-  auto i_hp = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
-  auto i_oh = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
-  auto i_w = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
-  atol[i_hp] = 1e-8;
-  atol[i_oh] = 1e-8;
-  state.SetAbsoluteTolerances(atol);
+    auto atol = state.absolute_tolerance_;
+    auto i_hp = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+    auto i_oh = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+    auto i_w = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+    atol[i_hp] = 1e-8;
+    atol[i_oh] = 1e-8;
+    state.SetAbsoluteTolerances(atol);
 
-  double Kw_at_T = Kw_miam * std::exp(6710.0 * (1.0 / T0 - 1.0 / T));
-  double expected_hp = std::sqrt(Kw_at_T) * C_H2O;
+    double Kw_at_T = Kw_miam * std::exp(6710.0 * (1.0 / T0 - 1.0 / T));
+    double expected_hp = std::sqrt(Kw_at_T) * C_H2O;
 
-  state.variables_[0][i_hp] = 10 * expected_hp;
-  state.variables_[0][i_oh] = 10 * expected_hp;
-  state.variables_[0][i_w] = C_H2O;
-  cloud.SetDefaultParameters(state);
+    state.variables_[0][i_hp] = 10 * expected_hp;
+    state.variables_[0][i_oh] = 10 * expected_hp;
+    state.variables_[0][i_w] = C_H2O;
+    cloud.SetDefaultParameters(state);
 
-  std::cout << "\nStep 1c: naive IC H+=" << state.variables_[0][i_hp] << " OH-=" << state.variables_[0][i_oh]
-            << " (expected ~" << expected_hp << ")" << std::endl;
+    std::cout << "\nStep 1c: naive IC H+=" << state.variables_[0][i_hp] << " OH-=" << state.variables_[0][i_oh]
+              << " (expected ~" << expected_hp << ")" << std::endl;
 
-  bool ok = IntegrateDAE(solver, state, 1.0, 1e-3);
-  ASSERT_TRUE(ok) << "Solver failed for Kw-only system with naive ICs";
+    bool ok = IntegrateDAE(solver, state, 1.0, 1e-3);
+    ASSERT_TRUE(ok) << "Solver failed for Kw-only system with naive ICs";
 
-  double hp_f = state.variables_[0][i_hp];
-  double oh_f = state.variables_[0][i_oh];
+    double hp_f = state.variables_[0][i_hp];
+    double oh_f = state.variables_[0][i_oh];
 
-  std::cout << "H+=" << hp_f << " OH-=" << oh_f << " expected=" << expected_hp << std::endl;
-  double pH = -std::log10(hp_f / 1000.0);
-  std::cout << "pH=" << pH << std::endl;
+    std::cout << "H+=" << hp_f << " OH-=" << oh_f << " expected=" << expected_hp << std::endl;
+    double pH = -std::log10(hp_f / 1000.0);
+    std::cout << "pH=" << pH << std::endl;
 
-  EXPECT_NEAR(hp_f, expected_hp, 0.01 * expected_hp) << "H+ equilibrium";
-  EXPECT_NEAR(oh_f, expected_hp, 0.01 * expected_hp) << "OH- equilibrium";
-  EXPECT_NEAR(hp_f, oh_f, 0.01 * expected_hp) << "Charge balance: H+ != OH-";
+    EXPECT_NEAR(hp_f, expected_hp, 0.01 * expected_hp) << "H+ equilibrium";
+    EXPECT_NEAR(oh_f, expected_hp, 0.01 * expected_hp) << "OH- equilibrium";
+    EXPECT_NEAR(hp_f, oh_f, 0.01 * expected_hp) << "Charge balance: H+ != OH-";
 
-  std::cout << "=== Step 1c PASSED ===" << std::endl;
-}
+    std::cout << "=== Step 1c PASSED ===" << std::endl;
+  }
 
   // SO2(g) <=> SO2(aq)                     [HLC]
   // SO2(aq) <=> HSO3- + H+                [Ka1]
@@ -466,1162 +454,1142 @@ using Vector = typename DenseMatrix::template VectorType<U>;
   // [H+] = [OH-] + [HSO3-]                [H+ algebraic]
   template<class BuilderPolicy>
   void Step2_HLC_Plus_Dissociation(BuilderPolicy builder)
-{
-  double T = 280.0;
-
-  auto so2_g = Species{ "SO2" };
-  auto so2_aq = Species{ "SO2_aq" };
-  auto hso3m = Species{ "HSO3m" };
-  auto hp = Species{ "Hp" };
-  auto ohm = Species{ "OHm" };
-  auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
-
-  Phase gas_phase{ "GAS", { so2_g } };
-  Phase aqueous_phase{ "AQUEOUS", { so2_aq, hso3m, hp, ohm, h2o } };
-  auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
-
-  double HLC_ref = 1.23 * M_ATM_TO_MOL_M3_PA;
-  double C_hlc = 3120.0;
-
-  auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
-                    .SetGasSpecies(so2_g)
-                    .SetCondensedSpecies(so2_aq)
-                    .SetSolvent(h2o)
-                    .SetCondensedPhase(aqueous_phase)
-                    .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = HLC_ref, .C_ = C_hlc }))
-                    .Build();
-
-  auto eq_kw = DissolvedEquilibriumConstraintBuilder()
-                   .SetPhase(aqueous_phase)
-                   .SetReactants({ h2o })
-                   .SetProducts({ hp, ohm })
-                   .SetAlgebraicSpecies(ohm)
-                   .SetSolvent(h2o)
-                   .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
-                   .Build();
-
-  auto eq_ka1 = DissolvedEquilibriumConstraintBuilder()
-                    .SetPhase(aqueous_phase)
-                    .SetReactants({ so2_aq })
-                    .SetProducts({ hso3m, hp })
-                    .SetAlgebraicSpecies(hso3m)
-                    .SetSolvent(h2o)
-                    .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
-                    .Build();
-
-  double gas0 = 3.01e-8;
-  double total_S = gas0;
-
-  auto mass_S = LinearConstraintBuilder()
-                    .SetAlgebraicSpecies(gas_phase, so2_g)
-                    .AddTerm(gas_phase, so2_g, 1.0)
-                    .AddTerm(aqueous_phase, so2_aq, 1.0)
-                    .AddTerm(aqueous_phase, hso3m, 1.0)
-                    .DiagnoseConstantFromState()
-                    .Build();
-
-  auto charge = LinearConstraintBuilder()
-                    .SetAlgebraicSpecies(aqueous_phase, hp)
-                    .AddTerm(aqueous_phase, hp, 1.0)
-                    .AddTerm(aqueous_phase, ohm, -1.0)
-                    .AddTerm(aqueous_phase, hso3m, -1.0)
-                    .SetConstant(0.0)
-                    .Build();
-
-  auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
-  model.AddConstraints(hl_so2, eq_kw, eq_ka1, mass_S, charge);
-
-  auto system = System(gas_phase);
-  auto solver = builder
-                    .SetSystem(system)
-                    .AddExternalModel(model)
-                    .SetIgnoreUnusedSpecies(true)
-                    .Build();
-
-  State state = solver.GetState();
-  state.conditions_[0].temperature_ = T;
-  state.conditions_[0].pressure_ = 70000.0;
-  state.conditions_[0].CalculateIdealAirDensity();
-
-  auto i_g = state.variable_map_.at("SO2");
-  auto i_aq = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
-  auto i_hs = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
-  auto i_hp = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
-  auto i_oh = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
-  auto i_w = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
-
-  // Compute consistent initial values with a damped fixed-point iteration on [H+].
-  double hlc_T = (1.23 * M_ATM_TO_MOL_M3_PA) * std::exp(3120.0 * (1.0 / T - 1.0 / T0));
-  double alpha = hlc_T * micm::constants::GAS_CONSTANT * T * f_v;
-  double Ka1_T = (1.7e-2 / c_H2O_M) * std::exp(2090.0 * (1.0 / T0 - 1.0 / T));
-  double Kw_T = (1.0e-14 / (c_H2O_M * c_H2O_M)) * std::exp(6710.0 * (1.0 / T0 - 1.0 / T));
-
-  double hp_iter = std::sqrt(Kw_T) * C_H2O;
-  double so2_g_ic = 0, so2_aq_ic = 0, hso3_ic = 0, oh_ic = 0;
-  for (int it = 0; it < 50; ++it)
   {
-    oh_ic = Kw_T * C_H2O * C_H2O / hp_iter;
-    so2_g_ic = total_S / (1.0 + alpha + Ka1_T * alpha * C_H2O / hp_iter);
-    so2_aq_ic = alpha * so2_g_ic;
-    hso3_ic = Ka1_T * so2_aq_ic * C_H2O / hp_iter;
-    double hp_new = oh_ic + hso3_ic;
-    if (std::abs(hp_new - hp_iter) < 1e-15 * hp_iter)
-      break;
-    hp_iter = 0.5 * (hp_iter + hp_new);  // damped to avoid oscillation
+    double T = 280.0;
+
+    auto so2_g = Species{ "SO2" };
+    auto so2_aq = Species{ "SO2_aq" };
+    auto hso3m = Species{ "HSO3m" };
+    auto hp = Species{ "Hp" };
+    auto ohm = Species{ "OHm" };
+    auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
+
+    Phase gas_phase{ "GAS", { so2_g } };
+    Phase aqueous_phase{ "AQUEOUS", { so2_aq, hso3m, hp, ohm, h2o } };
+    auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
+
+    double HLC_ref = 1.23 * M_ATM_TO_MOL_M3_PA;
+    double C_hlc = 3120.0;
+
+    auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
+                      .SetGasSpecies(so2_g)
+                      .SetCondensedSpecies(so2_aq)
+                      .SetSolvent(h2o)
+                      .SetCondensedPhase(aqueous_phase)
+                      .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = HLC_ref, .C_ = C_hlc }))
+                      .Build();
+
+    auto eq_kw = DissolvedEquilibriumConstraintBuilder()
+                     .SetPhase(aqueous_phase)
+                     .SetReactants({ h2o })
+                     .SetProducts({ hp, ohm })
+                     .SetAlgebraicSpecies(ohm)
+                     .SetSolvent(h2o)
+                     .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
+                     .Build();
+
+    auto eq_ka1 = DissolvedEquilibriumConstraintBuilder()
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ so2_aq })
+                      .SetProducts({ hso3m, hp })
+                      .SetAlgebraicSpecies(hso3m)
+                      .SetSolvent(h2o)
+                      .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
+                      .Build();
+
+    double gas0 = 3.01e-8;
+    double total_S = gas0;
+
+    auto mass_S = LinearConstraintBuilder()
+                      .SetAlgebraicSpecies(gas_phase, so2_g)
+                      .AddTerm(gas_phase, so2_g, 1.0)
+                      .AddTerm(aqueous_phase, so2_aq, 1.0)
+                      .AddTerm(aqueous_phase, hso3m, 1.0)
+                      .DiagnoseConstantFromState()
+                      .Build();
+
+    auto charge = LinearConstraintBuilder()
+                      .SetAlgebraicSpecies(aqueous_phase, hp)
+                      .AddTerm(aqueous_phase, hp, 1.0)
+                      .AddTerm(aqueous_phase, ohm, -1.0)
+                      .AddTerm(aqueous_phase, hso3m, -1.0)
+                      .SetConstant(0.0)
+                      .Build();
+
+    auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
+    model.AddConstraints(hl_so2, eq_kw, eq_ka1, mass_S, charge);
+
+    auto system = System(gas_phase);
+    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
+
+    State state = solver.GetState();
+    state.conditions_[0].temperature_ = T;
+    state.conditions_[0].pressure_ = 70000.0;
+    state.conditions_[0].CalculateIdealAirDensity();
+
+    auto i_g = state.variable_map_.at("SO2");
+    auto i_aq = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+    auto i_hs = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+    auto i_hp = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+    auto i_oh = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+    auto i_w = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+
+    // Compute consistent initial values with a damped fixed-point iteration on [H+].
+    double hlc_T = (1.23 * M_ATM_TO_MOL_M3_PA) * std::exp(3120.0 * (1.0 / T - 1.0 / T0));
+    double alpha = hlc_T * micm::constants::GAS_CONSTANT * T * f_v;
+    double Ka1_T = (1.7e-2 / c_H2O_M) * std::exp(2090.0 * (1.0 / T0 - 1.0 / T));
+    double Kw_T = (1.0e-14 / (c_H2O_M * c_H2O_M)) * std::exp(6710.0 * (1.0 / T0 - 1.0 / T));
+
+    double hp_iter = std::sqrt(Kw_T) * C_H2O;
+    double so2_g_ic = 0, so2_aq_ic = 0, hso3_ic = 0, oh_ic = 0;
+    for (int it = 0; it < 50; ++it)
+    {
+      oh_ic = Kw_T * C_H2O * C_H2O / hp_iter;
+      so2_g_ic = total_S / (1.0 + alpha + Ka1_T * alpha * C_H2O / hp_iter);
+      so2_aq_ic = alpha * so2_g_ic;
+      hso3_ic = Ka1_T * so2_aq_ic * C_H2O / hp_iter;
+      double hp_new = oh_ic + hso3_ic;
+      if (std::abs(hp_new - hp_iter) < 1e-15 * hp_iter)
+        break;
+      hp_iter = 0.5 * (hp_iter + hp_new);  // damped to avoid oscillation
+    }
+
+    state.variables_[0][i_g] = so2_g_ic;
+    state.variables_[0][i_aq] = so2_aq_ic;
+    state.variables_[0][i_hs] = hso3_ic;
+    state.variables_[0][i_hp] = hp_iter;
+    state.variables_[0][i_oh] = oh_ic;
+    state.variables_[0][i_w] = C_H2O;
+    cloud.SetDefaultParameters(state);
+
+    std::cout << "Step 2 initial: SO2_g=" << so2_g_ic << " SO2_aq=" << so2_aq_ic << " HSO3-=" << hso3_ic << " H+=" << hp_iter
+              << " OH-=" << oh_ic << std::endl;
+
+    {
+      auto maps = BuildIndexMaps(model);
+      DenseMatrix variables(1, maps.num_variables, 0.0);
+      variables[0][maps.variable_indices.at("SO2")] = so2_g_ic;
+      variables[0][maps.variable_indices.at("CLOUD.AQUEOUS.SO2_aq")] = so2_aq_ic;
+      variables[0][maps.variable_indices.at("CLOUD.AQUEOUS.HSO3m")] = hso3_ic;
+      variables[0][maps.variable_indices.at("CLOUD.AQUEOUS.Hp")] = hp_iter;
+      variables[0][maps.variable_indices.at("CLOUD.AQUEOUS.OHm")] = oh_ic;
+      variables[0][maps.variable_indices.at("CLOUD.AQUEOUS.H2O")] = C_H2O;
+      DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
+      Vector<Conditions> conditions(1);
+      conditions[0].temperature_ = T;
+      conditions[0].pressure_ = 70000.0;
+      std::cout << "Checking Step 2 constraint Jacobian..." << std::endl;
+      VerifyConstraintJacobian(model, maps, variables, parameters, conditions);
+      std::cout << "Step 2 constraint Jacobian OK" << std::endl;
+    }
+
+    solver.UpdateStateParameters(state);
+    auto result_dbg = solver.Solve(0.001, state);
+    std::cout << "After single 0.001s step: converged=" << (result_dbg.state_ == SolverState::Converged)
+              << " SO2_g=" << state.variables_[0][i_g] << " SO2_aq=" << state.variables_[0][i_aq]
+              << " HSO3-=" << state.variables_[0][i_hs] << " H+=" << state.variables_[0][i_hp]
+              << " OH-=" << state.variables_[0][i_oh] << " H2O=" << state.variables_[0][i_w] << std::endl;
+
+    bool ok2 = IntegrateDAE(solver, state, 10.0, 0.01);
+    ASSERT_TRUE(ok2);
+
+    double g_f = state.variables_[0][i_g];
+    double aq_f = state.variables_[0][i_aq];
+    double hs_f = state.variables_[0][i_hs];
+    double hp_f = state.variables_[0][i_hp];
+    double oh_f = state.variables_[0][i_oh];
+
+    double total_S_f = g_f + aq_f + hs_f;
+    EXPECT_NEAR(total_S_f, total_S, 1e-10 * total_S) << "S budget violated";
+
+    double cb_err = std::abs(hp_f - oh_f - hs_f);
+    EXPECT_LT(cb_err, 1e-8 * hp_f) << "Charge balance violated: H+=" << hp_f << " OH-=" << oh_f << " HSO3-=" << hs_f;
+
+    EXPECT_GT(g_f, 0) << "SO2_g negative";
+    EXPECT_GT(aq_f, 0) << "SO2_aq negative";
+    EXPECT_GT(hs_f, 0) << "HSO3m negative";
+    EXPECT_GT(hp_f, 0) << "Hp negative";
+    EXPECT_GT(oh_f, 0) << "OHm negative";
+
+    double pH = -std::log10(hp_f / 1000.0);  // convert mol/m^3 to mol/L
+    std::cout << "\n=== Step 2 PASSED ===" << std::endl;
+    std::cout << "pH=" << pH << " SO2_g=" << g_f << " SO2_aq=" << aq_f << " HSO3-=" << hs_f << " total_S=" << total_S_f
+              << std::endl;
   }
-
-  state.variables_[0][i_g] = so2_g_ic;
-  state.variables_[0][i_aq] = so2_aq_ic;
-  state.variables_[0][i_hs] = hso3_ic;
-  state.variables_[0][i_hp] = hp_iter;
-  state.variables_[0][i_oh] = oh_ic;
-  state.variables_[0][i_w] = C_H2O;
-  cloud.SetDefaultParameters(state);
-
-  std::cout << "Step 2 initial: SO2_g=" << so2_g_ic << " SO2_aq=" << so2_aq_ic << " HSO3-=" << hso3_ic << " H+=" << hp_iter
-            << " OH-=" << oh_ic << std::endl;
-
-  {
-    auto maps = BuildIndexMaps(model);
-    DenseMatrix variables(1, maps.num_variables, 0.0);
-    variables[0][maps.variable_indices.at("SO2")] = so2_g_ic;
-    variables[0][maps.variable_indices.at("CLOUD.AQUEOUS.SO2_aq")] = so2_aq_ic;
-    variables[0][maps.variable_indices.at("CLOUD.AQUEOUS.HSO3m")] = hso3_ic;
-    variables[0][maps.variable_indices.at("CLOUD.AQUEOUS.Hp")] = hp_iter;
-    variables[0][maps.variable_indices.at("CLOUD.AQUEOUS.OHm")] = oh_ic;
-    variables[0][maps.variable_indices.at("CLOUD.AQUEOUS.H2O")] = C_H2O;
-    DenseMatrix parameters(1, std::max(maps.num_parameters, std::size_t(1)), 0.0);
-    Vector<Conditions> conditions(1);
-    conditions[0].temperature_ = T;
-    conditions[0].pressure_ = 70000.0;
-    std::cout << "Checking Step 2 constraint Jacobian..." << std::endl;
-    VerifyConstraintJacobian(model, maps, variables, parameters, conditions);
-    std::cout << "Step 2 constraint Jacobian OK" << std::endl;
-  }
-
-  solver.UpdateStateParameters(state);
-  auto result_dbg = solver.Solve(0.001, state);
-  std::cout << "After single 0.001s step: converged=" << (result_dbg.state_ == SolverState::Converged)
-            << " SO2_g=" << state.variables_[0][i_g] << " SO2_aq=" << state.variables_[0][i_aq]
-            << " HSO3-=" << state.variables_[0][i_hs] << " H+=" << state.variables_[0][i_hp]
-            << " OH-=" << state.variables_[0][i_oh] << " H2O=" << state.variables_[0][i_w] << std::endl;
-
-  bool ok2 = IntegrateDAE(solver, state, 10.0, 0.01);
-  ASSERT_TRUE(ok2);
-
-  double g_f = state.variables_[0][i_g];
-  double aq_f = state.variables_[0][i_aq];
-  double hs_f = state.variables_[0][i_hs];
-  double hp_f = state.variables_[0][i_hp];
-  double oh_f = state.variables_[0][i_oh];
-
-  double total_S_f = g_f + aq_f + hs_f;
-  EXPECT_NEAR(total_S_f, total_S, 1e-10 * total_S) << "S budget violated";
-
-  double cb_err = std::abs(hp_f - oh_f - hs_f);
-  EXPECT_LT(cb_err, 1e-8 * hp_f) << "Charge balance violated: H+=" << hp_f << " OH-=" << oh_f << " HSO3-=" << hs_f;
-
-  EXPECT_GT(g_f, 0) << "SO2_g negative";
-  EXPECT_GT(aq_f, 0) << "SO2_aq negative";
-  EXPECT_GT(hs_f, 0) << "HSO3m negative";
-  EXPECT_GT(hp_f, 0) << "Hp negative";
-  EXPECT_GT(oh_f, 0) << "OHm negative";
-
-  double pH = -std::log10(hp_f / 1000.0);  // convert mol/m^3 to mol/L
-  std::cout << "\n=== Step 2 PASSED ===" << std::endl;
-  std::cout << "pH=" << pH << " SO2_g=" << g_f << " SO2_aq=" << aq_f << " HSO3-=" << hs_f << " total_S=" << total_S_f
-            << std::endl;
-}
 
   // Full equilibrium system: 3 HLCs, 3 dissociations, 3 mass balances and
   // a charge balance. There are no kinetic reactions, so SO4mm stays constant.
   template<class BuilderPolicy>
   void Step3_FullEquilibrium(BuilderPolicy builder)
-{
-  double T = 280.0;
+  {
+    double T = 280.0;
 
-  auto so2_g = Species{ "SO2" };
-  auto h2o2_g = Species{ "H2O2" };
-  auto o3_g = Species{ "O3" };
-  auto so2_aq = Species{ "SO2_aq" };
-  auto h2o2_aq = Species{ "H2O2_aq" };
-  auto o3_aq = Species{ "O3_aq" };
-  auto hp = Species{ "Hp" };
-  auto ohm = Species{ "OHm" };
-  auto hso3m = Species{ "HSO3m" };
-  auto so3mm = Species{ "SO3mm" };
-  auto so4mm = Species{ "SO4mm" };
-  auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
+    auto so2_g = Species{ "SO2" };
+    auto h2o2_g = Species{ "H2O2" };
+    auto o3_g = Species{ "O3" };
+    auto so2_aq = Species{ "SO2_aq" };
+    auto h2o2_aq = Species{ "H2O2_aq" };
+    auto o3_aq = Species{ "O3_aq" };
+    auto hp = Species{ "Hp" };
+    auto ohm = Species{ "OHm" };
+    auto hso3m = Species{ "HSO3m" };
+    auto so3mm = Species{ "SO3mm" };
+    auto so4mm = Species{ "SO4mm" };
+    auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
 
-  Phase gas_phase{ "GAS", { so2_g, h2o2_g, o3_g } };
-  Phase aqueous_phase{ "AQUEOUS", { h2o, so2_aq, h2o2_aq, o3_aq, hp, ohm, hso3m, so3mm, so4mm } };
-  auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
+    Phase gas_phase{ "GAS", { so2_g, h2o2_g, o3_g } };
+    Phase aqueous_phase{ "AQUEOUS", { h2o, so2_aq, h2o2_aq, o3_aq, hp, ohm, hso3m, so3mm, so4mm } };
+    auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
 
-  auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
-                    .SetGasSpecies(so2_g)
-                    .SetCondensedSpecies(so2_aq)
-                    .SetSolvent(h2o)
-                    .SetCondensedPhase(aqueous_phase)
-                    .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
-                    .Build();
+    auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
+                      .SetGasSpecies(so2_g)
+                      .SetCondensedSpecies(so2_aq)
+                      .SetSolvent(h2o)
+                      .SetCondensedPhase(aqueous_phase)
+                      .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
+                      .Build();
 
-  auto hl_h2o2 = HenrysLawEquilibriumConstraintBuilder()
-                     .SetGasSpecies(h2o2_g)
-                     .SetCondensedSpecies(h2o2_aq)
+    auto hl_h2o2 = HenrysLawEquilibriumConstraintBuilder()
+                       .SetGasSpecies(h2o2_g)
+                       .SetCondensedSpecies(h2o2_aq)
+                       .SetSolvent(h2o)
+                       .SetCondensedPhase(aqueous_phase)
+                       .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
+                       .Build();
+
+    auto hl_o3 = HenrysLawEquilibriumConstraintBuilder()
+                     .SetGasSpecies(o3_g)
+                     .SetCondensedSpecies(o3_aq)
                      .SetSolvent(h2o)
                      .SetCondensedPhase(aqueous_phase)
-                     .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
+                     .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
                      .Build();
 
-  auto hl_o3 = HenrysLawEquilibriumConstraintBuilder()
-                   .SetGasSpecies(o3_g)
-                   .SetCondensedSpecies(o3_aq)
-                   .SetSolvent(h2o)
-                   .SetCondensedPhase(aqueous_phase)
-                   .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
-                   .Build();
+    auto eq_kw = DissolvedEquilibriumConstraintBuilder()
+                     .SetPhase(aqueous_phase)
+                     .SetReactants({ h2o })
+                     .SetProducts({ hp, ohm })
+                     .SetAlgebraicSpecies(ohm)
+                     .SetSolvent(h2o)
+                     .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
+                     .Build();
 
-  auto eq_kw = DissolvedEquilibriumConstraintBuilder()
-                   .SetPhase(aqueous_phase)
-                   .SetReactants({ h2o })
-                   .SetProducts({ hp, ohm })
-                   .SetAlgebraicSpecies(ohm)
-                   .SetSolvent(h2o)
-                   .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
-                   .Build();
+    auto eq_ka1 = DissolvedEquilibriumConstraintBuilder()
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ so2_aq })
+                      .SetProducts({ hso3m, hp })
+                      .SetAlgebraicSpecies(hso3m)
+                      .SetSolvent(h2o)
+                      .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
+                      .Build();
 
-  auto eq_ka1 = DissolvedEquilibriumConstraintBuilder()
-                    .SetPhase(aqueous_phase)
-                    .SetReactants({ so2_aq })
-                    .SetProducts({ hso3m, hp })
-                    .SetAlgebraicSpecies(hso3m)
-                    .SetSolvent(h2o)
-                    .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
-                    .Build();
+    auto eq_ka2 = DissolvedEquilibriumConstraintBuilder()
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ hso3m })
+                      .SetProducts({ so3mm, hp })
+                      .SetAlgebraicSpecies(so3mm)
+                      .SetSolvent(h2o)
+                      .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 6.0e-8 / c_H2O_M, .C_ = 1120.0 }))
+                      .Build();
 
-  auto eq_ka2 = DissolvedEquilibriumConstraintBuilder()
-                    .SetPhase(aqueous_phase)
-                    .SetReactants({ hso3m })
-                    .SetProducts({ so3mm, hp })
-                    .SetAlgebraicSpecies(so3mm)
-                    .SetSolvent(h2o)
-                    .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 6.0e-8 / c_H2O_M, .C_ = 1120.0 }))
-                    .Build();
+    double gas0_so2 = 3.01e-8;
+    double gas0_h2o2 = 3.01e-8;
+    double gas0_o3 = 1.50e-6;
 
-  double gas0_so2 = 3.01e-8;
-  double gas0_h2o2 = 3.01e-8;
-  double gas0_o3 = 1.50e-6;
+    auto mass_S = LinearConstraintBuilder()
+                      .SetAlgebraicSpecies(gas_phase, so2_g)
+                      .AddTerm(gas_phase, so2_g, 1.0)
+                      .AddTerm(aqueous_phase, so2_aq, 1.0)
+                      .AddTerm(aqueous_phase, hso3m, 1.0)
+                      .AddTerm(aqueous_phase, so3mm, 1.0)
+                      .DiagnoseConstantFromState()
+                      .Build();
 
-  auto mass_S = LinearConstraintBuilder()
-                    .SetAlgebraicSpecies(gas_phase, so2_g)
-                    .AddTerm(gas_phase, so2_g, 1.0)
-                    .AddTerm(aqueous_phase, so2_aq, 1.0)
-                    .AddTerm(aqueous_phase, hso3m, 1.0)
-                    .AddTerm(aqueous_phase, so3mm, 1.0)
-                    .DiagnoseConstantFromState()
-                    .Build();
+    auto mass_H2O2 = LinearConstraintBuilder()
+                         .SetAlgebraicSpecies(gas_phase, h2o2_g)
+                         .AddTerm(gas_phase, h2o2_g, 1.0)
+                         .AddTerm(aqueous_phase, h2o2_aq, 1.0)
+                         .DiagnoseConstantFromState()
+                         .Build();
 
-  auto mass_H2O2 = LinearConstraintBuilder()
-                       .SetAlgebraicSpecies(gas_phase, h2o2_g)
-                       .AddTerm(gas_phase, h2o2_g, 1.0)
-                       .AddTerm(aqueous_phase, h2o2_aq, 1.0)
+    auto mass_O3 = LinearConstraintBuilder()
+                       .SetAlgebraicSpecies(gas_phase, o3_g)
+                       .AddTerm(gas_phase, o3_g, 1.0)
+                       .AddTerm(aqueous_phase, o3_aq, 1.0)
                        .DiagnoseConstantFromState()
                        .Build();
 
-  auto mass_O3 = LinearConstraintBuilder()
-                     .SetAlgebraicSpecies(gas_phase, o3_g)
-                     .AddTerm(gas_phase, o3_g, 1.0)
-                     .AddTerm(aqueous_phase, o3_aq, 1.0)
-                     .DiagnoseConstantFromState()
-                     .Build();
+    auto charge = LinearConstraintBuilder()
+                      .SetAlgebraicSpecies(aqueous_phase, hp)
+                      .AddTerm(aqueous_phase, hp, 1.0)
+                      .AddTerm(aqueous_phase, ohm, -1.0)
+                      .AddTerm(aqueous_phase, hso3m, -1.0)
+                      .AddTerm(aqueous_phase, so3mm, -2.0)
+                      .AddTerm(aqueous_phase, so4mm, -2.0)
+                      .SetConstant(0.0)
+                      .Build();
 
-  auto charge = LinearConstraintBuilder()
-                    .SetAlgebraicSpecies(aqueous_phase, hp)
-                    .AddTerm(aqueous_phase, hp, 1.0)
-                    .AddTerm(aqueous_phase, ohm, -1.0)
-                    .AddTerm(aqueous_phase, hso3m, -1.0)
-                    .AddTerm(aqueous_phase, so3mm, -2.0)
-                    .AddTerm(aqueous_phase, so4mm, -2.0)
-                    .SetConstant(0.0)
-                    .Build();
+    auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
+    model.AddConstraints(hl_so2, hl_h2o2, hl_o3, eq_kw, eq_ka1, eq_ka2, mass_S, mass_H2O2, mass_O3, charge);
 
-  auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
-  model.AddConstraints(hl_so2, hl_h2o2, hl_o3, eq_kw, eq_ka1, eq_ka2, mass_S, mass_H2O2, mass_O3, charge);
+    auto system = System(gas_phase);
+    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
 
-  auto system = System(gas_phase);
-  auto solver = builder
-                    .SetSystem(system)
-                    .AddExternalModel(model)
-                    .SetIgnoreUnusedSpecies(true)
-                    .Build();
+    State state = solver.GetState();
+    state.conditions_[0].temperature_ = T;
+    state.conditions_[0].pressure_ = 70000.0;
+    state.conditions_[0].CalculateIdealAirDensity();
 
-  State state = solver.GetState();
-  state.conditions_[0].temperature_ = T;
-  state.conditions_[0].pressure_ = 70000.0;
-  state.conditions_[0].CalculateIdealAirDensity();
+    auto i_so2_g_ = state.variable_map_.at("SO2");
+    auto i_h2o2_g_ = state.variable_map_.at("H2O2");
+    auto i_o3_g_ = state.variable_map_.at("O3");
+    auto i_h2o_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+    auto i_so2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+    auto i_h2o2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
+    auto i_o3_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
+    auto i_hp_ = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+    auto i_ohm_ = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+    auto i_hso3m_ = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+    auto i_so3mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
+    auto i_so4mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
 
-  auto i_so2_g_ = state.variable_map_.at("SO2");
-  auto i_h2o2_g_ = state.variable_map_.at("H2O2");
-  auto i_o3_g_ = state.variable_map_.at("O3");
-  auto i_h2o_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
-  auto i_so2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
-  auto i_h2o2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
-  auto i_o3_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
-  auto i_hp_ = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
-  auto i_ohm_ = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
-  auto i_hso3m_ = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
-  auto i_so3mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
-  auto i_so4mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
+    // Compute consistent initial values with a damped fixed-point iteration on [H+].
+    double so4mm0 = 1.0;  // mol/m^3 air
 
-  // Compute consistent initial values with a damped fixed-point iteration on [H+].
-  double so4mm0 = 1.0;  // mol/m^3 air
+    double hlc_SO2_T = (1.23 * M_ATM_TO_MOL_M3_PA) * std::exp(3120.0 * (1.0 / T - 1.0 / T0));
+    double hlc_H2O2_T = (7.4e4 * M_ATM_TO_MOL_M3_PA) * std::exp(6621.0 * (1.0 / T - 1.0 / T0));
+    double hlc_O3_T = (1.15e-2 * M_ATM_TO_MOL_M3_PA) * std::exp(2560.0 * (1.0 / T - 1.0 / T0));
+    double alpha_SO2 = hlc_SO2_T * micm::constants::GAS_CONSTANT * T * f_v;
+    double alpha_H2O2 = hlc_H2O2_T * micm::constants::GAS_CONSTANT * T * f_v;
+    double alpha_O3 = hlc_O3_T * micm::constants::GAS_CONSTANT * T * f_v;
+    double Ka1_T = (1.7e-2 / c_H2O_M) * std::exp(2090.0 * (1.0 / T0 - 1.0 / T));
+    double Ka2_T = (6.0e-8 / c_H2O_M) * std::exp(1120.0 * (1.0 / T0 - 1.0 / T));
+    double Kw_T = (1.0e-14 / (c_H2O_M * c_H2O_M)) * std::exp(6710.0 * (1.0 / T0 - 1.0 / T));
 
-  double hlc_SO2_T = (1.23 * M_ATM_TO_MOL_M3_PA) * std::exp(3120.0 * (1.0 / T - 1.0 / T0));
-  double hlc_H2O2_T = (7.4e4 * M_ATM_TO_MOL_M3_PA) * std::exp(6621.0 * (1.0 / T - 1.0 / T0));
-  double hlc_O3_T = (1.15e-2 * M_ATM_TO_MOL_M3_PA) * std::exp(2560.0 * (1.0 / T - 1.0 / T0));
-  double alpha_SO2 = hlc_SO2_T * micm::constants::GAS_CONSTANT * T * f_v;
-  double alpha_H2O2 = hlc_H2O2_T * micm::constants::GAS_CONSTANT * T * f_v;
-  double alpha_O3 = hlc_O3_T * micm::constants::GAS_CONSTANT * T * f_v;
-  double Ka1_T = (1.7e-2 / c_H2O_M) * std::exp(2090.0 * (1.0 / T0 - 1.0 / T));
-  double Ka2_T = (6.0e-8 / c_H2O_M) * std::exp(1120.0 * (1.0 / T0 - 1.0 / T));
-  double Kw_T = (1.0e-14 / (c_H2O_M * c_H2O_M)) * std::exp(6710.0 * (1.0 / T0 - 1.0 / T));
+    // H2O2 and O3 do not dissociate, so a simple HLC split gives their values.
+    double ic_h2o2_g = gas0_h2o2 / (1.0 + alpha_H2O2);
+    double ic_h2o2_aq = alpha_H2O2 * ic_h2o2_g;
+    double ic_o3_g = gas0_o3 / (1.0 + alpha_O3);
+    double ic_o3_aq = alpha_O3 * ic_o3_g;
 
-  // H2O2 and O3 do not dissociate, so a simple HLC split gives their values.
-  double ic_h2o2_g = gas0_h2o2 / (1.0 + alpha_H2O2);
-  double ic_h2o2_aq = alpha_H2O2 * ic_h2o2_g;
-  double ic_o3_g = gas0_o3 / (1.0 + alpha_O3);
-  double ic_o3_aq = alpha_O3 * ic_o3_g;
+    double hp_ic = 2.0 * so4mm0;  // charge balance dominated by SO4
+    double ic_so2_g = 0, ic_so2_aq = 0, ic_hso3m = 0, ic_so3mm = 0, ic_ohm = 0;
+    for (int it = 0; it < 100; ++it)
+    {
+      ic_ohm = Kw_T * C_H2O * C_H2O / hp_ic;
+      double f =
+          1.0 + alpha_SO2 + Ka1_T * alpha_SO2 * C_H2O / hp_ic + Ka2_T * Ka1_T * alpha_SO2 * C_H2O * C_H2O / (hp_ic * hp_ic);
+      ic_so2_g = gas0_so2 / f;
+      ic_so2_aq = alpha_SO2 * ic_so2_g;
+      ic_hso3m = Ka1_T * ic_so2_aq * C_H2O / hp_ic;
+      ic_so3mm = Ka2_T * ic_hso3m * C_H2O / hp_ic;
+      double hp_new = ic_ohm + ic_hso3m + 2.0 * ic_so3mm + 2.0 * so4mm0;
+      if (std::abs(hp_new - hp_ic) < 1e-15 * hp_ic)
+        break;
+      hp_ic = 0.5 * (hp_ic + hp_new);
+    }
 
-  double hp_ic = 2.0 * so4mm0;  // charge balance dominated by SO4
-  double ic_so2_g = 0, ic_so2_aq = 0, ic_hso3m = 0, ic_so3mm = 0, ic_ohm = 0;
-  for (int it = 0; it < 100; ++it)
-  {
-    ic_ohm = Kw_T * C_H2O * C_H2O / hp_ic;
-    double f =
-        1.0 + alpha_SO2 + Ka1_T * alpha_SO2 * C_H2O / hp_ic + Ka2_T * Ka1_T * alpha_SO2 * C_H2O * C_H2O / (hp_ic * hp_ic);
-    ic_so2_g = gas0_so2 / f;
-    ic_so2_aq = alpha_SO2 * ic_so2_g;
-    ic_hso3m = Ka1_T * ic_so2_aq * C_H2O / hp_ic;
-    ic_so3mm = Ka2_T * ic_hso3m * C_H2O / hp_ic;
-    double hp_new = ic_ohm + ic_hso3m + 2.0 * ic_so3mm + 2.0 * so4mm0;
-    if (std::abs(hp_new - hp_ic) < 1e-15 * hp_ic)
-      break;
-    hp_ic = 0.5 * (hp_ic + hp_new);
+    state.variables_[0][i_so2_g_] = ic_so2_g;
+    state.variables_[0][i_h2o2_g_] = ic_h2o2_g;
+    state.variables_[0][i_o3_g_] = ic_o3_g;
+    state.variables_[0][i_h2o_] = C_H2O;
+    state.variables_[0][i_so2_aq_] = ic_so2_aq;
+    state.variables_[0][i_h2o2_aq_] = ic_h2o2_aq;
+    state.variables_[0][i_o3_aq_] = ic_o3_aq;
+    state.variables_[0][i_hp_] = hp_ic;
+    state.variables_[0][i_ohm_] = ic_ohm;
+    state.variables_[0][i_hso3m_] = ic_hso3m;
+    state.variables_[0][i_so3mm_] = ic_so3mm;
+    state.variables_[0][i_so4mm_] = so4mm0;
+    cloud.SetDefaultParameters(state);
+
+    bool ok3 = IntegrateDAE(solver, state, 10.0, 0.01);
+    ASSERT_TRUE(ok3);
+
+    double so2_g_f = state.variables_[0][i_so2_g_];
+    double h2o2_g_f = state.variables_[0][i_h2o2_g_];
+    double o3_g_f = state.variables_[0][i_o3_g_];
+    double so2_aq_f = state.variables_[0][i_so2_aq_];
+    double h2o2_aq_f = state.variables_[0][i_h2o2_aq_];
+    double o3_aq_f = state.variables_[0][i_o3_aq_];
+    double hp_f = state.variables_[0][i_hp_];
+    double ohm_f = state.variables_[0][i_ohm_];
+    double hso3m_f = state.variables_[0][i_hso3m_];
+    double so3mm_f = state.variables_[0][i_so3mm_];
+    double so4mm_f = state.variables_[0][i_so4mm_];
+
+    EXPECT_NEAR(so2_g_f + so2_aq_f + hso3m_f + so3mm_f, gas0_so2, 1e-10 * gas0_so2) << "S budget violated";
+    EXPECT_NEAR(h2o2_g_f + h2o2_aq_f, gas0_h2o2, 1e-10 * gas0_h2o2) << "H2O2 budget violated";
+    EXPECT_NEAR(o3_g_f + o3_aq_f, gas0_o3, 1e-10 * gas0_o3) << "O3 budget violated";
+
+    double cb = hp_f - ohm_f - hso3m_f - 2 * so3mm_f - 2 * so4mm_f;
+    EXPECT_NEAR(cb, 0.0, 1e-8 * hp_f) << "Charge balance violated";
+
+    EXPECT_NEAR(so4mm_f, 1.0, 1e-6) << "SO4 should not change without kinetics";
+
+    EXPECT_GT(so2_g_f, 0);
+    EXPECT_GT(hp_f, 0);
+    EXPECT_GT(hso3m_f, 0);
+
+    double pH = -std::log10(hp_f / 1000.0);
+    std::cout << "\n=== Step 3 PASSED ===" << std::endl;
+    std::cout << "pH=" << pH << std::endl;
+    std::cout << "SO2: g=" << so2_g_f << " aq=" << so2_aq_f << " HSO3-=" << hso3m_f << " SO3--=" << so3mm_f
+              << " total=" << so2_g_f + so2_aq_f + hso3m_f + so3mm_f << std::endl;
+    std::cout << "H2O2: g=" << h2o2_g_f << " aq=" << h2o2_aq_f << std::endl;
+    std::cout << "O3: g=" << o3_g_f << " aq=" << o3_aq_f << std::endl;
+    std::cout << "SO4--=" << so4mm_f << std::endl;
   }
-
-  state.variables_[0][i_so2_g_] = ic_so2_g;
-  state.variables_[0][i_h2o2_g_] = ic_h2o2_g;
-  state.variables_[0][i_o3_g_] = ic_o3_g;
-  state.variables_[0][i_h2o_] = C_H2O;
-  state.variables_[0][i_so2_aq_] = ic_so2_aq;
-  state.variables_[0][i_h2o2_aq_] = ic_h2o2_aq;
-  state.variables_[0][i_o3_aq_] = ic_o3_aq;
-  state.variables_[0][i_hp_] = hp_ic;
-  state.variables_[0][i_ohm_] = ic_ohm;
-  state.variables_[0][i_hso3m_] = ic_hso3m;
-  state.variables_[0][i_so3mm_] = ic_so3mm;
-  state.variables_[0][i_so4mm_] = so4mm0;
-  cloud.SetDefaultParameters(state);
-
-  bool ok3 = IntegrateDAE(solver, state, 10.0, 0.01);
-  ASSERT_TRUE(ok3);
-
-  double so2_g_f = state.variables_[0][i_so2_g_];
-  double h2o2_g_f = state.variables_[0][i_h2o2_g_];
-  double o3_g_f = state.variables_[0][i_o3_g_];
-  double so2_aq_f = state.variables_[0][i_so2_aq_];
-  double h2o2_aq_f = state.variables_[0][i_h2o2_aq_];
-  double o3_aq_f = state.variables_[0][i_o3_aq_];
-  double hp_f = state.variables_[0][i_hp_];
-  double ohm_f = state.variables_[0][i_ohm_];
-  double hso3m_f = state.variables_[0][i_hso3m_];
-  double so3mm_f = state.variables_[0][i_so3mm_];
-  double so4mm_f = state.variables_[0][i_so4mm_];
-
-  EXPECT_NEAR(so2_g_f + so2_aq_f + hso3m_f + so3mm_f, gas0_so2, 1e-10 * gas0_so2) << "S budget violated";
-  EXPECT_NEAR(h2o2_g_f + h2o2_aq_f, gas0_h2o2, 1e-10 * gas0_h2o2) << "H2O2 budget violated";
-  EXPECT_NEAR(o3_g_f + o3_aq_f, gas0_o3, 1e-10 * gas0_o3) << "O3 budget violated";
-
-  double cb = hp_f - ohm_f - hso3m_f - 2 * so3mm_f - 2 * so4mm_f;
-  EXPECT_NEAR(cb, 0.0, 1e-8 * hp_f) << "Charge balance violated";
-
-  EXPECT_NEAR(so4mm_f, 1.0, 1e-6) << "SO4 should not change without kinetics";
-
-  EXPECT_GT(so2_g_f, 0);
-  EXPECT_GT(hp_f, 0);
-  EXPECT_GT(hso3m_f, 0);
-
-  double pH = -std::log10(hp_f / 1000.0);
-  std::cout << "\n=== Step 3 PASSED ===" << std::endl;
-  std::cout << "pH=" << pH << std::endl;
-  std::cout << "SO2: g=" << so2_g_f << " aq=" << so2_aq_f << " HSO3-=" << hso3m_f << " SO3--=" << so3mm_f
-            << " total=" << so2_g_f + so2_aq_f + hso3m_f + so3mm_f << std::endl;
-  std::cout << "H2O2: g=" << h2o2_g_f << " aq=" << h2o2_aq_f << std::endl;
-  std::cout << "O3: g=" << o3_g_f << " aq=" << o3_aq_f << std::endl;
-  std::cout << "SO4--=" << so4mm_f << std::endl;
-}
 
   // Same system as Step 3. Aqueous species start at zero and gas species start
   // at the total budget. The solver constraint initialization finds the consistent state.
   template<class BuilderPolicy>
   void Step3b_NaiveInitialConditions(BuilderPolicy builder)
-{
-  double T = 280.0;
+  {
+    double T = 280.0;
 
-  auto so2_g = Species{ "SO2" };
-  auto h2o2_g = Species{ "H2O2" };
-  auto o3_g = Species{ "O3" };
-  auto so2_aq = Species{ "SO2_aq" };
-  auto h2o2_aq = Species{ "H2O2_aq" };
-  auto o3_aq = Species{ "O3_aq" };
-  auto hp = Species{ "Hp" };
-  auto ohm = Species{ "OHm" };
-  auto hso3m = Species{ "HSO3m" };
-  auto so3mm = Species{ "SO3mm" };
-  auto so4mm = Species{ "SO4mm" };
-  auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
+    auto so2_g = Species{ "SO2" };
+    auto h2o2_g = Species{ "H2O2" };
+    auto o3_g = Species{ "O3" };
+    auto so2_aq = Species{ "SO2_aq" };
+    auto h2o2_aq = Species{ "H2O2_aq" };
+    auto o3_aq = Species{ "O3_aq" };
+    auto hp = Species{ "Hp" };
+    auto ohm = Species{ "OHm" };
+    auto hso3m = Species{ "HSO3m" };
+    auto so3mm = Species{ "SO3mm" };
+    auto so4mm = Species{ "SO4mm" };
+    auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
 
-  Phase gas_phase{ "GAS", { so2_g, h2o2_g, o3_g } };
-  Phase aqueous_phase{ "AQUEOUS", { h2o, so2_aq, h2o2_aq, o3_aq, hp, ohm, hso3m, so3mm, so4mm } };
-  auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
+    Phase gas_phase{ "GAS", { so2_g, h2o2_g, o3_g } };
+    Phase aqueous_phase{ "AQUEOUS", { h2o, so2_aq, h2o2_aq, o3_aq, hp, ohm, hso3m, so3mm, so4mm } };
+    auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
 
-  auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
-                    .SetGasSpecies(so2_g)
-                    .SetCondensedSpecies(so2_aq)
-                    .SetSolvent(h2o)
-                    .SetCondensedPhase(aqueous_phase)
-                    .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
-                    .Build();
+    auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
+                      .SetGasSpecies(so2_g)
+                      .SetCondensedSpecies(so2_aq)
+                      .SetSolvent(h2o)
+                      .SetCondensedPhase(aqueous_phase)
+                      .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
+                      .Build();
 
-  auto hl_h2o2 = HenrysLawEquilibriumConstraintBuilder()
-                     .SetGasSpecies(h2o2_g)
-                     .SetCondensedSpecies(h2o2_aq)
+    auto hl_h2o2 = HenrysLawEquilibriumConstraintBuilder()
+                       .SetGasSpecies(h2o2_g)
+                       .SetCondensedSpecies(h2o2_aq)
+                       .SetSolvent(h2o)
+                       .SetCondensedPhase(aqueous_phase)
+                       .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
+                       .Build();
+
+    auto hl_o3 = HenrysLawEquilibriumConstraintBuilder()
+                     .SetGasSpecies(o3_g)
+                     .SetCondensedSpecies(o3_aq)
                      .SetSolvent(h2o)
                      .SetCondensedPhase(aqueous_phase)
-                     .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
+                     .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
                      .Build();
 
-  auto hl_o3 = HenrysLawEquilibriumConstraintBuilder()
-                   .SetGasSpecies(o3_g)
-                   .SetCondensedSpecies(o3_aq)
-                   .SetSolvent(h2o)
-                   .SetCondensedPhase(aqueous_phase)
-                   .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
-                   .Build();
+    auto eq_kw = DissolvedEquilibriumConstraintBuilder()
+                     .SetPhase(aqueous_phase)
+                     .SetReactants({ h2o })
+                     .SetProducts({ hp, ohm })
+                     .SetAlgebraicSpecies(ohm)
+                     .SetSolvent(h2o)
+                     .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
+                     .Build();
 
-  auto eq_kw = DissolvedEquilibriumConstraintBuilder()
-                   .SetPhase(aqueous_phase)
-                   .SetReactants({ h2o })
-                   .SetProducts({ hp, ohm })
-                   .SetAlgebraicSpecies(ohm)
-                   .SetSolvent(h2o)
-                   .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
-                   .Build();
+    auto eq_ka1 = DissolvedEquilibriumConstraintBuilder()
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ so2_aq })
+                      .SetProducts({ hso3m, hp })
+                      .SetAlgebraicSpecies(hso3m)
+                      .SetSolvent(h2o)
+                      .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
+                      .Build();
 
-  auto eq_ka1 = DissolvedEquilibriumConstraintBuilder()
-                    .SetPhase(aqueous_phase)
-                    .SetReactants({ so2_aq })
-                    .SetProducts({ hso3m, hp })
-                    .SetAlgebraicSpecies(hso3m)
-                    .SetSolvent(h2o)
-                    .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
-                    .Build();
+    auto eq_ka2 = DissolvedEquilibriumConstraintBuilder()
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ hso3m })
+                      .SetProducts({ so3mm, hp })
+                      .SetAlgebraicSpecies(so3mm)
+                      .SetSolvent(h2o)
+                      .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 6.0e-8 / c_H2O_M, .C_ = 1120.0 }))
+                      .Build();
 
-  auto eq_ka2 = DissolvedEquilibriumConstraintBuilder()
-                    .SetPhase(aqueous_phase)
-                    .SetReactants({ hso3m })
-                    .SetProducts({ so3mm, hp })
-                    .SetAlgebraicSpecies(so3mm)
-                    .SetSolvent(h2o)
-                    .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 6.0e-8 / c_H2O_M, .C_ = 1120.0 }))
-                    .Build();
+    double gas0_so2 = 3.01e-8;
+    double gas0_h2o2 = 3.01e-8;
+    double gas0_o3 = 1.50e-6;
 
-  double gas0_so2 = 3.01e-8;
-  double gas0_h2o2 = 3.01e-8;
-  double gas0_o3 = 1.50e-6;
+    auto mass_S = LinearConstraintBuilder()
+                      .SetAlgebraicSpecies(gas_phase, so2_g)
+                      .AddTerm(gas_phase, so2_g, 1.0)
+                      .AddTerm(aqueous_phase, so2_aq, 1.0)
+                      .AddTerm(aqueous_phase, hso3m, 1.0)
+                      .AddTerm(aqueous_phase, so3mm, 1.0)
+                      .DiagnoseConstantFromState()
+                      .Build();
 
-  auto mass_S = LinearConstraintBuilder()
-                    .SetAlgebraicSpecies(gas_phase, so2_g)
-                    .AddTerm(gas_phase, so2_g, 1.0)
-                    .AddTerm(aqueous_phase, so2_aq, 1.0)
-                    .AddTerm(aqueous_phase, hso3m, 1.0)
-                    .AddTerm(aqueous_phase, so3mm, 1.0)
-                    .DiagnoseConstantFromState()
-                    .Build();
+    auto mass_H2O2 = LinearConstraintBuilder()
+                         .SetAlgebraicSpecies(gas_phase, h2o2_g)
+                         .AddTerm(gas_phase, h2o2_g, 1.0)
+                         .AddTerm(aqueous_phase, h2o2_aq, 1.0)
+                         .DiagnoseConstantFromState()
+                         .Build();
 
-  auto mass_H2O2 = LinearConstraintBuilder()
-                       .SetAlgebraicSpecies(gas_phase, h2o2_g)
-                       .AddTerm(gas_phase, h2o2_g, 1.0)
-                       .AddTerm(aqueous_phase, h2o2_aq, 1.0)
+    auto mass_O3 = LinearConstraintBuilder()
+                       .SetAlgebraicSpecies(gas_phase, o3_g)
+                       .AddTerm(gas_phase, o3_g, 1.0)
+                       .AddTerm(aqueous_phase, o3_aq, 1.0)
                        .DiagnoseConstantFromState()
                        .Build();
 
-  auto mass_O3 = LinearConstraintBuilder()
-                     .SetAlgebraicSpecies(gas_phase, o3_g)
-                     .AddTerm(gas_phase, o3_g, 1.0)
-                     .AddTerm(aqueous_phase, o3_aq, 1.0)
-                     .DiagnoseConstantFromState()
-                     .Build();
+    auto charge = LinearConstraintBuilder()
+                      .SetAlgebraicSpecies(aqueous_phase, hp)
+                      .AddTerm(aqueous_phase, hp, 1.0)
+                      .AddTerm(aqueous_phase, ohm, -1.0)
+                      .AddTerm(aqueous_phase, hso3m, -1.0)
+                      .AddTerm(aqueous_phase, so3mm, -2.0)
+                      .AddTerm(aqueous_phase, so4mm, -2.0)
+                      .SetConstant(0.0)
+                      .Build();
 
-  auto charge = LinearConstraintBuilder()
-                    .SetAlgebraicSpecies(aqueous_phase, hp)
-                    .AddTerm(aqueous_phase, hp, 1.0)
-                    .AddTerm(aqueous_phase, ohm, -1.0)
-                    .AddTerm(aqueous_phase, hso3m, -1.0)
-                    .AddTerm(aqueous_phase, so3mm, -2.0)
-                    .AddTerm(aqueous_phase, so4mm, -2.0)
-                    .SetConstant(0.0)
-                    .Build();
+    auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
+    model.AddConstraints(hl_so2, hl_h2o2, hl_o3, eq_kw, eq_ka1, eq_ka2, mass_S, mass_H2O2, mass_O3, charge);
 
-  auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
-  model.AddConstraints(hl_so2, hl_h2o2, hl_o3, eq_kw, eq_ka1, eq_ka2, mass_S, mass_H2O2, mass_O3, charge);
+    auto system = System(gas_phase);
+    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
 
-  auto system = System(gas_phase);
-  auto solver = builder
-                    .SetSystem(system)
-                    .AddExternalModel(model)
-                    .SetIgnoreUnusedSpecies(true)
-                    .Build();
+    State state = solver.GetState();
+    state.conditions_[0].temperature_ = T;
+    state.conditions_[0].pressure_ = 70000.0;
+    state.conditions_[0].CalculateIdealAirDensity();
 
-  State state = solver.GetState();
-  state.conditions_[0].temperature_ = T;
-  state.conditions_[0].pressure_ = 70000.0;
-  state.conditions_[0].CalculateIdealAirDensity();
+    auto i_so2_g_ = state.variable_map_.at("SO2");
+    auto i_h2o2_g_ = state.variable_map_.at("H2O2");
+    auto i_o3_g_ = state.variable_map_.at("O3");
+    auto i_h2o_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+    auto i_so2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+    auto i_h2o2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
+    auto i_o3_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
+    auto i_hp_ = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+    auto i_ohm_ = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+    auto i_hso3m_ = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+    auto i_so3mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
+    auto i_so4mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
 
-  auto i_so2_g_ = state.variable_map_.at("SO2");
-  auto i_h2o2_g_ = state.variable_map_.at("H2O2");
-  auto i_o3_g_ = state.variable_map_.at("O3");
-  auto i_h2o_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
-  auto i_so2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
-  auto i_h2o2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
-  auto i_o3_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
-  auto i_hp_ = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
-  auto i_ohm_ = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
-  auto i_hso3m_ = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
-  auto i_so3mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
-  auto i_so4mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
+    double so4mm0 = 1.0;
 
-  double so4mm0 = 1.0;
+    state.variables_[0][i_so2_g_] = gas0_so2;
+    state.variables_[0][i_h2o2_g_] = gas0_h2o2;
+    state.variables_[0][i_o3_g_] = gas0_o3;
+    state.variables_[0][i_h2o_] = C_H2O;
+    state.variables_[0][i_so2_aq_] = 0.0;
+    state.variables_[0][i_h2o2_aq_] = 0.0;
+    state.variables_[0][i_o3_aq_] = 0.0;
+    state.variables_[0][i_hp_] = 1.0;  // ~pH 3
+    state.variables_[0][i_ohm_] = 0.0;
+    state.variables_[0][i_hso3m_] = 0.0;
+    state.variables_[0][i_so3mm_] = 0.0;
+    state.variables_[0][i_so4mm_] = so4mm0;
+    cloud.SetDefaultParameters(state);
 
-  state.variables_[0][i_so2_g_] = gas0_so2;
-  state.variables_[0][i_h2o2_g_] = gas0_h2o2;
-  state.variables_[0][i_o3_g_] = gas0_o3;
-  state.variables_[0][i_h2o_] = C_H2O;
-  state.variables_[0][i_so2_aq_] = 0.0;
-  state.variables_[0][i_h2o2_aq_] = 0.0;
-  state.variables_[0][i_o3_aq_] = 0.0;
-  state.variables_[0][i_hp_] = 1.0;  // ~pH 3
-  state.variables_[0][i_ohm_] = 0.0;
-  state.variables_[0][i_hso3m_] = 0.0;
-  state.variables_[0][i_so3mm_] = 0.0;
-  state.variables_[0][i_so4mm_] = so4mm0;
-  cloud.SetDefaultParameters(state);
+    std::cout << "\n--- Step 3b: Naive ICs (all aqueous zero) ---" << std::endl;
 
-  std::cout << "\n--- Step 3b: Naive ICs (all aqueous zero) ---" << std::endl;
+    bool ok3b = IntegrateDAE(solver, state, 10.0, 0.01);
+    ASSERT_TRUE(ok3b) << "Solver failed with naive ICs";
 
-  bool ok3b = IntegrateDAE(solver, state, 10.0, 0.01);
-  ASSERT_TRUE(ok3b) << "Solver failed with naive ICs";
+    double so2_g_f = state.variables_[0][i_so2_g_];
+    double h2o2_g_f = state.variables_[0][i_h2o2_g_];
+    double o3_g_f = state.variables_[0][i_o3_g_];
+    double so2_aq_f = state.variables_[0][i_so2_aq_];
+    double h2o2_aq_f = state.variables_[0][i_h2o2_aq_];
+    double o3_aq_f = state.variables_[0][i_o3_aq_];
+    double hp_f = state.variables_[0][i_hp_];
+    double ohm_f = state.variables_[0][i_ohm_];
+    double hso3m_f = state.variables_[0][i_hso3m_];
+    double so3mm_f = state.variables_[0][i_so3mm_];
+    double so4mm_f = state.variables_[0][i_so4mm_];
 
-  double so2_g_f = state.variables_[0][i_so2_g_];
-  double h2o2_g_f = state.variables_[0][i_h2o2_g_];
-  double o3_g_f = state.variables_[0][i_o3_g_];
-  double so2_aq_f = state.variables_[0][i_so2_aq_];
-  double h2o2_aq_f = state.variables_[0][i_h2o2_aq_];
-  double o3_aq_f = state.variables_[0][i_o3_aq_];
-  double hp_f = state.variables_[0][i_hp_];
-  double ohm_f = state.variables_[0][i_ohm_];
-  double hso3m_f = state.variables_[0][i_hso3m_];
-  double so3mm_f = state.variables_[0][i_so3mm_];
-  double so4mm_f = state.variables_[0][i_so4mm_];
+    EXPECT_NEAR(so2_g_f + so2_aq_f + hso3m_f + so3mm_f, gas0_so2, 1e-10 * gas0_so2) << "S budget violated";
+    EXPECT_NEAR(h2o2_g_f + h2o2_aq_f, gas0_h2o2, 1e-10 * gas0_h2o2) << "H2O2 budget violated";
+    EXPECT_NEAR(o3_g_f + o3_aq_f, gas0_o3, 1e-10 * gas0_o3) << "O3 budget violated";
 
-  EXPECT_NEAR(so2_g_f + so2_aq_f + hso3m_f + so3mm_f, gas0_so2, 1e-10 * gas0_so2) << "S budget violated";
-  EXPECT_NEAR(h2o2_g_f + h2o2_aq_f, gas0_h2o2, 1e-10 * gas0_h2o2) << "H2O2 budget violated";
-  EXPECT_NEAR(o3_g_f + o3_aq_f, gas0_o3, 1e-10 * gas0_o3) << "O3 budget violated";
+    double cb = hp_f - ohm_f - hso3m_f - 2 * so3mm_f - 2 * so4mm_f;
+    EXPECT_NEAR(cb, 0.0, 1e-8 * hp_f) << "Charge balance violated";
 
-  double cb = hp_f - ohm_f - hso3m_f - 2 * so3mm_f - 2 * so4mm_f;
-  EXPECT_NEAR(cb, 0.0, 1e-8 * hp_f) << "Charge balance violated";
+    EXPECT_NEAR(so4mm_f, 1.0, 1e-6) << "SO4 should not change without kinetics";
 
-  EXPECT_NEAR(so4mm_f, 1.0, 1e-6) << "SO4 should not change without kinetics";
+    EXPECT_GT(so2_g_f, 0);
+    EXPECT_GT(hp_f, 0);
+    EXPECT_GT(hso3m_f, 0);
 
-  EXPECT_GT(so2_g_f, 0);
-  EXPECT_GT(hp_f, 0);
-  EXPECT_GT(hso3m_f, 0);
-
-  double pH = -std::log10(hp_f / 1000.0);
-  std::cout << "=== Step 3b PASSED (pH=" << pH << ") ===" << std::endl;
-}
+    double pH = -std::log10(hp_f / 1000.0);
+    std::cout << "=== Step 3b PASSED (pH=" << pH << ") ===" << std::endl;
+  }
 
   // Step 3 plus three kinetic S(IV) -> S(VI) oxidation reactions.
   // The S budget includes SO4 and SO2OOH-.
   template<class BuilderPolicy>
   void Step4_FullSystemWithKinetics(BuilderPolicy builder)
-{
-  double T = 280.0;
+  {
+    double T = 280.0;
 
-  auto so2_g = Species{ "SO2" };
-  auto h2o2_g = Species{ "H2O2" };
-  auto o3_g = Species{ "O3" };
-  auto so2_aq = Species{ "SO2_aq" };
-  auto h2o2_aq = Species{ "H2O2_aq" };
-  auto o3_aq = Species{ "O3_aq" };
-  auto hp = Species{ "Hp" };
-  auto ohm = Species{ "OHm" };
-  auto hso3m = Species{ "HSO3m" };
-  auto so3mm = Species{ "SO3mm" };
-  auto so4mm = Species{ "SO4mm" };
-  auto so2oohm = Species{ "SO2OOHm" };  // peroxymonosulfurous acid anion
-  auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
+    auto so2_g = Species{ "SO2" };
+    auto h2o2_g = Species{ "H2O2" };
+    auto o3_g = Species{ "O3" };
+    auto so2_aq = Species{ "SO2_aq" };
+    auto h2o2_aq = Species{ "H2O2_aq" };
+    auto o3_aq = Species{ "O3_aq" };
+    auto hp = Species{ "Hp" };
+    auto ohm = Species{ "OHm" };
+    auto hso3m = Species{ "HSO3m" };
+    auto so3mm = Species{ "SO3mm" };
+    auto so4mm = Species{ "SO4mm" };
+    auto so2oohm = Species{ "SO2OOHm" };  // peroxymonosulfurous acid anion
+    auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
 
-  Phase gas_phase{ "GAS", { so2_g, h2o2_g, o3_g } };
-  Phase aqueous_phase{ "AQUEOUS", { h2o, so2_aq, h2o2_aq, o3_aq, hp, ohm, hso3m, so3mm, so4mm, so2oohm } };
-  auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
+    Phase gas_phase{ "GAS", { so2_g, h2o2_g, o3_g } };
+    Phase aqueous_phase{ "AQUEOUS", { h2o, so2_aq, h2o2_aq, o3_aq, hp, ohm, hso3m, so3mm, so4mm, so2oohm } };
+    auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
 
-  auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
-                    .SetGasSpecies(so2_g)
-                    .SetCondensedSpecies(so2_aq)
-                    .SetSolvent(h2o)
-                    .SetCondensedPhase(aqueous_phase)
-                    .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
-                    .Build();
+    auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
+                      .SetGasSpecies(so2_g)
+                      .SetCondensedSpecies(so2_aq)
+                      .SetSolvent(h2o)
+                      .SetCondensedPhase(aqueous_phase)
+                      .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
+                      .Build();
 
-  auto hl_h2o2 = HenrysLawEquilibriumConstraintBuilder()
-                     .SetGasSpecies(h2o2_g)
-                     .SetCondensedSpecies(h2o2_aq)
+    auto hl_h2o2 = HenrysLawEquilibriumConstraintBuilder()
+                       .SetGasSpecies(h2o2_g)
+                       .SetCondensedSpecies(h2o2_aq)
+                       .SetSolvent(h2o)
+                       .SetCondensedPhase(aqueous_phase)
+                       .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
+                       .Build();
+
+    auto hl_o3 = HenrysLawEquilibriumConstraintBuilder()
+                     .SetGasSpecies(o3_g)
+                     .SetCondensedSpecies(o3_aq)
                      .SetSolvent(h2o)
                      .SetCondensedPhase(aqueous_phase)
-                     .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
+                     .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
                      .Build();
 
-  auto hl_o3 = HenrysLawEquilibriumConstraintBuilder()
-                   .SetGasSpecies(o3_g)
-                   .SetCondensedSpecies(o3_aq)
-                   .SetSolvent(h2o)
-                   .SetCondensedPhase(aqueous_phase)
-                   .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
-                   .Build();
+    auto eq_kw = DissolvedEquilibriumConstraintBuilder()
+                     .SetPhase(aqueous_phase)
+                     .SetReactants({ h2o })
+                     .SetProducts({ hp, ohm })
+                     .SetAlgebraicSpecies(ohm)
+                     .SetSolvent(h2o)
+                     .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
+                     .Build();
 
-  auto eq_kw = DissolvedEquilibriumConstraintBuilder()
-                   .SetPhase(aqueous_phase)
-                   .SetReactants({ h2o })
-                   .SetProducts({ hp, ohm })
-                   .SetAlgebraicSpecies(ohm)
-                   .SetSolvent(h2o)
-                   .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
-                   .Build();
+    auto eq_ka1 = DissolvedEquilibriumConstraintBuilder()
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ so2_aq })
+                      .SetProducts({ hso3m, hp })
+                      .SetAlgebraicSpecies(hso3m)
+                      .SetSolvent(h2o)
+                      .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
+                      .Build();
 
-  auto eq_ka1 = DissolvedEquilibriumConstraintBuilder()
-                    .SetPhase(aqueous_phase)
-                    .SetReactants({ so2_aq })
-                    .SetProducts({ hso3m, hp })
-                    .SetAlgebraicSpecies(hso3m)
-                    .SetSolvent(h2o)
-                    .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
-                    .Build();
+    auto eq_ka2 = DissolvedEquilibriumConstraintBuilder()
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ hso3m })
+                      .SetProducts({ so3mm, hp })
+                      .SetAlgebraicSpecies(so3mm)
+                      .SetSolvent(h2o)
+                      .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 6.0e-8 / c_H2O_M, .C_ = 1120.0 }))
+                      .Build();
 
-  auto eq_ka2 = DissolvedEquilibriumConstraintBuilder()
-                    .SetPhase(aqueous_phase)
-                    .SetReactants({ hso3m })
-                    .SetProducts({ so3mm, hp })
-                    .SetAlgebraicSpecies(so3mm)
-                    .SetSolvent(h2o)
-                    .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 6.0e-8 / c_H2O_M, .C_ = 1120.0 }))
-                    .Build();
+    double gas0_so2 = 3.01e-8;
+    double gas0_h2o2 = 3.01e-8;
+    double gas0_o3 = 1.50e-6;
+    double so4mm0 = 1.0;  // mol/m^3 air
+    double total_S = gas0_so2 + so4mm0;
 
-  double gas0_so2 = 3.01e-8;
-  double gas0_h2o2 = 3.01e-8;
-  double gas0_o3 = 1.50e-6;
-  double so4mm0 = 1.0;  // mol/m^3 air
-  double total_S = gas0_so2 + so4mm0;
+    auto mass_S = LinearConstraintBuilder()
+                      .SetAlgebraicSpecies(gas_phase, so2_g)
+                      .AddTerm(gas_phase, so2_g, 1.0)
+                      .AddTerm(aqueous_phase, so2_aq, 1.0)
+                      .AddTerm(aqueous_phase, hso3m, 1.0)
+                      .AddTerm(aqueous_phase, so3mm, 1.0)
+                      .AddTerm(aqueous_phase, so4mm, 1.0)
+                      .DiagnoseConstantFromState()
+                      .Build();
 
-  auto mass_S = LinearConstraintBuilder()
-                    .SetAlgebraicSpecies(gas_phase, so2_g)
-                    .AddTerm(gas_phase, so2_g, 1.0)
-                    .AddTerm(aqueous_phase, so2_aq, 1.0)
-                    .AddTerm(aqueous_phase, hso3m, 1.0)
-                    .AddTerm(aqueous_phase, so3mm, 1.0)
-                    .AddTerm(aqueous_phase, so4mm, 1.0)
-                    .DiagnoseConstantFromState()
-                    .Build();
+    auto mass_H2O2 = LinearConstraintBuilder()
+                         .SetAlgebraicSpecies(gas_phase, h2o2_g)
+                         .AddTerm(gas_phase, h2o2_g, 1.0)
+                         .AddTerm(aqueous_phase, h2o2_aq, 1.0)
+                         .DiagnoseConstantFromState()
+                         .Build();
 
-  auto mass_H2O2 = LinearConstraintBuilder()
-                       .SetAlgebraicSpecies(gas_phase, h2o2_g)
-                       .AddTerm(gas_phase, h2o2_g, 1.0)
-                       .AddTerm(aqueous_phase, h2o2_aq, 1.0)
+    auto mass_O3 = LinearConstraintBuilder()
+                       .SetAlgebraicSpecies(gas_phase, o3_g)
+                       .AddTerm(gas_phase, o3_g, 1.0)
+                       .AddTerm(aqueous_phase, o3_aq, 1.0)
                        .DiagnoseConstantFromState()
                        .Build();
 
-  auto mass_O3 = LinearConstraintBuilder()
-                     .SetAlgebraicSpecies(gas_phase, o3_g)
-                     .AddTerm(gas_phase, o3_g, 1.0)
-                     .AddTerm(aqueous_phase, o3_aq, 1.0)
-                     .DiagnoseConstantFromState()
+    auto charge = LinearConstraintBuilder()
+                      .SetAlgebraicSpecies(aqueous_phase, hp)
+                      .AddTerm(aqueous_phase, hp, 1.0)
+                      .AddTerm(aqueous_phase, ohm, -1.0)
+                      .AddTerm(aqueous_phase, hso3m, -1.0)
+                      .AddTerm(aqueous_phase, so3mm, -2.0)
+                      .AddTerm(aqueous_phase, so4mm, -2.0)
+                      .AddTerm(aqueous_phase, so2oohm, -1.0)
+                      .SetConstant(0.0)
+                      .Build();
+
+    // R1 mechanism (Hoffmann & Calvert 1985):
+    //   r = 7.45e7 [H+][HSO3-][H2O2] / (1 + 13[H+])
+    // Split into two explicit steps:
+    //   R1a (reversible): HSO3- + H2O2(aq) <=> SO2OOH- + H2O
+    //   R1b (irreversible): SO2OOH- + H+ -> SO4^2-   (net: +H+)
+    // k1 = 7.45e7/13 = 5.731e6 M^-1 s^-1; K_eq_A = 1725; k2 = 2.4e6 M^-1 s^-1
+    auto rxn1a = DissolvedReversibleReactionBuilder()
+                     .SetPhase(aqueous_phase)
+                     .SetReactants({ hso3m, h2o2_aq })
+                     .SetProducts({ so2oohm, h2o })
+                     .SetSolvent(h2o)
+                     .SetForwardRateConstant(VantHoffParameters{ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 })
+                     .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1725.0 }))
                      .Build();
 
-  auto charge = LinearConstraintBuilder()
-                    .SetAlgebraicSpecies(aqueous_phase, hp)
-                    .AddTerm(aqueous_phase, hp, 1.0)
-                    .AddTerm(aqueous_phase, ohm, -1.0)
-                    .AddTerm(aqueous_phase, hso3m, -1.0)
-                    .AddTerm(aqueous_phase, so3mm, -2.0)
-                    .AddTerm(aqueous_phase, so4mm, -2.0)
-                    .AddTerm(aqueous_phase, so2oohm, -1.0)
-                    .SetConstant(0.0)
+    auto rxn1b = DissolvedReactionBuilder()
+                     .SetPhase(aqueous_phase)
+                     .SetReactants({ so2oohm, hp })
+                     .SetProducts({ so4mm })
+                     .SetSolvent(h2o)
+                     .SetRateConstant(VantHoffParameters{ c_H2O_M * 2.4e6, 4430.0, 298.0 })
+                     .Build();
+
+    auto rxn2 = DissolvedReactionBuilder()
+                    .SetPhase(aqueous_phase)
+                    .SetReactants({ hso3m, o3_aq })
+                    .SetProducts({ so4mm, hp })
+                    .SetSolvent(h2o)
+                    .SetRateConstant(VantHoffParameters{ c_H2O_M * 3.75e5, 5530.0, 298.0 })
                     .Build();
 
-  // R1 mechanism (Hoffmann & Calvert 1985):
-  //   r = 7.45e7 [H+][HSO3-][H2O2] / (1 + 13[H+])
-  // Split into two explicit steps:
-  //   R1a (reversible): HSO3- + H2O2(aq) <=> SO2OOH- + H2O
-  //   R1b (irreversible): SO2OOH- + H+ -> SO4^2-   (net: +H+)
-  // k1 = 7.45e7/13 = 5.731e6 M^-1 s^-1; K_eq_A = 1725; k2 = 2.4e6 M^-1 s^-1
-  auto rxn1a = DissolvedReversibleReactionBuilder()
-                   .SetPhase(aqueous_phase)
-                   .SetReactants({ hso3m, h2o2_aq })
-                   .SetProducts({ so2oohm, h2o })
-                   .SetSolvent(h2o)
-                   .SetForwardRateConstant(VantHoffParameters{ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 })
-                   .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1725.0 }))
-                   .Build();
-
-  auto rxn1b = DissolvedReactionBuilder()
-                   .SetPhase(aqueous_phase)
-                   .SetReactants({ so2oohm, hp })
-                   .SetProducts({ so4mm })
-                   .SetSolvent(h2o)
-                   .SetRateConstant(VantHoffParameters{ c_H2O_M * 2.4e6, 4430.0, 298.0 })
-                   .Build();
-
-  auto rxn2 = DissolvedReactionBuilder()
-                  .SetPhase(aqueous_phase)
-                  .SetReactants({ hso3m, o3_aq })
-                  .SetProducts({ so4mm, hp })
-                  .SetSolvent(h2o)
-                  .SetRateConstant(VantHoffParameters{ c_H2O_M * 3.75e5, 5530.0, 298.0 })
-                  .Build();
-
-  auto rxn3 = DissolvedReactionBuilder()
-                  .SetPhase(aqueous_phase)
-                  .SetReactants({ so3mm, o3_aq })
-                  .SetProducts({ so4mm })
-                  .SetSolvent(h2o)
-                  .SetRateConstant(VantHoffParameters{ c_H2O_M * 1.59e9, 5280.0, 298.0 })
-                  .Build();
-
-  auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
-  model.AddProcesses(rxn1a, rxn1b, rxn2, rxn3);
-  model.AddConstraints(hl_so2, hl_h2o2, hl_o3, eq_kw, eq_ka1, eq_ka2, mass_S, mass_H2O2, mass_O3, charge);
-
-  auto system = System(gas_phase);
-  auto solver = builder
-                    .SetSystem(system)
-                    .AddExternalModel(model)
-                    .SetIgnoreUnusedSpecies(true)
+    auto rxn3 = DissolvedReactionBuilder()
+                    .SetPhase(aqueous_phase)
+                    .SetReactants({ so3mm, o3_aq })
+                    .SetProducts({ so4mm })
+                    .SetSolvent(h2o)
+                    .SetRateConstant(VantHoffParameters{ c_H2O_M * 1.59e9, 5280.0, 298.0 })
                     .Build();
 
-  State state = solver.GetState();
-  state.conditions_[0].temperature_ = T;
-  state.conditions_[0].pressure_ = 70000.0;
-  state.conditions_[0].CalculateIdealAirDensity();
+    auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
+    model.AddProcesses(rxn1a, rxn1b, rxn2, rxn3);
+    model.AddConstraints(hl_so2, hl_h2o2, hl_o3, eq_kw, eq_ka1, eq_ka2, mass_S, mass_H2O2, mass_O3, charge);
 
-  auto i_so2_g_ = state.variable_map_.at("SO2");
-  auto i_h2o2_g_ = state.variable_map_.at("H2O2");
-  auto i_o3_g_ = state.variable_map_.at("O3");
-  auto i_h2o_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
-  auto i_so2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
-  auto i_h2o2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
-  auto i_o3_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
-  auto i_hp_ = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
-  auto i_ohm_ = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
-  auto i_hso3m_ = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
-  auto i_so3mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
-  auto i_so4mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
-  auto i_so2oohm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO2OOHm");
+    auto system = System(gas_phase);
+    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
 
-  // Same initial value iteration as Step 3, with SO4mm in the S budget.
-  double hlc_SO2_T = (1.23 * M_ATM_TO_MOL_M3_PA) * std::exp(3120.0 * (1.0 / T - 1.0 / T0));
-  double hlc_H2O2_T = (7.4e4 * M_ATM_TO_MOL_M3_PA) * std::exp(6621.0 * (1.0 / T - 1.0 / T0));
-  double hlc_O3_T = (1.15e-2 * M_ATM_TO_MOL_M3_PA) * std::exp(2560.0 * (1.0 / T - 1.0 / T0));
-  double alpha_SO2 = hlc_SO2_T * micm::constants::GAS_CONSTANT * T * f_v;
-  double alpha_H2O2 = hlc_H2O2_T * micm::constants::GAS_CONSTANT * T * f_v;
-  double alpha_O3 = hlc_O3_T * micm::constants::GAS_CONSTANT * T * f_v;
-  double Ka1_T = (1.7e-2 / c_H2O_M) * std::exp(2090.0 * (1.0 / T0 - 1.0 / T));
-  double Ka2_T = (6.0e-8 / c_H2O_M) * std::exp(1120.0 * (1.0 / T0 - 1.0 / T));
-  double Kw_T = (1.0e-14 / (c_H2O_M * c_H2O_M)) * std::exp(6710.0 * (1.0 / T0 - 1.0 / T));
+    State state = solver.GetState();
+    state.conditions_[0].temperature_ = T;
+    state.conditions_[0].pressure_ = 70000.0;
+    state.conditions_[0].CalculateIdealAirDensity();
 
-  double ic_h2o2_g = gas0_h2o2 / (1.0 + alpha_H2O2);
-  double ic_h2o2_aq = alpha_H2O2 * ic_h2o2_g;
-  double ic_o3_g = gas0_o3 / (1.0 + alpha_O3);
-  double ic_o3_aq = alpha_O3 * ic_o3_g;
+    auto i_so2_g_ = state.variable_map_.at("SO2");
+    auto i_h2o2_g_ = state.variable_map_.at("H2O2");
+    auto i_o3_g_ = state.variable_map_.at("O3");
+    auto i_h2o_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+    auto i_so2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+    auto i_h2o2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
+    auto i_o3_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
+    auto i_hp_ = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+    auto i_ohm_ = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+    auto i_hso3m_ = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+    auto i_so3mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
+    auto i_so4mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
+    auto i_so2oohm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO2OOHm");
 
-  double s4_budget = gas0_so2;  // S(IV) portion = total_S - so4mm0
-  double hp_ic = 2.0 * so4mm0;  // charge balance dominated by SO4
-  double ic_so2_g = 0, ic_so2_aq = 0, ic_hso3m = 0, ic_so3mm = 0, ic_ohm = 0;
-  for (int it = 0; it < 100; ++it)
-  {
-    ic_ohm = Kw_T * C_H2O * C_H2O / hp_ic;
-    double f =
-        1.0 + alpha_SO2 + Ka1_T * alpha_SO2 * C_H2O / hp_ic + Ka2_T * Ka1_T * alpha_SO2 * C_H2O * C_H2O / (hp_ic * hp_ic);
-    ic_so2_g = s4_budget / f;
-    ic_so2_aq = alpha_SO2 * ic_so2_g;
-    ic_hso3m = Ka1_T * ic_so2_aq * C_H2O / hp_ic;
-    ic_so3mm = Ka2_T * ic_hso3m * C_H2O / hp_ic;
-    double hp_new = ic_ohm + ic_hso3m + 2.0 * ic_so3mm + 2.0 * so4mm0;
-    if (std::abs(hp_new - hp_ic) < 1e-15 * hp_ic)
-      break;
-    hp_ic = 0.5 * (hp_ic + hp_new);
-  }
+    // Same initial value iteration as Step 3, with SO4mm in the S budget.
+    double hlc_SO2_T = (1.23 * M_ATM_TO_MOL_M3_PA) * std::exp(3120.0 * (1.0 / T - 1.0 / T0));
+    double hlc_H2O2_T = (7.4e4 * M_ATM_TO_MOL_M3_PA) * std::exp(6621.0 * (1.0 / T - 1.0 / T0));
+    double hlc_O3_T = (1.15e-2 * M_ATM_TO_MOL_M3_PA) * std::exp(2560.0 * (1.0 / T - 1.0 / T0));
+    double alpha_SO2 = hlc_SO2_T * micm::constants::GAS_CONSTANT * T * f_v;
+    double alpha_H2O2 = hlc_H2O2_T * micm::constants::GAS_CONSTANT * T * f_v;
+    double alpha_O3 = hlc_O3_T * micm::constants::GAS_CONSTANT * T * f_v;
+    double Ka1_T = (1.7e-2 / c_H2O_M) * std::exp(2090.0 * (1.0 / T0 - 1.0 / T));
+    double Ka2_T = (6.0e-8 / c_H2O_M) * std::exp(1120.0 * (1.0 / T0 - 1.0 / T));
+    double Kw_T = (1.0e-14 / (c_H2O_M * c_H2O_M)) * std::exp(6710.0 * (1.0 / T0 - 1.0 / T));
 
-  state.variables_[0][i_so2_g_] = ic_so2_g;
-  state.variables_[0][i_h2o2_g_] = ic_h2o2_g;
-  state.variables_[0][i_o3_g_] = ic_o3_g;
-  state.variables_[0][i_h2o_] = C_H2O;
-  state.variables_[0][i_so2_aq_] = ic_so2_aq;
-  state.variables_[0][i_h2o2_aq_] = ic_h2o2_aq;
-  state.variables_[0][i_o3_aq_] = ic_o3_aq;
-  state.variables_[0][i_hp_] = hp_ic;
-  state.variables_[0][i_ohm_] = ic_ohm;
-  state.variables_[0][i_hso3m_] = ic_hso3m;
-  state.variables_[0][i_so3mm_] = ic_so3mm;
-  state.variables_[0][i_so4mm_] = so4mm0;
-  state.variables_[0][i_so2oohm_] = 0.0;
-  cloud.SetDefaultParameters(state);
+    double ic_h2o2_g = gas0_h2o2 / (1.0 + alpha_H2O2);
+    double ic_h2o2_aq = alpha_H2O2 * ic_h2o2_g;
+    double ic_o3_g = gas0_o3 / (1.0 + alpha_O3);
+    double ic_o3_aq = alpha_O3 * ic_o3_g;
 
-  state.PrintHeader();
-  state.PrintState(0);
-
-  double total_time = 0.0;
-  double dt = 0.001;
-  bool converged = true;
-
-  SyncStateToDevice(state);
-  while (total_time < 1800.0 - 1.0e-10)
-  {
-    double step = std::min(dt, 1800.0 - total_time);
-    solver.UpdateStateParameters(state);
-    auto result = solver.Solve(step, state);
-    if (result.state_ != SolverState::Converged)
+    double s4_budget = gas0_so2;  // S(IV) portion = total_S - so4mm0
+    double hp_ic = 2.0 * so4mm0;  // charge balance dominated by SO4
+    double ic_so2_g = 0, ic_so2_aq = 0, ic_hso3m = 0, ic_so3mm = 0, ic_ohm = 0;
+    for (int it = 0; it < 100; ++it)
     {
-      std::cerr << "Solver failed at t=" << total_time << " s" << std::endl;
-      converged = false;
-      break;
+      ic_ohm = Kw_T * C_H2O * C_H2O / hp_ic;
+      double f =
+          1.0 + alpha_SO2 + Ka1_T * alpha_SO2 * C_H2O / hp_ic + Ka2_T * Ka1_T * alpha_SO2 * C_H2O * C_H2O / (hp_ic * hp_ic);
+      ic_so2_g = s4_budget / f;
+      ic_so2_aq = alpha_SO2 * ic_so2_g;
+      ic_hso3m = Ka1_T * ic_so2_aq * C_H2O / hp_ic;
+      ic_so3mm = Ka2_T * ic_hso3m * C_H2O / hp_ic;
+      double hp_new = ic_ohm + ic_hso3m + 2.0 * ic_so3mm + 2.0 * so4mm0;
+      if (std::abs(hp_new - hp_ic) < 1e-15 * hp_ic)
+        break;
+      hp_ic = 0.5 * (hp_ic + hp_new);
     }
-    total_time += step;
-    if (total_time > 0.01 && dt < 0.01)
-      dt = 0.01;
-    if (total_time > 0.1 && dt < 0.1)
-      dt = 0.1;
-    if (total_time > 1.0 && dt < 1.0)
-      dt = 1.0;
-    if (total_time > 10.0 && dt < 10.0)
-      dt = 10.0;
-    if (total_time > 100.0 && dt < 100.0)
-      dt = 100.0;
+
+    state.variables_[0][i_so2_g_] = ic_so2_g;
+    state.variables_[0][i_h2o2_g_] = ic_h2o2_g;
+    state.variables_[0][i_o3_g_] = ic_o3_g;
+    state.variables_[0][i_h2o_] = C_H2O;
+    state.variables_[0][i_so2_aq_] = ic_so2_aq;
+    state.variables_[0][i_h2o2_aq_] = ic_h2o2_aq;
+    state.variables_[0][i_o3_aq_] = ic_o3_aq;
+    state.variables_[0][i_hp_] = hp_ic;
+    state.variables_[0][i_ohm_] = ic_ohm;
+    state.variables_[0][i_hso3m_] = ic_hso3m;
+    state.variables_[0][i_so3mm_] = ic_so3mm;
+    state.variables_[0][i_so4mm_] = so4mm0;
+    state.variables_[0][i_so2oohm_] = 0.0;
+    cloud.SetDefaultParameters(state);
+
+    state.PrintHeader();
+    state.PrintState(0);
+
+    double total_time = 0.0;
+    double dt = 0.001;
+    bool converged = true;
+
+    SyncStateToDevice(state);
+    while (total_time < 1800.0 - 1.0e-10)
+    {
+      double step = std::min(dt, 1800.0 - total_time);
+      solver.UpdateStateParameters(state);
+      auto result = solver.Solve(step, state);
+      if (result.state_ != SolverState::Converged)
+      {
+        std::cerr << "Solver failed at t=" << total_time << " s" << std::endl;
+        converged = false;
+        break;
+      }
+      total_time += step;
+      if (total_time > 0.01 && dt < 0.01)
+        dt = 0.01;
+      if (total_time > 0.1 && dt < 0.1)
+        dt = 0.1;
+      if (total_time > 1.0 && dt < 1.0)
+        dt = 1.0;
+      if (total_time > 10.0 && dt < 10.0)
+        dt = 10.0;
+      if (total_time > 100.0 && dt < 100.0)
+        dt = 100.0;
+    }
+
+    SyncStateToHost(state);
+    state.PrintState(static_cast<int>(total_time));
+    ASSERT_TRUE(converged) << "DAE solver failed to converge for full system";
+
+    double so2_g_f = state.variables_[0][i_so2_g_];
+    double h2o2_g_f = state.variables_[0][i_h2o2_g_];
+    double o3_g_f = state.variables_[0][i_o3_g_];
+    double so2_aq_f = state.variables_[0][i_so2_aq_];
+    double h2o2_aq_f = state.variables_[0][i_h2o2_aq_];
+    double o3_aq_f = state.variables_[0][i_o3_aq_];
+    double hp_f = state.variables_[0][i_hp_];
+    double ohm_f = state.variables_[0][i_ohm_];
+    double hso3m_f = state.variables_[0][i_hso3m_];
+    double so3mm_f = state.variables_[0][i_so3mm_];
+    double so4mm_f = state.variables_[0][i_so4mm_];
+    double so2oohm_f = state.variables_[0][i_so2oohm_];
+
+    double total_S_f = so2_g_f + so2_aq_f + hso3m_f + so3mm_f + so4mm_f + so2oohm_f;
+    EXPECT_NEAR(total_S_f, total_S, 1e-6 * total_S) << "S budget violated";
+
+    double cb = hp_f - ohm_f - hso3m_f - 2 * so3mm_f - 2 * so4mm_f - so2oohm_f;
+    EXPECT_NEAR(cb, 0.0, 0.01 * hp_f) << "Charge balance violated";
+
+    EXPECT_GT(so4mm_f, so4mm0) << "SO4 must increase from S(IV) oxidation";
+
+    for (std::size_t v = 0; v < state.variables_.NumColumns(); ++v)
+    {
+      EXPECT_GE(state.variables_[0][v], -1.0e-10) << state.variable_names_[v] << " = " << state.variables_[0][v];
+    }
+
+    double pH = (hp_f > 0) ? -std::log10(hp_f / 1000.0) : 99.0;
+    double air = state.conditions_[0].air_density_;
+    std::cout << "\n=== Step 4 PASSED ===" << std::endl;
+    std::cout << "pH=" << pH << std::endl;
+    std::cout << "SO2(g)=" << so2_g_f / air * 1e9 << " ppb" << std::endl;
+    std::cout << "H2O2(g)=" << h2o2_g_f / air * 1e9 << " ppb" << std::endl;
+    std::cout << "O3(g)=" << o3_g_f / air * 1e9 << " ppb" << std::endl;
+    std::cout << "SO4=" << so4mm_f << " mol/m^3 (" << so4mm_f / 1000 * 1e6 << " uM)" << std::endl;
+    std::cout << "S budget: " << total_S_f << " (expected " << total_S << ")" << std::endl;
   }
-
-  SyncStateToHost(state);
-  state.PrintState(static_cast<int>(total_time));
-  ASSERT_TRUE(converged) << "DAE solver failed to converge for full system";
-
-  double so2_g_f = state.variables_[0][i_so2_g_];
-  double h2o2_g_f = state.variables_[0][i_h2o2_g_];
-  double o3_g_f = state.variables_[0][i_o3_g_];
-  double so2_aq_f = state.variables_[0][i_so2_aq_];
-  double h2o2_aq_f = state.variables_[0][i_h2o2_aq_];
-  double o3_aq_f = state.variables_[0][i_o3_aq_];
-  double hp_f = state.variables_[0][i_hp_];
-  double ohm_f = state.variables_[0][i_ohm_];
-  double hso3m_f = state.variables_[0][i_hso3m_];
-  double so3mm_f = state.variables_[0][i_so3mm_];
-  double so4mm_f = state.variables_[0][i_so4mm_];
-  double so2oohm_f = state.variables_[0][i_so2oohm_];
-
-  double total_S_f = so2_g_f + so2_aq_f + hso3m_f + so3mm_f + so4mm_f + so2oohm_f;
-  EXPECT_NEAR(total_S_f, total_S, 1e-6 * total_S) << "S budget violated";
-
-  double cb = hp_f - ohm_f - hso3m_f - 2 * so3mm_f - 2 * so4mm_f - so2oohm_f;
-  EXPECT_NEAR(cb, 0.0, 0.01 * hp_f) << "Charge balance violated";
-
-  EXPECT_GT(so4mm_f, so4mm0) << "SO4 must increase from S(IV) oxidation";
-
-  for (std::size_t v = 0; v < state.variables_.NumColumns(); ++v)
-  {
-    EXPECT_GE(state.variables_[0][v], -1.0e-10) << state.variable_names_[v] << " = " << state.variables_[0][v];
-  }
-
-  double pH = (hp_f > 0) ? -std::log10(hp_f / 1000.0) : 99.0;
-  double air = state.conditions_[0].air_density_;
-  std::cout << "\n=== Step 4 PASSED ===" << std::endl;
-  std::cout << "pH=" << pH << std::endl;
-  std::cout << "SO2(g)=" << so2_g_f / air * 1e9 << " ppb" << std::endl;
-  std::cout << "H2O2(g)=" << h2o2_g_f / air * 1e9 << " ppb" << std::endl;
-  std::cout << "O3(g)=" << o3_g_f / air * 1e9 << " ppb" << std::endl;
-  std::cout << "SO4=" << so4mm_f << " mol/m^3 (" << so4mm_f / 1000 * 1e6 << " uM)" << std::endl;
-  std::cout << "S budget: " << total_S_f << " (expected " << total_S << ")" << std::endl;
-}
 
   // Same as Step 4, but with the naive initial conditions of Step 3b.
   template<class BuilderPolicy>
   void Step4b_NaiveInitialConditions(BuilderPolicy builder)
-{
-  double T = 280.0;
+  {
+    double T = 280.0;
 
-  auto so2_g = Species{ "SO2" };
-  auto h2o2_g = Species{ "H2O2" };
-  auto o3_g = Species{ "O3" };
-  auto so2_aq = Species{ "SO2_aq" };
-  auto h2o2_aq = Species{ "H2O2_aq" };
-  auto o3_aq = Species{ "O3_aq" };
-  auto hp = Species{ "Hp" };
-  auto ohm = Species{ "OHm" };
-  auto hso3m = Species{ "HSO3m" };
-  auto so3mm = Species{ "SO3mm" };
-  auto so4mm = Species{ "SO4mm" };
-  auto so2oohm = Species{ "SO2OOHm" };
-  auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
+    auto so2_g = Species{ "SO2" };
+    auto h2o2_g = Species{ "H2O2" };
+    auto o3_g = Species{ "O3" };
+    auto so2_aq = Species{ "SO2_aq" };
+    auto h2o2_aq = Species{ "H2O2_aq" };
+    auto o3_aq = Species{ "O3_aq" };
+    auto hp = Species{ "Hp" };
+    auto ohm = Species{ "OHm" };
+    auto hso3m = Species{ "HSO3m" };
+    auto so3mm = Species{ "SO3mm" };
+    auto so4mm = Species{ "SO4mm" };
+    auto so2oohm = Species{ "SO2OOHm" };
+    auto h2o = Species{ "H2O", { { "molecular weight [kg mol-1]", 0.018 }, { "density [kg m-3]", 1000.0 } } };
 
-  Phase gas_phase{ "GAS", { so2_g, h2o2_g, o3_g } };
-  Phase aqueous_phase{ "AQUEOUS", { h2o, so2_aq, h2o2_aq, o3_aq, hp, ohm, hso3m, so3mm, so4mm, so2oohm } };
-  auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
+    Phase gas_phase{ "GAS", { so2_g, h2o2_g, o3_g } };
+    Phase aqueous_phase{ "AQUEOUS", { h2o, so2_aq, h2o2_aq, o3_aq, hp, ohm, hso3m, so3mm, so4mm, so2oohm } };
+    auto cloud = UniformSection{ "CLOUD", { aqueous_phase } };
 
-  auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
-                    .SetGasSpecies(so2_g)
-                    .SetCondensedSpecies(so2_aq)
-                    .SetSolvent(h2o)
-                    .SetCondensedPhase(aqueous_phase)
-                    .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
-                    .Build();
+    auto hl_so2 = HenrysLawEquilibriumConstraintBuilder()
+                      .SetGasSpecies(so2_g)
+                      .SetCondensedSpecies(so2_aq)
+                      .SetSolvent(h2o)
+                      .SetCondensedPhase(aqueous_phase)
+                      .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.23 * M_ATM_TO_MOL_M3_PA, .C_ = 3120.0 }))
+                      .Build();
 
-  auto hl_h2o2 = HenrysLawEquilibriumConstraintBuilder()
-                     .SetGasSpecies(h2o2_g)
-                     .SetCondensedSpecies(h2o2_aq)
+    auto hl_h2o2 = HenrysLawEquilibriumConstraintBuilder()
+                       .SetGasSpecies(h2o2_g)
+                       .SetCondensedSpecies(h2o2_aq)
+                       .SetSolvent(h2o)
+                       .SetCondensedPhase(aqueous_phase)
+                       .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
+                       .Build();
+
+    auto hl_o3 = HenrysLawEquilibriumConstraintBuilder()
+                     .SetGasSpecies(o3_g)
+                     .SetCondensedSpecies(o3_aq)
                      .SetSolvent(h2o)
                      .SetCondensedPhase(aqueous_phase)
-                     .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 7.4e4 * M_ATM_TO_MOL_M3_PA, .C_ = 6621.0 }))
+                     .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
                      .Build();
 
-  auto hl_o3 = HenrysLawEquilibriumConstraintBuilder()
-                   .SetGasSpecies(o3_g)
-                   .SetCondensedSpecies(o3_aq)
-                   .SetSolvent(h2o)
-                   .SetCondensedPhase(aqueous_phase)
-                   .SetHenrysLawConstant(HenrysLawConstant({ .HLC_ref_ = 1.15e-2 * M_ATM_TO_MOL_M3_PA, .C_ = 2560.0 }))
-                   .Build();
+    auto eq_kw = DissolvedEquilibriumConstraintBuilder()
+                     .SetPhase(aqueous_phase)
+                     .SetReactants({ h2o })
+                     .SetProducts({ hp, ohm })
+                     .SetAlgebraicSpecies(ohm)
+                     .SetSolvent(h2o)
+                     .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
+                     .Build();
 
-  auto eq_kw = DissolvedEquilibriumConstraintBuilder()
-                   .SetPhase(aqueous_phase)
-                   .SetReactants({ h2o })
-                   .SetProducts({ hp, ohm })
-                   .SetAlgebraicSpecies(ohm)
-                   .SetSolvent(h2o)
-                   .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.0e-14 / (c_H2O_M * c_H2O_M), .C_ = 6710.0 }))
-                   .Build();
+    auto eq_ka1 = DissolvedEquilibriumConstraintBuilder()
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ so2_aq })
+                      .SetProducts({ hso3m, hp })
+                      .SetAlgebraicSpecies(hso3m)
+                      .SetSolvent(h2o)
+                      .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
+                      .Build();
 
-  auto eq_ka1 = DissolvedEquilibriumConstraintBuilder()
-                    .SetPhase(aqueous_phase)
-                    .SetReactants({ so2_aq })
-                    .SetProducts({ hso3m, hp })
-                    .SetAlgebraicSpecies(hso3m)
-                    .SetSolvent(h2o)
-                    .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1.7e-2 / c_H2O_M, .C_ = 2090.0 }))
-                    .Build();
+    auto eq_ka2 = DissolvedEquilibriumConstraintBuilder()
+                      .SetPhase(aqueous_phase)
+                      .SetReactants({ hso3m })
+                      .SetProducts({ so3mm, hp })
+                      .SetAlgebraicSpecies(so3mm)
+                      .SetSolvent(h2o)
+                      .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 6.0e-8 / c_H2O_M, .C_ = 1120.0 }))
+                      .Build();
 
-  auto eq_ka2 = DissolvedEquilibriumConstraintBuilder()
-                    .SetPhase(aqueous_phase)
-                    .SetReactants({ hso3m })
-                    .SetProducts({ so3mm, hp })
-                    .SetAlgebraicSpecies(so3mm)
-                    .SetSolvent(h2o)
-                    .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 6.0e-8 / c_H2O_M, .C_ = 1120.0 }))
-                    .Build();
+    double gas0_so2 = 3.01e-8;
+    double gas0_h2o2 = 3.01e-8;
+    double gas0_o3 = 1.50e-6;
+    double so4mm0 = 1.0;
+    double total_S = gas0_so2 + so4mm0;
 
-  double gas0_so2 = 3.01e-8;
-  double gas0_h2o2 = 3.01e-8;
-  double gas0_o3 = 1.50e-6;
-  double so4mm0 = 1.0;
-  double total_S = gas0_so2 + so4mm0;
+    auto mass_S = LinearConstraintBuilder()
+                      .SetAlgebraicSpecies(gas_phase, so2_g)
+                      .AddTerm(gas_phase, so2_g, 1.0)
+                      .AddTerm(aqueous_phase, so2_aq, 1.0)
+                      .AddTerm(aqueous_phase, hso3m, 1.0)
+                      .AddTerm(aqueous_phase, so3mm, 1.0)
+                      .AddTerm(aqueous_phase, so4mm, 1.0)
+                      .AddTerm(aqueous_phase, so2oohm, 1.0)
+                      .DiagnoseConstantFromState()
+                      .Build();
 
-  auto mass_S = LinearConstraintBuilder()
-                    .SetAlgebraicSpecies(gas_phase, so2_g)
-                    .AddTerm(gas_phase, so2_g, 1.0)
-                    .AddTerm(aqueous_phase, so2_aq, 1.0)
-                    .AddTerm(aqueous_phase, hso3m, 1.0)
-                    .AddTerm(aqueous_phase, so3mm, 1.0)
-                    .AddTerm(aqueous_phase, so4mm, 1.0)
-                    .AddTerm(aqueous_phase, so2oohm, 1.0)
-                    .DiagnoseConstantFromState()
-                    .Build();
+    auto mass_H2O2 = LinearConstraintBuilder()
+                         .SetAlgebraicSpecies(gas_phase, h2o2_g)
+                         .AddTerm(gas_phase, h2o2_g, 1.0)
+                         .AddTerm(aqueous_phase, h2o2_aq, 1.0)
+                         .DiagnoseConstantFromState()
+                         .Build();
 
-  auto mass_H2O2 = LinearConstraintBuilder()
-                       .SetAlgebraicSpecies(gas_phase, h2o2_g)
-                       .AddTerm(gas_phase, h2o2_g, 1.0)
-                       .AddTerm(aqueous_phase, h2o2_aq, 1.0)
+    auto mass_O3 = LinearConstraintBuilder()
+                       .SetAlgebraicSpecies(gas_phase, o3_g)
+                       .AddTerm(gas_phase, o3_g, 1.0)
+                       .AddTerm(aqueous_phase, o3_aq, 1.0)
                        .DiagnoseConstantFromState()
                        .Build();
 
-  auto mass_O3 = LinearConstraintBuilder()
-                     .SetAlgebraicSpecies(gas_phase, o3_g)
-                     .AddTerm(gas_phase, o3_g, 1.0)
-                     .AddTerm(aqueous_phase, o3_aq, 1.0)
-                     .DiagnoseConstantFromState()
+    auto charge = LinearConstraintBuilder()
+                      .SetAlgebraicSpecies(aqueous_phase, hp)
+                      .AddTerm(aqueous_phase, hp, 1.0)
+                      .AddTerm(aqueous_phase, ohm, -1.0)
+                      .AddTerm(aqueous_phase, hso3m, -1.0)
+                      .AddTerm(aqueous_phase, so3mm, -2.0)
+                      .AddTerm(aqueous_phase, so4mm, -2.0)
+                      .AddTerm(aqueous_phase, so2oohm, -1.0)
+                      .SetConstant(0.0)
+                      .Build();
+
+    auto rxn1a = DissolvedReversibleReactionBuilder()
+                     .SetPhase(aqueous_phase)
+                     .SetReactants({ hso3m, h2o2_aq })
+                     .SetProducts({ so2oohm, h2o })
+                     .SetSolvent(h2o)
+                     .SetForwardRateConstant(VantHoffParameters{ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 })
+                     .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1725.0 }))
                      .Build();
 
-  auto charge = LinearConstraintBuilder()
-                    .SetAlgebraicSpecies(aqueous_phase, hp)
-                    .AddTerm(aqueous_phase, hp, 1.0)
-                    .AddTerm(aqueous_phase, ohm, -1.0)
-                    .AddTerm(aqueous_phase, hso3m, -1.0)
-                    .AddTerm(aqueous_phase, so3mm, -2.0)
-                    .AddTerm(aqueous_phase, so4mm, -2.0)
-                    .AddTerm(aqueous_phase, so2oohm, -1.0)
-                    .SetConstant(0.0)
+    auto rxn1b = DissolvedReactionBuilder()
+                     .SetPhase(aqueous_phase)
+                     .SetReactants({ so2oohm, hp })
+                     .SetProducts({ so4mm })
+                     .SetSolvent(h2o)
+                     .SetRateConstant(VantHoffParameters{ c_H2O_M * 2.4e6, 4430.0, 298.0 })
+                     .Build();
+
+    auto rxn2 = DissolvedReactionBuilder()
+                    .SetPhase(aqueous_phase)
+                    .SetReactants({ hso3m, o3_aq })
+                    .SetProducts({ so4mm, hp })
+                    .SetSolvent(h2o)
+                    .SetRateConstant(VantHoffParameters{ c_H2O_M * 3.75e5, 5530.0, 298.0 })
                     .Build();
 
-  auto rxn1a = DissolvedReversibleReactionBuilder()
-                   .SetPhase(aqueous_phase)
-                   .SetReactants({ hso3m, h2o2_aq })
-                   .SetProducts({ so2oohm, h2o })
-                   .SetSolvent(h2o)
-                   .SetForwardRateConstant(VantHoffParameters{ .A_ = c_H2O_M * (7.45e7 / 13.0), .C_ = 4430.0 })
-                   .SetEquilibriumConstant(EquilibriumConstant({ .A_ = 1725.0 }))
-                   .Build();
-
-  auto rxn1b = DissolvedReactionBuilder()
-                   .SetPhase(aqueous_phase)
-                   .SetReactants({ so2oohm, hp })
-                   .SetProducts({ so4mm })
-                   .SetSolvent(h2o)
-                   .SetRateConstant(VantHoffParameters{ c_H2O_M * 2.4e6, 4430.0, 298.0 })
-                   .Build();
-
-  auto rxn2 = DissolvedReactionBuilder()
-                  .SetPhase(aqueous_phase)
-                  .SetReactants({ hso3m, o3_aq })
-                  .SetProducts({ so4mm, hp })
-                  .SetSolvent(h2o)
-                  .SetRateConstant(VantHoffParameters{ c_H2O_M * 3.75e5, 5530.0, 298.0 })
-                  .Build();
-
-  auto rxn3 = DissolvedReactionBuilder()
-                  .SetPhase(aqueous_phase)
-                  .SetReactants({ so3mm, o3_aq })
-                  .SetProducts({ so4mm })
-                  .SetSolvent(h2o)
-                  .SetRateConstant(VantHoffParameters{ c_H2O_M * 1.59e9, 5280.0, 298.0 })
-                  .Build();
-
-  auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
-  model.AddProcesses(rxn1a, rxn1b, rxn2, rxn3);
-  model.AddConstraints(hl_so2, hl_h2o2, hl_o3, eq_kw, eq_ka1, eq_ka2, mass_S, mass_H2O2, mass_O3, charge);
-
-  auto system = System(gas_phase);
-  auto solver = builder
-                    .SetSystem(system)
-                    .AddExternalModel(model)
-                    .SetIgnoreUnusedSpecies(true)
+    auto rxn3 = DissolvedReactionBuilder()
+                    .SetPhase(aqueous_phase)
+                    .SetReactants({ so3mm, o3_aq })
+                    .SetProducts({ so4mm })
+                    .SetSolvent(h2o)
+                    .SetRateConstant(VantHoffParameters{ c_H2O_M * 1.59e9, 5280.0, 298.0 })
                     .Build();
 
-  State state = solver.GetState();
-  state.conditions_[0].temperature_ = T;
-  state.conditions_[0].pressure_ = 70000.0;
-  state.conditions_[0].CalculateIdealAirDensity();
+    auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
+    model.AddProcesses(rxn1a, rxn1b, rxn2, rxn3);
+    model.AddConstraints(hl_so2, hl_h2o2, hl_o3, eq_kw, eq_ka1, eq_ka2, mass_S, mass_H2O2, mass_O3, charge);
 
-  auto i_so2_g_ = state.variable_map_.at("SO2");
-  auto i_h2o2_g_ = state.variable_map_.at("H2O2");
-  auto i_o3_g_ = state.variable_map_.at("O3");
-  auto i_h2o_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
-  auto i_so2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
-  auto i_h2o2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
-  auto i_o3_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
-  auto i_hp_ = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
-  auto i_ohm_ = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
-  auto i_hso3m_ = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
-  auto i_so3mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
-  auto i_so4mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
-  auto i_so2oohm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO2OOHm");
+    auto system = System(gas_phase);
+    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
 
-  state.variables_[0][i_so2_g_] = gas0_so2;
-  state.variables_[0][i_h2o2_g_] = gas0_h2o2;
-  state.variables_[0][i_o3_g_] = gas0_o3;
-  state.variables_[0][i_h2o_] = C_H2O;
-  state.variables_[0][i_so2_aq_] = 0.0;
-  state.variables_[0][i_h2o2_aq_] = 0.0;
-  state.variables_[0][i_o3_aq_] = 0.0;
-  state.variables_[0][i_hp_] = 1.0;
-  state.variables_[0][i_ohm_] = 0.0;
-  state.variables_[0][i_hso3m_] = 0.0;
-  state.variables_[0][i_so3mm_] = 0.0;
-  state.variables_[0][i_so4mm_] = so4mm0;
-  state.variables_[0][i_so2oohm_] = 0.0;
-  cloud.SetDefaultParameters(state);
+    State state = solver.GetState();
+    state.conditions_[0].temperature_ = T;
+    state.conditions_[0].pressure_ = 70000.0;
+    state.conditions_[0].CalculateIdealAirDensity();
 
-  std::cout << "\n--- Step 4b: Naive ICs (all aqueous zero) ---" << std::endl;
-  state.PrintHeader();
-  state.PrintState(0);
+    auto i_so2_g_ = state.variable_map_.at("SO2");
+    auto i_h2o2_g_ = state.variable_map_.at("H2O2");
+    auto i_o3_g_ = state.variable_map_.at("O3");
+    auto i_h2o_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+    auto i_so2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.SO2_aq");
+    auto i_h2o2_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.H2O2_aq");
+    auto i_o3_aq_ = state.variable_map_.at("CLOUD.AQUEOUS.O3_aq");
+    auto i_hp_ = state.variable_map_.at("CLOUD.AQUEOUS.Hp");
+    auto i_ohm_ = state.variable_map_.at("CLOUD.AQUEOUS.OHm");
+    auto i_hso3m_ = state.variable_map_.at("CLOUD.AQUEOUS.HSO3m");
+    auto i_so3mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO3mm");
+    auto i_so4mm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
+    auto i_so2oohm_ = state.variable_map_.at("CLOUD.AQUEOUS.SO2OOHm");
 
-  double total_time = 0.0;
-  double dt = 0.001;
-  bool converged = true;
+    state.variables_[0][i_so2_g_] = gas0_so2;
+    state.variables_[0][i_h2o2_g_] = gas0_h2o2;
+    state.variables_[0][i_o3_g_] = gas0_o3;
+    state.variables_[0][i_h2o_] = C_H2O;
+    state.variables_[0][i_so2_aq_] = 0.0;
+    state.variables_[0][i_h2o2_aq_] = 0.0;
+    state.variables_[0][i_o3_aq_] = 0.0;
+    state.variables_[0][i_hp_] = 1.0;
+    state.variables_[0][i_ohm_] = 0.0;
+    state.variables_[0][i_hso3m_] = 0.0;
+    state.variables_[0][i_so3mm_] = 0.0;
+    state.variables_[0][i_so4mm_] = so4mm0;
+    state.variables_[0][i_so2oohm_] = 0.0;
+    cloud.SetDefaultParameters(state);
 
-  SyncStateToDevice(state);
-  while (total_time < 1800.0 - 1.0e-10)
-  {
-    double step = std::min(dt, 1800.0 - total_time);
-    solver.UpdateStateParameters(state);
-    auto result = solver.Solve(step, state);
-    if (result.state_ != SolverState::Converged)
+    std::cout << "\n--- Step 4b: Naive ICs (all aqueous zero) ---" << std::endl;
+    state.PrintHeader();
+    state.PrintState(0);
+
+    double total_time = 0.0;
+    double dt = 0.001;
+    bool converged = true;
+
+    SyncStateToDevice(state);
+    while (total_time < 1800.0 - 1.0e-10)
     {
-      std::cerr << "Solver failed at t=" << total_time << " s" << std::endl;
-      converged = false;
-      break;
+      double step = std::min(dt, 1800.0 - total_time);
+      solver.UpdateStateParameters(state);
+      auto result = solver.Solve(step, state);
+      if (result.state_ != SolverState::Converged)
+      {
+        std::cerr << "Solver failed at t=" << total_time << " s" << std::endl;
+        converged = false;
+        break;
+      }
+      total_time += step;
+      if (total_time > 0.01 && dt < 0.01)
+        dt = 0.01;
+      if (total_time > 0.1 && dt < 0.1)
+        dt = 0.1;
+      if (total_time > 1.0 && dt < 1.0)
+        dt = 1.0;
+      if (total_time > 10.0 && dt < 10.0)
+        dt = 10.0;
+      if (total_time > 100.0 && dt < 100.0)
+        dt = 100.0;
     }
-    total_time += step;
-    if (total_time > 0.01 && dt < 0.01)
-      dt = 0.01;
-    if (total_time > 0.1 && dt < 0.1)
-      dt = 0.1;
-    if (total_time > 1.0 && dt < 1.0)
-      dt = 1.0;
-    if (total_time > 10.0 && dt < 10.0)
-      dt = 10.0;
-    if (total_time > 100.0 && dt < 100.0)
-      dt = 100.0;
+
+    SyncStateToHost(state);
+    state.PrintState(static_cast<int>(total_time));
+    ASSERT_TRUE(converged) << "DAE solver failed to converge with naive ICs";
+
+    double so2_g_f = state.variables_[0][i_so2_g_];
+    double h2o2_g_f = state.variables_[0][i_h2o2_g_];
+    double o3_g_f = state.variables_[0][i_o3_g_];
+    double so2_aq_f = state.variables_[0][i_so2_aq_];
+    double h2o2_aq_f = state.variables_[0][i_h2o2_aq_];
+    double o3_aq_f = state.variables_[0][i_o3_aq_];
+    double hp_f = state.variables_[0][i_hp_];
+    double ohm_f = state.variables_[0][i_ohm_];
+    double hso3m_f = state.variables_[0][i_hso3m_];
+    double so3mm_f = state.variables_[0][i_so3mm_];
+    double so4mm_f = state.variables_[0][i_so4mm_];
+    double so2oohm_f = state.variables_[0][i_so2oohm_];
+
+    double total_S_f = so2_g_f + so2_aq_f + hso3m_f + so3mm_f + so4mm_f + so2oohm_f;
+    EXPECT_NEAR(total_S_f, total_S, 1e-6 * total_S) << "S budget violated";
+
+    double cb = hp_f - ohm_f - hso3m_f - 2 * so3mm_f - 2 * so4mm_f - so2oohm_f;
+    EXPECT_NEAR(cb, 0.0, 0.01 * hp_f) << "Charge balance violated";
+
+    EXPECT_GT(so4mm_f, so4mm0) << "SO4 must increase from S(IV) oxidation";
+
+    for (std::size_t v = 0; v < state.variables_.NumColumns(); ++v)
+    {
+      EXPECT_GE(state.variables_[0][v], -1.0e-10) << state.variable_names_[v] << " = " << state.variables_[0][v];
+    }
+
+    double pH = (hp_f > 0) ? -std::log10(hp_f / 1000.0) : 99.0;
+    std::cout << "\n=== Step 4b PASSED ===" << std::endl;
+    std::cout << "pH=" << pH << std::endl;
+    std::cout << "SO4=" << so4mm_f << " mol/m^3" << std::endl;
+    std::cout << "S budget: " << total_S_f << " (expected " << total_S << ")" << std::endl;
   }
-
-  SyncStateToHost(state);
-  state.PrintState(static_cast<int>(total_time));
-  ASSERT_TRUE(converged) << "DAE solver failed to converge with naive ICs";
-
-  double so2_g_f = state.variables_[0][i_so2_g_];
-  double h2o2_g_f = state.variables_[0][i_h2o2_g_];
-  double o3_g_f = state.variables_[0][i_o3_g_];
-  double so2_aq_f = state.variables_[0][i_so2_aq_];
-  double h2o2_aq_f = state.variables_[0][i_h2o2_aq_];
-  double o3_aq_f = state.variables_[0][i_o3_aq_];
-  double hp_f = state.variables_[0][i_hp_];
-  double ohm_f = state.variables_[0][i_ohm_];
-  double hso3m_f = state.variables_[0][i_hso3m_];
-  double so3mm_f = state.variables_[0][i_so3mm_];
-  double so4mm_f = state.variables_[0][i_so4mm_];
-  double so2oohm_f = state.variables_[0][i_so2oohm_];
-
-  double total_S_f = so2_g_f + so2_aq_f + hso3m_f + so3mm_f + so4mm_f + so2oohm_f;
-  EXPECT_NEAR(total_S_f, total_S, 1e-6 * total_S) << "S budget violated";
-
-  double cb = hp_f - ohm_f - hso3m_f - 2 * so3mm_f - 2 * so4mm_f - so2oohm_f;
-  EXPECT_NEAR(cb, 0.0, 0.01 * hp_f) << "Charge balance violated";
-
-  EXPECT_GT(so4mm_f, so4mm0) << "SO4 must increase from S(IV) oxidation";
-
-  for (std::size_t v = 0; v < state.variables_.NumColumns(); ++v)
-  {
-    EXPECT_GE(state.variables_[0][v], -1.0e-10) << state.variable_names_[v] << " = " << state.variables_[0][v];
-  }
-
-  double pH = (hp_f > 0) ? -std::log10(hp_f / 1000.0) : 99.0;
-  std::cout << "\n=== Step 4b PASSED ===" << std::endl;
-  std::cout << "pH=" << pH << std::endl;
-  std::cout << "SO4=" << so4mm_f << " mol/m^3" << std::endl;
-  std::cout << "S budget: " << total_S_f << " (expected " << total_S << ")" << std::endl;
-}
 
 }  // namespace miam_test_cam_cloud_chemistry

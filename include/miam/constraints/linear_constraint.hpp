@@ -258,32 +258,31 @@ namespace miam
       DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
 
       auto function = DenseMatrixPolicy::Function(
-            MICM_LAMBDA(
-                const typename DenseMatrixPolicy::ConstViewType& state_view,
-                const typename DenseMatrixPolicy::ViewType& params_view)
-      {
-              std::size_t term_offset = 0;
-              for (std::size_t i_inst = 0; i_inst < num_instances; ++i_inst)
+          MICM_LAMBDA(
+              const typename DenseMatrixPolicy::ConstViewType& state_view,
+              const typename DenseMatrixPolicy::ViewType& params_view) {
+            std::size_t term_offset = 0;
+            for (std::size_t i_inst = 0; i_inst < num_instances; ++i_inst)
             {
-                auto total = params_view.GetRowVariable();
-                params_view.ForEachRowStrict([](micm::Real& t) { t = 0.0; }, total);
-                for (std::size_t k = 0; k < count_view[i_inst]; ++k)
-                {
-                  const micm::Real coeff = coeff_view[term_offset + k];
-                  params_view.ForEachRowStrict(
-                      [coeff](const micm::Real& val, micm::Real& t) { t += coeff * val; },
-                      state_view.GetConstColumnView(term_view[term_offset + k]),
-                    total);
-      }
+              auto total = params_view.GetRowVariable();
+              params_view.ForEachRowStrict([](micm::Real& t) { t = 0.0; }, total);
+              for (std::size_t k = 0; k < count_view[i_inst]; ++k)
+              {
+                const micm::Real coeff = coeff_view[term_offset + k];
                 params_view.ForEachRowStrict(
-                    [](const micm::Real& t, micm::Real& param) { param = t; },
-                    total,
-                    params_view.GetColumnView(param_view[i_inst]));
-                term_offset += count_view[i_inst];
+                    [coeff](const micm::Real& val, micm::Real& t) { t += coeff * val; },
+                    state_view.GetConstColumnView(term_view[term_offset + k]),
+                    total);
               }
-            },
-            dummy_state_variables,
-            dummy_state_parameters);
+              params_view.ForEachRowStrict(
+                  [](const micm::Real& t, micm::Real& param) { param = t; },
+                  total,
+                  params_view.GetColumnView(param_view[i_inst]));
+              term_offset += count_view[i_inst];
+            }
+          },
+          dummy_state_variables,
+          dummy_state_parameters);
 
       return [storage, function](const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters) mutable
       { function(state_variables, state_parameters); };
@@ -333,77 +332,75 @@ namespace miam
       auto coeff_view = storage->coefficients.GetView();
       DenseMatrixPolicy dummy_state_variables{ 1, state_variable_indices.size(), 0.0 };
 
-        if (diagnose)
-        {
-          DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
+      if (diagnose)
+      {
+        DenseMatrixPolicy dummy_state_parameters{ 1, state_parameter_indices.size(), 0.0 };
         auto function = DenseMatrixPolicy::Function(
-              MICM_LAMBDA(
-                  const typename DenseMatrixPolicy::ConstViewType& state_view,
-                  const typename DenseMatrixPolicy::ConstViewType& params_view,
-                  const typename DenseMatrixPolicy::ViewType& residual_view)
-              {
-                std::size_t term_offset = 0;
-                for (std::size_t i_inst = 0; i_inst < num_instances; ++i_inst)
-                {
-                  auto sum = residual_view.GetRowVariable();
-                  residual_view.ForEachRowStrict(
-                      [](const micm::Real& param, micm::Real& s) { s = -param; },
-                      params_view.GetConstColumnView(param_view[i_inst]),
-                      sum);
-                  for (std::size_t k = 0; k < count_view[i_inst]; ++k)
-                  {
-                    const micm::Real coeff = coeff_view[term_offset + k];
-                    residual_view.ForEachRowStrict(
-                        [coeff](const micm::Real& val, micm::Real& s) { s += coeff * val; },
-                        state_view.GetConstColumnView(term_view[term_offset + k]),
-                        sum);
-        }
-                  residual_view.ForEachRowStrict(
-                      [](const micm::Real& s, micm::Real& res) { res = s; },
-                      sum,
-                      residual_view.GetColumnView(alg_view[i_inst]));
-                  term_offset += count_view[i_inst];
-                }
-              },
-              dummy_state_variables,
-              dummy_state_parameters,
-              dummy_state_variables);
-
-        return [storage, function](
-                     const DenseMatrixPolicy& state_variables,
-                     const DenseMatrixPolicy& state_parameters,
-                   DenseMatrixPolicy& residual) mutable { function(state_variables, state_parameters, residual); };
-        }
-
-      auto function = DenseMatrixPolicy::Function(
             MICM_LAMBDA(
                 const typename DenseMatrixPolicy::ConstViewType& state_view,
-                const typename DenseMatrixPolicy::ViewType& residual_view)
-        {
+                const typename DenseMatrixPolicy::ConstViewType& params_view,
+                const typename DenseMatrixPolicy::ViewType& residual_view) {
               std::size_t term_offset = 0;
               for (std::size_t i_inst = 0; i_inst < num_instances; ++i_inst)
               {
                 auto sum = residual_view.GetRowVariable();
-                residual_view.ForEachRowStrict([constant](micm::Real& s) { s = -constant; }, sum);
+                residual_view.ForEachRowStrict(
+                    [](const micm::Real& param, micm::Real& s) { s = -param; },
+                    params_view.GetConstColumnView(param_view[i_inst]),
+                    sum);
                 for (std::size_t k = 0; k < count_view[i_inst]; ++k)
                 {
                   const micm::Real coeff = coeff_view[term_offset + k];
                   residual_view.ForEachRowStrict(
                       [coeff](const micm::Real& val, micm::Real& s) { s += coeff * val; },
                       state_view.GetConstColumnView(term_view[term_offset + k]),
-                        sum);
-        }
-                residual_view.ForEachRowStrict(
-                    [](const micm::Real& s, micm::Real& res) { res = s; }, sum, residual_view.GetColumnView(alg_view[i_inst]));
-                term_offset += count_view[i_inst];
+                      sum);
                 }
-              },
-              dummy_state_variables,
-              dummy_state_variables);
+                residual_view.ForEachRowStrict(
+                    [](const micm::Real& s, micm::Real& res) { res = s; },
+                    sum,
+                    residual_view.GetColumnView(alg_view[i_inst]));
+                term_offset += count_view[i_inst];
+              }
+            },
+            dummy_state_variables,
+            dummy_state_parameters,
+            dummy_state_variables);
+
+        return [storage, function](
+                   const DenseMatrixPolicy& state_variables,
+                   const DenseMatrixPolicy& state_parameters,
+                   DenseMatrixPolicy& residual) mutable { function(state_variables, state_parameters, residual); };
+      }
+
+      auto function = DenseMatrixPolicy::Function(
+          MICM_LAMBDA(
+              const typename DenseMatrixPolicy::ConstViewType& state_view,
+              const typename DenseMatrixPolicy::ViewType& residual_view) {
+            std::size_t term_offset = 0;
+            for (std::size_t i_inst = 0; i_inst < num_instances; ++i_inst)
+            {
+              auto sum = residual_view.GetRowVariable();
+              residual_view.ForEachRowStrict([constant](micm::Real& s) { s = -constant; }, sum);
+              for (std::size_t k = 0; k < count_view[i_inst]; ++k)
+              {
+                const micm::Real coeff = coeff_view[term_offset + k];
+                residual_view.ForEachRowStrict(
+                    [coeff](const micm::Real& val, micm::Real& s) { s += coeff * val; },
+                    state_view.GetConstColumnView(term_view[term_offset + k]),
+                    sum);
+              }
+              residual_view.ForEachRowStrict(
+                  [](const micm::Real& s, micm::Real& res) { res = s; }, sum, residual_view.GetColumnView(alg_view[i_inst]));
+              term_offset += count_view[i_inst];
+            }
+          },
+          dummy_state_variables,
+          dummy_state_variables);
 
       return [storage, function](
-                     const DenseMatrixPolicy& state_variables,
-                     const DenseMatrixPolicy& /*state_parameters*/,
+                 const DenseMatrixPolicy& state_variables,
+                 const DenseMatrixPolicy& /*state_parameters*/,
                  DenseMatrixPolicy& residual) mutable { function(state_variables, residual); };
     }
 
@@ -444,15 +441,14 @@ namespace miam
       auto coeff_view = storage->coefficients.GetView();
 
       auto function = SparseMatrixPolicy::Function(
-            MICM_LAMBDA(const typename SparseMatrixPolicy::ViewType& jac_view)
+          MICM_LAMBDA(const typename SparseMatrixPolicy::ViewType& jac_view) {
+            for (std::size_t k = 0; k < num_terms; ++k)
             {
-              for (std::size_t k = 0; k < num_terms; ++k)
-              {
-                const micm::Real coeff = coeff_view[k];
-                jac_view.ForEachBlockStrict([coeff](micm::Real& j) { j -= coeff; }, jac_view.GetBlockView(jac_id_view[k]));
-              }
-            },
-            jacobian);
+              const micm::Real coeff = coeff_view[k];
+              jac_view.ForEachBlockStrict([coeff](micm::Real& j) { j -= coeff; }, jac_view.GetBlockView(jac_id_view[k]));
+            }
+          },
+          jacobian);
 
       return [storage, function](
                  const DenseMatrixPolicy& /*state_variables*/,
@@ -509,7 +505,7 @@ namespace miam
         }
       }
       return flat;
-        }
+    }
 
     /// @brief Returns parameter names for diagnosed constants
     std::set<std::string> DiagnoseParamNames(const std::map<std::string, std::set<std::string>>& phase_prefixes) const

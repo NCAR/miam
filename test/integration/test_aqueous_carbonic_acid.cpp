@@ -123,12 +123,7 @@ namespace
     auto droplet = SingleMomentMode{ "DROPLET", { aqueous_phase }, 5.0e-6, 1.2 };
 
     // CO2(aq) + H2O <-> H+ + HCO3-  (same rate constants in both tests)
-    auto rxn1 = DissolvedReversibleReaction{ { k1_f },
-                                             { k1_r },
-                                             { CO2_aq },
-                                             { Hp, HCO3m },
-                                             H2O,
-                                             aqueous_phase };
+    auto rxn1 = DissolvedReversibleReaction{ { k1_f }, { k1_r }, { CO2_aq }, { Hp, HCO3m }, H2O, aqueous_phase };
 
     return CarbonicAcidSystem{
       .CO2_g = CO2_g,
@@ -250,20 +245,12 @@ TEST(AqueousCarbonicAcid, KineticODE)
                       .Build();
 
   // HCO3- <-> H+ + CO3--  (full stiff rate; stable for pure-ODE Rosenbrock)
-  auto rxn2 = DissolvedReversibleReaction{ { k2_f },
-                                           { k2_r },
-                                           { sys.HCO3m },
-                                           { sys.Hp, sys.CO3mm },
-                                           sys.H2O,
-                                           sys.aqueous_phase };
+  auto rxn2 =
+      DissolvedReversibleReaction{ { k2_f }, { k2_r }, { sys.HCO3m }, { sys.Hp, sys.CO3mm }, sys.H2O, sys.aqueous_phase };
 
   // H2O <-> H+ + OH-  (H2O as reactant AND solvent gives correct Kw_miam)
-  auto rxn_w = DissolvedReversibleReaction{ { kw_f },
-                                            { kw_r },
-                                            { sys.H2O },
-                                            { sys.Hp, sys.OHm },
-                                            sys.H2O,
-                                            sys.aqueous_phase };
+  auto rxn_w =
+      DissolvedReversibleReaction{ { kw_f }, { kw_r }, { sys.H2O }, { sys.Hp, sys.OHm }, sys.H2O, sys.aqueous_phase };
 
   // -- Model --
   auto model = Model{ .name_ = "CARBONIC_ACID_ODE", .representations_ = { sys.droplet } };
