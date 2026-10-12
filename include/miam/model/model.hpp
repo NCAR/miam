@@ -23,6 +23,7 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -484,7 +485,123 @@ namespace miam
       };
     }
 
+    /// @brief Builds the solve-time process functions once, after MICM finalizes the state layout and the Jacobian
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    void FinalizeProcessSetup(
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices,
+        const SparseMatrixPolicy& jacobian)
+    {
+      process_update_function_ = UpdateStateParametersFunction<DenseMatrixPolicy>(state_parameter_indices);
+      process_forcing_function_ = ForcingFunction<DenseMatrixPolicy>(state_parameter_indices, state_variable_indices);
+      process_jacobian_function_ =
+          JacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(state_parameter_indices, state_variable_indices, jacobian);
+    }
+
+    /// @brief Builds the solve-time constraint functions once, after MICM finalizes the state layout and the Jacobian
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    void FinalizeConstraintSetup(
+        const std::unordered_map<std::string, std::size_t>& state_parameter_indices,
+        const std::unordered_map<std::string, std::size_t>& state_variable_indices,
+        const SparseMatrixPolicy& jacobian)
+    {
+      constraint_update_function_ = ConstraintUpdateStateParametersFunction<DenseMatrixPolicy>(state_parameter_indices);
+      constraint_initialize_function_ =
+          InitializeConstraintParametersFunction<DenseMatrixPolicy>(state_parameter_indices, state_variable_indices);
+      constraint_residual_function_ =
+          ConstraintResidualFunction<DenseMatrixPolicy>(state_parameter_indices, state_variable_indices);
+      constraint_jacobian_function_ = ConstraintJacobianFunction<DenseMatrixPolicy, SparseMatrixPolicy>(
+          state_parameter_indices, state_variable_indices, jacobian);
+    }
+
+    template<typename DenseMatrixPolicy>
+    void UpdateStateParameters(
+        const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions,
+        DenseMatrixPolicy& state_parameters) const
+    {
+      Call<UpdateFunction<DenseMatrixPolicy>>(process_update_function_, conditions, state_parameters);
+    }
+
+    template<typename DenseMatrixPolicy>
+    void AddForcingTerms(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        DenseMatrixPolicy& forcing) const
+    {
+      Call<ForcingFunctionType<DenseMatrixPolicy>>(process_forcing_function_, state_parameters, state_variables, forcing);
+    }
+
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    void SubtractJacobianTerms(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        SparseMatrixPolicy& jacobian) const
+    {
+      Call<JacobianFunctionType<DenseMatrixPolicy, SparseMatrixPolicy>>(
+          process_jacobian_function_, state_parameters, state_variables, jacobian);
+    }
+
+    template<typename DenseMatrixPolicy>
+    void UpdateConstraintStateParameters(
+        const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions,
+        DenseMatrixPolicy& state_parameters) const
+    {
+      Call<UpdateFunction<DenseMatrixPolicy>>(constraint_update_function_, conditions, state_parameters);
+    }
+
+    template<typename DenseMatrixPolicy>
+    void InitializeConstraintParameters(const DenseMatrixPolicy& state_variables, DenseMatrixPolicy& state_parameters) const
+    {
+      Call<std::function<void(const DenseMatrixPolicy&, DenseMatrixPolicy&)>>(
+          constraint_initialize_function_, state_variables, state_parameters);
+    }
+
+    // The constraint functions take the state variables first.
+    template<typename DenseMatrixPolicy>
+    void AddConstraintResidual(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        DenseMatrixPolicy& forcing) const
+    {
+      Call<ForcingFunctionType<DenseMatrixPolicy>>(constraint_residual_function_, state_variables, state_parameters, forcing);
+    }
+
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    void SubtractConstraintJacobian(
+        const DenseMatrixPolicy& state_parameters,
+        const DenseMatrixPolicy& state_variables,
+        SparseMatrixPolicy& jacobian) const
+    {
+      Call<JacobianFunctionType<DenseMatrixPolicy, SparseMatrixPolicy>>(
+          constraint_jacobian_function_, state_variables, state_parameters, jacobian);
+    }
+
+    // Solve-time functions, built once at Finalize for the solver's matrix types.
+    // They are public so that Model stays an aggregate.
+    std::any process_update_function_;
+    std::any process_forcing_function_;
+    std::any process_jacobian_function_;
+    std::any constraint_update_function_;
+    std::any constraint_initialize_function_;
+    std::any constraint_residual_function_;
+    std::any constraint_jacobian_function_;
+
    private:
+    template<typename DenseMatrixPolicy>
+    using UpdateFunction =
+        std::function<void(const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&)>;
+    template<typename DenseMatrixPolicy>
+    using ForcingFunctionType = std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)>;
+    template<typename DenseMatrixPolicy, typename SparseMatrixPolicy>
+    using JacobianFunctionType = std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, SparseMatrixPolicy&)>;
+
+    template<typename Function, typename... Args>
+    static void Call(const std::any& function, Args&&... args)
+    {
+      if (function.has_value())
+        std::any_cast<const Function&>(function)(std::forward<Args>(args)...);
+    }
+
     /// @brief Iterate over all registered processes with a generic callable
     template<typename Func>
     void ForEachProcess(Func&& fn) const

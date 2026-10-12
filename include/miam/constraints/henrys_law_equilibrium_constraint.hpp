@@ -14,9 +14,12 @@
 #include <micm/system/species.hpp>
 #include <micm/util/constants.hpp>
 #include <micm/util/matrix.hpp>
+#include <micm/util/types.hpp>
 
+#include <algorithm>
 #include <functional>
 #include <map>
+#include <memory>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -184,23 +187,34 @@ namespace miam
           hlc_rt_indices.push_back(
               state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc_rt"));
       }
-      auto henrys_law_constant = henrys_law_constant_;
+      const HenrysLawConstant henrys_law_constant = henrys_law_constant_;
 
-      DenseMatrixPolicy state_parameters{ 1, state_parameter_indices.size(), 0.0 };
-      typename DenseMatrixPolicy::template VectorType<micm::Conditions> conditions_vector;
+      using Vector = typename DenseMatrixPolicy::template VectorType<std::size_t>;
+      auto storage = std::make_shared<Vector>(hlc_rt_indices);
+      storage->CopyToDevice();
+      auto hlc_rt_view = storage->GetView();
+      const std::size_t num_hlc_rt = hlc_rt_indices.size();
+      DenseMatrixPolicy dummy_params{ 1, state_parameter_indices.size(), 0.0 };
+      typename DenseMatrixPolicy::template VectorType<micm::Conditions> dummy_conditions;
 
-      return DenseMatrixPolicy::Function(
-          [hlc_rt_indices, henrys_law_constant](auto&& conditions, auto&& params)
+      auto function = DenseMatrixPolicy::Function(
+              MICM_LAMBDA(
+                  const typename DenseMatrixPolicy::template VectorType<micm::Conditions>::ConstViewType& conditions_view,
+                  const typename DenseMatrixPolicy::ViewType& params_view)
           {
-            for (const auto& hlc_rt_idx : hlc_rt_indices)
-              params.ForEachRow(
-                  [henrys_law_constant](const micm::Conditions& cond, double& hlc_rt)
+                for (std::size_t i = 0; i < num_hlc_rt; ++i)
+                params_view.ForEachRowStrict(
+                    [henrys_law_constant](const micm::Conditions& cond, micm::Real& hlc_rt)
                   { hlc_rt = Calculate(henrys_law_constant, cond) * micm::constants::GAS_CONSTANT * cond.temperature_; },
-                  conditions,
-                  params.GetColumnView(hlc_rt_idx));
+                    conditions_view,
+                      params_view.GetColumnView(hlc_rt_view[i]));
           },
-          conditions_vector,
-          state_parameters);
+          dummy_conditions,
+          dummy_params);
+
+      return [storage, function](
+                 const typename DenseMatrixPolicy::template VectorType<micm::Conditions>& conditions,
+                 DenseMatrixPolicy& params) mutable { function(conditions, params); };
     }
 
     /// @brief Returns a function that computes constraint residuals G(y) = 0
@@ -224,29 +238,58 @@ namespace miam
               state_parameter_indices.at(prefix + "." + condensed_phase_.name_ + "." + uuid_ + ".hlc_rt"));
       }
 
+      using Vector = typename DenseMatrixPolicy::template VectorType<std::size_t>;
+      Vector aq_indices(indices.aq_indices_);
+      Vector solvent_indices(indices.solvent_indices_);
+      Vector hlc_rt_indices_vec(hlc_rt_indices);
+      aq_indices.CopyToDevice();
+      solvent_indices.CopyToDevice();
+      hlc_rt_indices_vec.CopyToDevice();
+      std::size_t num_phases = indices.number_of_phase_instances_;
+      std::size_t gas_idx = indices.gas_idx_;
+
+      struct Storage
+      {
+        Vector aq_indices, solvent_indices, hlc_rt_indices_vec;
+      };
+      auto storage = std::make_shared<Storage>(
+          Storage{ std::move(aq_indices), std::move(solvent_indices), std::move(hlc_rt_indices_vec) });
+      auto aq_view = storage->aq_indices.GetView();
+      auto solvent_view = storage->solvent_indices.GetView();
+      auto hlc_rt_view = storage->hlc_rt_indices_vec.GetView();
       DenseMatrixPolicy dummy_state{ 1, state_variable_indices.size(), 0.0 };
       DenseMatrixPolicy dummy_params{ 1, std::max(state_parameter_indices.size(), std::size_t{ 1 }), 0.0 };
 
-      return DenseMatrixPolicy::Function(
-          [indices, hlc_rt_indices, molar_volume](auto&& state_variables, auto&& state_parameters, auto&& residual)
+      auto function = DenseMatrixPolicy::Function(
+            MICM_LAMBDA(
+                const typename DenseMatrixPolicy::ConstViewType& state_view,
+                const typename DenseMatrixPolicy::ConstViewType& params_view,
+                const typename DenseMatrixPolicy::ViewType& residual_view)
           {
-            for (std::size_t i_phase = 0; i_phase < indices.number_of_phase_instances_; ++i_phase)
+              for (std::size_t i_phase = 0; i_phase < num_phases; ++i_phase)
             {
+                const std::size_t aq_idx = aq_view[i_phase];
               // G = HLC*R*T * f_v * [A_g] - [A_aq],  where f_v = [S] * solvent_molecular_weight / solvent_density [m³
               // mol⁻¹]
-              residual.ForEachRow(
-                  [molar_volume](const double& hlc_rt, const double& gas, const double& aq, const double& sol, double& res)
+                residual_view.ForEachRowStrict(
+                    [molar_volume](
+                        const micm::Real& hlc_rt, const micm::Real& gas, const micm::Real& aq, const micm::Real& sol, micm::Real& res)
                   { res = hlc_rt * (sol * molar_volume) * gas - aq; },
-                  state_parameters.GetConstColumnView(hlc_rt_indices[i_phase]),
-                  state_variables.GetConstColumnView(indices.gas_idx_),
-                  state_variables.GetConstColumnView(indices.aq_indices_[i_phase]),
-                  state_variables.GetConstColumnView(indices.solvent_indices_[i_phase]),
-                  residual.GetColumnView(indices.aq_indices_[i_phase]));
+                    params_view.GetConstColumnView(hlc_rt_view[i_phase]),
+                    state_view.GetConstColumnView(gas_idx),
+                    state_view.GetConstColumnView(aq_idx),
+                    state_view.GetConstColumnView(solvent_view[i_phase]),
+                    residual_view.GetColumnView(aq_idx));
             }
           },
           dummy_state,
           dummy_params,
           dummy_state);
+
+      return [storage, function](
+                 const DenseMatrixPolicy& state_variables,
+                 const DenseMatrixPolicy& state_parameters,
+                 DenseMatrixPolicy& residual) mutable { function(state_variables, state_parameters, residual); };
     }
 
     /// @brief Returns a function that computes constraint Jacobian entries (subtracts dG/dy)
@@ -274,51 +317,80 @@ namespace miam
       }
 
       // Pre-compute block-0 VectorIndex offsets per instance
-      struct PerInstanceJacData
-      {
-        std::size_t gas_vec;
-        std::size_t aq_vec;
-        std::size_t solvent_vec;
-      };
-      std::vector<PerInstanceJacData> jac_data(indices.number_of_phase_instances_);
+      std::vector<std::size_t> gas_jac_ids(indices.number_of_phase_instances_);
+      std::vector<std::size_t> aq_jac_ids(indices.number_of_phase_instances_);
+      std::vector<std::size_t> solvent_jac_ids(indices.number_of_phase_instances_);
       for (std::size_t i_phase = 0; i_phase < indices.number_of_phase_instances_; ++i_phase)
       {
         std::size_t aq_row = indices.aq_indices_[i_phase];
-        jac_data[i_phase].gas_vec = jacobian.VectorIndex(0, aq_row, indices.gas_idx_);
-        jac_data[i_phase].aq_vec = jacobian.VectorIndex(0, aq_row, aq_row);
-        jac_data[i_phase].solvent_vec = jacobian.VectorIndex(0, aq_row, indices.solvent_indices_[i_phase]);
+        gas_jac_ids[i_phase] = jacobian.VectorIndex(0, aq_row, indices.gas_idx_);
+        aq_jac_ids[i_phase] = jacobian.VectorIndex(0, aq_row, aq_row);
+        solvent_jac_ids[i_phase] = jacobian.VectorIndex(0, aq_row, indices.solvent_indices_[i_phase]);
       }
 
+      using Vector = typename SparseMatrixPolicy::template VectorType<std::size_t>;
+      Vector solvent_indices(indices.solvent_indices_);
+      Vector hlc_rt_indices_vec(hlc_rt_indices);
+      Vector gas_jac_ids_vec(gas_jac_ids);
+      Vector aq_jac_ids_vec(aq_jac_ids);
+      Vector solvent_jac_ids_vec(solvent_jac_ids);
+      solvent_indices.CopyToDevice();
+      hlc_rt_indices_vec.CopyToDevice();
+      gas_jac_ids_vec.CopyToDevice();
+      aq_jac_ids_vec.CopyToDevice();
+      solvent_jac_ids_vec.CopyToDevice();
+      std::size_t num_phases = indices.number_of_phase_instances_;
+      std::size_t gas_idx = indices.gas_idx_;
+
+      struct Storage
+      {
+        Vector solvent_indices, hlc_rt_indices_vec, gas_jac_ids_vec, aq_jac_ids_vec, solvent_jac_ids_vec;
+      };
+      auto storage = std::make_shared<Storage>(Storage{ std::move(solvent_indices),
+                                                        std::move(hlc_rt_indices_vec),
+                                                        std::move(gas_jac_ids_vec),
+                                                        std::move(aq_jac_ids_vec),
+                                                        std::move(solvent_jac_ids_vec) });
+      auto solvent_view = storage->solvent_indices.GetView();
+      auto hlc_rt_view = storage->hlc_rt_indices_vec.GetView();
+      auto gas_jac_view = storage->gas_jac_ids_vec.GetView();
+      auto aq_jac_view = storage->aq_jac_ids_vec.GetView();
+      auto solvent_jac_view = storage->solvent_jac_ids_vec.GetView();
       DenseMatrixPolicy dummy_state{ 1, state_variable_indices.size(), 0.0 };
       DenseMatrixPolicy dummy_params{ 1, std::max(state_parameter_indices.size(), std::size_t{ 1 }), 0.0 };
 
-      return SparseMatrixPolicy::Function(
-          [indices, hlc_rt_indices, jac_data, molar_volume](
-              auto&& state_variables, auto&& state_parameters, auto&& jacobian_values)
+      auto function = SparseMatrixPolicy::Function(
+            MICM_LAMBDA(
+                const typename DenseMatrixPolicy::ConstViewType& state_view,
+                const typename DenseMatrixPolicy::ConstViewType& params_view,
+                const typename SparseMatrixPolicy::ViewType& jac_view)
           {
-            for (std::size_t i_phase = 0; i_phase < indices.number_of_phase_instances_; ++i_phase)
+              for (std::size_t i_phase = 0; i_phase < num_phases; ++i_phase)
             {
-              const auto& jd = jac_data[i_phase];
-
-              auto bv_gas = jacobian_values.GetBlockView(jd.gas_vec);
-              auto bv_aq = jacobian_values.GetBlockView(jd.aq_vec);
-              auto bv_sol = jacobian_values.GetBlockView(jd.solvent_vec);
+                auto bv_gas = jac_view.GetBlockView(gas_jac_view[i_phase]);
+                auto bv_aq = jac_view.GetBlockView(aq_jac_view[i_phase]);
+                auto bv_sol = jac_view.GetBlockView(solvent_jac_view[i_phase]);
 
               // jac -= dG/d[A_g] = HLC*R*T * f_v
               // jac -= dG/d[A_aq] = -1
               // jac -= dG/d[S] = HLC*R*T * molar_volume [m³ mol⁻¹] * [A_g]
-              jacobian_values.ForEachBlock(
+                jac_view.ForEachBlockStrict(
                   [molar_volume](
-                      const double& hlc_rt, const double& gas, const double& sol, double& j_gas, double& j_aq, double& j_sol)
+                        const micm::Real& hlc_rt,
+                        const micm::Real& gas,
+                        const micm::Real& sol,
+                        micm::Real& j_gas,
+                        micm::Real& j_aq,
+                        micm::Real& j_sol)
                   {
-                    double f_v = sol * molar_volume;
+                      const micm::Real f_v = sol * molar_volume;
                     j_gas -= hlc_rt * f_v;
                     j_aq -= (-1.0);
                     j_sol -= hlc_rt * molar_volume * gas;
                   },
-                  state_parameters.GetConstColumnView(hlc_rt_indices[i_phase]),
-                  state_variables.GetConstColumnView(indices.gas_idx_),
-                  state_variables.GetConstColumnView(indices.solvent_indices_[i_phase]),
+                    params_view.GetConstColumnView(hlc_rt_view[i_phase]),
+                    state_view.GetConstColumnView(gas_idx),
+                    state_view.GetConstColumnView(solvent_view[i_phase]),
                   bv_gas,
                   bv_aq,
                   bv_sol);
@@ -327,6 +399,11 @@ namespace miam
           dummy_state,
           dummy_params,
           jacobian);
+
+      return [storage, function](
+                 const DenseMatrixPolicy& state_variables,
+                 const DenseMatrixPolicy& state_parameters,
+                 SparseMatrixPolicy& jacobian_values) mutable { function(state_variables, state_parameters, jacobian_values); };
     }
 
    private:

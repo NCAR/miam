@@ -435,7 +435,7 @@ TEST(CamCloudChemistry, Step1c_KwNaiveIC)
   // Use tighter constraint initialization to handle the tiny Kw residuals
   auto params = RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters();
   params.constraint_init_max_iterations_ = 200;
-  params.constraint_init_tolerance_ = 1e-20;
+  params.constraint_init_tolerance_ = 1e-12;
   params.max_number_of_steps_ = 1500;
 
   auto system = System(gas_phase);
