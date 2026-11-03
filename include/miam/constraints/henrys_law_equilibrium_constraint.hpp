@@ -7,7 +7,6 @@
 #include <miam/processes/constants/henrys_law_constant.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
-#include <miam/util/uuid.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
@@ -15,6 +14,7 @@
 #include <micm/util/constants.hpp>
 #include <micm/util/matrix.hpp>
 #include <micm/util/types.hpp>
+#include <micm/util/uuid.hpp>
 
 #include <algorithm>
 #include <functional>
@@ -68,7 +68,7 @@ namespace miam
           condensed_phase_(condensed_phase),
           solvent_molecular_weight_(solvent_molecular_weight),
           solvent_density_(solvent_density),
-          uuid_(GenerateUuid())
+          uuid_(micm::GenerateUuid())
     {
     }
 

@@ -6,13 +6,13 @@
 #include <miam/processes/constants/equilibrium_constant.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
-#include <miam/util/uuid.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
 #include <micm/system/species.hpp>
 #include <micm/util/matrix.hpp>
 #include <micm/util/types.hpp>
+#include <micm/util/uuid.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -73,7 +73,7 @@ namespace miam
           algebraic_species_(algebraic_species),
           solvent_(solvent),
           phase_(phase),
-          uuid_(GenerateUuid()),
+          uuid_(micm::GenerateUuid()),
           solvent_floor_(solvent_floor)
     {
       // Validate that the algebraic species is one of the products

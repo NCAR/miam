@@ -31,8 +31,3 @@ Condensation Rate
 .. doxygenstruct:: miam::CondensationRateProvider
    :members:
    :undoc-members:
-
-UUID Generation
-===============
-
-.. doxygenfunction:: miam::GenerateUuid
