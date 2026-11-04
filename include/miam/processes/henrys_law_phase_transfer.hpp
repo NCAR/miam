@@ -8,7 +8,6 @@
 #include <miam/representations/aerosol_property.hpp>
 #include <miam/util/error.hpp>
 #include <miam/util/miam_exception.hpp>
-#include <miam/util/uuid.hpp>
 
 #include <micm/system/conditions.hpp>
 #include <micm/system/phase.hpp>
@@ -16,6 +15,7 @@
 #include <micm/util/constants.hpp>
 #include <micm/util/matrix.hpp>
 #include <micm/util/types.hpp>
+#include <micm/util/uuid.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -78,7 +78,7 @@ namespace miam
           gas_molecular_weight_(gas_molecular_weight),
           solvent_molecular_weight_(solvent_molecular_weight),
           solvent_density_(solvent_density),
-          uuid_(GenerateUuid())
+          uuid_(micm::GenerateUuid())
     {
     }
 
