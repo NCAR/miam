@@ -33,7 +33,7 @@ endif()
 
 FetchContent_Declare(micm
     GIT_REPOSITORY https://github.com/NCAR/micm.git
-    GIT_TAG f6c26c18b92cf71eba690fe6a3e178f24ee46822
+    GIT_TAG 964-uuid-in-micm
     GIT_PROGRESS NOT ${FETCHCONTENT_QUIET}
     FIND_PACKAGE_ARGS NAMES micm
 )
