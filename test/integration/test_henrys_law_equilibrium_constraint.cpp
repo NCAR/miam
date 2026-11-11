@@ -95,10 +95,9 @@ TEST(HenrysLawEquilibriumConstraintIntegration, GasPhaseDriverSingleInstance)
   model.AddConstraints(hl_constraint, mass_cons);
 
   // Build DAE solver with MICM gas-phase reaction + MIAM constraints
-  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
-                    .SetSystem(system)
+                    .SetGasPhase(gas_phase)
                     .SetReactions({ gas_rxn })
                     .AddExternalModel(model)
                     .SetIgnoreUnusedSpecies(true)
@@ -233,10 +232,9 @@ TEST(HenrysLawEquilibriumConstraintIntegration, MultipleInstances)
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { small_drop, large_drop } };
   model.AddConstraints(hl_constraint, mass_cons);
 
-  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
-                    .SetSystem(system)
+                    .SetGasPhase(gas_phase)
                     .SetReactions({ gas_rxn })
                     .AddExternalModel(model)
                     .SetIgnoreUnusedSpecies(true)

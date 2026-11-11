@@ -252,8 +252,7 @@ namespace miam_test_cam_cloud_chemistry
     auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
     model.AddConstraints(hl_so2, mass_so2);
 
-    auto system = System(gas_phase);
-    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
+    auto solver = builder.SetGasPhase(gas_phase).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
 
     State state = solver.GetState();
     state.conditions_[0].temperature_ = T;
@@ -325,8 +324,7 @@ namespace miam_test_cam_cloud_chemistry
     auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
     model.AddConstraints(eq_kw, charge);
 
-    auto system = System(gas_phase);
-    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
+    auto solver = builder.SetGasPhase(gas_phase).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
 
     State state = solver.GetState();
     state.conditions_[0].temperature_ = T;
@@ -404,8 +402,7 @@ namespace miam_test_cam_cloud_chemistry
     auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
     model.AddConstraints(eq_kw, charge);
 
-    auto system = System(gas_phase);
-    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
+    auto solver = builder.SetGasPhase(gas_phase).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
 
     State state = solver.GetState();
     state.conditions_[0].temperature_ = T;
@@ -519,8 +516,7 @@ namespace miam_test_cam_cloud_chemistry
     auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
     model.AddConstraints(hl_so2, eq_kw, eq_ka1, mass_S, charge);
 
-    auto system = System(gas_phase);
-    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
+    auto solver = builder.SetGasPhase(gas_phase).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
 
     State state = solver.GetState();
     state.conditions_[0].temperature_ = T;
@@ -732,8 +728,7 @@ namespace miam_test_cam_cloud_chemistry
     auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
     model.AddConstraints(hl_so2, hl_h2o2, hl_o3, eq_kw, eq_ka1, eq_ka2, mass_S, mass_H2O2, mass_O3, charge);
 
-    auto system = System(gas_phase);
-    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
+    auto solver = builder.SetGasPhase(gas_phase).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
 
     State state = solver.GetState();
     state.conditions_[0].temperature_ = T;
@@ -956,8 +951,7 @@ namespace miam_test_cam_cloud_chemistry
     auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
     model.AddConstraints(hl_so2, hl_h2o2, hl_o3, eq_kw, eq_ka1, eq_ka2, mass_S, mass_H2O2, mass_O3, charge);
 
-    auto system = System(gas_phase);
-    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
+    auto solver = builder.SetGasPhase(gas_phase).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
 
     State state = solver.GetState();
     state.conditions_[0].temperature_ = T;
@@ -1187,8 +1181,7 @@ namespace miam_test_cam_cloud_chemistry
     model.AddProcesses(rxn1a, rxn1b, rxn2, rxn3);
     model.AddConstraints(hl_so2, hl_h2o2, hl_o3, eq_kw, eq_ka1, eq_ka2, mass_S, mass_H2O2, mass_O3, charge);
 
-    auto system = System(gas_phase);
-    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
+    auto solver = builder.SetGasPhase(gas_phase).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
 
     State state = solver.GetState();
     state.conditions_[0].temperature_ = T;
@@ -1485,8 +1478,7 @@ namespace miam_test_cam_cloud_chemistry
     model.AddProcesses(rxn1a, rxn1b, rxn2, rxn3);
     model.AddConstraints(hl_so2, hl_h2o2, hl_o3, eq_kw, eq_ka1, eq_ka2, mass_S, mass_H2O2, mass_O3, charge);
 
-    auto system = System(gas_phase);
-    auto solver = builder.SetSystem(system).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
+    auto solver = builder.SetGasPhase(gas_phase).AddExternalModel(model).SetIgnoreUnusedSpecies(true).Build();
 
     State state = solver.GetState();
     state.conditions_[0].temperature_ = T;

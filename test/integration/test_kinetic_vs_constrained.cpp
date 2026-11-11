@@ -50,9 +50,8 @@ namespace
     model.AddProcesses({ reversible });
 
     Phase gas_phase{ "GAS", {} };
-    auto system = System(gas_phase);
     auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                      .SetSystem(system)
+                      .SetGasPhase(gas_phase)
                       .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
                       .Build();
@@ -140,9 +139,8 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
     model.AddProcesses({ reversible });
 
     Phase gas_phase{ "GAS", {} };
-    auto system = System(gas_phase);
     auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                      .SetSystem(system)
+                      .SetGasPhase(gas_phase)
                       .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
                       .Build();
@@ -217,10 +215,9 @@ TEST(KineticVsConstrained, DissolvedReversibleVsEquilibriumConstraint)
     model.AddConstraints(equil, mass_cons);
 
     Phase gas_phase{ "GAS", {} };
-    auto system = System(gas_phase);
     auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                       RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
-                      .SetSystem(system)
+                      .SetGasPhase(gas_phase)
                       .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
                       .Build();
@@ -339,9 +336,8 @@ TEST(KineticVsConstrained, HenrysLawPhaseTransferVsEquilibriumConstraint)
     auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model.AddProcesses({ transfer });
 
-    auto system = System(gas_phase);
     auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                      .SetSystem(system)
+                      .SetGasPhase(gas_phase)
                       .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
                       .Build();
@@ -395,7 +391,6 @@ TEST(KineticVsConstrained, HenrysLawPhaseTransferVsEquilibriumConstraint)
     auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model.AddConstraints(hl_constraint, mass_cons);
 
-    auto system = System(gas_phase);
 
     // Need at least one differential variable — A_g and A_aq are both algebraic.
     // Create a dummy inert species to have a differential equation.
@@ -404,11 +399,10 @@ TEST(KineticVsConstrained, HenrysLawPhaseTransferVsEquilibriumConstraint)
     // not converge well. Let's add a dummy inert gas species that doesn't participate.
     auto Inert = Species{ "Inert" };
     Phase gas_phase_with_inert{ "GAS", { { A_g }, { Inert } } };
-    auto system_with_inert = System(gas_phase_with_inert);
 
     auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                       RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
-                      .SetSystem(system_with_inert)
+                      .SetGasPhase(gas_phase_with_inert)
                       .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
                       .Build();

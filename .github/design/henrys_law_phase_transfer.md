@@ -2105,8 +2105,8 @@ and the provider can short-circuit.
      etc.) already receives unified state index maps covering all gas-phase and
      external model variables.
    - The gas species index (e.g., `"CO2"`) is in the unified
-     `state_variable_indices` map because MICM's `SetSystem()` registers both gas
-     and external model variables.
+     `state_variable_indices` map because MICM's solver builder registers both gas
+     (`SetGasPhase()`) and external model (`AddExternalModel()`) variables.
    - All routing complexity is inside `Model`, invisible to MICM.
 
    **Implications for implementation steps:**

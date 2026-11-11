@@ -58,9 +58,8 @@ TEST(ReadmeExample, HenrysLawPhaseTransfer)
   cloud_model.AddProcesses({ co2_transfer });
 
   // Build solver (MICM Rosenbrock)
-  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                    .SetSystem(system)
+                    .SetGasPhase(gas_phase)
                     .AddExternalModel(cloud_model)
                     .SetIgnoreUnusedSpecies(true)
                     .Build();

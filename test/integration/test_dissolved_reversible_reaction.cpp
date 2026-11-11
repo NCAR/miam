@@ -78,9 +78,8 @@ TEST(DissolvedReversibleReactionIntegration, SimpleAtoB)
   double B_eq = A0 * K_eq / (1.0 + K_eq);
 
   // Build solver
-  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                    .SetSystem(system)
+                    .SetGasPhase(gas_phase)
                     .AddExternalModel(model)
                     .SetIgnoreUnusedSpecies(true)
                     .Build();
@@ -201,9 +200,8 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsReactant)
   double C_eq = C0 - B_eq;
 
   // Build solver
-  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                    .SetSystem(system)
+                    .SetGasPhase(gas_phase)
                     .AddExternalModel(model)
                     .SetIgnoreUnusedSpecies(true)
                     .Build();
@@ -336,9 +334,8 @@ TEST(DissolvedReversibleReactionIntegration, SolventAsProduct)
   double B_eq = k_forward / (k_forward + k_reverse) * A0;  // ≈ 0
 
   // Build solver
-  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                    .SetSystem(system)
+                    .SetGasPhase(gas_phase)
                     .AddExternalModel(model)
                     .SetIgnoreUnusedSpecies(true)
                     .Build();
@@ -465,9 +462,8 @@ TEST(DissolvedReversibleReactionIntegration, MultiPhaseInstances)
   double tau_large = 1.0 / k_total_large;        // 6.67 s
 
   // Build solver
-  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                    .SetSystem(system)
+                    .SetGasPhase(gas_phase)
                     .AddExternalModel(model)
                     .SetIgnoreUnusedSpecies(true)
                     .Build();

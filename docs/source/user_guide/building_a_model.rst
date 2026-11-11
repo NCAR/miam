@@ -58,19 +58,18 @@ Register Models as external model systems when building the solver:
 
 .. code-block:: c++
 
-   auto system = System(gas_phase, cloud_model, aerosol_model);
-
    auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
        RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-       .SetSystem(system)
+       .SetGasPhase(gas_phase)
        .AddExternalModel(cloud_model)
        .AddExternalModel(aerosol_model)
        .SetIgnoreUnusedSpecies(true)
        .Build();
 
-``SetSystem`` registers all state variables (gas-phase species from MICM
-plus MIAM's species and aerosol parameters). ``AddExternalModel``
-registers each Model's forcing and Jacobian functions with the solver.
+``SetGasPhase`` registers the gas-phase species with MICM; it is optional and
+can be omitted when no gas-phase species are needed. ``AddExternalModel``
+registers each Model's state variables (MIAM's species and aerosol parameters)
+along with its forcing and Jacobian functions.
 
 State Initialization
 ====================
