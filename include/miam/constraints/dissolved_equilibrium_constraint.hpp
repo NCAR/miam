@@ -53,8 +53,8 @@ namespace miam
     micm::Species solvent_;                     ///< Solvent species
     micm::Phase phase_;                         ///< Phase in which the reaction occurs
     std::string uuid_;                          ///< Unique identifier
-    double solvent_floor_{ 1.0e-20 };  ///< Floor \f$\delta\f$ [mol m⁻³] added to \f$[S]\f$ in \f$([S]+\delta)^n\f$
-                                       ///< denominator to prevent singularity as \f$[S] \to 0\f$
+    double solvent_floor_{ 1.0e-20 };           ///< Floor \f$\delta\f$ [mol m⁻³] added to \f$[S]\f$ in \f$([S]+\delta)^n\f$
+                                                ///< denominator to prevent singularity as \f$[S] \to 0\f$
 
     DissolvedEquilibriumConstraint() = delete;
 

@@ -188,7 +188,6 @@ TEST(MIAM, ApiExample)
   aerosol_model.AddProcesses(reactions);
   cloud_model.AddProcesses(reactions);
 
-
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
                     .SetGasPhase(gas_phase)
                     .AddExternalModel(aerosol_model)

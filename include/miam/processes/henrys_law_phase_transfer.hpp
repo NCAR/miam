@@ -374,63 +374,64 @@ namespace miam
         const double molar_volume = inst.molar_volume;
         const CondensationRateProvider cond = inst.cond_rate_provider;
 
-        inner_functions.push_back(DenseMatrixPolicy::Function(
-            MICM_LAMBDA(
-                const typename DenseMatrixPolicy::ConstViewType& params_view,
-                const typename DenseMatrixPolicy::ConstViewType& state_view,
-                const typename DenseMatrixPolicy::ViewType& forcing_view,
-                const typename DenseMatrixPolicy::ConstViewType& r_eff_view,
-                const typename DenseMatrixPolicy::ConstViewType& N_view,
-                const typename DenseMatrixPolicy::ConstViewType& phi_view) {
-              auto net = forcing_view.GetRowVariable();
+        inner_functions.push_back(
+            DenseMatrixPolicy::Function(
+                MICM_LAMBDA(
+                    const typename DenseMatrixPolicy::ConstViewType& params_view,
+                    const typename DenseMatrixPolicy::ConstViewType& state_view,
+                    const typename DenseMatrixPolicy::ViewType& forcing_view,
+                    const typename DenseMatrixPolicy::ConstViewType& r_eff_view,
+                    const typename DenseMatrixPolicy::ConstViewType& N_view,
+                    const typename DenseMatrixPolicy::ConstViewType& phi_view) {
+                  auto net = forcing_view.GetRowVariable();
 
-              // Compute net transfer rate
-              forcing_view.ForEachRowStrict(
-                  [molar_volume, cond](
-                      const micm::Real& r_eff,
-                      const micm::Real& N,
-                      const micm::Real& phi,
-                      const micm::Real& hlc,
-                      const micm::Real& T,
-                      const micm::Real& gas,
-                      const micm::Real& aq,
-                      const micm::Real& solvent,
-                      micm::Real& net_val)
-                  {
-                    const micm::Real kc = cond.ComputeValue(r_eff, N, T);
-                    const micm::Real kc_eff = phi * kc;
-                    const micm::Real ke_eff = kc_eff / (hlc * micm::constants::GAS_CONSTANT * T);
-                    const micm::Real fv = solvent * molar_volume;
-                    net_val = kc_eff * gas - ke_eff * aq / fv;
-                  },
-                  r_eff_view.GetConstColumnView(0),
-                  N_view.GetConstColumnView(0),
-                  phi_view.GetConstColumnView(0),
-                  params_view.GetConstColumnView(hlc_idx),
-                  params_view.GetConstColumnView(temp_idx),
-                  state_view.GetConstColumnView(gas_idx),
-                  state_view.GetConstColumnView(aq_idx),
-                  state_view.GetConstColumnView(solvent_idx),
-                  net);
+                  // Compute net transfer rate
+                  forcing_view.ForEachRowStrict(
+                      [molar_volume, cond](
+                          const micm::Real& r_eff,
+                          const micm::Real& N,
+                          const micm::Real& phi,
+                          const micm::Real& hlc,
+                          const micm::Real& T,
+                          const micm::Real& gas,
+                          const micm::Real& aq,
+                          const micm::Real& solvent,
+                          micm::Real& net_val)
+                      {
+                        const micm::Real kc = cond.ComputeValue(r_eff, N, T);
+                        const micm::Real kc_eff = phi * kc;
+                        const micm::Real ke_eff = kc_eff / (hlc * micm::constants::GAS_CONSTANT * T);
+                        const micm::Real fv = solvent * molar_volume;
+                        net_val = kc_eff * gas - ke_eff * aq / fv;
+                      },
+                      r_eff_view.GetConstColumnView(0),
+                      N_view.GetConstColumnView(0),
+                      phi_view.GetConstColumnView(0),
+                      params_view.GetConstColumnView(hlc_idx),
+                      params_view.GetConstColumnView(temp_idx),
+                      state_view.GetConstColumnView(gas_idx),
+                      state_view.GetConstColumnView(aq_idx),
+                      state_view.GetConstColumnView(solvent_idx),
+                      net);
 
-              // Apply to gas forcing (subtract)
-              forcing_view.ForEachRowStrict(
-                  [](const micm::Real& net_val, micm::Real& f_gas) { f_gas -= net_val; },
-                  net,
-                  forcing_view.GetColumnView(gas_idx));
+                  // Apply to gas forcing (subtract)
+                  forcing_view.ForEachRowStrict(
+                      [](const micm::Real& net_val, micm::Real& f_gas) { f_gas -= net_val; },
+                      net,
+                      forcing_view.GetColumnView(gas_idx));
 
-              // Apply to aq forcing (add)
-              forcing_view.ForEachRowStrict(
-                  [](const micm::Real& net_val, micm::Real& f_aq) { f_aq += net_val; },
-                  net,
-                  forcing_view.GetColumnView(aq_idx));
-            },
-            dummy_state_parameters,
-            dummy_state_variables,
-            dummy_state_variables,
-            dummy_buf,
-            dummy_buf,
-            dummy_buf));
+                  // Apply to aq forcing (add)
+                  forcing_view.ForEachRowStrict(
+                      [](const micm::Real& net_val, micm::Real& f_aq) { f_aq += net_val; },
+                      net,
+                      forcing_view.GetColumnView(aq_idx));
+                },
+                dummy_state_parameters,
+                dummy_state_variables,
+                dummy_state_variables,
+                dummy_buf,
+                dummy_buf,
+                dummy_buf));
       }
 
       return [instances = std::move(instances), inner_functions = std::move(inner_functions)](
@@ -592,204 +593,205 @@ namespace miam
         const std::size_t n_phi_deps = inst.n_phi_deps;
         auto jac_id_view = inst.jac_indices.GetView();
 
-        inner_jac_functions.push_back(SparseMatrixPolicy::Function(
-            MICM_LAMBDA(
-                const typename DenseMatrixPolicy::ConstViewType& params_view,
-                const typename DenseMatrixPolicy::ConstViewType& state_view,
-                const typename SparseMatrixPolicy::ViewType& jac_view,
-                const typename DenseMatrixPolicy::ConstViewType& r_eff_view,
-                const typename DenseMatrixPolicy::ConstViewType& N_view,
-                const typename DenseMatrixPolicy::ConstViewType& phi_view,
-                const typename DenseMatrixPolicy::ConstViewType& r_eff_partials_view,
-                const typename DenseMatrixPolicy::ConstViewType& N_partials_view,
-                const typename DenseMatrixPolicy::ConstViewType& phi_partials_view) {
-              std::size_t idx = 0;
+        inner_jac_functions.push_back(
+            SparseMatrixPolicy::Function(
+                MICM_LAMBDA(
+                    const typename DenseMatrixPolicy::ConstViewType& params_view,
+                    const typename DenseMatrixPolicy::ConstViewType& state_view,
+                    const typename SparseMatrixPolicy::ViewType& jac_view,
+                    const typename DenseMatrixPolicy::ConstViewType& r_eff_view,
+                    const typename DenseMatrixPolicy::ConstViewType& N_view,
+                    const typename DenseMatrixPolicy::ConstViewType& phi_view,
+                    const typename DenseMatrixPolicy::ConstViewType& r_eff_partials_view,
+                    const typename DenseMatrixPolicy::ConstViewType& N_partials_view,
+                    const typename DenseMatrixPolicy::ConstViewType& phi_partials_view) {
+                  std::size_t idx = 0;
 
-              // Pre-extract BlockViews sequentially to avoid unspecified argument evaluation order
-              auto bv_gg = jac_view.GetBlockView(jac_id_view[idx++]);
-              auto bv_ga = jac_view.GetBlockView(jac_id_view[idx++]);
-              auto bv_gs = jac_view.GetBlockView(jac_id_view[idx++]);
-              auto bv_ag = jac_view.GetBlockView(jac_id_view[idx++]);
-              auto bv_aa = jac_view.GetBlockView(jac_id_view[idx++]);
-              auto bv_as = jac_view.GetBlockView(jac_id_view[idx++]);
+                  // Pre-extract BlockViews sequentially to avoid unspecified argument evaluation order
+                  auto bv_gg = jac_view.GetBlockView(jac_id_view[idx++]);
+                  auto bv_ga = jac_view.GetBlockView(jac_id_view[idx++]);
+                  auto bv_gs = jac_view.GetBlockView(jac_id_view[idx++]);
+                  auto bv_ag = jac_view.GetBlockView(jac_id_view[idx++]);
+                  auto bv_aa = jac_view.GetBlockView(jac_id_view[idx++]);
+                  auto bv_as = jac_view.GetBlockView(jac_id_view[idx++]);
 
-              // Read inputs and compute direct Jacobian entries
-              jac_view.ForEachBlockStrict(
-                  [molar_volume, cond](
-                      const micm::Real& r_eff,
-                      const micm::Real& N,
-                      const micm::Real& phi,
-                      const micm::Real& hlc,
-                      const micm::Real& T,
-                      const micm::Real& gas,
-                      const micm::Real& aq,
-                      const micm::Real& solvent,
-                      micm::Real& j_gg,
-                      micm::Real& j_ga,
-                      micm::Real& j_gs,
-                      micm::Real& j_ag,
-                      micm::Real& j_aa,
-                      micm::Real& j_as)
+                  // Read inputs and compute direct Jacobian entries
+                  jac_view.ForEachBlockStrict(
+                      [molar_volume, cond](
+                          const micm::Real& r_eff,
+                          const micm::Real& N,
+                          const micm::Real& phi,
+                          const micm::Real& hlc,
+                          const micm::Real& T,
+                          const micm::Real& gas,
+                          const micm::Real& aq,
+                          const micm::Real& solvent,
+                          micm::Real& j_gg,
+                          micm::Real& j_ga,
+                          micm::Real& j_gs,
+                          micm::Real& j_ag,
+                          micm::Real& j_aa,
+                          micm::Real& j_as)
+                      {
+                        const micm::Real kc = cond.ComputeValue(r_eff, N, T);
+                        const micm::Real ke = kc / (hlc * micm::constants::GAS_CONSTANT * T);
+                        const micm::Real fv = solvent * molar_volume;
+                        // -J[gas, gas] = +φ · k_cond
+                        j_gg += phi * kc;
+                        // -J[gas, aq] = -φ · k_evap / f_v
+                        j_ga -= phi * ke / fv;
+                        // -J[gas, solvent] = +φ · k_evap · [aq] / (f_v · [solvent])
+                        j_gs += phi * ke * aq / (fv * solvent);
+                        // -J[aq, gas] = -φ · k_cond
+                        j_ag -= phi * kc;
+                        // -J[aq, aq] = +φ · k_evap / f_v
+                        j_aa += phi * ke / fv;
+                        // -J[aq, solvent] = -φ · k_evap · [aq] / (f_v · [solvent])
+                        j_as -= phi * ke * aq / (fv * solvent);
+                      },
+                      r_eff_view.GetConstColumnView(0),
+                      N_view.GetConstColumnView(0),
+                      phi_view.GetConstColumnView(0),
+                      params_view.GetConstColumnView(hlc_idx),
+                      params_view.GetConstColumnView(temp_idx),
+                      state_view.GetConstColumnView(gas_idx),
+                      state_view.GetConstColumnView(aq_idx),
+                      state_view.GetConstColumnView(solvent_idx),
+                      bv_gg,
+                      bv_ga,
+                      bv_gs,
+                      bv_ag,
+                      bv_aa,
+                      bv_as);
+
+                  // Indirect entries through r_eff
+                  for (std::size_t k = 0; k < n_r_eff_deps; ++k)
                   {
-                    const micm::Real kc = cond.ComputeValue(r_eff, N, T);
-                    const micm::Real ke = kc / (hlc * micm::constants::GAS_CONSTANT * T);
-                    const micm::Real fv = solvent * molar_volume;
-                    // -J[gas, gas] = +φ · k_cond
-                    j_gg += phi * kc;
-                    // -J[gas, aq] = -φ · k_evap / f_v
-                    j_ga -= phi * ke / fv;
-                    // -J[gas, solvent] = +φ · k_evap · [aq] / (f_v · [solvent])
-                    j_gs += phi * ke * aq / (fv * solvent);
-                    // -J[aq, gas] = -φ · k_cond
-                    j_ag -= phi * kc;
-                    // -J[aq, aq] = +φ · k_evap / f_v
-                    j_aa += phi * ke / fv;
-                    // -J[aq, solvent] = -φ · k_evap · [aq] / (f_v · [solvent])
-                    j_as -= phi * ke * aq / (fv * solvent);
-                  },
-                  r_eff_view.GetConstColumnView(0),
-                  N_view.GetConstColumnView(0),
-                  phi_view.GetConstColumnView(0),
-                  params_view.GetConstColumnView(hlc_idx),
-                  params_view.GetConstColumnView(temp_idx),
-                  state_view.GetConstColumnView(gas_idx),
-                  state_view.GetConstColumnView(aq_idx),
-                  state_view.GetConstColumnView(solvent_idx),
-                  bv_gg,
-                  bv_ga,
-                  bv_gs,
-                  bv_ag,
-                  bv_aa,
-                  bv_as);
+                    auto bv_r_gas = jac_view.GetBlockView(jac_id_view[idx++]);
+                    auto bv_r_aq = jac_view.GetBlockView(jac_id_view[idx++]);
+                    jac_view.ForEachBlockStrict(
+                        [molar_volume, cond](
+                            const micm::Real& r_eff,
+                            const micm::Real& N,
+                            const micm::Real& phi,
+                            const micm::Real& hlc,
+                            const micm::Real& T,
+                            const micm::Real& gas,
+                            const micm::Real& aq,
+                            const micm::Real& solvent,
+                            const micm::Real& dr_dvar,
+                            micm::Real& j_gas,
+                            micm::Real& j_aq)
+                        {
+                          micm::Real kc_dummy, dk_dr, dk_dN_unused;
+                          cond.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr, dk_dN_unused);
+                          const micm::Real dke_dr = dk_dr / (hlc * micm::constants::GAS_CONSTANT * T);
+                          const micm::Real fv = solvent * molar_volume;
+                          const micm::Real eff = phi * (dk_dr * dr_dvar * gas - dke_dr * dr_dvar * aq / fv);
+                          j_gas += eff;
+                          j_aq -= eff;
+                        },
+                        r_eff_view.GetConstColumnView(0),
+                        N_view.GetConstColumnView(0),
+                        phi_view.GetConstColumnView(0),
+                        params_view.GetConstColumnView(hlc_idx),
+                        params_view.GetConstColumnView(temp_idx),
+                        state_view.GetConstColumnView(gas_idx),
+                        state_view.GetConstColumnView(aq_idx),
+                        state_view.GetConstColumnView(solvent_idx),
+                        r_eff_partials_view.GetConstColumnView(k),
+                        bv_r_gas,
+                        bv_r_aq);
+                  }
 
-              // Indirect entries through r_eff
-              for (std::size_t k = 0; k < n_r_eff_deps; ++k)
-              {
-                auto bv_r_gas = jac_view.GetBlockView(jac_id_view[idx++]);
-                auto bv_r_aq = jac_view.GetBlockView(jac_id_view[idx++]);
-                jac_view.ForEachBlockStrict(
-                    [molar_volume, cond](
-                        const micm::Real& r_eff,
-                        const micm::Real& N,
-                        const micm::Real& phi,
-                        const micm::Real& hlc,
-                        const micm::Real& T,
-                        const micm::Real& gas,
-                        const micm::Real& aq,
-                        const micm::Real& solvent,
-                        const micm::Real& dr_dvar,
-                        micm::Real& j_gas,
-                        micm::Real& j_aq)
-                    {
-                      micm::Real kc_dummy, dk_dr, dk_dN_unused;
-                      cond.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr, dk_dN_unused);
-                      const micm::Real dke_dr = dk_dr / (hlc * micm::constants::GAS_CONSTANT * T);
-                      const micm::Real fv = solvent * molar_volume;
-                      const micm::Real eff = phi * (dk_dr * dr_dvar * gas - dke_dr * dr_dvar * aq / fv);
-                      j_gas += eff;
-                      j_aq -= eff;
-                    },
-                    r_eff_view.GetConstColumnView(0),
-                    N_view.GetConstColumnView(0),
-                    phi_view.GetConstColumnView(0),
-                    params_view.GetConstColumnView(hlc_idx),
-                    params_view.GetConstColumnView(temp_idx),
-                    state_view.GetConstColumnView(gas_idx),
-                    state_view.GetConstColumnView(aq_idx),
-                    state_view.GetConstColumnView(solvent_idx),
-                    r_eff_partials_view.GetConstColumnView(k),
-                    bv_r_gas,
-                    bv_r_aq);
-              }
+                  // Indirect entries through N
+                  for (std::size_t k = 0; k < n_N_deps; ++k)
+                  {
+                    auto bv_N_gas = jac_view.GetBlockView(jac_id_view[idx++]);
+                    auto bv_N_aq = jac_view.GetBlockView(jac_id_view[idx++]);
+                    jac_view.ForEachBlockStrict(
+                        [molar_volume, cond](
+                            const micm::Real& r_eff,
+                            const micm::Real& N,
+                            const micm::Real& phi,
+                            const micm::Real& hlc,
+                            const micm::Real& T,
+                            const micm::Real& gas,
+                            const micm::Real& aq,
+                            const micm::Real& solvent,
+                            const micm::Real& dN_dvar,
+                            micm::Real& j_gas,
+                            micm::Real& j_aq)
+                        {
+                          micm::Real kc_dummy, dk_dr_unused, dk_dN;
+                          cond.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr_unused, dk_dN);
+                          const micm::Real dke_dN = dk_dN / (hlc * micm::constants::GAS_CONSTANT * T);
+                          const micm::Real fv = solvent * molar_volume;
+                          const micm::Real eff = phi * (dk_dN * dN_dvar * gas - dke_dN * dN_dvar * aq / fv);
+                          j_gas += eff;
+                          j_aq -= eff;
+                        },
+                        r_eff_view.GetConstColumnView(0),
+                        N_view.GetConstColumnView(0),
+                        phi_view.GetConstColumnView(0),
+                        params_view.GetConstColumnView(hlc_idx),
+                        params_view.GetConstColumnView(temp_idx),
+                        state_view.GetConstColumnView(gas_idx),
+                        state_view.GetConstColumnView(aq_idx),
+                        state_view.GetConstColumnView(solvent_idx),
+                        N_partials_view.GetConstColumnView(k),
+                        bv_N_gas,
+                        bv_N_aq);
+                  }
 
-              // Indirect entries through N
-              for (std::size_t k = 0; k < n_N_deps; ++k)
-              {
-                auto bv_N_gas = jac_view.GetBlockView(jac_id_view[idx++]);
-                auto bv_N_aq = jac_view.GetBlockView(jac_id_view[idx++]);
-                jac_view.ForEachBlockStrict(
-                    [molar_volume, cond](
-                        const micm::Real& r_eff,
-                        const micm::Real& N,
-                        const micm::Real& phi,
-                        const micm::Real& hlc,
-                        const micm::Real& T,
-                        const micm::Real& gas,
-                        const micm::Real& aq,
-                        const micm::Real& solvent,
-                        const micm::Real& dN_dvar,
-                        micm::Real& j_gas,
-                        micm::Real& j_aq)
-                    {
-                      micm::Real kc_dummy, dk_dr_unused, dk_dN;
-                      cond.ComputeValueAndDerivatives(r_eff, N, T, kc_dummy, dk_dr_unused, dk_dN);
-                      const micm::Real dke_dN = dk_dN / (hlc * micm::constants::GAS_CONSTANT * T);
-                      const micm::Real fv = solvent * molar_volume;
-                      const micm::Real eff = phi * (dk_dN * dN_dvar * gas - dke_dN * dN_dvar * aq / fv);
-                      j_gas += eff;
-                      j_aq -= eff;
-                    },
-                    r_eff_view.GetConstColumnView(0),
-                    N_view.GetConstColumnView(0),
-                    phi_view.GetConstColumnView(0),
-                    params_view.GetConstColumnView(hlc_idx),
-                    params_view.GetConstColumnView(temp_idx),
-                    state_view.GetConstColumnView(gas_idx),
-                    state_view.GetConstColumnView(aq_idx),
-                    state_view.GetConstColumnView(solvent_idx),
-                    N_partials_view.GetConstColumnView(k),
-                    bv_N_gas,
-                    bv_N_aq);
-              }
-
-              // Indirect entries through φ_p (negated: MICM solver expects -J)
-              for (std::size_t k = 0; k < n_phi_deps; ++k)
-              {
-                auto bv_phi_gas = jac_view.GetBlockView(jac_id_view[idx++]);
-                auto bv_phi_aq = jac_view.GetBlockView(jac_id_view[idx++]);
-                jac_view.ForEachBlockStrict(
-                    [molar_volume, cond](
-                        const micm::Real& r_eff,
-                        const micm::Real& N,
-                        const micm::Real& phi,
-                        const micm::Real& hlc,
-                        const micm::Real& T,
-                        const micm::Real& gas,
-                        const micm::Real& aq,
-                        const micm::Real& solvent,
-                        const micm::Real& dphi_dvar,
-                        micm::Real& j_gas,
-                        micm::Real& j_aq)
-                    {
-                      const micm::Real kc = cond.ComputeValue(r_eff, N, T);
-                      const micm::Real ke = kc / (hlc * micm::constants::GAS_CONSTANT * T);
-                      const micm::Real fv = solvent * molar_volume;
-                      const micm::Real R = kc * gas - ke * aq / fv;
-                      j_gas += R * dphi_dvar;
-                      j_aq -= R * dphi_dvar;
-                    },
-                    r_eff_view.GetConstColumnView(0),
-                    N_view.GetConstColumnView(0),
-                    phi_view.GetConstColumnView(0),
-                    params_view.GetConstColumnView(hlc_idx),
-                    params_view.GetConstColumnView(temp_idx),
-                    state_view.GetConstColumnView(gas_idx),
-                    state_view.GetConstColumnView(aq_idx),
-                    state_view.GetConstColumnView(solvent_idx),
-                    phi_partials_view.GetConstColumnView(k),
-                    bv_phi_gas,
-                    bv_phi_aq);
-              }
-            },
-            dummy_state_parameters,
-            dummy_state_variables,
-            jacobian,
-            dummy_buf,
-            dummy_buf,
-            dummy_buf,
-            dummy_partials,
-            dummy_partials,
-            dummy_partials));
+                  // Indirect entries through φ_p (negated: MICM solver expects -J)
+                  for (std::size_t k = 0; k < n_phi_deps; ++k)
+                  {
+                    auto bv_phi_gas = jac_view.GetBlockView(jac_id_view[idx++]);
+                    auto bv_phi_aq = jac_view.GetBlockView(jac_id_view[idx++]);
+                    jac_view.ForEachBlockStrict(
+                        [molar_volume, cond](
+                            const micm::Real& r_eff,
+                            const micm::Real& N,
+                            const micm::Real& phi,
+                            const micm::Real& hlc,
+                            const micm::Real& T,
+                            const micm::Real& gas,
+                            const micm::Real& aq,
+                            const micm::Real& solvent,
+                            const micm::Real& dphi_dvar,
+                            micm::Real& j_gas,
+                            micm::Real& j_aq)
+                        {
+                          const micm::Real kc = cond.ComputeValue(r_eff, N, T);
+                          const micm::Real ke = kc / (hlc * micm::constants::GAS_CONSTANT * T);
+                          const micm::Real fv = solvent * molar_volume;
+                          const micm::Real R = kc * gas - ke * aq / fv;
+                          j_gas += R * dphi_dvar;
+                          j_aq -= R * dphi_dvar;
+                        },
+                        r_eff_view.GetConstColumnView(0),
+                        N_view.GetConstColumnView(0),
+                        phi_view.GetConstColumnView(0),
+                        params_view.GetConstColumnView(hlc_idx),
+                        params_view.GetConstColumnView(temp_idx),
+                        state_view.GetConstColumnView(gas_idx),
+                        state_view.GetConstColumnView(aq_idx),
+                        state_view.GetConstColumnView(solvent_idx),
+                        phi_partials_view.GetConstColumnView(k),
+                        bv_phi_gas,
+                        bv_phi_aq);
+                  }
+                },
+                dummy_state_parameters,
+                dummy_state_variables,
+                jacobian,
+                dummy_buf,
+                dummy_buf,
+                dummy_buf,
+                dummy_partials,
+                dummy_partials,
+                dummy_partials));
       }
 
       return [storage, inner_jac_functions = std::move(inner_jac_functions)](

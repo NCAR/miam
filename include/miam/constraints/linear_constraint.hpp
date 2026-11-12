@@ -198,7 +198,7 @@ namespace miam
         const std::map<std::string, std::set<std::string>>& /*phase_prefixes*/,
         const std::unordered_map<std::string, std::size_t>& /*state_parameter_indices*/) const
     {
-      return [](const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&) {};
+      return [](const typename DenseMatrixPolicy::template VectorType<micm::Conditions>&, DenseMatrixPolicy&) { };
     }
 
     /// @brief Returns state parameter names for constraints that update via conditions
@@ -228,7 +228,7 @@ namespace miam
         const std::unordered_map<std::string, std::size_t>& state_variable_indices) const
     {
       if (!diagnose_from_state_)
-        return [](const DenseMatrixPolicy&, DenseMatrixPolicy&) {};
+        return [](const DenseMatrixPolicy&, DenseMatrixPolicy&) { };
 
       FlatTerms flat = GetFlatTerms(phase_prefixes, state_parameter_indices, state_variable_indices);
       using Vector = typename DenseMatrixPolicy::template VectorType<std::size_t>;
