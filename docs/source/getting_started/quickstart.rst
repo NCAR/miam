@@ -64,10 +64,9 @@ Save the following as ``cloud_chem.cpp``:
      cloud_model.AddProcesses({ co2_transfer });
 
      // Build solver (MICM Rosenbrock)
-     auto system = System(gas_phase, cloud_model);
      auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                        RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                       .SetSystem(system)
+                       .SetGasPhase(gas_phase)
                        .AddExternalModel(cloud_model)
                        .SetIgnoreUnusedSpecies(true)
                        .Build();

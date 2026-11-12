@@ -89,9 +89,8 @@ TEST(HenrysLawPhaseTransferIntegration, SimpleOneInstance)
   auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
   model.AddProcesses({ transfer });
 
-  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                    .SetSystem(system)
+                    .SetGasPhase(gas_phase)
                     .AddExternalModel(model)
                     .SetIgnoreUnusedSpecies(true)
                     .Build();
@@ -225,9 +224,8 @@ TEST(HenrysLawPhaseTransferIntegration, MultiInstanceMassConservation)
   auto model = Model{ .name_ = "CLOUD", .representations_ = { small_drop, large_drop } };
   model.AddProcesses({ transfer });
 
-  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                    .SetSystem(system)
+                    .SetGasPhase(gas_phase)
                     .AddExternalModel(model)
                     .SetIgnoreUnusedSpecies(true)
                     .Build();
@@ -345,9 +343,8 @@ TEST(HenrysLawPhaseTransferIntegration, TemperatureDependentHLC)
     auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model.AddProcesses({ transfer });
 
-    auto system = System(gas_phase);
     auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                      .SetSystem(system)
+                      .SetGasPhase(gas_phase)
                       .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
                       .Build();
@@ -450,9 +447,8 @@ TEST(HenrysLawPhaseTransferIntegration, SmallVsLargeParticleRate)
     auto model = Model{ .name_ = "TEST", .representations_ = { droplet } };
     model.AddProcesses({ transfer });
 
-    auto system = System(gas_phase);
     auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(RosenbrockSolverParameters::ThreeStageRosenbrockParameters())
-                      .SetSystem(system)
+                      .SetGasPhase(gas_phase)
                       .AddExternalModel(model)
                       .SetIgnoreUnusedSpecies(true)
                       .Build();

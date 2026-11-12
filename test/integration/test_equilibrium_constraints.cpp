@@ -89,10 +89,9 @@ TEST(EquilibriumConstraintsIntegration, DissolvedEquilibriumWithKineticDriver)
 
   // Build DAE solver
   Phase gas_phase{ "GAS", {} };
-  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
-                    .SetSystem(system)
+                    .SetGasPhase(gas_phase)
                     .AddExternalModel(model)
                     .SetIgnoreUnusedSpecies(true)
                     .Build();
@@ -223,10 +222,9 @@ TEST(EquilibriumConstraintsIntegration, PerInstanceEquilibrium)
   model.AddConstraints(equil);
 
   Phase gas_phase{ "GAS", {} };
-  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
-                    .SetSystem(system)
+                    .SetGasPhase(gas_phase)
                     .AddExternalModel(model)
                     .SetIgnoreUnusedSpecies(true)
                     .Build();
@@ -354,10 +352,9 @@ TEST(EquilibriumConstraintsIntegration, InconsistentInitialConditions)
   model.AddConstraints(equil, mass_cons);
 
   Phase gas_phase{ "GAS", {} };
-  auto system = System(gas_phase);
   auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(
                     RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters())
-                    .SetSystem(system)
+                    .SetGasPhase(gas_phase)
                     .AddExternalModel(model)
                     .SetIgnoreUnusedSpecies(true)
                     .Build();
