@@ -391,7 +391,6 @@ TEST(KineticVsConstrained, HenrysLawPhaseTransferVsEquilibriumConstraint)
     auto model = Model{ .name_ = "AEROSOL", .representations_ = { droplet } };
     model.AddConstraints(hl_constraint, mass_cons);
 
-
     // Need at least one differential variable — A_g and A_aq are both algebraic.
     // Create a dummy inert species to have a differential equation.
     // Actually, A_g is algebraic (mass conservation) and A_aq is algebraic (HL constraint).

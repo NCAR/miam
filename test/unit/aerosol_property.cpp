@@ -97,11 +97,11 @@ TEST(AerosolPropertyProvider, StorableInProviderMap)
 
   AerosolPropertyProvider<MatrixPolicy> provider1;
   provider1.dependent_variable_indices = { 0 };
-  provider1.ComputeValue = [](const MatrixPolicy&, const MatrixPolicy&, MatrixPolicy&) {};
+  provider1.ComputeValue = [](const MatrixPolicy&, const MatrixPolicy&, MatrixPolicy&) { };
 
   AerosolPropertyProvider<MatrixPolicy> provider2;
   provider2.dependent_variable_indices = { 1, 2 };
-  provider2.ComputeValue = [](const MatrixPolicy&, const MatrixPolicy&, MatrixPolicy&) {};
+  provider2.ComputeValue = [](const MatrixPolicy&, const MatrixPolicy&, MatrixPolicy&) { };
 
   ProviderMap providers;
   providers["DROPLET"].push_back(provider1);
