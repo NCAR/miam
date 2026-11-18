@@ -1442,6 +1442,53 @@ TEST(DissolvedReaction, JacobianFDCappedBimolecular)
   CheckFiniteDifferenceJacobian(reaction, phase_prefixes, spi, svi, params, vars);
 }
 
+// The capped rate goes to zero as a reactant goes to zero, and is zero for zero or negative reactants.
+// A reactant below ~1e-31 used to overflow the soft-min and turn the cap off.
+TEST(DissolvedReaction, ForcingFunctionCappedVanishingReactant)
+{
+  using VM = micm::VectorMatrix<double>;
+
+  auto a = micm::Species{ "A" };
+  auto b = micm::Species{ "B" };
+  auto c = micm::Species{ "C" };
+  auto s = micm::Species{ "S" };
+  auto phase = micm::Phase{ "AQUEOUS", { { a }, { b }, { c }, { s } } };
+
+  double k = 1.0e8;
+  double t_half = 1.0;
+
+  DissolvedReaction reaction{ { k }, { a, b }, { c }, s, phase, 1.0e-20, t_half };
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("DROP");
+  std::string k_param = phase.name_ + "." + reaction.uuid_ + ".k";
+  std::unordered_map<std::string, std::size_t> spi{ { k_param, 0 } };
+  std::unordered_map<std::string, std::size_t> svi{
+    { "DROP.AQUEOUS.A", 0 }, { "DROP.AQUEOUS.B", 1 }, { "DROP.AQUEOUS.C", 2 }, { "DROP.AQUEOUS.S", 3 }
+  };
+
+  auto ff = reaction.ForcingFunction<VM>(phase_prefixes, spi, svi);
+
+  VM params(1, 1);
+  params[0][0] = k;
+
+  for (double A : { 1.0e-40, 0.0, -1.0e-20 })
+  {
+    VM vars(1, 4);
+    vars[0][0] = A;
+    vars[0][1] = 1.0e-6;
+    vars[0][2] = 0.0;
+    vars[0][3] = 1.0e-8;
+    VM forcing(1, 4, 0.0);
+    ff(params, vars, forcing);
+
+    double r_max = A > 0.0 ? A / t_half : 0.0;
+    EXPECT_TRUE(std::isfinite(forcing[0][2])) << "A = " << A;
+    EXPECT_NEAR(forcing[0][2], r_max, r_max * 1e-6) << "A = " << A;
+    EXPECT_NEAR(forcing[0][0], -r_max, r_max * 1e-6) << "A = " << A;
+  }
+}
+
 // Verify the builder's ArrheniusRateConstantParameters overload produces a rate function
 // numerically equal to micm::CalculateArrhenius for the same parameters.
 TEST(DissolvedReaction, BuilderArrheniusRateConstantOverload)

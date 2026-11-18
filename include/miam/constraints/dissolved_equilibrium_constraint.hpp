@@ -38,11 +38,12 @@ namespace miam
   ///          products, and \f$ S \f$ is the solvent. One of the product species is designated
   ///          as the algebraic variable whose ODE row is replaced by this constraint.
   ///
-  ///          To prevent singularity as \f$[S] \to 0\f$, the solvent denominator is
-  ///          regularized by a small floor \f$\delta\f$ (\c solvent_floor_):
+  ///          The residual is divided by \f$[S]\f$, so that it still determines the algebraic
+  ///          species when \f$[S] = 0\f$. The solvent denominator is regularized by a small
+  ///          floor \f$\delta\f$ (\c solvent_floor_):
   ///
-  ///          \f$ G = K_{eq} \frac{[S]\prod[R_i]}{([S]+\delta)^{n_r}}
-  ///                       - \frac{[S]\prod[P_j]}{([S]+\delta)^{n_p}} = 0 \f$
+  ///          \f$ G = K_{eq} \frac{\prod[R_i]}{([S]+\delta)^{n_r}}
+  ///                       - \frac{\prod[P_j]}{([S]+\delta)^{n_p}} = 0 \f$
   class DissolvedEquilibriumConstraint
   {
    public:
@@ -230,7 +231,7 @@ namespace miam
     }
 
     /// @brief Returns a function that computes constraint residuals G(y) = 0
-    /// @details G = K_eq * [S] * prod([R_i]) / ([S]+δ)^n_r - [S] * prod([P_j]) / ([S]+δ)^n_p
+    /// @details G = K_eq * prod([R_i]) / ([S]+δ)^n_r - prod([P_j]) / ([S]+δ)^n_p
     template<typename DenseMatrixPolicy>
     std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ConstraintResidualFunction(
         const std::map<std::string, std::set<std::string>>& phase_prefixes,
@@ -290,7 +291,7 @@ namespace miam
               const std::size_t alg_idx = algebraic_view[i_phase];
               const std::size_t solvent_idx = solvent_view[i_phase];
 
-              // Forward part: K_eq * prod([R_i]) * [S] / ([S]+eps)^n_r
+              // Forward part: K_eq * prod([R_i]) / ([S]+eps)^n_r
               auto forward = residual_view.GetRowVariable();
               residual_view.ForEachRowStrict(
                   [](const micm::Real& keq, micm::Real& fwd) { fwd = keq; },
@@ -303,11 +304,11 @@ namespace miam
                     forward);
               residual_view.ForEachRowStrict(
                   [n_reactants, eps](const micm::Real& sol, micm::Real& fwd)
-                  { fwd *= sol / std::pow(sol + eps, static_cast<micm::Real>(n_reactants)); },
+                  { fwd *= 1.0 / std::pow(sol + eps, static_cast<micm::Real>(n_reactants)); },
                   state_view.GetConstColumnView(solvent_idx),
                   forward);
 
-              // Reverse part: prod([P_j]) * [S] / ([S]+eps)^n_p
+              // Reverse part: prod([P_j]) / ([S]+eps)^n_p
               auto reverse = residual_view.GetRowVariable();
               residual_view.ForEachRowStrict([](micm::Real& rev) { rev = 1.0; }, reverse);
               for (std::size_t p = 0; p < n_products; ++p)
@@ -317,7 +318,7 @@ namespace miam
                     reverse);
               residual_view.ForEachRowStrict(
                   [n_products, eps](const micm::Real& sol, micm::Real& rev)
-                  { rev *= sol / std::pow(sol + eps, static_cast<micm::Real>(n_products)); },
+                  { rev *= 1.0 / std::pow(sol + eps, static_cast<micm::Real>(n_products)); },
                   state_view.GetConstColumnView(solvent_idx),
                   reverse);
 
@@ -426,7 +427,7 @@ namespace miam
               const std::size_t r_base = i_phase * n_reactants;
               const std::size_t p_base = i_phase * n_products;
 
-              // dG/d[R_i] = K_eq * prod([R_j], j!=i) * [S] / ([S]+eps)^n_r
+              // dG/d[R_i] = K_eq * prod([R_j], j!=i) / ([S]+eps)^n_r
               for (std::size_t r = 0; r < n_reactants; ++r)
               {
                 auto deriv = jac_view.GetBlockVariable();
@@ -440,14 +441,14 @@ namespace miam
                         deriv);
                 jac_view.ForEachBlockStrict(
                     [n_reactants, eps](const micm::Real& sol, micm::Real& d)
-                    { d *= sol / std::pow(sol + eps, static_cast<micm::Real>(n_reactants)); },
+                    { d *= 1.0 / std::pow(sol + eps, static_cast<micm::Real>(n_reactants)); },
                     state_view.GetConstColumnView(solvent_idx),
                     deriv);
                 auto bv = jac_view.GetBlockView(reactant_jac_view[r_base + r]);
                 jac_view.ForEachBlockStrict([](const micm::Real& d, micm::Real& j) { j -= d; }, deriv, bv);
               }
 
-              // dG/d[P_j] = -prod([P_k], k!=j) * [S] / ([S]+eps)^n_p
+              // dG/d[P_j] = -prod([P_k], k!=j) / ([S]+eps)^n_p
               for (std::size_t p = 0; p < n_products; ++p)
               {
                 auto deriv = jac_view.GetBlockVariable();
@@ -460,7 +461,7 @@ namespace miam
                         deriv);
                 jac_view.ForEachBlockStrict(
                     [n_products, eps](const micm::Real& sol, micm::Real& d)
-                    { d *= sol / std::pow(sol + eps, static_cast<micm::Real>(n_products)); },
+                    { d *= 1.0 / std::pow(sol + eps, static_cast<micm::Real>(n_products)); },
                     state_view.GetConstColumnView(solvent_idx),
                     deriv);
                 auto bv = jac_view.GetBlockView(product_jac_view[p_base + p]);
@@ -482,7 +483,7 @@ namespace miam
                 jac_view.ForEachBlockStrict(
                     [n_reactants, eps](const micm::Real& sol, micm::Real& fwd)
                     {
-                      fwd *= (eps + (1.0 - static_cast<micm::Real>(n_reactants)) * sol) /
+                      fwd *= -static_cast<micm::Real>(n_reactants) /
                              std::pow(sol + eps, static_cast<micm::Real>(n_reactants) + 1.0);
                     },
                     state_view.GetConstColumnView(solvent_idx),
@@ -498,7 +499,7 @@ namespace miam
                 jac_view.ForEachBlockStrict(
                     [n_products, eps](const micm::Real& sol, micm::Real& rev)
                     {
-                      rev *= (eps + (1.0 - static_cast<micm::Real>(n_products)) * sol) /
+                      rev *= -static_cast<micm::Real>(n_products) /
                              std::pow(sol + eps, static_cast<micm::Real>(n_products) + 1.0);
                     },
                     state_view.GetConstColumnView(solvent_idx),
