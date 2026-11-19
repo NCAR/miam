@@ -179,7 +179,7 @@ TEST(DissolvedEquilibriumConstraint, NonZeroJacobianElements)
 
 TEST(DissolvedEquilibriumConstraint, ResidualSimpleAB)
 {
-  // G = K_eq * [A] - [B] = 0
+  // G = (K_eq * [A] - [B]) / [S] = 0
   double K_eq = 10.0;
   auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
@@ -217,16 +217,15 @@ TEST(DissolvedEquilibriumConstraint, ResidualSimpleAB)
   DMP residual{ 1, 3, 0.0 };
   residual_fn(state_variables, state_params, residual);
 
-  // G = K_eq * [A] / [S]^(1-1) - [B] / [S]^(1-1) = K_eq * [A] - [B]
-  // = 10.0 * 1.0 - 5.0 = 5.0
-  EXPECT_NEAR(residual[0][1], 5.0, 1e-6);  // residual written to algebraic species (B) row
+  // G = K_eq * [A] / [S] - [B] / [S] = (10.0 * 1.0 - 5.0) / 300.0
+  EXPECT_NEAR(residual[0][1], 5.0 / 300.0, 1e-6);  // residual written to algebraic species (B) row
 }
 
 // ── ConstraintResidualFunction — A + B <-> C with solvent ──
 
 TEST(DissolvedEquilibriumConstraint, ResidualMultiReactant)
 {
-  // G = K_eq * [A]*[B] / [S] - [C] / [S]^0 = K_eq * [A]*[B]/[S] - [C]
+  // G = K_eq * [A]*[B] / [S]^2 - [C] / [S]
   double K_eq = 2.0;
   auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
@@ -265,9 +264,8 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultiReactant)
   DMP residual{ 1, 4, 0.0 };
   residual_fn(state_variables, state_params, residual);
 
-  // G = K_eq * [A]*[B]/[S]^(2-1) - [C]/[S]^(1-1)
-  // = 2.0 * 3.0*4.0/300.0 - 20.0 = 0.08 - 20.0 = -19.92
-  double expected = K_eq * 3.0 * 4.0 / 300.0 - 20.0;
+  // G = K_eq * [A]*[B]/[S]^2 - [C]/[S]
+  double expected = K_eq * 3.0 * 4.0 / (300.0 * 300.0) - 20.0 / 300.0;
   EXPECT_NEAR(residual[0][2], expected, 1e-6);
 }
 
@@ -318,10 +316,10 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleInstances)
   DMP residual{ 1, 6, 0.0 };
   residual_fn(state_variables, state_params, residual);
 
-  // LARGE: G = 5.0 * 2.0 - 8.0 = 2.0
-  EXPECT_NEAR(residual[0][1], 2.0, 1.0e-12);
-  // SMALL: G = 5.0 * 1.0 - 3.0 = 2.0
-  EXPECT_NEAR(residual[0][4], 2.0, 1.0e-12);
+  // LARGE: G = (5.0 * 2.0 - 8.0) / 300.0
+  EXPECT_NEAR(residual[0][1], 2.0 / 300.0, 1.0e-12);
+  // SMALL: G = (5.0 * 1.0 - 3.0) / 300.0
+  EXPECT_NEAR(residual[0][4], 2.0 / 300.0, 1.0e-12);
 }
 
 // ── ConstraintResidualFunction — multiple grid cells ──
@@ -367,18 +365,18 @@ TEST(DissolvedEquilibriumConstraint, ResidualMultipleCells)
   DMP residual{ 2, 3, 0.0 };
   residual_fn(state_variables, state_params, residual);
 
-  // cell 0: G = 4*1 - 2 = 2
-  EXPECT_NEAR(residual[0][1], 2.0, 1.0e-12);
-  // cell 1: G = 4*3 - 10 = 2
-  EXPECT_NEAR(residual[1][1], 2.0, 1.0e-12);
+  // cell 0: G = (4*1 - 2) / 300
+  EXPECT_NEAR(residual[0][1], 2.0 / 300.0, 1.0e-12);
+  // cell 1: G = (4*3 - 10) / 300
+  EXPECT_NEAR(residual[1][1], 2.0 / 300.0, 1.0e-12);
 }
 
 // ── ConstraintJacobianFunction — simple A <-> B ──
 
 TEST(DissolvedEquilibriumConstraint, JacobianSimpleAB)
 {
-  // G = K_eq * [A] - [B]
-  // dG/dA = K_eq, dG/dB = -1
+  // G = (K_eq * [A] - [B]) / [S]
+  // dG/dA = K_eq / [S], dG/dB = -1 / [S]
   double K_eq = 10.0;
   auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
@@ -427,17 +425,17 @@ TEST(DissolvedEquilibriumConstraint, JacobianSimpleAB)
   jac_fn(state_variables, state_params, jacobian);
 
   // MICM convention: jac -= dG/dy
-  // jac[B,A] -= K_eq → jac[B,A] = -K_eq = -10.0
-  EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 1, 0)], -K_eq, 1e-6);
+  // jac[B,A] -= K_eq / [S]
+  EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 1, 0)], -K_eq / 300.0, 1e-6);
   // jac[B,B] -= (-1) → jac[B,B] = +1.0
-  EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 1, 1)], 1.0, 1e-6);
+  EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 1, 1)], 1.0 / 300.0, 1e-6);
 }
 
 // ── ConstraintJacobianFunction — A + B <-> C with solvent ──
 
 TEST(DissolvedEquilibriumConstraint, JacobianMultiReactant)
 {
-  // G = K_eq * [A]*[B]/[S] - [C]
+  // G = K_eq * [A]*[B]/[S]^2 - [C]/[S]
   double K_eq = 2.0;
   auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
@@ -484,20 +482,19 @@ TEST(DissolvedEquilibriumConstraint, JacobianMultiReactant)
     v = 0.0;
   jac_fn(state_variables, state_params, jacobian);
 
-  // dG/dA = K_eq * [B] / [S] = 2.0 * 4.0 / 300.0
-  double dG_dA = K_eq * 4.0 / 300.0;
+  // dG/dA = K_eq * [B] / [S]^2
+  double dG_dA = K_eq * 4.0 / (300.0 * 300.0);
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 2, 0)], -dG_dA, 1.0e-12);
 
-  // dG/dB = K_eq * [A] / [S] = 2.0 * 3.0 / 300.0
-  double dG_dB = K_eq * 3.0 / 300.0;
+  // dG/dB = K_eq * [A] / [S]^2
+  double dG_dB = K_eq * 3.0 / (300.0 * 300.0);
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 2, 1)], -dG_dB, 1.0e-12);
 
-  // dG/dC = -1
-  EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 2, 2)], 1.0, 1.0e-12);
+  // dG/dC = -1 / [S]
+  EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 2, 2)], 1.0 / 300.0, 1.0e-12);
 
-  // dG/dS = K_eq * [A] * [B] * (1 - 2) / [S]^2 - [C] * (1 - 1) / [S]^1
-  //       = -K_eq * [A] * [B] / [S]^2
-  double dG_dS = -K_eq * 3.0 * 4.0 / (300.0 * 300.0);
+  // dG/dS = -2 * K_eq * [A] * [B] / [S]^3 + [C] / [S]^2
+  double dG_dS = -2.0 * K_eq * 3.0 * 4.0 / (300.0 * 300.0 * 300.0) + 20.0 / (300.0 * 300.0);
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 2, 3)], -dG_dS, 1.0e-12);
 }
 
@@ -633,7 +630,8 @@ namespace
       const std::unordered_map<std::string, std::size_t>& param_idx,
       const std::unordered_map<std::string, std::size_t>& state_indices,
       const DMP& state_variables,
-      const DMP& state_params)
+      const DMP& state_params,
+      double atol = 1e-5)
   {
     const std::size_t num_blocks = state_variables.NumRows();
     const std::size_t num_vars = state_indices.size();
@@ -645,7 +643,7 @@ namespace
 
     // Build FD Jacobian — bind state_params into the residual callable
     // Use perturbation=1e-7 to match old central-difference scheme: h = max(|x|, 1) * 1e-7.
-    // Use atol=rtol=1e-5 to match old rel_tol tolerance.
+    // Use rtol=1e-5 to match old rel_tol tolerance. Increase atol when the residual terms are large.
     auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_idx, state_indices);
     auto fd_jac = micm::FiniteDifferenceJacobian<DMP>(
         [&](const DMP& vars, DMP& out)
@@ -658,7 +656,7 @@ namespace
         1e-7);
 
     // Compare analytical vs FD
-    auto cmp = micm::CompareJacobianToFiniteDifference(jacobian, fd_jac, num_vars, 1e-5, 1e-5);
+    auto cmp = micm::CompareJacobianToFiniteDifference(jacobian, fd_jac, num_vars, atol, 1e-5);
     EXPECT_TRUE(cmp.passed_) << "FD mismatch: block=" << cmp.worst_block_ << " row=" << cmp.worst_row_
                              << " col=" << cmp.worst_col_ << " +J(analytical)=" << cmp.worst_analytical_
                              << " +J(fd)=" << cmp.worst_fd_;
@@ -861,11 +859,11 @@ TEST(DissolvedEquilibriumConstraint, ResidualAndJacobianFDMultipleCells)
   DMP residual{ nc, 3, 0.0 };
   rf(sv, sp, residual);
 
-  // G = K_eq * [A] - [B]
-  EXPECT_NEAR(residual[0][1], 5.0 * 1.0 - 5.0, 1e-6);
-  EXPECT_NEAR(residual[1][1], 5.0 * 0.5 - 2.5, 1e-6);
-  EXPECT_NEAR(residual[2][1], 5.0 * 10.0 - 40.0, 1e-6);
-  EXPECT_NEAR(residual[3][1], 5.0 * 0.01 - 0.1, 1e-6);
+  // G = (K_eq * [A] - [B]) / [S]
+  EXPECT_NEAR(residual[0][1], (5.0 * 1.0 - 5.0) / 300.0, 1e-6);
+  EXPECT_NEAR(residual[1][1], (5.0 * 0.5 - 2.5) / 0.017, 1e-6);
+  EXPECT_NEAR(residual[2][1], (5.0 * 10.0 - 40.0) / 100.0, 1e-6);
+  EXPECT_NEAR(residual[3][1], (5.0 * 0.01 - 0.1) / 0.017, 1e-6);
 
   // FD Jacobian check
   CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
@@ -933,17 +931,17 @@ TEST(DissolvedEquilibriumConstraint, MultiInstanceMultiCellFD)
   sv[2][6] = 4.0;
   sv[2][7] = 0.017;
 
-  // Residuals: G = K_eq * [A]*[B]/[S] - [C]
+  // Residuals: G = K_eq * [A]*[B]/[S]^2 - [C]/[S]
   auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, pi, si);
   DMP residual{ nc, 8, 0.0 };
   rf(sv, sp, residual);
 
-  // LARGE instance, cell 0: G = 3.0 * 0.5*0.3/0.017 - 0.1
-  double expected_L0 = 3.0 * 0.5 * 0.3 / 0.017 - 0.1;
+  // LARGE instance, cell 0: G = 3.0 * 0.5*0.3/0.017^2 - 0.1/0.017
+  double expected_L0 = 3.0 * 0.5 * 0.3 / (0.017 * 0.017) - 0.1 / 0.017;
   EXPECT_NEAR(residual[0][2], expected_L0, 1e-6);
 
-  // SMALL instance, cell 0: G = 3.0 * 0.2*0.1/0.017 - 0.05
-  double expected_S0 = 3.0 * 0.2 * 0.1 / 0.017 - 0.05;
+  // SMALL instance, cell 0: G = 3.0 * 0.2*0.1/0.017^2 - 0.05/0.017
+  double expected_S0 = 3.0 * 0.2 * 0.1 / (0.017 * 0.017) - 0.05 / 0.017;
   EXPECT_NEAR(residual[0][6], expected_S0, 1e-6);
 
   // Non-algebraic rows untouched
@@ -1156,9 +1154,9 @@ TEST(DissolvedEquilibriumConstraint, TemperatureDependentKeqFD)
   DMP residual{ nc, 3, 0.0 };
   rf(sv, sp, residual);
 
-  EXPECT_NEAR(residual[0][1], Calculate(keq, conditions[0]) * 1.0 - 2.0, 1e-6);
-  EXPECT_NEAR(residual[1][1], Calculate(keq, conditions[1]) * 0.5 - 1.0, 1e-6);
-  EXPECT_NEAR(residual[2][1], Calculate(keq, conditions[2]) * 2.0 - 5.0, 1e-6);
+  EXPECT_NEAR(residual[0][1], (Calculate(keq, conditions[0]) * 1.0 - 2.0) / 0.017, 1e-6);
+  EXPECT_NEAR(residual[1][1], (Calculate(keq, conditions[1]) * 0.5 - 1.0) / 0.017, 1e-6);
+  EXPECT_NEAR(residual[2][1], (Calculate(keq, conditions[2]) * 2.0 - 5.0) / 0.017, 1e-6);
 
   // FD check
   CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
@@ -1260,8 +1258,8 @@ TEST(DissolvedEquilibriumConstraint, CopiedConstraintProducesSameResults)
 
 TEST(DissolvedEquilibriumConstraint, SolventJacobianMultiReactant)
 {
-  // G = K_eq * [A]*[B] / [S] - [C]
-  // dG/dS = K_eq * [A]*[B] * (-1) / [S]^2 = -K_eq*[A]*[B]/[S]^2
+  // G = K_eq * [A]*[B] / [S]^2 - [C] / [S]
+  // dG/dS = -2 * K_eq*[A]*[B]/[S]^3 + [C]/[S]^2
   double K_eq = 2.0;
   auto keq = EquilibriumConstant{ .A_ = K_eq };
   auto constraint = DissolvedEquilibriumConstraintBuilder()
@@ -1296,9 +1294,8 @@ TEST(DissolvedEquilibriumConstraint, SolventJacobianMultiReactant)
 
   jac_fn(sv, sp, jacobian);
 
-  // dG/dS = K_eq * [A]*[B] * (1-2)/[S]^2 - [C] * (1-1)/[S]^1
-  //       = -K_eq * [A]*[B] / [S]^2 - 0
-  double dG_dS = -K_eq * 3.0 * 4.0 / (300.0 * 300.0);
+  // dG/dS = -2 * K_eq * [A]*[B] / [S]^3 + [C] / [S]^2
+  double dG_dS = -2.0 * K_eq * 3.0 * 4.0 / (300.0 * 300.0 * 300.0) + 20.0 / (300.0 * 300.0);
   // jac -= dG/dS
   EXPECT_NEAR(jacobian.AsVector()[jacobian.VectorIndex(0, 2, 3)], -dG_dS, 1e-12);
 
@@ -1485,7 +1482,7 @@ namespace
       state_variables[c][2] = 300.0;                             // [H2O]
     }
 
-    // Residual check: G = K_eq * [A] - [B]
+    // Residual check: G = (K_eq * [A] - [B]) / [S]
     VDM residual{ num_cells, 3, 0.0 };
     auto rf = constraint.template ConstraintResidualFunction<VDM>(phase_prefixes, pi, si);
     rf(state_variables, state_params, residual);
@@ -1494,7 +1491,7 @@ namespace
     {
       double A_val = state_variables[c][0];
       double B_val = state_variables[c][1];
-      double expected = K_eq_val * A_val - B_val;
+      double expected = (K_eq_val * A_val - B_val) / 300.0;
       EXPECT_NEAR(residual[c][1], expected, std::max(std::abs(expected) * 1e-10, 1e-20)) << "Residual mismatch cell " << c;
     }
 
@@ -1576,7 +1573,7 @@ TEST(DissolvedEquilibriumConstraint, VectorMatrix_L4_4cells)
 
 TEST(DissolvedEquilibriumConstraint, ResidualZeroReactant)
 {
-  // G = K_eq*[A]/[H2O]^0 - [B]/[H2O]^0 (n_r=1, n_p=1, same powers)
+  // G = K_eq*[A]/[H2O] - [B]/[H2O] (n_r=1, n_p=1)
   // With [A]=0: G = -[B] (forward term vanishes, algebraic variable forced to 0)
   double K_eq = 10.0;
   auto keq = EquilibriumConstant{ .A_ = K_eq };
@@ -1609,8 +1606,61 @@ TEST(DissolvedEquilibriumConstraint, ResidualZeroReactant)
   DMP residual{ 1, 3, 0.0 };
   rf(sv, sp, residual);
 
-  // G = K_eq * [A] / [H2O]^0 - [B] / [H2O]^0 = K_eq*0 - [B] = -0.5
-  EXPECT_NEAR(residual[0][1], -0.5, 1.0e-12);
+  // G = K_eq * [A] / [H2O] - [B] / [H2O] = -0.5 / 55.0
+  EXPECT_NEAR(residual[0][1], -0.5 / 55.0, 1.0e-12);
+}
+
+// At zero solvent the constraint must still determine the algebraic species
+TEST(DissolvedEquilibriumConstraint, ZeroSolventKeepsAlgebraicDerivative)
+{
+  double K_eq = 10.0;
+  double eps = 1.0e-20;
+  auto keq = EquilibriumConstant{ .A_ = K_eq };
+  auto constraint = DissolvedEquilibriumConstraintBuilder()
+                        .SetPhase(aqueous_phase)
+                        .SetReactants({ A })
+                        .SetProducts({ B })
+                        .SetAlgebraicSpecies(B)
+                        .SetSolvent(h2o)
+                        .SetEquilibriumConstant(keq)
+                        .Build();
+
+  std::map<std::string, std::set<std::string>> phase_prefixes;
+  phase_prefixes["AQUEOUS"].insert("SMALL");
+
+  std::unordered_map<std::string, std::size_t> si;
+  si["SMALL.AQUEOUS.A"] = 0;
+  si["SMALL.AQUEOUS.B"] = 1;
+  si["SMALL.AQUEOUS.H2O"] = 2;
+
+  using SMP = micm::SparseMatrix<double, micm::SparseMatrixStandardOrderingCompressedSparseRow>;
+  auto pi = BuildParamIndices(constraint, phase_prefixes);
+  auto sp = InitKeq(constraint, phase_prefixes, pi, 1);
+
+  DMP sv{ 1, 3, 0.0 };
+  sv[0][0] = 2.0;  // [A]
+  sv[0][1] = 0.5;  // [B]
+  sv[0][2] = 0.0;  // [H2O]
+
+  auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, pi, si);
+  DMP residual{ 1, 3, 0.0 };
+  rf(sv, sp, residual);
+  EXPECT_NEAR(residual[0][1] * eps, K_eq * 2.0 - 0.5, 1.0e-12);
+
+  auto nz_elements = constraint.NonZeroConstraintJacobianElements(phase_prefixes, si);
+  auto builder = SMP::Create(3).SetNumberOfBlocks(1);
+  for (const auto& [row, col] : nz_elements)
+    builder.WithElement(row, col);
+  SMP jacobian(builder);
+  auto jac_fn = constraint.ConstraintJacobianFunction<DMP, SMP>(phase_prefixes, pi, si, jacobian);
+  for (auto& v : jacobian.AsVector())
+    v = 0.0;
+  jac_fn(sv, sp, jacobian);
+
+  // jac[B,B] -= dG/dB = -1 / eps
+  double d_alg = jacobian.AsVector()[jacobian.VectorIndex(0, 1, 1)];
+  EXPECT_TRUE(std::isfinite(d_alg));
+  EXPECT_NEAR(d_alg * eps, 1.0, 1.0e-12);
 }
 
 TEST(DissolvedEquilibriumConstraint, ResidualExtremeKeq)
@@ -1731,6 +1781,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDExtremeKeq)
     sv[0][1] = K_eq_val;  // at equilibrium
     sv[0][2] = 0.017;     // small [H2O] to stress-test
 
-    CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
+    // At equilibrium, dG/d[H2O] is zero, but the FD roundoff scales with the residual terms (K_eq / [H2O])
+    CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp, 1e-5 * std::max(1.0, K_eq_val / 0.017));
   }
 }

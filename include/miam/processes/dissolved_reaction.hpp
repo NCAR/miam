@@ -573,7 +573,8 @@ namespace miam
 
    public:
     /// @brief Returns the capped forcing function (called only when min_halflife_ > 0)
-    /// @details The soft-min uses the exponent p = 10 and the floor 1e-300. NVCC requires this function to be public.
+    /// @details The soft-min uses the exponent p = 10. The capped rate is zero when a reactant is zero or
+    ///          negative. NVCC requires this function to be public.
     template<typename DenseMatrixPolicy>
     std::function<void(const DenseMatrixPolicy&, const DenseMatrixPolicy&, DenseMatrixPolicy&)> ForcingFunctionCapped(
         const StateVariableIndices& variable_indices,
@@ -617,31 +618,51 @@ namespace miam
                     rate);
               }
 
-              // 2. Compute soft-min of reactant concentrations: C_min = (sum R_i^{-p})^{-1/p}
+              // 2. Compute soft-min of reactant concentrations without overflow:
+              //    C_min = m * (sum (m/R_i)^p)^{-1/p}, where m = min(R_i)
+              auto min_reactant = forcing_view.GetRowVariable();
               forcing_view.ForEachRowStrict(
-                  [](const micm::Real& R, micm::Real& acc)
-                  { acc = std::pow(R > micm::Real(1.0e-300) ? R : micm::Real(1.0e-300), -micm::Real(10.0)); },
+                  [](const micm::Real& R, micm::Real& m) { m = R; },
                   state_view.GetConstColumnView(reactant_view[phase * num_reactants + 0]),
-                  accum);
+                  min_reactant);
               for (std::size_t r = 1; r < num_reactants; ++r)
               {
                 forcing_view.ForEachRowStrict(
-                    [](const micm::Real& R, micm::Real& acc)
-                    { acc += std::pow(R > micm::Real(1.0e-300) ? R : micm::Real(1.0e-300), -micm::Real(10.0)); },
+                    [](const micm::Real& R, micm::Real& m) { m = R < m ? R : m; },
                     state_view.GetConstColumnView(reactant_view[phase * num_reactants + r]),
+                    min_reactant);
+              }
+              forcing_view.ForEachRowStrict([](micm::Real& acc) { acc = 0.0; }, accum);
+              for (std::size_t r = 0; r < num_reactants; ++r)
+              {
+                forcing_view.ForEachRowStrict(
+                    [](const micm::Real& R, const micm::Real& m, micm::Real& acc)
+                    {
+                      if (m > micm::Real(0.0))
+                        acc += std::pow(m / R, micm::Real(10.0));
+                    },
+                    state_view.GetConstColumnView(reactant_view[phase * num_reactants + r]),
+                    min_reactant,
                     accum);
               }
 
-              // 3. Apply tanh cap: rate = r_max * tanh(rate / r_max), where r_max = C_min / t_half
+              // 3. Apply tanh cap: rate = r_max * tanh(rate / r_max), where r_max = C_min / t_half.
+              //    The cap goes to zero as a reactant goes to zero, so the rate is zero when m <= 0.
               forcing_view.ForEachRowStrict(
-                  [t_half](micm::Real& out, micm::Real& acc)
+                  [t_half](micm::Real& out, const micm::Real& m, const micm::Real& acc)
                   {
-                    const micm::Real c_min = std::pow(acc, -1.0 / micm::Real(10.0));
-                    const micm::Real r_max = c_min / t_half;
-                    if (r_max > micm::Real(1.0e-300))
+                    if (m > micm::Real(0.0))
+                    {
+                      const micm::Real r_max = m * std::pow(acc, -1.0 / micm::Real(10.0)) / t_half;
                       out = r_max * std::tanh(out / r_max);
+                    }
+                    else
+                    {
+                      out = 0.0;
+                    }
                   },
                   rate,
+                  min_reactant,
                   accum);
 
               // 4. Apply capped rate to forcing
@@ -733,41 +754,63 @@ namespace miam
                     raw_rate);
               }
 
-              // Step B: Compute soft-min sum into c_min_var
+              // Step B: Compute the minimum reactant m and the soft-min sum sum (m/R_i)^p into c_min_var
+              auto min_var = jac_view.GetBlockVariable();
               jac_view.ForEachBlockStrict(
-                  [](const micm::Real& R, micm::Real& cm)
-                  { cm = std::pow(R > micm::Real(1.0e-300) ? R : micm::Real(1.0e-300), -micm::Real(10.0)); },
+                  [](const micm::Real& R, micm::Real& m) { m = R; },
                   state_view.GetConstColumnView(reactant_view[phase * num_reactants + 0]),
-                  c_min_var);
+                  min_var);
               for (std::size_t r = 1; r < num_reactants; ++r)
               {
                 jac_view.ForEachBlockStrict(
-                    [](const micm::Real& R, micm::Real& cm)
-                    { cm += std::pow(R > micm::Real(1.0e-300) ? R : micm::Real(1.0e-300), -micm::Real(10.0)); },
+                    [](const micm::Real& R, micm::Real& m) { m = R < m ? R : m; },
                     state_view.GetConstColumnView(reactant_view[phase * num_reactants + r]),
+                    min_var);
+              }
+              jac_view.ForEachBlockStrict([](micm::Real& cm) { cm = 0.0; }, c_min_var);
+              for (std::size_t r = 0; r < num_reactants; ++r)
+              {
+                jac_view.ForEachBlockStrict(
+                    [](const micm::Real& R, const micm::Real& m, micm::Real& cm)
+                    {
+                      if (m > micm::Real(0.0))
+                        cm += std::pow(m / R, micm::Real(10.0));
+                    },
+                    state_view.GetConstColumnView(reactant_view[phase * num_reactants + r]),
+                    min_var,
                     c_min_var);
               }
 
-              // Step C: Convert to C_min, compute sech^2(u) and correction factor
+              // Step C: Convert to C_min, compute sech^2(u) and correction factor.
+              //         For m <= 0, use the limit m -> 0+, where u -> infinity.
               jac_view.ForEachBlockStrict(
-                  [t_half](micm::Real& rr, micm::Real& cm, micm::Real& s2, micm::Real& cr)
+                  [t_half](micm::Real& rr, const micm::Real& m, micm::Real& cm, micm::Real& s2, micm::Real& cr)
                   {
-                    cm = std::pow(cm, -1.0 / micm::Real(10.0));
-                    const micm::Real r_max = cm / t_half;
-                    if (r_max > micm::Real(1.0e-300))
+                    if (m > micm::Real(0.0))
                     {
-                      const micm::Real u = rr / r_max;
-                      const micm::Real th = std::tanh(u);
-                      s2 = 1.0 - th * th;  // sech^2(u)
-                      cr = (th - u * s2) / t_half;
+                      cm = m * std::pow(cm, -1.0 / micm::Real(10.0));
+                      const micm::Real u = rr / (cm / t_half);
+                      if (std::abs(u) > micm::Real(20.0))
+                      {
+                        s2 = 0.0;
+                        cr = std::copysign(micm::Real(1.0), u) / t_half;
+                      }
+                      else
+                      {
+                        const micm::Real th = std::tanh(u);
+                        s2 = 1.0 - th * th;  // sech^2(u)
+                        cr = (th - u * s2) / t_half;
+                      }
                     }
                     else
                     {
-                      s2 = 1.0;  // sech^2(0) = 1: uncapped Jacobian
-                      cr = 0.0;  // no cap correction when r_max ≈ 0
+                      cm = 0.0;
+                      s2 = 0.0;
+                      cr = 1.0 / t_half;
                     }
                   },
                   raw_rate,
+                  min_var,
                   c_min_var,
                   sech2_var,
                   corr_var);
@@ -797,15 +840,18 @@ namespace miam
                     [](const micm::Real& s2,
                        const micm::Real& cr,
                        const micm::Real& cm,
+                       const micm::Real& m,
                        const micm::Real& R,
                        micm::Real& partial)
                     {
-                      const micm::Real ratio = cm / (R > micm::Real(1.0e-300) ? R : micm::Real(1.0e-300));
+                      // dC_min/dR_j = (C_min/R_j)^{p+1}; in the m -> 0+ limit it is 1 for the minimum reactant
+                      const micm::Real ratio = m > micm::Real(0.0) ? cm / R : (R <= m ? micm::Real(1.0) : micm::Real(0.0));
                       partial = s2 * partial + cr * std::pow(ratio, micm::Real(10.0) + 1.0);
                     },
                     sech2_var,
                     corr_var,
                     c_min_var,
+                    min_var,
                     state_view.GetConstColumnView(reactant_view[phase * num_reactants + i_ind]),
                     d_rate_d_ind);
 

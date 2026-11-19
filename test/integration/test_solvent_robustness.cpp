@@ -26,6 +26,7 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -159,7 +160,7 @@ namespace
   };
 
   // Build the full model (HLCs + equilibria + mass/charge + kinetics)
-  auto BuildCamCloudModel(CamCloudSpecies& sp)
+  auto BuildCamCloudModel(CamCloudSpecies& sp, double min_halflife = 0.0)
   {
     auto cloud = UniformSection{ "CLOUD", { sp.aqueous_phase } };
 
@@ -265,6 +266,7 @@ namespace
                      .SetProducts({ sp.so4mm })
                      .SetSolvent(sp.h2o)
                      .SetRateConstant(VantHoffParameters{ c_H2O_M * 2.4e6, 4430.0, 298.0 })
+                     .SetMinHalflife(min_halflife)
                      .Build();
 
     auto rxn2 = DissolvedReactionBuilder()
@@ -273,6 +275,7 @@ namespace
                     .SetProducts({ sp.so4mm, sp.hp })
                     .SetSolvent(sp.h2o)
                     .SetRateConstant(VantHoffParameters{ c_H2O_M * 3.75e5, 5530.0, 298.0 })
+                    .SetMinHalflife(min_halflife)
                     .Build();
 
     auto rxn3 = DissolvedReactionBuilder()
@@ -281,6 +284,7 @@ namespace
                     .SetProducts({ sp.so4mm })
                     .SetSolvent(sp.h2o)
                     .SetRateConstant(VantHoffParameters{ c_H2O_M * 1.59e9, 5280.0, 298.0 })
+                    .SetMinHalflife(min_halflife)
                     .Build();
 
     auto model = Model{ .name_ = "CLOUD", .representations_ = { cloud } };
@@ -1099,6 +1103,111 @@ TEST(SolventRobustness, B3_CloudFormation)
     EXPECT_GT(state.variables_[0][i_so4mm], 1.0) << "SO4 should increase after cloud forms";
   }
   std::cout << std::endl;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// B4: Sudden water loss — cloud water set to exactly zero, then restored
+//     Rate capping (min_halflife = 1 s) on the oxidation reactions
+// ────────────────────────────────────────────────────────────────────────
+TEST(SolventRobustness, B4_SuddenWaterLoss)
+{
+  CamCloudSpecies sp;
+  auto [model, cloud] = BuildCamCloudModel(sp, 1.0);
+  auto params = RosenbrockSolverParameters::FourStageDifferentialAlgebraicRosenbrockParameters();
+  params.h_start_ = 0.01;
+  params.max_number_of_steps_ = 200000;
+  params.constraint_init_max_iterations_ = 100;
+  auto solver = CpuSolverBuilder<RosenbrockSolverParameters>(params)
+                    .SetGasPhase(sp.gas_phase)
+                    .AddExternalModel(model)
+                    .SetIgnoreUnusedSpecies(true)
+                    .Build();
+
+  State state = solver.GetState();
+  state.conditions_[0].temperature_ = 280.0;
+  state.conditions_[0].pressure_ = 70000.0;
+  state.conditions_[0].CalculateIdealAirDensity();
+
+  const std::vector<std::string> sulfur = { "SO2",
+                                            "CLOUD.AQUEOUS.SO2_aq",
+                                            "CLOUD.AQUEOUS.HSO3m",
+                                            "CLOUD.AQUEOUS.SO3mm",
+                                            "CLOUD.AQUEOUS.SO2OOHm",
+                                            "CLOUD.AQUEOUS.SO4mm" };
+  const std::map<std::string, double> initial = {
+    { "SO2", 3.01e-7 },
+    { "H2O2", 3.01e-7 },
+    { "O3", 1.5e-6 },
+    { "CLOUD.AQUEOUS.H2O", C_H2O_NORMAL },
+    { "CLOUD.AQUEOUS.SO2_aq", 1e-12 },
+    { "CLOUD.AQUEOUS.H2O2_aq", 1e-12 },
+    { "CLOUD.AQUEOUS.O3_aq", 1e-14 },
+    { "CLOUD.AQUEOUS.Hp", 2e-6 },
+    { "CLOUD.AQUEOUS.OHm", 1e-14 },
+    { "CLOUD.AQUEOUS.HSO3m", 1e-12 },
+    { "CLOUD.AQUEOUS.SO3mm", 1e-16 },
+    { "CLOUD.AQUEOUS.SO4mm", 1e-6 },
+    { "CLOUD.AQUEOUS.SO2OOHm", 0.0 },
+  };
+  for (const auto& [name, value] : initial)
+    state.variables_[0][state.variable_map_.at(name)] = value;
+  for (const auto& [name, index] : state.variable_map_)
+  {
+    if (name.rfind("CLOUD.AQUEOUS.", 0) == 0)
+      state.absolute_tolerance_[index] = 1e-8;
+    else
+      state.absolute_tolerance_[index] = 1e-9;
+  }
+  cloud.SetDefaultParameters(state);
+
+  auto total_sulfur = [&]()
+  {
+    double total = 0.0;
+    for (const auto& name : sulfur)
+      total += state.variables_[0][state.variable_map_.at(name)];
+    return total;
+  };
+
+  const std::size_t i_h2o = state.variable_map_.at("CLOUD.AQUEOUS.H2O");
+  const std::size_t i_so2_g = state.variable_map_.at("SO2");
+  const std::size_t i_so4mm = state.variable_map_.at("CLOUD.AQUEOUS.SO4mm");
+  const double dt = 30.0;
+  const int calls_per_phase = 20;
+  double total_S0 = 0.0;
+  double so4_at_loss = 0.0;
+
+  std::cout << "\n┌─── B4: Sudden Water Loss ───" << std::endl;
+  for (int call = 0; call < 3 * calls_per_phase; ++call)
+  {
+    if (call == calls_per_phase)
+    {
+      state.variables_[0][i_h2o] = 0.0;
+      so4_at_loss = state.variables_[0][i_so4mm];
+    }
+    if (call == 2 * calls_per_phase)
+    {
+      EXPECT_NEAR(state.variables_[0][i_so4mm], so4_at_loss, 1e-12 * so4_at_loss) << "SO4 increased without water";
+      state.variables_[0][i_h2o] = C_H2O_NORMAL;
+    }
+
+    solver.UpdateStateParameters(state);
+    auto result = solver.Solve(dt, state);
+    ASSERT_EQ(result.state_, SolverState::Converged) << "Solver failed at t=" << call * dt << " s";
+    ASSERT_FALSE(HasNanOrInf(state)) << "NaN/Inf at t=" << (call + 1) * dt << " s";
+    if (call > 0)
+      EXPECT_LE(result.stats_.number_of_steps_, 50u) << "Too many steps at t=" << call * dt << " s";
+    EXPECT_GT(state.variables_[0][i_so2_g], 0.0) << "SO2(g) is not positive at t=" << (call + 1) * dt << " s";
+
+    if (call == 0)
+      total_S0 = total_sulfur();
+    EXPECT_NEAR(total_sulfur(), total_S0, 1e-10 * total_S0) << "S budget violated at t=" << (call + 1) * dt << " s";
+
+    if (call % calls_per_phase == 0 || call % calls_per_phase == calls_per_phase - 1)
+      std::cout << "  t=" << std::fixed << std::setprecision(0) << std::setw(6) << (call + 1) * dt
+                << " s  H2O=" << std::scientific << std::setprecision(1) << state.variables_[0][i_h2o]
+                << "  steps=" << result.stats_.number_of_steps_ << "  SO4=" << std::setprecision(6)
+                << state.variables_[0][i_so4mm] << std::endl;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════
