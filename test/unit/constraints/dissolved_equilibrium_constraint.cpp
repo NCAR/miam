@@ -630,7 +630,8 @@ namespace
       const std::unordered_map<std::string, std::size_t>& param_idx,
       const std::unordered_map<std::string, std::size_t>& state_indices,
       const DMP& state_variables,
-      const DMP& state_params)
+      const DMP& state_params,
+      double atol = 1e-5)
   {
     const std::size_t num_blocks = state_variables.NumRows();
     const std::size_t num_vars = state_indices.size();
@@ -642,7 +643,7 @@ namespace
 
     // Build FD Jacobian — bind state_params into the residual callable
     // Use perturbation=1e-7 to match old central-difference scheme: h = max(|x|, 1) * 1e-7.
-    // Use atol=rtol=1e-5 to match old rel_tol tolerance.
+    // Use rtol=1e-5 to match old rel_tol tolerance. Increase atol when the residual terms are large.
     auto rf = constraint.ConstraintResidualFunction<DMP>(phase_prefixes, param_idx, state_indices);
     auto fd_jac = micm::FiniteDifferenceJacobian<DMP>(
         [&](const DMP& vars, DMP& out)
@@ -655,7 +656,7 @@ namespace
         1e-7);
 
     // Compare analytical vs FD
-    auto cmp = micm::CompareJacobianToFiniteDifference(jacobian, fd_jac, num_vars, 1e-5, 1e-5);
+    auto cmp = micm::CompareJacobianToFiniteDifference(jacobian, fd_jac, num_vars, atol, 1e-5);
     EXPECT_TRUE(cmp.passed_) << "FD mismatch: block=" << cmp.worst_block_ << " row=" << cmp.worst_row_
                              << " col=" << cmp.worst_col_ << " +J(analytical)=" << cmp.worst_analytical_
                              << " +J(fd)=" << cmp.worst_fd_;
@@ -1780,6 +1781,7 @@ TEST(DissolvedEquilibriumConstraint, JacobianFDExtremeKeq)
     sv[0][1] = K_eq_val;  // at equilibrium
     sv[0][2] = 0.017;     // small [H2O] to stress-test
 
-    CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp);
+    // At equilibrium, dG/d[H2O] is zero, but the FD roundoff scales with the residual terms (K_eq / [H2O])
+    CheckConstraintFDJacobian(constraint, phase_prefixes, pi, si, sv, sp, 1e-5 * std::max(1.0, K_eq_val / 0.017));
   }
 }
